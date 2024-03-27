@@ -1,0 +1,9 @@
+[submodule "libraries/networking/libwebsockets"]
+	path = libraries/networking/libwebsockets
+	url = https://github.com/warmcat/libwebsockets
+[submodule "libraries/components/amazon-kinesis-video-streams-signaling"]
+	path = libraries/components/amazon-kinesis-video-streams-signaling
+	url = https://github.com/ActoryOu/amazon-kinesis-video-streams-signaling-public
+[submodule "libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk"]
+	path = libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk
+	url = https://github.com/aws/SigV4-for-AWS-IoT-embedded-sdk
