@@ -1,42 +1,26 @@
 #include <stdio.h>
-#include "libwebsockets.h"
+#include <string.h>
+#include "demo_config.h"
+#include "signaling_controller.h"
 
-int32_t lwsCallback(struct lws* wsi, enum lws_callback_reasons reason, void * pUser, void * pDataIn, size_t dataSize)
-{
-    return 0;
-}
+SignalingControllerContext_t signalingControllerContext;
 
 int main()
 {
-    struct lws_context_creation_info creationInfo;
-    const lws_retry_bo_t retryPolicy = {
-        .secs_since_valid_ping = 10,
-        .secs_since_valid_hangup = 7200,
-    };
-    struct lws_context * pLwsContext;
-    struct lws_protocols protocols[3];
+    SignalingControllerResult_t signalingControllerReturn;
+    SignalingControllerCredential_t signalingControllerCred;
 
-    protocols[0].name = "https";
-    protocols[0].callback = lwsCallback;
-    protocols[1].name = "wss";
-    protocols[1].callback = lwsCallback;
+    memset( &signalingControllerCred, 0, sizeof(SignalingControllerCredential_t) );
+    signalingControllerCred.pAccessKeyId = AWS_ACCESS_KEY_ID;
+    signalingControllerCred.accessKeyIdLength = strlen(AWS_ACCESS_KEY_ID);
+    signalingControllerCred.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+    signalingControllerCred.secretAccessKeyLength = strlen(AWS_SECRET_ACCESS_KEY);
+    signalingControllerReturn = SignalingController_Init( &signalingControllerContext, &signalingControllerCred );
 
-    memset(&creationInfo, 0x00, sizeof(struct lws_context_creation_info));
-    creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-    creationInfo.port = CONTEXT_PORT_NO_LISTEN;
-    creationInfo.protocols = protocols;
-    creationInfo.timeout_secs = 10;
-    creationInfo.gid = -1;
-    creationInfo.uid = -1;
-    creationInfo.client_ssl_ca_filepath = "";
-    creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
-    creationInfo.ka_time = 1;
-    creationInfo.ka_probes = 1;
-    creationInfo.ka_interval = 1;
-    creationInfo.retry_and_idle_policy = &retryPolicy;
-
-    pLwsContext = lws_create_context(&creationInfo);
-    (void) pLwsContext;
+    if( signalingControllerReturn == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        signalingControllerReturn = SignalingController_ConnectServers( &signalingControllerContext );
+    }
 
     return 0;
 }
