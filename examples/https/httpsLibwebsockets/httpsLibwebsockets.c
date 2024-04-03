@@ -4,8 +4,9 @@
 #include "libwebsockets.h"
 #include "openssl/sha.h"
 
-#define HTTPS_LWS_TIME_LENGTH ( 21 ) /* length of "2011-10-08T07:07:09Z" */
-#define USER_AGENT_NAME "AWS-SDK-KVS"
+#define HTTPS_LWS_DEFAULT_REGION "us-west-2"
+#define HTTPS_LWS_KVS_SERVICE_NAME "kinesisvideo"
+#define HTTPS_LWS_TIME_LENGTH ( 17 ) /* length of ISO8601 format (e.g. 20111008T070709Z) with NULL terminator */
 #define HTTPS_LWS_STRING_CONTENT_TYPE "content-type"
 #define HTTPS_LWS_STRING_CONTENT_TYPE_VALUE "application/json"
 #define HTTPS_LWS_STRING_SCHEMA_DELIMITER_STRING "://"
@@ -42,10 +43,10 @@ static SigV4Parameters_t sigv4Params =
 {
     .pCredentials     = NULL,
     .pDateIso8601     = NULL,
-    .pRegion          = "us-west-2",
-    .regionLen        = sizeof( "us-west-2" ) - 1,
-    .pService         = "kinesisvideo",
-    .serviceLen       = sizeof( "kinesisvideo" ) - 1,
+    .pRegion          = HTTPS_LWS_DEFAULT_REGION,
+    .regionLen        = sizeof( "HTTPS_LWS_DEFAULT_REGION" ) - 1,
+    .pService         = HTTPS_LWS_KVS_SERVICE_NAME,
+    .serviceLen       = sizeof( HTTPS_LWS_KVS_SERVICE_NAME ) - 1,
     .pCryptoInterface = &cryptoInterface,
     .pHttpParameters  = NULL
 };
@@ -87,7 +88,6 @@ static HttpsResult_t generateAuthorizationHeader( HttpsContext_t *pCtx )
     char * signature = NULL;
     size_t signatureLen = 0;
     char headersBuffer[ 4096 ];
-    char *pCurrent = headersBuffer;
     size_t remainSize = sizeof( headersBuffer );
     int32_t snprintfReturn;
     HttpsLibwebsocketsAppendHeaders_t *pAppendHeaders = &pCtx->appendHeaders;
@@ -104,11 +104,11 @@ static HttpsResult_t generateAuthorizationHeader( HttpsContext_t *pCtx )
 
     /* Prepare headers for Authorization.
      * Format: "user-agent: AWS-SDK-KVS\r\nhost: kinesisvideo.us-west-2.amazonaws.com\r\n..." */
-    snprintfReturn = snprintf( pCurrent, remainSize, "%s: %.*s\r\n%s: %.*s\r\n%s: %.*s\r\n",
-                               "Host", ( int ) pAppendHeaders->hostLength, pAppendHeaders->pHost,
+    snprintfReturn = snprintf( headersBuffer, remainSize, "%s: %.*s\r\n%s: %.*s\r\n%s: %.*s\r\n",
+                               "host", ( int ) pAppendHeaders->hostLength, pAppendHeaders->pHost,
                                "user-agent", ( int ) pAppendHeaders->userAgentLength, pAppendHeaders->pUserAgent,
                                "x-amz-date", ( int ) pAppendHeaders->dateLength, pAppendHeaders->pDate );
-    printf( "Generating Authorization for %.*s\n", snprintfReturn, pCurrent );
+
     if( snprintfReturn < 0 )
     {
         ret = HTTPS_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
@@ -134,14 +134,16 @@ static HttpsResult_t generateAuthorizationHeader( HttpsContext_t *pCtx )
         /* AWS S3 request does not require any Query parameters. */
         sigv4HttpParams.pQuery = NULL;
         sigv4HttpParams.queryLen = 0;
-        sigv4HttpParams.pHeaders = pCurrent;
+        sigv4HttpParams.pHeaders = headersBuffer;
         sigv4HttpParams.headersLen = snprintfReturn;
         sigv4HttpParams.pPayload = pCtx->pRequest->pBody;
         sigv4HttpParams.payloadLen = pCtx->pRequest->bodyLength;
         
         /* Initializing sigv4Params with Http parameters required for the HTTP request. */
+        sigv4Params.pRegion = pCtx->libwebsocketsCredentials.pRegion;
+        sigv4Params.regionLen = pCtx->libwebsocketsCredentials.regionLength;
         sigv4Params.pHttpParameters = &sigv4HttpParams;
-        sigv4Params.pCredentials = &pCtx->credential;
+        sigv4Params.pCredentials = &pCtx->sigv4Credential;
         sigv4Params.pDateIso8601 = pCtx->appendHeaders.pDate;
         cryptoInterface.pHashContext = &pCtx->sha256Ctx;
 
@@ -467,10 +469,6 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
                 status = lws_add_http_header_by_name( wsi, "Authorization", pCtx->appendHeaders.pAuthorization, pCtx->appendHeaders.authorizationLength,
                                                       ( unsigned char ** ) ppStartPtr, pEndPtr );
 
-                // printf( "Appending header - host=%.*s\n", ( int ) pCtx->appendHeaders.hostLength, pCtx->appendHeaders.pHost );
-                // status = lws_add_http_header_by_name( wsi, "host", pCtx->appendHeaders.pHost, pCtx->appendHeaders.hostLength,
-                //                                       ( unsigned char ** ) ppStartPtr, pEndPtr );
-
                 /* user-agent */
                 printf( "Appending header - user-agent=%.*s\n", ( int ) pCtx->appendHeaders.userAgentLength, pCtx->appendHeaders.pUserAgent );
                 status = lws_add_http_header_by_name( wsi, "user-agent", pCtx->appendHeaders.pUserAgent, pCtx->appendHeaders.userAgentLength,
@@ -496,7 +494,6 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
 
             case LWS_CALLBACK_CLIENT_HTTP_WRITEABLE:
                 printf( "Sending the body %.*s, size %lu\n", ( int ) pCtx->pRequest->bodyLength, pCtx->pRequest->pBody, pCtx->pRequest->bodyLength );
-                // MEMCPY(pBuffer, pRequestInfo->body, pRequestInfo->bodySize);
 
                 writtenBodyLength = lws_write(wsi, pCtx->pRequest->pBody, pCtx->pRequest->bodyLength, LWS_WRITE_TEXT);
 
@@ -543,11 +540,25 @@ HttpsResult_t Https_Init( HttpsContext_t *pCtx, void * pCredential )
         .secs_since_valid_ping = 10,
         .secs_since_valid_hangup = 7200,
     };
-    SigV4Credentials_t *pCred = (SigV4Credentials_t *)pCredential;
+    HttpsLibwebsocketsCredentials_t *pHttpsLibwebsocketsCredentials = (HttpsLibwebsocketsCredentials_t *)pCredential;
 
     if( pCtx == NULL || pCredential == NULL )
     {
         ret = HTTPS_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == HTTPS_RESULT_OK )
+    {
+        memcpy( &pCtx->libwebsocketsCredentials, pHttpsLibwebsocketsCredentials, sizeof(HttpsLibwebsocketsCredentials_t) );
+        pCtx->sigv4Credential.pAccessKeyId = pHttpsLibwebsocketsCredentials->pAccessKeyId;
+        pCtx->sigv4Credential.accessKeyIdLen = pHttpsLibwebsocketsCredentials->accessKeyIdLength;
+        pCtx->sigv4Credential.pSecretAccessKey = pHttpsLibwebsocketsCredentials->pSecretAccessKey;
+        pCtx->sigv4Credential.secretAccessKeyLen = pHttpsLibwebsocketsCredentials->secretAccessKeyLength;
+
+        if( pCtx->libwebsocketsCredentials.userAgentLength > HTTPS_LWS_USER_AGENT_NAME_MAX_LENGTH )
+        {
+            ret = HTTPS_LIBWEBSOCKETS_RESULT_USER_AGENT_NAME_TOO_LONG;
+        }
     }
 
     if( ret == HTTPS_RESULT_OK )
@@ -564,23 +575,20 @@ HttpsResult_t Https_Init( HttpsContext_t *pCtx, void * pCredential )
         creationInfo.timeout_secs = 10;
         creationInfo.gid = -1;
         creationInfo.uid = -1;
-        creationInfo.client_ssl_ca_filepath = "cert/cert.pem";
+        creationInfo.client_ssl_ca_filepath = pCtx->libwebsocketsCredentials.pCaCertPath;
         creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
         creationInfo.ka_time = 1;
         creationInfo.ka_probes = 1;
         creationInfo.ka_interval = 1;
         creationInfo.retry_and_idle_policy = &retryPolicy;
 
-        pCtx->pLwsContext = lws_create_context(&creationInfo);
+        lws_set_log_level(LLL_NOTICE | LLL_WARN | LLL_ERR, NULL);
+        pCtx->pLwsContext = lws_create_context( &creationInfo );
 
         if( pCtx->pLwsContext == NULL )
         {
-            ret = HTTPS_RESULT_FAIL;
+            ret = HTTPS_LIBWEBSOCKETS_RESULT_INIT_LWS_CONTEXT_FAIL;
         }
-        
-        lws_set_log_level(LLL_NOTICE | LLL_WARN | LLL_ERR, NULL);
-        
-        pCtx->credential = *pCred;
     }
 
     return ret;
@@ -595,8 +603,8 @@ HttpsResult_t Https_Send( HttpsContext_t *pCtx, HttpsRequest_t *pRequest, size_t
     /* Append HTTPS headers for signing.
      * Refer to https://docs.aws.amazon.com/AmazonECR/latest/APIReference/CommonParameters.html for details. */
     /* user-agent */
-    pCtx->appendHeaders.pUserAgent = USER_AGENT_NAME;
-    pCtx->appendHeaders.userAgentLength = strlen( USER_AGENT_NAME );
+    pCtx->appendHeaders.pUserAgent = pCtx->libwebsocketsCredentials.pUserAgent;
+    pCtx->appendHeaders.userAgentLength = pCtx->libwebsocketsCredentials.userAgentLength;
 
     /* host */
     ret = getUrlHost( pRequest->pUrl, pRequest->urlLength, &pCtx->appendHeaders.pHost, &pCtx->appendHeaders.hostLength );
@@ -622,7 +630,7 @@ HttpsResult_t Https_Send( HttpsContext_t *pCtx, HttpsRequest_t *pRequest, size_t
         pCtx->pRequest = pRequest;
     }
 
-    /* Authorization - SigV4_GenerateHTTPAuthorization -- append this in callback */
+    /* Authorization */
     if( ret == HTTPS_RESULT_OK )
     {
         ret = generateAuthorizationHeader( pCtx );

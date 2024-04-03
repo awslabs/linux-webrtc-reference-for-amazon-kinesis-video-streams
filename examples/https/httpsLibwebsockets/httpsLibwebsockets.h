@@ -12,6 +12,8 @@ extern "C" {
 #include "libwebsockets.h"
 #include "sigv4.h"
 
+#define HTTPS_LWS_USER_AGENT_NAME_MAX_LENGTH ( 128 )
+
 typedef enum HttpsLibwebsocketsResult
 {
     HTTPS_LIBWEBSOCKETS_RESULT_OK = 0,
@@ -24,6 +26,8 @@ typedef enum HttpsLibwebsocketsResult
     HTTPS_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL,
     HTTPS_LIBWEBSOCKETS_RESULT_AUTH_BUFFER_TOO_SMALL,
     HTTPS_LIBWEBSOCKETS_RESULT_SIGV4_GENERATE_AUTH_FAIL,
+    HTTPS_LIBWEBSOCKETS_RESULT_USER_AGENT_NAME_TOO_LONG,
+    HTTPS_LIBWEBSOCKETS_RESULT_INIT_LWS_CONTEXT_FAIL,
 } HttpsLibwebsocketsResult_t;
 
 typedef struct HttpsLibwebsocketsAppendHeaders
@@ -41,6 +45,26 @@ typedef struct HttpsLibwebsocketsAppendHeaders
     size_t authorizationLength;
 } HttpsLibwebsocketsAppendHeaders_t;
 
+typedef struct HttpsLibwebsocketsCredentials
+{
+    /* user-agent */
+    char *pUserAgent;
+    size_t userAgentLength;
+
+    /* Region */
+    char * pRegion;
+    size_t regionLength;
+
+    /* AKSK */
+    char * pAccessKeyId;
+    size_t accessKeyIdLength;
+    char * pSecretAccessKey;
+    size_t secretAccessKeyLength;
+
+    /* CA Cert Path */
+    char * pCaCertPath;
+} HttpsLibwebsocketsCredentials_t;
+
 typedef struct HttpsContext
 {
     struct lws_context *pLwsContext;
@@ -50,8 +74,10 @@ typedef struct HttpsContext
     HttpsLibwebsocketsAppendHeaders_t appendHeaders;
     HttpsRequest_t *pRequest;
 
+    HttpsLibwebsocketsCredentials_t libwebsocketsCredentials;
+
     /* SigV4 credential */
-    SigV4Credentials_t credential;
+    SigV4Credentials_t sigv4Credential;
 
     /* OpenSSL SHA256 context. */
     SHA256_CTX sha256Ctx;

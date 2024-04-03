@@ -9,4 +9,8 @@
 
 #define AWS_SECRET_ACCESS_KEY ""
 
+#define AWS_KVS_AGENT_NAME "AWS-SDK-KVS"
+
+#define AWS_CA_CERT_PATH "cert/cert.pem"
+
 #endif /* DEMO_CONFIG_H */

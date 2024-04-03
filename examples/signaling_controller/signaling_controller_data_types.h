@@ -10,7 +10,6 @@ extern "C" {
 /* Standard includes. */
 #include <stdint.h>
 #include <stddef.h>
-#include "sigv4.h"
 #include "signaling_api.h"
 #include "httpsLibwebsockets.h"
 
@@ -40,30 +39,28 @@ typedef struct SignalingControllerCredential
     char * pChannelName;
     size_t channelNameLength;
 
+    /* User Agent Name */
+    char * pUserAgentName;
+    size_t userAgentNameLength;
+
     /* AKSK */
     char * pAccessKeyId;
     size_t accessKeyIdLength;
     char * pSecretAccessKey;
     size_t secretAccessKeyLength;
 
+    /* CA Cert Path */
+    char * pCaCertPath;
+
     /* TODO: Or credential */
 } SignalingControllerCredential_t;
 
 typedef struct SignalingControllerContext
 {
-    /* Region */
-    char * pRegion;
-    size_t regionLength;
-
-    /* Channel Name */
-    char * pChannelName;
-    size_t channelNameLength;
-
-    /* SigV4 credential */
-    SigV4Credentials_t credential;
-
     /* Signaling Component Context */
     SignalingContext_t signalingContext;
+
+    SignalingControllerCredential_t signalingControllerCredential;
 
     /* HTTPS Context */
     HttpsContext_t httpsContext;

@@ -15,10 +15,14 @@ int main()
     signalingControllerCred.regionLength = strlen( AWS_REGION );
     signalingControllerCred.pChannelName = AWS_KVS_CHANNEL_NAME;
     signalingControllerCred.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
+    signalingControllerCred.pUserAgentName = AWS_KVS_AGENT_NAME;
+    signalingControllerCred.userAgentNameLength = strlen(AWS_KVS_AGENT_NAME);
     signalingControllerCred.pAccessKeyId = AWS_ACCESS_KEY_ID;
     signalingControllerCred.accessKeyIdLength = strlen(AWS_ACCESS_KEY_ID);
     signalingControllerCred.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
     signalingControllerCred.secretAccessKeyLength = strlen(AWS_SECRET_ACCESS_KEY);
+    signalingControllerCred.pCaCertPath = AWS_CA_CERT_PATH;
+
     signalingControllerReturn = SignalingController_Init( &signalingControllerContext, &signalingControllerCred );
 
     if( signalingControllerReturn == SIGNALING_CONTROLLER_RESULT_OK )

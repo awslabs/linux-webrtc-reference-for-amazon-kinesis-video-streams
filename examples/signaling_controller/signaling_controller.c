@@ -3,9 +3,36 @@
 #include "signaling_controller.h"
 #include "libwebsockets.h"
 #include "signaling_api.h"
+#include "httpsLibwebsockets.h"
 
 #define MAX_URI_CHAR_LEN ( 10000 )
 #define MAX_JSON_PARAMETER_STRING_LEN ( 10 * 1024 )
+
+static SignalingControllerResult_t initHttpsLibwebsocketsContext( SignalingControllerContext_t * pCtx )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    HttpsResult_t retHttps;
+    HttpsLibwebsocketsCredentials_t httpsLibwebsocketsCred;
+
+    httpsLibwebsocketsCred.pUserAgent = pCtx->signalingControllerCredential.pUserAgentName;
+    httpsLibwebsocketsCred.userAgentLength = pCtx->signalingControllerCredential.userAgentNameLength;
+    httpsLibwebsocketsCred.pRegion = pCtx->signalingControllerCredential.pRegion;
+    httpsLibwebsocketsCred.regionLength = pCtx->signalingControllerCredential.regionLength;
+    httpsLibwebsocketsCred.pAccessKeyId = pCtx->signalingControllerCredential.pAccessKeyId;
+    httpsLibwebsocketsCred.accessKeyIdLength = pCtx->signalingControllerCredential.accessKeyIdLength;
+    httpsLibwebsocketsCred.pSecretAccessKey = pCtx->signalingControllerCredential.pSecretAccessKey;
+    httpsLibwebsocketsCred.secretAccessKeyLength = pCtx->signalingControllerCredential.secretAccessKeyLength;
+    httpsLibwebsocketsCred.pCaCertPath = pCtx->signalingControllerCredential.pCaCertPath;
+
+    retHttps = Https_Init( &pCtx->httpsContext, &httpsLibwebsocketsCred );
+
+    if( retHttps != HTTPS_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL;
+    }
+
+    return ret;
+}
 
 static SignalingControllerResult_t describeSignalingChannel( SignalingControllerContext_t * pCtx )
 {
@@ -27,8 +54,8 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
     signalRequest.pBody = &paramsJson[0];
     signalRequest.bodyLength = MAX_JSON_PARAMETER_STRING_LEN;
     // Create the API url
-    describeSignalingChannelRequest.channelNameLength = pCtx->channelNameLength;
-    describeSignalingChannelRequest.pChannelName = pCtx->pChannelName;
+    describeSignalingChannelRequest.pChannelName = pCtx->signalingControllerCredential.pChannelName;
+    describeSignalingChannelRequest.channelNameLength = pCtx->signalingControllerCredential.channelNameLength;
 
     retSignal = Signaling_constructDescribeSignalingChannelRequest(&pCtx->signalingContext, &describeSignalingChannelRequest, &signalRequest);
     if( retSignal != SIGNALING_RESULT_OK )
@@ -59,7 +86,6 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t retSignal;
     SignalingAwsControlPlaneInfo_t awsControlPlaneInfo;
-    HttpsResult_t retHttps;
 
     if( pCtx == NULL || pCred == NULL )
     {
@@ -74,17 +100,21 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     {
         /* Initialize signaling controller context. */
         memset( pCtx, 0, sizeof( SignalingControllerContext_t ) );
-        pCtx->pRegion = pCred->pRegion;
-        pCtx->regionLength = pCred->regionLength;
+        pCtx->signalingControllerCredential.pRegion = pCred->pRegion;
+        pCtx->signalingControllerCredential.regionLength = pCred->regionLength;
         
-        pCtx->pChannelName = pCred->pChannelName;
-        pCtx->channelNameLength = pCred->channelNameLength;
+        pCtx->signalingControllerCredential.pChannelName = pCred->pChannelName;
+        pCtx->signalingControllerCredential.channelNameLength = pCred->channelNameLength;
+        
+        pCtx->signalingControllerCredential.pUserAgentName = pCred->pUserAgentName;
+        pCtx->signalingControllerCredential.userAgentNameLength = pCred->userAgentNameLength;
 
-        /* Initialize AKSK. */
-        pCtx->credential.pAccessKeyId = pCred->pAccessKeyId;
-        pCtx->credential.accessKeyIdLen = pCred->accessKeyIdLength;
-        pCtx->credential.pSecretAccessKey = pCred->pSecretAccessKey;
-        pCtx->credential.secretAccessKeyLen = pCred->secretAccessKeyLength;
+        pCtx->signalingControllerCredential.pAccessKeyId = pCred->pAccessKeyId;
+        pCtx->signalingControllerCredential.accessKeyIdLength = pCred->accessKeyIdLength;
+        pCtx->signalingControllerCredential.pSecretAccessKey = pCred->pSecretAccessKey;
+        pCtx->signalingControllerCredential.secretAccessKeyLength = pCred->secretAccessKeyLength;
+
+        pCtx->signalingControllerCredential.pCaCertPath = pCred->pCaCertPath;
     }
 
     /* Initialize signaling component. */
@@ -92,8 +122,8 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     {
         memset( &awsControlPlaneInfo, 0, sizeof( SignalingAwsControlPlaneInfo_t ) );
 
-        awsControlPlaneInfo.pRegion = pCtx->pRegion;
-        awsControlPlaneInfo.regionLength = pCtx->regionLength;
+        awsControlPlaneInfo.pRegion = pCtx->signalingControllerCredential.pRegion;
+        awsControlPlaneInfo.regionLength = pCtx->signalingControllerCredential.regionLength;
         retSignal = Signaling_Init(&pCtx->signalingContext, &awsControlPlaneInfo);
 
         if( retSignal != SIGNALING_RESULT_OK )
@@ -105,12 +135,7 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     /* Initialize HTTPS. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        retHttps = Https_Init( &pCtx->httpsContext, &pCtx->credential );
-
-        if( retHttps != HTTPS_RESULT_OK )
-        {
-            ret = SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL;
-        }
+        ret = initHttpsLibwebsocketsContext( pCtx );
     }
 
     return ret;
