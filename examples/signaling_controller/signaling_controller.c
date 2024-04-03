@@ -124,37 +124,8 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
         {
             strncpy( pCtx->signalingChannelInfo.signalingChannelARN, describeSignalingChannelResponse.pChannelArn, describeSignalingChannelResponse.channelArnLength );
             pCtx->signalingChannelInfo.signalingChannelARN[describeSignalingChannelResponse.channelArnLength] = '\0';
+            pCtx->signalingChannelInfo.signalingChannelARNLength = describeSignalingChannelResponse.channelArnLength;
         }
-
-        // if (describeSignalingChannelResponse.pChannelName != NULL) {
-        //     // CHK(describeSignalingChannelResponse.channelNameLength <= MAX_CHANNEL_NAME_LEN, STATUS_INVALID_API_CALL_RETURN_JSON);
-        //     STRNCPY(pSignalingClient->channelDescription.channelName, describeSignalingChannelResponse.pChannelName,
-        //             describeSignalingChannelResponse.channelNameLength);
-        //     pSignalingClient->channelDescription.channelName[describeSignalingChannelResponse.channelNameLength] = '\0';
-        // }
-
-        // if( describeSignalingChannelResponse.pChannelStatus == NULL || strncmp( describeSignalingChannelResponse.pChannelStatus, "ACTIVE", describeSignalingChannelResponse.channelStatusLength ) != 0 )
-        // {
-        //     ret = SIGNALING_CONTROLLER_RESULT_INACTIVE_SIGNALING_CHANNEL;
-        // }
-
-        // // if (describeSignalingChannelResponse.pChannelType != NULL) {
-        // //     CHK(describeSignalingChannelResponse.channelTypeLength <= MAX_DESCRIBE_CHANNEL_TYPE_LEN, STATUS_INVALID_API_CALL_RETURN_JSON);
-        // //     pSignalingClient->channelDescription.channelType =
-        // //         getChannelTypeFromString((PCHAR) describeSignalingChannelResponse.pChannelType, describeSignalingChannelResponse.channelTypeLength);
-        // // }
-
-        // if (describeSignalingChannelResponse.pVersion != NULL) {
-        //     CHK(describeSignalingChannelResponse.versionLength <= MAX_UPDATE_VERSION_LEN, STATUS_INVALID_API_CALL_RETURN_JSON);
-        //     STRNCPY(pSignalingClient->channelDescription.updateVersion, describeSignalingChannelResponse.pVersion,
-        //             describeSignalingChannelResponse.versionLength);
-        //     pSignalingClient->channelDescription.updateVersion[describeSignalingChannelResponse.versionLength] = '\0';
-        // }
-
-        // if (describeSignalingChannelResponse.messageTtlSeconds != 0) {
-        //     // NOTE: Ttl value is in seconds
-        //     pSignalingClient->channelDescription.messageTtl = describeSignalingChannelResponse.messageTtlSeconds * HUNDREDS_OF_NANOS_IN_A_SECOND;
-        // }
     }
     
     if( ret == SIGNALING_CONTROLLER_RESULT_OK && describeSignalingChannelResponse.pChannelName != NULL )
@@ -168,12 +139,116 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
         {
             strncpy( pCtx->signalingChannelInfo.signalingChannelName, describeSignalingChannelResponse.pChannelName, describeSignalingChannelResponse.channelNameLength );
             pCtx->signalingChannelInfo.signalingChannelName[describeSignalingChannelResponse.channelNameLength] = '\0';
+            pCtx->signalingChannelInfo.signalingChannelNameLength = describeSignalingChannelResponse.channelNameLength;
         }
     }
     
     if( ret == SIGNALING_CONTROLLER_RESULT_OK && describeSignalingChannelResponse.messageTtlSeconds != 0U )
     {
         pCtx->signalingChannelInfo.signalingChannelTtlSeconds = describeSignalingChannelResponse.messageTtlSeconds;
+    }
+
+    return ret;
+}
+
+static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingControllerContext_t * pCtx )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    SignalingResult_t retSignal;
+    SignalingRequest_t signalRequest;
+    SignalingGetSignalingChannelEndpointRequest_t getSignalingChannelEndpointRequest;
+    SignalingGetSignalingChannelEndpointResponse_t getSignalingChannelEndpointResponse;
+    char url[MAX_URI_CHAR_LEN];
+    char paramsJson[MAX_JSON_PARAMETER_STRING_LEN];
+    HttpsRequest_t request;
+    HttpsResponse_t response;
+    char responseBuffer[MAX_JSON_PARAMETER_STRING_LEN];
+
+    // Prepare URL buffer
+    signalRequest.pUrl = &url[0];
+    signalRequest.urlLength = MAX_URI_CHAR_LEN;
+    // Prepare body buffer
+    signalRequest.pBody = &paramsJson[0];
+    signalRequest.bodyLength = MAX_JSON_PARAMETER_STRING_LEN;
+    // Create the API url
+    getSignalingChannelEndpointRequest.pChannelArn = pCtx->signalingChannelInfo.signalingChannelARN;
+    getSignalingChannelEndpointRequest.channelArnLength = pCtx->signalingChannelInfo.signalingChannelARNLength;
+    getSignalingChannelEndpointRequest.protocolsBitsMap = SIGNALING_ENDPOINT_PROTOCOL_HTTPS | SIGNALING_ENDPOINT_PROTOCOL_WEBSOCKET_SECURE;
+    getSignalingChannelEndpointRequest.role = SIGNALING_ROLE_MASTER;
+
+    retSignal = Signaling_constructGetSignalingChannelEndpointRequest(&pCtx->signalingContext, &getSignalingChannelEndpointRequest, &signalRequest);
+
+    if( retSignal != SIGNALING_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_CONSTRUCT_GET_SIGNALING_CHANNEL_ENDPOINTS_FAIL;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        memset( &request, 0, sizeof(HttpsRequest_t) );
+        request.pUrl = signalRequest.pUrl;
+        request.urlLength = signalRequest.urlLength;
+        request.pBody = signalRequest.pBody;
+        request.bodyLength = signalRequest.bodyLength;
+
+        memset( &response, 0, sizeof(HttpsResponse_t) );
+        response.pBuffer = responseBuffer;
+        response.bufferLength = MAX_JSON_PARAMETER_STRING_LEN;
+
+        ret = HttpsLibwebsockets_PerformRequest( pCtx, &request, 0, &response );
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        retSignal = Signaling_parseGetSignalingChannelEndpointResponse(&pCtx->signalingContext, responseBuffer, response.bufferLength, &getSignalingChannelEndpointResponse);
+
+        if( retSignal != SIGNALING_RESULT_OK )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_PARSE_GET_SIGNALING_CHANNEL_ENDPOINTS_FAIL;
+        }
+    }
+    
+    // Parse the response
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        if( getSignalingChannelEndpointResponse.pEndpointHttps == NULL || getSignalingChannelEndpointResponse.endpointHttpsLength > SIGNALING_AWS_MAX_ARN_LEN )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_INVALID_HTTPS_ENDPOINT;
+        }
+        else
+        {
+            strncpy( pCtx->signalingChannelInfo.endpointHttps, getSignalingChannelEndpointResponse.pEndpointHttps, getSignalingChannelEndpointResponse.endpointHttpsLength );
+            pCtx->signalingChannelInfo.endpointHttps[getSignalingChannelEndpointResponse.endpointHttpsLength] = '\0';
+            pCtx->signalingChannelInfo.endpointHttpsLength = getSignalingChannelEndpointResponse.endpointHttpsLength;
+        }
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        if( getSignalingChannelEndpointResponse.pEndpointWebsocketSecure == NULL || getSignalingChannelEndpointResponse.endpointWebsocketSecureLength > SIGNALING_AWS_MAX_ARN_LEN )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_INVALID_WEBSOCKET_SECURE_ENDPOINT;
+        }
+        else
+        {
+            strncpy( pCtx->signalingChannelInfo.endpointWebsocketSecure, getSignalingChannelEndpointResponse.pEndpointWebsocketSecure, getSignalingChannelEndpointResponse.endpointWebsocketSecureLength );
+            pCtx->signalingChannelInfo.endpointWebsocketSecure[getSignalingChannelEndpointResponse.endpointWebsocketSecureLength] = '\0';
+            pCtx->signalingChannelInfo.endpointWebsocketSecureLength = getSignalingChannelEndpointResponse.endpointWebsocketSecureLength;
+        }
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK && getSignalingChannelEndpointResponse.pEndpointWebrtc != NULL )
+    {
+        if( getSignalingChannelEndpointResponse.endpointWebrtcLength > SIGNALING_AWS_MAX_ARN_LEN )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_INVALID_WEBRTC_ENDPOINT;
+        }
+        else
+        {
+            strncpy( pCtx->signalingChannelInfo.endpointWebrtc, getSignalingChannelEndpointResponse.pEndpointWebrtc, getSignalingChannelEndpointResponse.endpointWebrtcLength );
+            pCtx->signalingChannelInfo.endpointWebrtc[getSignalingChannelEndpointResponse.endpointWebrtcLength] = '\0';
+            pCtx->signalingChannelInfo.endpointWebrtcLength = getSignalingChannelEndpointResponse.endpointWebrtcLength;
+        }
     }
 
     return ret;
@@ -264,9 +339,11 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
         ret = describeSignalingChannel( pCtx );
     }
 
-    /* Execute create channel if no channel exist (not recommend). */
-
     /* Query signaling channel endpoints with channel ARN. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        ret = getSignalingChannelEndpoints( pCtx );
+    }
 
     /* Connect websocket secure endpoint. */
 

@@ -27,6 +27,11 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_SIGNALING_INIT_FAIL,
     SIGNALING_CONTROLLER_RESULT_CONSTRUCT_DESCRIBE_SIGNALING_CHANNEL_FAIL,
     SIGNALING_CONTROLLER_RESULT_PARSE_DESCRIBE_SIGNALING_CHANNEL_FAIL,
+    SIGNALING_CONTROLLER_RESULT_CONSTRUCT_GET_SIGNALING_CHANNEL_ENDPOINTS_FAIL,
+    SIGNALING_CONTROLLER_RESULT_PARSE_GET_SIGNALING_CHANNEL_ENDPOINTS_FAIL,
+    SIGNALING_CONTROLLER_RESULT_INVALID_HTTPS_ENDPOINT,
+    SIGNALING_CONTROLLER_RESULT_INVALID_WEBSOCKET_SECURE_ENDPOINT,
+    SIGNALING_CONTROLLER_RESULT_INVALID_WEBRTC_ENDPOINT,
     SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL,
     SIGNALING_CONTROLLER_RESULT_HTTPS_PERFORM_REQUEST_FAIL,
     SIGNALING_CONTROLLER_RESULT_INACTIVE_SIGNALING_CHANNEL,
@@ -62,11 +67,20 @@ typedef struct SignalingControllerCredential
 
 typedef struct SignalingControllerChannelInfo
 {
-    /* Describe Channel -- channel name & ARN */
+    /* Describe signaling channel */
     char signalingChannelName[SIGNALING_AWS_MAX_CHANNEL_NAME_LEN + 1];
+    size_t signalingChannelNameLength;
     char signalingChannelARN[SIGNALING_AWS_MAX_ARN_LEN + 1];
+    size_t signalingChannelARNLength;
     uint32_t signalingChannelTtlSeconds;
-    
+
+    /* Get signaling channel endpoints */
+    char endpointWebsocketSecure[SIGNALING_AWS_MAX_ARN_LEN + 1];
+    size_t endpointWebsocketSecureLength;
+    char endpointHttps[SIGNALING_AWS_MAX_ARN_LEN + 1];
+    size_t endpointHttpsLength;
+    char endpointWebrtc[SIGNALING_AWS_MAX_ARN_LEN + 1];
+    size_t endpointWebrtcLength;
 } SignalingControllerChannelInfo_t;
 
 typedef struct SignalingControllerContext
