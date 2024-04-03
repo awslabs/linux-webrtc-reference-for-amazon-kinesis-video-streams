@@ -16,6 +16,7 @@ set(LWS_WITH_STATIC ON CACHE INTERNAL "Build the static version of the library")
 set(LWS_WITH_SHARED OFF CACHE INTERNAL "Do not build the shared version of the library")
 set(LWS_WITH_THREADPOOL OFF CACHE INTERNAL "Managed worker thread pool support (relies on pthreads)")
 set(LWS_WITH_ZLIB OFF CACHE INTERNAL "Include zlib support (required for extensions)")
+set(LWS_HAVE_PTHREAD_H ON CACHE INTERNAL "Have pthread")
 
 # Include libwebsockets, then the library is named websockets
 message(STATUS "adding libwebsockets subdirectory")

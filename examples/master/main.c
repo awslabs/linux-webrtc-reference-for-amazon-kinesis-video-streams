@@ -11,6 +11,10 @@ int main()
     SignalingControllerCredential_t signalingControllerCred;
 
     memset( &signalingControllerCred, 0, sizeof(SignalingControllerCredential_t) );
+    signalingControllerCred.pRegion = AWS_REGION;
+    signalingControllerCred.regionLength = strlen( AWS_REGION );
+    signalingControllerCred.pChannelName = AWS_KVS_CHANNEL_NAME;
+    signalingControllerCred.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
     signalingControllerCred.pAccessKeyId = AWS_ACCESS_KEY_ID;
     signalingControllerCred.accessKeyIdLength = strlen(AWS_ACCESS_KEY_ID);
     signalingControllerCred.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;

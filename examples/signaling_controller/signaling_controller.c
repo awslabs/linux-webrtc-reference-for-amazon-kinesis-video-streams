@@ -2,50 +2,64 @@
 
 #include "signaling_controller.h"
 #include "libwebsockets.h"
+#include "signaling_api.h"
 
-// int32_t lwsCallback(struct lws* wsi, enum lws_callback_reasons reason, void * pUser, void * pDataIn, size_t dataSize)
-// {
-//     return 0;
-// }
+#define MAX_URI_CHAR_LEN ( 10000 )
+#define MAX_JSON_PARAMETER_STRING_LEN ( 10 * 1024 )
 
-// int main()
-// {
-//     struct lws_context_creation_info creationInfo;
-//     const lws_retry_bo_t retryPolicy = {
-//         .secs_since_valid_ping = 10,
-//         .secs_since_valid_hangup = 7200,
-//     };
-//     struct lws_context * pLwsContext;
-//     struct lws_protocols protocols[3];
+static SignalingControllerResult_t describeSignalingChannel( SignalingControllerContext_t * pCtx )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    SignalingResult_t retSignal;
+    SignalingRequest_t signalRequest;
+    SignalingDescribeSignalingChannelRequest_t describeSignalingChannelRequest;
+    SignalingDescribeSignalingChannelResponse_t describeSignalingChannelResponse;
+    char url[MAX_URI_CHAR_LEN];
+    char paramsJson[MAX_JSON_PARAMETER_STRING_LEN];
+    HttpsRequest_t request;
+    HttpsResponse_t response;
+    char responseBuffer[MAX_JSON_PARAMETER_STRING_LEN];
 
-//     protocols[0].name = "https";
-//     protocols[0].callback = lwsCallback;
-//     protocols[1].name = "wss";
-//     protocols[1].callback = lwsCallback;
+    // Prepare URL buffer
+    signalRequest.pUrl = &url[0];
+    signalRequest.urlLength = MAX_URI_CHAR_LEN;
+    // Prepare body buffer
+    signalRequest.pBody = &paramsJson[0];
+    signalRequest.bodyLength = MAX_JSON_PARAMETER_STRING_LEN;
+    // Create the API url
+    describeSignalingChannelRequest.channelNameLength = pCtx->channelNameLength;
+    describeSignalingChannelRequest.pChannelName = pCtx->pChannelName;
 
-//     memset(&creationInfo, 0x00, sizeof(struct lws_context_creation_info));
-//     creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-//     creationInfo.port = CONTEXT_PORT_NO_LISTEN;
-//     creationInfo.protocols = protocols;
-//     creationInfo.timeout_secs = 10;
-//     creationInfo.gid = -1;
-//     creationInfo.uid = -1;
-//     creationInfo.client_ssl_ca_filepath = "";
-//     creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
-//     creationInfo.ka_time = 1;
-//     creationInfo.ka_probes = 1;
-//     creationInfo.ka_interval = 1;
-//     creationInfo.retry_and_idle_policy = &retryPolicy;
+    retSignal = Signaling_constructDescribeSignalingChannelRequest(&pCtx->signalingContext, &describeSignalingChannelRequest, &signalRequest);
+    if( retSignal != SIGNALING_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_SIGNALING_DESCRIBE_SIGNALING_CHANNEL_FAIL;
+    }
 
-//     pLwsContext = lws_create_context(&creationInfo);
-//     (void) pLwsContext;
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        memset( &request, 0, sizeof(HttpsRequest_t) );
+        request.pUrl = signalRequest.pUrl;
+        request.urlLength = signalRequest.urlLength;
+        request.pBody = signalRequest.pBody;
+        request.bodyLength = signalRequest.bodyLength;
 
-//     return 0;
-// }
+        memset( &response, 0, sizeof(HttpsResponse_t) );
+        response.pBuffer = responseBuffer;
+        response.bufferLen = MAX_JSON_PARAMETER_STRING_LEN;
+
+        ret = Https_Send( &pCtx->httpsContext, &request, 0, &response );
+    }
+
+    return ret;
+}
 
 SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx, SignalingControllerCredential_t * pCred )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    SignalingResult_t retSignal;
+    SignalingAwsControlPlaneInfo_t awsControlPlaneInfo;
+    HttpsResult_t retHttps;
 
     if( pCtx == NULL || pCred == NULL )
     {
@@ -58,10 +72,45 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        /* Initialize AKSK. */
+        /* Initialize signaling controller context. */
         memset( pCtx, 0, sizeof( SignalingControllerContext_t ) );
-        ( void ) strncpy( pCtx->accessKeyId, pCred->pAccessKeyId, SIGNALING_CONTROLLER_ACCESS_KEY_ID_MAX_LENGTH );
-        ( void)  strncpy( pCtx->secretAccessKey, pCred->pSecretAccessKey, SIGNALING_CONTROLLER_SECRET_ACCESS_KEY_MAX_LENGTH );
+        pCtx->pRegion = pCred->pRegion;
+        pCtx->regionLength = pCred->regionLength;
+        
+        pCtx->pChannelName = pCred->pChannelName;
+        pCtx->channelNameLength = pCred->channelNameLength;
+
+        /* Initialize AKSK. */
+        pCtx->credential.pAccessKeyId = pCred->pAccessKeyId;
+        pCtx->credential.accessKeyIdLen = pCred->accessKeyIdLength;
+        pCtx->credential.pSecretAccessKey = pCred->pSecretAccessKey;
+        pCtx->credential.secretAccessKeyLen = pCred->secretAccessKeyLength;
+    }
+
+    /* Initialize signaling component. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        memset( &awsControlPlaneInfo, 0, sizeof( SignalingAwsControlPlaneInfo_t ) );
+
+        awsControlPlaneInfo.pRegion = pCtx->pRegion;
+        awsControlPlaneInfo.regionLength = pCtx->regionLength;
+        retSignal = Signaling_Init(&pCtx->signalingContext, &awsControlPlaneInfo);
+
+        if( retSignal != SIGNALING_RESULT_OK )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_SIGNALING_INIT_FAIL;
+        }
+    }
+
+    /* Initialize HTTPS. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        retHttps = Https_Init( &pCtx->httpsContext, &pCtx->credential );
+
+        if( retHttps != HTTPS_RESULT_OK )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL;
+        }
     }
 
     return ret;
@@ -70,6 +119,32 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
 SignalingControllerResult_t SignalingController_ConnectServers( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+
+    /* Check input parameters. */
+    if( pCtx == NULL )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    /* Get security token. */
+    // if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    // {
+    //     ret = getIso8601CurrentTime( &pCtx->credential );
+    // }
+
+    /* Execute describe channel if no channel ARN. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        ret = describeSignalingChannel( pCtx );
+    }
+
+    /* Execute create channel if no channel exist (not recommend). */
+
+    /* Query signaling channel endpoints with channel ARN. */
+
+    /* Connect websocket secure endpoint. */
+
+    /* Query ICE server list with HTTPS endpoint. */
 
     return ret;
 }

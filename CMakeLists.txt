@@ -19,6 +19,15 @@ set( WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS
 
 file(
   GLOB
+  WEBRTC_APPLICATION_HTTPS_LIBWEBSOCKETS_SOURCE_FILES
+  "examples/https/httpsLibwebsockets/*.c" )
+
+set( WEBRTC_APPLICATION_HTTPS_LIBWEBSOCKETS_INCLUDE_DIRS
+    "examples/https/"
+    "examples/https/httpsLibwebsockets/" )
+
+file(
+  GLOB
   WEBRTC_APPLICATION_MASTER_SOURCE_FILES
   "examples/master/*.c" )
 
@@ -28,20 +37,39 @@ set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
 add_executable(
     WebRTCLinuxApplicationMaster
     ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_HTTPS_LIBWEBSOCKETS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES} )
 
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_HTTPS_LIBWEBSOCKETS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS} )
 
 # Include dependencies
+## Include sigV4
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/sigV4.cmake )
+
+## Set sigv4 include directories
+message(STATUS "including sigv4 directories: ${SIGV4_INCLUDE_PUBLIC_DIRS}")
+target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                            ${SIGV4_INCLUDE_PUBLIC_DIRS} )
+
+## Include libwebsockets
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/libwebsockets.cmake )
 
-# Set the include directories
+## Set libwebsockets include directories
 message(STATUS "including libwebsockets directories: ${LIBWEBSOCKETS_INCLUDE_DIRS}")
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${LIBWEBSOCKETS_INCLUDE_DIRS} )
 
-# add_dependencies(WebRTCLinuxApplication libwebsockets)
+## Include signaling
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/signaling.cmake )
+
+## Set signaling include directories
+message(STATUS "including signaling directories: ${SIGNALING_INCLUDE_PUBLIC_DIRS}")
+target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                            ${SIGNALING_INCLUDE_PUBLIC_DIRS} )
+
+# link application with dependencies
 message(STATUS "linking websockets to WebRTCLinuxApplication")
-target_link_libraries(WebRTCLinuxApplicationMaster websockets)
+target_link_libraries(WebRTCLinuxApplicationMaster websockets sigv4 signaling)

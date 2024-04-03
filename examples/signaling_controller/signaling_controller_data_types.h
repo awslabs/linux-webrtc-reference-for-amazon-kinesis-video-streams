@@ -10,6 +10,9 @@ extern "C" {
 /* Standard includes. */
 #include <stdint.h>
 #include <stddef.h>
+#include "sigv4.h"
+#include "signaling_api.h"
+#include "httpsLibwebsockets.h"
 
 /* Refer to https://docs.aws.amazon.com/IAM/latest/APIReference/API_AccessKey.html,
    length of access key ID should be limited to 128. There is no other definition of
@@ -22,10 +25,21 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_OK = 0,
     SIGNALING_CONTROLLER_RESULT_FAIL,
     SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER,
+    SIGNALING_CONTROLLER_RESULT_SIGNALING_INIT_FAIL,
+    SIGNALING_CONTROLLER_RESULT_SIGNALING_DESCRIBE_SIGNALING_CHANNEL_FAIL,
+    SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL,
 } SignalingControllerResult_t;
 
 typedef struct SignalingControllerCredential
 {
+    /* Region */
+    char * pRegion;
+    size_t regionLength;
+
+    /* Channel Name */
+    char * pChannelName;
+    size_t channelNameLength;
+
     /* AKSK */
     char * pAccessKeyId;
     size_t accessKeyIdLength;
@@ -37,11 +51,22 @@ typedef struct SignalingControllerCredential
 
 typedef struct SignalingControllerContext
 {
-    /* AKSK */
-    char accessKeyId[ SIGNALING_CONTROLLER_ACCESS_KEY_ID_MAX_LENGTH + 1 ];
-    char secretAccessKey[ SIGNALING_CONTROLLER_SECRET_ACCESS_KEY_MAX_LENGTH + 1 ];
+    /* Region */
+    char * pRegion;
+    size_t regionLength;
 
-    /* TODO: Or credential */
+    /* Channel Name */
+    char * pChannelName;
+    size_t channelNameLength;
+
+    /* SigV4 credential */
+    SigV4Credentials_t credential;
+
+    /* Signaling Component Context */
+    SignalingContext_t signalingContext;
+
+    /* HTTPS Context */
+    HttpsContext_t httpsContext;
 } SignalingControllerContext_t;
 
 #ifdef __cplusplus
