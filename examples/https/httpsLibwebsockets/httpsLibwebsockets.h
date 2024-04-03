@@ -69,10 +69,12 @@ typedef struct HttpsContext
 {
     struct lws_context *pLwsContext;
     struct lws *pLws;
+    uint8_t terminateLwsService;
 
     /* append HTTPS headers */
     HttpsLibwebsocketsAppendHeaders_t appendHeaders;
     HttpsRequest_t *pRequest;
+    HttpsResponse_t *pResponse;
 
     HttpsLibwebsocketsCredentials_t libwebsocketsCredentials;
 

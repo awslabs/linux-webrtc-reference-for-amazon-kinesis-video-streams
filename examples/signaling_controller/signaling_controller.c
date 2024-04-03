@@ -8,7 +8,7 @@
 #define MAX_URI_CHAR_LEN ( 10000 )
 #define MAX_JSON_PARAMETER_STRING_LEN ( 10 * 1024 )
 
-static SignalingControllerResult_t initHttpsLibwebsocketsContext( SignalingControllerContext_t * pCtx )
+static SignalingControllerResult_t HttpsLibwebsockets_Init( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     HttpsResult_t retHttps;
@@ -29,6 +29,21 @@ static SignalingControllerResult_t initHttpsLibwebsocketsContext( SignalingContr
     if( retHttps != HTTPS_RESULT_OK )
     {
         ret = SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL;
+    }
+
+    return ret;
+}
+
+static SignalingControllerResult_t HttpsLibwebsockets_PerformRequest( SignalingControllerContext_t * pCtx, HttpsRequest_t * pRequest, size_t timeoutMs, HttpsResponse_t *pResponse )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    HttpsResult_t retHttps;
+
+    retHttps = Https_Send( &pCtx->httpsContext, pRequest, timeoutMs, pResponse );
+
+    if( retHttps != HTTPS_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_HTTPS_PERFORM_REQUEST_FAIL;
     }
 
     return ret;
@@ -58,9 +73,10 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
     describeSignalingChannelRequest.channelNameLength = pCtx->signalingControllerCredential.channelNameLength;
 
     retSignal = Signaling_constructDescribeSignalingChannelRequest(&pCtx->signalingContext, &describeSignalingChannelRequest, &signalRequest);
+
     if( retSignal != SIGNALING_RESULT_OK )
     {
-        ret = SIGNALING_CONTROLLER_RESULT_SIGNALING_DESCRIBE_SIGNALING_CHANNEL_FAIL;
+        ret = SIGNALING_CONTROLLER_RESULT_CONSTRUCT_DESCRIBE_SIGNALING_CHANNEL_FAIL;
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -73,9 +89,91 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
 
         memset( &response, 0, sizeof(HttpsResponse_t) );
         response.pBuffer = responseBuffer;
-        response.bufferLen = MAX_JSON_PARAMETER_STRING_LEN;
+        response.bufferLength = MAX_JSON_PARAMETER_STRING_LEN;
 
-        ret = Https_Send( &pCtx->httpsContext, &request, 0, &response );
+        ret = HttpsLibwebsockets_PerformRequest( pCtx, &request, 0, &response );
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        retSignal = Signaling_parseDescribeSignalingChannelResponse(&pCtx->signalingContext, responseBuffer, response.bufferLength, &describeSignalingChannelResponse);
+
+        if( retSignal != SIGNALING_RESULT_OK )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_PARSE_DESCRIBE_SIGNALING_CHANNEL_FAIL;
+        }
+    }
+    
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        if( describeSignalingChannelResponse.pChannelStatus == NULL || strncmp( describeSignalingChannelResponse.pChannelStatus, "ACTIVE", describeSignalingChannelResponse.channelStatusLength ) != 0 )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_INACTIVE_SIGNALING_CHANNEL;
+        }
+    }
+
+    // Parse the response
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK && describeSignalingChannelResponse.pChannelArn != NULL )
+    {
+        if( describeSignalingChannelResponse.channelArnLength > SIGNALING_AWS_MAX_ARN_LEN )
+        {
+            /* Return ARN is longer than expectation. Drop it. */
+            ret = SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_ARN;
+        }
+        else
+        {
+            strncpy( pCtx->signalingChannelInfo.signalingChannelARN, describeSignalingChannelResponse.pChannelArn, describeSignalingChannelResponse.channelArnLength );
+            pCtx->signalingChannelInfo.signalingChannelARN[describeSignalingChannelResponse.channelArnLength] = '\0';
+        }
+
+        // if (describeSignalingChannelResponse.pChannelName != NULL) {
+        //     // CHK(describeSignalingChannelResponse.channelNameLength <= MAX_CHANNEL_NAME_LEN, STATUS_INVALID_API_CALL_RETURN_JSON);
+        //     STRNCPY(pSignalingClient->channelDescription.channelName, describeSignalingChannelResponse.pChannelName,
+        //             describeSignalingChannelResponse.channelNameLength);
+        //     pSignalingClient->channelDescription.channelName[describeSignalingChannelResponse.channelNameLength] = '\0';
+        // }
+
+        // if( describeSignalingChannelResponse.pChannelStatus == NULL || strncmp( describeSignalingChannelResponse.pChannelStatus, "ACTIVE", describeSignalingChannelResponse.channelStatusLength ) != 0 )
+        // {
+        //     ret = SIGNALING_CONTROLLER_RESULT_INACTIVE_SIGNALING_CHANNEL;
+        // }
+
+        // // if (describeSignalingChannelResponse.pChannelType != NULL) {
+        // //     CHK(describeSignalingChannelResponse.channelTypeLength <= MAX_DESCRIBE_CHANNEL_TYPE_LEN, STATUS_INVALID_API_CALL_RETURN_JSON);
+        // //     pSignalingClient->channelDescription.channelType =
+        // //         getChannelTypeFromString((PCHAR) describeSignalingChannelResponse.pChannelType, describeSignalingChannelResponse.channelTypeLength);
+        // // }
+
+        // if (describeSignalingChannelResponse.pVersion != NULL) {
+        //     CHK(describeSignalingChannelResponse.versionLength <= MAX_UPDATE_VERSION_LEN, STATUS_INVALID_API_CALL_RETURN_JSON);
+        //     STRNCPY(pSignalingClient->channelDescription.updateVersion, describeSignalingChannelResponse.pVersion,
+        //             describeSignalingChannelResponse.versionLength);
+        //     pSignalingClient->channelDescription.updateVersion[describeSignalingChannelResponse.versionLength] = '\0';
+        // }
+
+        // if (describeSignalingChannelResponse.messageTtlSeconds != 0) {
+        //     // NOTE: Ttl value is in seconds
+        //     pSignalingClient->channelDescription.messageTtl = describeSignalingChannelResponse.messageTtlSeconds * HUNDREDS_OF_NANOS_IN_A_SECOND;
+        // }
+    }
+    
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK && describeSignalingChannelResponse.pChannelName != NULL )
+    {
+        if( describeSignalingChannelResponse.channelNameLength > SIGNALING_AWS_MAX_CHANNEL_NAME_LEN )
+        {
+            /* Return channel name is longer than expectation. Drop it. */
+            ret = SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_NAME;
+        }
+        else
+        {
+            strncpy( pCtx->signalingChannelInfo.signalingChannelName, describeSignalingChannelResponse.pChannelName, describeSignalingChannelResponse.channelNameLength );
+            pCtx->signalingChannelInfo.signalingChannelName[describeSignalingChannelResponse.channelNameLength] = '\0';
+        }
+    }
+    
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK && describeSignalingChannelResponse.messageTtlSeconds != 0U )
+    {
+        pCtx->signalingChannelInfo.signalingChannelTtlSeconds = describeSignalingChannelResponse.messageTtlSeconds;
     }
 
     return ret;
@@ -115,6 +213,9 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
         pCtx->signalingControllerCredential.secretAccessKeyLength = pCred->secretAccessKeyLength;
 
         pCtx->signalingControllerCredential.pCaCertPath = pCred->pCaCertPath;
+
+        /* Initialize channel info. */
+        memset( &pCtx->signalingChannelInfo, 0, sizeof( pCtx->signalingChannelInfo ) );
     }
 
     /* Initialize signaling component. */
@@ -135,7 +236,7 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     /* Initialize HTTPS. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        ret = initHttpsLibwebsocketsContext( pCtx );
+        ret = HttpsLibwebsockets_Init( pCtx );
     }
 
     return ret;

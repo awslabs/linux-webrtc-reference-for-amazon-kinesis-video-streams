@@ -27,7 +27,7 @@ typedef struct HttpsRequest
 typedef struct HttpsResponse
 {
     char * pBuffer;
-    size_t bufferLen;
+    size_t bufferLength;
 } HttpsResponse_t;
 
 typedef struct HttpsContext HttpsContext_t;

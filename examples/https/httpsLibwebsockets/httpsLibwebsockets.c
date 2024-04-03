@@ -11,6 +11,7 @@
 #define HTTPS_LWS_STRING_CONTENT_TYPE_VALUE "application/json"
 #define HTTPS_LWS_STRING_SCHEMA_DELIMITER_STRING "://"
 #define HTTPS_LWS_MAX_URI_LENGTH ( 10000 )
+#define HTTPS_LWS_MAX_BUFFER_LENGTH ( LWS_PRE + 2048 ) // General buffer for libwebsockets to send/read data.
 
 static int32_t sha256Init( void * hashContext );
 static int32_t sha256Update( void * hashContext,
@@ -20,6 +21,7 @@ static int32_t sha256Final( void * hashContext,
                             uint8_t * pOutput,
                             size_t outputLen );
 
+char pLwsBuffer[ HTTPS_LWS_MAX_BUFFER_LENGTH ];
 char pathBuffer[HTTPS_LWS_MAX_URI_LENGTH + 1];
 uint32_t pathBufferWrittenLength = 0;
 char sigv4AuthBuffer[ 2048 ];
@@ -285,7 +287,8 @@ static HttpsResult_t performHttpsRequest( HttpsContext_t *pCtx )
 
     pCtx->pLws = lws_client_connect_via_info( &connectInfo );
 
-    while( 1 )
+    pCtx->terminateLwsService = 0U;
+    while( pCtx->terminateLwsService == 0U )
     {
         lwsReturn = lws_service(pCtx->pLwsContext, 0);
     }
@@ -293,7 +296,7 @@ static HttpsResult_t performHttpsRequest( HttpsContext_t *pCtx )
     return ret;
 }
 
-int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize)
+static int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize)
 {
     int32_t retValue = 0;
     int32_t status, writtenBodyLength, readLength;
@@ -302,7 +305,6 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
     // char dateHdrBuffer[MAX_DATE_HEADER_BUFFER_LENGTH + 1];
     char *pEndPtr;
     char **ppStartPtr;
-    char *pDataInPtr;
     uint64_t item, serverTime;
     uint32_t headerCount;
     uint32_t logLevel;
@@ -313,15 +315,14 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
 
     char pContentLength[ 11 ]; /* It needs 10 bytes for 32 bit integer, +1 for NULL terminator. */
     size_t contentWrittenLength;
-    char pBuffer[10000];
-    char pBuffer2[10000];
 
     ( void ) pUser;
 
     printf( "HTTPS callback with reason %d\n", reason );
 
     // Early check before accessing the custom data field to see if we are interested in processing the message
-    switch (reason) {
+    switch (reason)
+    {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
         case LWS_CALLBACK_CLOSED_CLIENT_HTTP:
         case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
@@ -417,11 +418,21 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
                 printf( "Received client http read: %lu bytes\n", dataSize );
                 lwsl_hexdump_debug(pDataIn, dataSize);
 
-                if (dataSize != 0) {
-                    memcpy( pBuffer2, pDataIn, dataSize );
-                    pBuffer2[dataSize] = '\0';
-                    
-                    printf( "%s\n", pBuffer2 );
+                if( dataSize != 0 )
+                {
+                    if( dataSize >= pCtx->pResponse->bufferLength )
+                    {
+                        /* Receive data is larger than buffer size. */
+                        retValue = -2;
+                    }
+                    else
+                    {
+                        memcpy( pCtx->pResponse->pBuffer, pDataIn, dataSize );
+                        pCtx->pResponse->pBuffer[dataSize] = '\0';
+                        pCtx->pResponse->bufferLength = dataSize;
+                        
+                        printf( "%s\n", pCtx->pResponse->pBuffer );
+                    }
 
                     // if (pLwsCallInfo->callInfo.callResult != SERVICE_CALL_RESULT_OK) {
                     //     DLOGW("Received client http read response:  %s", pLwsCallInfo->callInfo.responseData);
@@ -444,9 +455,9 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
 
             case LWS_CALLBACK_RECEIVE_CLIENT_HTTP:
                 printf( "Received client http\n" );
-                readLength = 10000;
+                readLength = HTTPS_LWS_MAX_BUFFER_LENGTH;
 
-                if( lws_http_client_read(wsi, (char**)&pBuffer, &readLength) < 0 )
+                if( lws_http_client_read(wsi, (char**)&pLwsBuffer, &readLength) < 0 )
                 {
                     retValue = -1;
                 }
@@ -461,7 +472,6 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
                 printf( "Client append handshake header\n" );
 
                 ppStartPtr = (char**) pDataIn;
-                pDataInPtr = *ppStartPtr;
                 pEndPtr = *ppStartPtr + dataSize - 1;
 
                 // Append headers
@@ -518,6 +528,10 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
                     lws_client_http_body_pending(wsi, 0);
                 }
 
+                break;
+
+            case LWS_CALLBACK_WSI_DESTROY:
+                pCtx->terminateLwsService = 1U;
                 break;
 
             default:
@@ -628,6 +642,7 @@ HttpsResult_t Https_Send( HttpsContext_t *pCtx, HttpsRequest_t *pRequest, size_t
         }
 
         pCtx->pRequest = pRequest;
+        pCtx->pResponse = pResponse;
     }
 
     /* Authorization */
@@ -641,10 +656,6 @@ HttpsResult_t Https_Send( HttpsContext_t *pCtx, HttpsRequest_t *pRequest, size_t
     {
         ret = performHttpsRequest( pCtx );
     }
-
-    /* Receive from network */
-
-    /* Put result into pResponse */
 
     return ret;
 }

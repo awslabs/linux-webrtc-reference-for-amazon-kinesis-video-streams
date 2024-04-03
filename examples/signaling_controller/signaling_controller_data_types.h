@@ -25,8 +25,13 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_FAIL,
     SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER,
     SIGNALING_CONTROLLER_RESULT_SIGNALING_INIT_FAIL,
-    SIGNALING_CONTROLLER_RESULT_SIGNALING_DESCRIBE_SIGNALING_CHANNEL_FAIL,
+    SIGNALING_CONTROLLER_RESULT_CONSTRUCT_DESCRIBE_SIGNALING_CHANNEL_FAIL,
+    SIGNALING_CONTROLLER_RESULT_PARSE_DESCRIBE_SIGNALING_CHANNEL_FAIL,
     SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL,
+    SIGNALING_CONTROLLER_RESULT_HTTPS_PERFORM_REQUEST_FAIL,
+    SIGNALING_CONTROLLER_RESULT_INACTIVE_SIGNALING_CHANNEL,
+    SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_ARN,
+    SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_NAME,
 } SignalingControllerResult_t;
 
 typedef struct SignalingControllerCredential
@@ -55,12 +60,23 @@ typedef struct SignalingControllerCredential
     /* TODO: Or credential */
 } SignalingControllerCredential_t;
 
+typedef struct SignalingControllerChannelInfo
+{
+    /* Describe Channel -- channel name & ARN */
+    char signalingChannelName[SIGNALING_AWS_MAX_CHANNEL_NAME_LEN + 1];
+    char signalingChannelARN[SIGNALING_AWS_MAX_ARN_LEN + 1];
+    uint32_t signalingChannelTtlSeconds;
+    
+} SignalingControllerChannelInfo_t;
+
 typedef struct SignalingControllerContext
 {
     /* Signaling Component Context */
     SignalingContext_t signalingContext;
 
     SignalingControllerCredential_t signalingControllerCredential;
+
+    SignalingControllerChannelInfo_t signalingChannelInfo;
 
     /* HTTPS Context */
     HttpsContext_t httpsContext;
