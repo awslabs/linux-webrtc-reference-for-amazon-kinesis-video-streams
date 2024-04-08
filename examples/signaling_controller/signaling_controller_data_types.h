@@ -18,6 +18,11 @@ extern "C" {
    length of secret access key, set it same as access key ID for now. */
 #define SIGNALING_CONTROLLER_ACCESS_KEY_ID_MAX_LENGTH ( 128 )
 #define SIGNALING_CONTROLLER_SECRET_ACCESS_KEY_MAX_LENGTH ( 128 )
+#define SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT ( SIGNALING_AWS_ICE_SERVER_MAX_NUM )
+#define SIGNALING_CONTROLLER_ICE_SERVER_MAX_URIS_COUNT ( SIGNALING_AWS_ICE_SERVER_MAX_URIS )
+#define SIGNALING_CONTROLLER_ICE_SERVER_MAX_URI_LENGTH ( 256 )
+#define SIGNALING_CONTROLLER_ICE_SERVER_MAX_USER_NAME_LENGTH ( 256 )
+#define SIGNALING_CONTROLLER_ICE_SERVER_MAX_PASSWORD_LENGTH ( 256 )
 
 typedef enum SignalingControllerResult
 {
@@ -29,6 +34,8 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_PARSE_DESCRIBE_SIGNALING_CHANNEL_FAIL,
     SIGNALING_CONTROLLER_RESULT_CONSTRUCT_GET_SIGNALING_CHANNEL_ENDPOINTS_FAIL,
     SIGNALING_CONTROLLER_RESULT_PARSE_GET_SIGNALING_CHANNEL_ENDPOINTS_FAIL,
+    SIGNALING_CONTROLLER_RESULT_CONSTRUCT_GET_SIGNALING_SERVER_LIST_FAIL,
+    SIGNALING_CONTROLLER_RESULT_PARSE_GET_SIGNALING_SERVER_LIST_FAIL,
     SIGNALING_CONTROLLER_RESULT_INVALID_HTTPS_ENDPOINT,
     SIGNALING_CONTROLLER_RESULT_INVALID_WEBSOCKET_SECURE_ENDPOINT,
     SIGNALING_CONTROLLER_RESULT_INVALID_WEBRTC_ENDPOINT,
@@ -37,6 +44,9 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_INACTIVE_SIGNALING_CHANNEL,
     SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_ARN,
     SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_NAME,
+    SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_URI,
+    SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_USERNAME,
+    SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_PASSWORD,
 } SignalingControllerResult_t;
 
 typedef struct SignalingControllerCredential
@@ -83,6 +93,18 @@ typedef struct SignalingControllerChannelInfo
     size_t endpointWebrtcLength;
 } SignalingControllerChannelInfo_t;
 
+typedef struct SignalingControllerIceServerConfig
+{
+    uint32_t ttlSeconds;                                                                                            //!< TTL in seconds
+    uint8_t uriCount;                                                                                               //!<  Number of Ice URI objects
+    char uris[SIGNALING_CONTROLLER_ICE_SERVER_MAX_URIS_COUNT][SIGNALING_CONTROLLER_ICE_SERVER_MAX_URI_LENGTH + 1];  //!< List of Ice server URIs
+    size_t urisLength[SIGNALING_CONTROLLER_ICE_SERVER_MAX_URIS_COUNT];                                              //!< Length of every URI
+    char userName[SIGNALING_CONTROLLER_ICE_SERVER_MAX_USER_NAME_LENGTH + 1];                                        //!< Username for the server
+    size_t userNameLength;                                                                                          //!< Length of username
+    char password[SIGNALING_CONTROLLER_ICE_SERVER_MAX_PASSWORD_LENGTH + 1];                                         //!< Password for the server
+    size_t passwordLength;                                                                                          //!< Length of password
+} SignalingControllerIceServerConfig_t;
+
 typedef struct SignalingControllerContext
 {
     /* Signaling Component Context */
@@ -90,7 +112,10 @@ typedef struct SignalingControllerContext
 
     SignalingControllerCredential_t signalingControllerCredential;
 
-    SignalingControllerChannelInfo_t signalingChannelInfo;
+    SignalingControllerChannelInfo_t signalingControllerChannelInfo;
+
+    uint8_t signalingControllerIceServerConfigsCount;
+    SignalingControllerIceServerConfig_t signalingControllerIceServerConfigs[SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT];
 
     /* HTTPS Context */
     HttpsContext_t httpsContext;
