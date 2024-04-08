@@ -110,12 +110,12 @@ typedef struct SignalingControllerContext
     /* Signaling Component Context */
     SignalingContext_t signalingContext;
 
-    SignalingControllerCredential_t signalingControllerCredential;
+    SignalingControllerCredential_t credential;
 
-    SignalingControllerChannelInfo_t signalingControllerChannelInfo;
+    SignalingControllerChannelInfo_t channelInfo;
 
-    uint8_t signalingControllerIceServerConfigsCount;
-    SignalingControllerIceServerConfig_t signalingControllerIceServerConfigs[SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT];
+    uint8_t iceServerConfigsCount;
+    SignalingControllerIceServerConfig_t iceServerConfigs[SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT];
 
     /* HTTPS Context */
     HttpsContext_t httpsContext;

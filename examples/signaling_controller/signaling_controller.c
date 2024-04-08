@@ -14,15 +14,15 @@ static SignalingControllerResult_t HttpsLibwebsockets_Init( SignalingControllerC
     HttpsResult_t retHttps;
     HttpsLibwebsocketsCredentials_t httpsLibwebsocketsCred;
 
-    httpsLibwebsocketsCred.pUserAgent = pCtx->signalingControllerCredential.pUserAgentName;
-    httpsLibwebsocketsCred.userAgentLength = pCtx->signalingControllerCredential.userAgentNameLength;
-    httpsLibwebsocketsCred.pRegion = pCtx->signalingControllerCredential.pRegion;
-    httpsLibwebsocketsCred.regionLength = pCtx->signalingControllerCredential.regionLength;
-    httpsLibwebsocketsCred.pAccessKeyId = pCtx->signalingControllerCredential.pAccessKeyId;
-    httpsLibwebsocketsCred.accessKeyIdLength = pCtx->signalingControllerCredential.accessKeyIdLength;
-    httpsLibwebsocketsCred.pSecretAccessKey = pCtx->signalingControllerCredential.pSecretAccessKey;
-    httpsLibwebsocketsCred.secretAccessKeyLength = pCtx->signalingControllerCredential.secretAccessKeyLength;
-    httpsLibwebsocketsCred.pCaCertPath = pCtx->signalingControllerCredential.pCaCertPath;
+    httpsLibwebsocketsCred.pUserAgent = pCtx->credential.pUserAgentName;
+    httpsLibwebsocketsCred.userAgentLength = pCtx->credential.userAgentNameLength;
+    httpsLibwebsocketsCred.pRegion = pCtx->credential.pRegion;
+    httpsLibwebsocketsCred.regionLength = pCtx->credential.regionLength;
+    httpsLibwebsocketsCred.pAccessKeyId = pCtx->credential.pAccessKeyId;
+    httpsLibwebsocketsCred.accessKeyIdLength = pCtx->credential.accessKeyIdLength;
+    httpsLibwebsocketsCred.pSecretAccessKey = pCtx->credential.pSecretAccessKey;
+    httpsLibwebsocketsCred.secretAccessKeyLength = pCtx->credential.secretAccessKeyLength;
+    httpsLibwebsocketsCred.pCaCertPath = pCtx->credential.pCaCertPath;
 
     retHttps = Https_Init( &pCtx->httpsContext, &httpsLibwebsocketsCred );
 
@@ -82,11 +82,11 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
                 /* Do nothing, coverity happy. */
             }
 
-            memcpy( pCtx->signalingControllerIceServerConfigs[i].userName, pGetIceServerConfigResponse->iceServer[i].pUserName, pGetIceServerConfigResponse->iceServer[i].userNameLength );
-            pCtx->signalingControllerIceServerConfigs[i].userNameLength = pGetIceServerConfigResponse->iceServer[i].userNameLength;
-            memcpy( pCtx->signalingControllerIceServerConfigs[i].password, pGetIceServerConfigResponse->iceServer[i].pPassword, pGetIceServerConfigResponse->iceServer[i].passwordLength );
-            pCtx->signalingControllerIceServerConfigs[i].passwordLength = pGetIceServerConfigResponse->iceServer[i].passwordLength;
-            pCtx->signalingControllerIceServerConfigs[i].ttlSeconds = pGetIceServerConfigResponse->iceServer[i].messageTtlSeconds;
+            memcpy( pCtx->iceServerConfigs[i].userName, pGetIceServerConfigResponse->iceServer[i].pUserName, pGetIceServerConfigResponse->iceServer[i].userNameLength );
+            pCtx->iceServerConfigs[i].userNameLength = pGetIceServerConfigResponse->iceServer[i].userNameLength;
+            memcpy( pCtx->iceServerConfigs[i].password, pGetIceServerConfigResponse->iceServer[i].pPassword, pGetIceServerConfigResponse->iceServer[i].passwordLength );
+            pCtx->iceServerConfigs[i].passwordLength = pGetIceServerConfigResponse->iceServer[i].passwordLength;
+            pCtx->iceServerConfigs[i].ttlSeconds = pGetIceServerConfigResponse->iceServer[i].messageTtlSeconds;
 
             for( j=0 ; j<pGetIceServerConfigResponse->iceServer[i].urisNum ; j++ )
             {
@@ -104,13 +104,13 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
                     /* Do nothing, coverity happy. */
                 }
 
-                memcpy( &pCtx->signalingControllerIceServerConfigs[i].uris[j], pGetIceServerConfigResponse->iceServer[i].pUris[j], pGetIceServerConfigResponse->iceServer[i].urisLength[j] );
-                pCtx->signalingControllerIceServerConfigs[i].urisLength[j] = pGetIceServerConfigResponse->iceServer[i].urisLength[j];
+                memcpy( &pCtx->iceServerConfigs[i].uris[j], pGetIceServerConfigResponse->iceServer[i].pUris[j], pGetIceServerConfigResponse->iceServer[i].urisLength[j] );
+                pCtx->iceServerConfigs[i].urisLength[j] = pGetIceServerConfigResponse->iceServer[i].urisLength[j];
             }
 
             if( ret == SIGNALING_CONTROLLER_RESULT_OK )
             {
-                pCtx->signalingControllerIceServerConfigs[i].uriCount = j;
+                pCtx->iceServerConfigs[i].uriCount = j;
             }
             else
             {
@@ -121,7 +121,7 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        pCtx->signalingControllerIceServerConfigsCount = i;
+        pCtx->iceServerConfigsCount = i;
     }
 
     return ret;
@@ -147,8 +147,8 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
     signalRequest.pBody = &paramsJson[0];
     signalRequest.bodyLength = MAX_JSON_PARAMETER_STRING_LEN;
     // Create the API url
-    describeSignalingChannelRequest.pChannelName = pCtx->signalingControllerCredential.pChannelName;
-    describeSignalingChannelRequest.channelNameLength = pCtx->signalingControllerCredential.channelNameLength;
+    describeSignalingChannelRequest.pChannelName = pCtx->credential.pChannelName;
+    describeSignalingChannelRequest.channelNameLength = pCtx->credential.channelNameLength;
 
     retSignal = Signaling_constructDescribeSignalingChannelRequest(&pCtx->signalingContext, &describeSignalingChannelRequest, &signalRequest);
 
@@ -200,9 +200,9 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
         }
         else
         {
-            strncpy( pCtx->signalingControllerChannelInfo.signalingChannelARN, describeSignalingChannelResponse.pChannelArn, describeSignalingChannelResponse.channelArnLength );
-            pCtx->signalingControllerChannelInfo.signalingChannelARN[describeSignalingChannelResponse.channelArnLength] = '\0';
-            pCtx->signalingControllerChannelInfo.signalingChannelARNLength = describeSignalingChannelResponse.channelArnLength;
+            strncpy( pCtx->channelInfo.signalingChannelARN, describeSignalingChannelResponse.pChannelArn, describeSignalingChannelResponse.channelArnLength );
+            pCtx->channelInfo.signalingChannelARN[describeSignalingChannelResponse.channelArnLength] = '\0';
+            pCtx->channelInfo.signalingChannelARNLength = describeSignalingChannelResponse.channelArnLength;
         }
     }
     
@@ -215,15 +215,15 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
         }
         else
         {
-            strncpy( pCtx->signalingControllerChannelInfo.signalingChannelName, describeSignalingChannelResponse.pChannelName, describeSignalingChannelResponse.channelNameLength );
-            pCtx->signalingControllerChannelInfo.signalingChannelName[describeSignalingChannelResponse.channelNameLength] = '\0';
-            pCtx->signalingControllerChannelInfo.signalingChannelNameLength = describeSignalingChannelResponse.channelNameLength;
+            strncpy( pCtx->channelInfo.signalingChannelName, describeSignalingChannelResponse.pChannelName, describeSignalingChannelResponse.channelNameLength );
+            pCtx->channelInfo.signalingChannelName[describeSignalingChannelResponse.channelNameLength] = '\0';
+            pCtx->channelInfo.signalingChannelNameLength = describeSignalingChannelResponse.channelNameLength;
         }
     }
     
     if( ret == SIGNALING_CONTROLLER_RESULT_OK && describeSignalingChannelResponse.messageTtlSeconds != 0U )
     {
-        pCtx->signalingControllerChannelInfo.signalingChannelTtlSeconds = describeSignalingChannelResponse.messageTtlSeconds;
+        pCtx->channelInfo.signalingChannelTtlSeconds = describeSignalingChannelResponse.messageTtlSeconds;
     }
 
     return ret;
@@ -249,8 +249,8 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
     signalRequest.pBody = &paramsJson[0];
     signalRequest.bodyLength = MAX_JSON_PARAMETER_STRING_LEN;
     // Create the API url
-    getSignalingChannelEndpointRequest.pChannelArn = pCtx->signalingControllerChannelInfo.signalingChannelARN;
-    getSignalingChannelEndpointRequest.channelArnLength = pCtx->signalingControllerChannelInfo.signalingChannelARNLength;
+    getSignalingChannelEndpointRequest.pChannelArn = pCtx->channelInfo.signalingChannelARN;
+    getSignalingChannelEndpointRequest.channelArnLength = pCtx->channelInfo.signalingChannelARNLength;
     getSignalingChannelEndpointRequest.protocolsBitsMap = SIGNALING_ENDPOINT_PROTOCOL_HTTPS | SIGNALING_ENDPOINT_PROTOCOL_WEBSOCKET_SECURE;
     getSignalingChannelEndpointRequest.role = SIGNALING_ROLE_MASTER;
 
@@ -295,9 +295,9 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
         }
         else
         {
-            strncpy( pCtx->signalingControllerChannelInfo.endpointHttps, getSignalingChannelEndpointResponse.pEndpointHttps, getSignalingChannelEndpointResponse.endpointHttpsLength );
-            pCtx->signalingControllerChannelInfo.endpointHttps[getSignalingChannelEndpointResponse.endpointHttpsLength] = '\0';
-            pCtx->signalingControllerChannelInfo.endpointHttpsLength = getSignalingChannelEndpointResponse.endpointHttpsLength;
+            strncpy( pCtx->channelInfo.endpointHttps, getSignalingChannelEndpointResponse.pEndpointHttps, getSignalingChannelEndpointResponse.endpointHttpsLength );
+            pCtx->channelInfo.endpointHttps[getSignalingChannelEndpointResponse.endpointHttpsLength] = '\0';
+            pCtx->channelInfo.endpointHttpsLength = getSignalingChannelEndpointResponse.endpointHttpsLength;
         }
     }
 
@@ -309,9 +309,9 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
         }
         else
         {
-            strncpy( pCtx->signalingControllerChannelInfo.endpointWebsocketSecure, getSignalingChannelEndpointResponse.pEndpointWebsocketSecure, getSignalingChannelEndpointResponse.endpointWebsocketSecureLength );
-            pCtx->signalingControllerChannelInfo.endpointWebsocketSecure[getSignalingChannelEndpointResponse.endpointWebsocketSecureLength] = '\0';
-            pCtx->signalingControllerChannelInfo.endpointWebsocketSecureLength = getSignalingChannelEndpointResponse.endpointWebsocketSecureLength;
+            strncpy( pCtx->channelInfo.endpointWebsocketSecure, getSignalingChannelEndpointResponse.pEndpointWebsocketSecure, getSignalingChannelEndpointResponse.endpointWebsocketSecureLength );
+            pCtx->channelInfo.endpointWebsocketSecure[getSignalingChannelEndpointResponse.endpointWebsocketSecureLength] = '\0';
+            pCtx->channelInfo.endpointWebsocketSecureLength = getSignalingChannelEndpointResponse.endpointWebsocketSecureLength;
         }
     }
 
@@ -323,9 +323,9 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
         }
         else
         {
-            strncpy( pCtx->signalingControllerChannelInfo.endpointWebrtc, getSignalingChannelEndpointResponse.pEndpointWebrtc, getSignalingChannelEndpointResponse.endpointWebrtcLength );
-            pCtx->signalingControllerChannelInfo.endpointWebrtc[getSignalingChannelEndpointResponse.endpointWebrtcLength] = '\0';
-            pCtx->signalingControllerChannelInfo.endpointWebrtcLength = getSignalingChannelEndpointResponse.endpointWebrtcLength;
+            strncpy( pCtx->channelInfo.endpointWebrtc, getSignalingChannelEndpointResponse.pEndpointWebrtc, getSignalingChannelEndpointResponse.endpointWebrtcLength );
+            pCtx->channelInfo.endpointWebrtc[getSignalingChannelEndpointResponse.endpointWebrtcLength] = '\0';
+            pCtx->channelInfo.endpointWebrtcLength = getSignalingChannelEndpointResponse.endpointWebrtcLength;
         }
     }
 
@@ -352,10 +352,10 @@ static SignalingControllerResult_t getSignalingServerList( SignalingControllerCo
     signalRequest.pBody = &paramsJson[0];
     signalRequest.bodyLength = MAX_JSON_PARAMETER_STRING_LEN;
     // Create the API url
-    getIceServerConfigRequest.pChannelArn = pCtx->signalingControllerChannelInfo.signalingChannelARN;
-    getIceServerConfigRequest.channelArnLength = pCtx->signalingControllerChannelInfo.signalingChannelARNLength;
-    getIceServerConfigRequest.pEndpointHttps = pCtx->signalingControllerChannelInfo.endpointHttps;
-    getIceServerConfigRequest.endpointHttpsLength = pCtx->signalingControllerChannelInfo.endpointHttpsLength;
+    getIceServerConfigRequest.pChannelArn = pCtx->channelInfo.signalingChannelARN;
+    getIceServerConfigRequest.channelArnLength = pCtx->channelInfo.signalingChannelARNLength;
+    getIceServerConfigRequest.pEndpointHttps = pCtx->channelInfo.endpointHttps;
+    getIceServerConfigRequest.endpointHttpsLength = pCtx->channelInfo.endpointHttpsLength;
     getIceServerConfigRequest.pClientId = "ProducerMaster";
     getIceServerConfigRequest.clientIdLength = strlen("ProducerMaster");
 
@@ -419,21 +419,21 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     {
         /* Initialize signaling controller context. */
         memset( pCtx, 0, sizeof( SignalingControllerContext_t ) );
-        pCtx->signalingControllerCredential.pRegion = pCred->pRegion;
-        pCtx->signalingControllerCredential.regionLength = pCred->regionLength;
+        pCtx->credential.pRegion = pCred->pRegion;
+        pCtx->credential.regionLength = pCred->regionLength;
         
-        pCtx->signalingControllerCredential.pChannelName = pCred->pChannelName;
-        pCtx->signalingControllerCredential.channelNameLength = pCred->channelNameLength;
+        pCtx->credential.pChannelName = pCred->pChannelName;
+        pCtx->credential.channelNameLength = pCred->channelNameLength;
         
-        pCtx->signalingControllerCredential.pUserAgentName = pCred->pUserAgentName;
-        pCtx->signalingControllerCredential.userAgentNameLength = pCred->userAgentNameLength;
+        pCtx->credential.pUserAgentName = pCred->pUserAgentName;
+        pCtx->credential.userAgentNameLength = pCred->userAgentNameLength;
 
-        pCtx->signalingControllerCredential.pAccessKeyId = pCred->pAccessKeyId;
-        pCtx->signalingControllerCredential.accessKeyIdLength = pCred->accessKeyIdLength;
-        pCtx->signalingControllerCredential.pSecretAccessKey = pCred->pSecretAccessKey;
-        pCtx->signalingControllerCredential.secretAccessKeyLength = pCred->secretAccessKeyLength;
+        pCtx->credential.pAccessKeyId = pCred->pAccessKeyId;
+        pCtx->credential.accessKeyIdLength = pCred->accessKeyIdLength;
+        pCtx->credential.pSecretAccessKey = pCred->pSecretAccessKey;
+        pCtx->credential.secretAccessKeyLength = pCred->secretAccessKeyLength;
 
-        pCtx->signalingControllerCredential.pCaCertPath = pCred->pCaCertPath;
+        pCtx->credential.pCaCertPath = pCred->pCaCertPath;
     }
 
     /* Initialize signaling component. */
@@ -441,8 +441,8 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     {
         memset( &awsControlPlaneInfo, 0, sizeof( SignalingAwsControlPlaneInfo_t ) );
 
-        awsControlPlaneInfo.pRegion = pCtx->signalingControllerCredential.pRegion;
-        awsControlPlaneInfo.regionLength = pCtx->signalingControllerCredential.regionLength;
+        awsControlPlaneInfo.pRegion = pCtx->credential.pRegion;
+        awsControlPlaneInfo.regionLength = pCtx->credential.regionLength;
         retSignal = Signaling_Init(&pCtx->signalingContext, &awsControlPlaneInfo);
 
         if( retSignal != SIGNALING_RESULT_OK )
