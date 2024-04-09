@@ -99,16 +99,6 @@ typedef struct NetworkingLibwebsocketContext
     SHA256_CTX sha256Ctx;
 } NetworkingLibwebsocketContext_t;
 
-struct HttpContext
-{
-    NetworkingLibwebsocketContext_t networkingLibwebsocketContext;
-};
-
-struct WebsocketContext
-{
-    NetworkingLibwebsocketContext_t networkingLibwebsocketContext;
-};
-
 #ifdef __cplusplus
 }
 #endif

@@ -24,7 +24,7 @@ static SignalingControllerResult_t HttpLibwebsockets_Init( SignalingControllerCo
     libwebsocketsCred.secretAccessKeyLength = pCtx->credential.secretAccessKeyLength;
     libwebsocketsCred.pCaCertPath = pCtx->credential.pCaCertPath;
 
-    retHttp = Http_Init( &pCtx->httpContext, &libwebsocketsCred );
+    retHttp = Http_Init( &libwebsocketsCred );
 
     if( retHttp != HTTP_RESULT_OK )
     {
@@ -39,7 +39,7 @@ static SignalingControllerResult_t HttpLibwebsockets_PerformRequest( SignalingCo
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     HttpResult_t retHttp;
 
-    retHttp = Http_Send( &pCtx->httpContext, pRequest, timeoutMs, pResponse );
+    retHttp = Http_Send( pRequest, timeoutMs, pResponse );
 
     if( retHttp != HTTP_RESULT_OK )
     {
@@ -47,6 +47,15 @@ static SignalingControllerResult_t HttpLibwebsockets_PerformRequest( SignalingCo
     }
 
     return ret;
+}
+
+static SignalingControllerResult_t WebsocketLibwebsockets_Connect( SignalingControllerContext_t *pCtx, WebsocketServerInfo_t *pServerInfo )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    WebsocketResult_t retWebsocket;
+
+    // retWebsocket = Websocket_Connect(  );
+
 }
 
 static void printMetrics( SignalingControllerContext_t * pCtx )
@@ -430,6 +439,46 @@ static SignalingControllerResult_t getSignalingServerList( SignalingControllerCo
 
     return ret;
 }
+static SignalingControllerResult_t connectWssEndpoint( SignalingControllerContext_t * pCtx )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    SignalingResult_t retSignal;
+    SignalingRequest_t signalRequest;
+    SignalingConnectWssEndpointRequest_t connectWssEndpointRequest;
+    char url[MAX_URI_CHAR_LEN];
+
+    // Prepare URL buffer
+    signalRequest.pUrl = &url[0];
+    signalRequest.urlLength = MAX_URI_CHAR_LEN;
+    // Prepare body buffer
+    signalRequest.pBody = NULL;
+    signalRequest.bodyLength = 0;
+    // Create the API url
+    memset( &connectWssEndpointRequest, 0, sizeof(SignalingConnectWssEndpointRequest_t) );
+    connectWssEndpointRequest.pChannelArn = pCtx->channelInfo.signalingChannelARN;
+    connectWssEndpointRequest.channelArnLength = pCtx->channelInfo.signalingChannelARNLength;
+    connectWssEndpointRequest.pEndpointWebsocketSecure = pCtx->channelInfo.endpointWebsocketSecure;
+    connectWssEndpointRequest.endpointWebsocketSecureLength = pCtx->channelInfo.endpointWebsocketSecureLength;
+    connectWssEndpointRequest.role = SIGNALING_ROLE_MASTER;
+    // if(connectWssEndpointRequest.role == SIGNALING_ROLE_VIEWER)
+    // {
+    //     connectWssEndpointRequest.pClientId = pCtx->channelInfo.;
+    //     connectWssEndpointRequest.clientIdLength = strlen(pSignalingClient->clientInfo.signalingClientInfo.clientId);
+    // }
+    retSignal = Signaling_constructConnectWssEndpointRequest(&pCtx->signalingContext, &connectWssEndpointRequest, &signalRequest);
+
+    if( retSignal != SIGNALING_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_CONSTRUCT_GET_SIGNALING_CHANNEL_ENDPOINTS_FAIL;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        // ret = WebsocketLibwebsockets_Connect( pCtx, &serverInfo );
+    }
+
+    return ret;
+}
 
 SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx, SignalingControllerCredential_t * pCred )
 {
@@ -520,6 +569,10 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
     }
 
     /* Connect websocket secure endpoint. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        ret = connectWssEndpoint( pCtx );
+    }
 
     /* Query ICE server list with HTTPS endpoint. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )

@@ -116,9 +116,6 @@ typedef struct SignalingControllerContext
 
     uint8_t iceServerConfigsCount;
     SignalingControllerIceServerConfig_t iceServerConfigs[SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT];
-
-    /* HTTP Context */
-    HttpContext_t httpContext;
 } SignalingControllerContext_t;
 
 #ifdef __cplusplus
