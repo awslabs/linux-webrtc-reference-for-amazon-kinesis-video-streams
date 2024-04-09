@@ -14,6 +14,14 @@ extern "C" {
 #include "http.h"
 #include "websocket.h"
 
+#define NETWORKING_LWS_DEFAULT_REGION "us-west-2"
+#define NETWORKING_LWS_KVS_SERVICE_NAME "kinesisvideo"
+#define NETWORKING_LWS_TIME_LENGTH ( 17 ) /* length of ISO8601 format (e.g. 20111008T070709Z) with NULL terminator */
+#define NETWORKING_LWS_MAX_URI_LENGTH ( 10000 )
+#define NETWORKING_LWS_MAX_BUFFER_LENGTH ( LWS_PRE + 2048 ) // General buffer for libwebsockets to send/read data.
+#define NETWORKING_LWS_USER_AGENT_NAME_MAX_LENGTH ( 128 )
+#define NETWORKING_SIGV4_AUTH_BUFFER_LENGTH ( 2048 )
+
 typedef enum NetworkingLibwebsocketsResult
 {
     NETWORKING_LIBWEBSOCKETS_RESULT_OK = 0,
@@ -28,6 +36,7 @@ typedef enum NetworkingLibwebsocketsResult
     NETWORKING_LIBWEBSOCKETS_RESULT_SIGV4_GENERATE_AUTH_FAIL,
     NETWORKING_LIBWEBSOCKETS_RESULT_USER_AGENT_NAME_TOO_LONG,
     NETWORKING_LIBWEBSOCKETS_RESULT_INIT_LWS_CONTEXT_FAIL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_PATH_BUFFER_TOO_SMALL,
 } NetworkingLibwebsocketsResult_t;
 
 typedef struct NetworkingLibwebsocketsAppendHeaders
@@ -70,6 +79,7 @@ typedef struct NetworkingLibwebsocketContext
     struct lws_context *pLwsContext;
     struct lws *pLws;
     uint8_t terminateLwsService;
+    char pLwsBuffer[ NETWORKING_LWS_MAX_BUFFER_LENGTH ];
 
     /* append HTTP headers */
     NetworkingLibwebsocketsAppendHeaders_t appendHeaders;
@@ -79,6 +89,10 @@ typedef struct NetworkingLibwebsocketContext
     NetworkingLibwebsocketsCredentials_t libwebsocketsCredentials;
 
     /* SigV4 credential */
+    char pathBuffer[ NETWORKING_LWS_MAX_URI_LENGTH + 1 ];
+    uint32_t pathBufferWrittenLength;
+    char sigv4AuthBuffer[ NETWORKING_SIGV4_AUTH_BUFFER_LENGTH ];
+    size_t sigv4AuthLen;
     SigV4Credentials_t sigv4Credential;
 
     /* OpenSSL SHA256 context. */
