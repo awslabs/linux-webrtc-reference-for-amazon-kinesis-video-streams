@@ -49,6 +49,37 @@ static SignalingControllerResult_t HttpLibwebsockets_PerformRequest( SignalingCo
     return ret;
 }
 
+static void printMetrics( SignalingControllerContext_t * pCtx )
+{
+    uint8_t i, j;
+
+    /* channel info */
+    printf( "======================================== Channel Info ========================================\n" );
+    printf( "Signaling Channel Name: %s\n", pCtx->channelInfo.signalingChannelName );
+    printf( "Signaling Channel ARN: %s\n", pCtx->channelInfo.signalingChannelARN );
+    printf( "Signaling Channel TTL (seconds): %u\n", pCtx->channelInfo.signalingChannelTtlSeconds );
+    printf( "\n======================================== Endpoints Info ========================================\n" );
+    printf( "HTTPS Endpoint: %s\n", pCtx->channelInfo.endpointHttps );
+    printf( "WSS Endpoint: %s\n", pCtx->channelInfo.endpointWebsocketSecure );
+    printf( "WebRTC Endpoint: %s\n", pCtx->channelInfo.endpointWebrtc[0]=='\0'? "N/A":pCtx->channelInfo.endpointWebrtc );
+
+    /* Ice server list */
+    printf( "\n======================================== Ice Server List ========================================\n" );
+    printf( "Ice Server Count: %u\n", pCtx->iceServerConfigsCount );
+    for( i=0 ; i<pCtx->iceServerConfigsCount ; i++ )
+    {
+        printf( "======================================== Ice Server[%u] ========================================\n", i );
+        printf( "    TTL (secodns): %u\n", pCtx->iceServerConfigs[i].ttlSeconds );
+        printf( "    User Name: %s\n", pCtx->iceServerConfigs[i].userName );
+        printf( "    Password: %s\n", pCtx->iceServerConfigs[i].password );
+        printf( "    URI Count: %u\n", pCtx->iceServerConfigs[i].uriCount );
+        for( j=0 ; j<pCtx->iceServerConfigs[i].uriCount ; j++ )
+        {
+            printf( "        URI: %s\n", pCtx->iceServerConfigs[i].uris[j] );
+        }
+    }
+}
+
 static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t *pCtx, SignalingGetIceServerConfigResponse_t *pGetIceServerConfigResponse )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
@@ -494,6 +525,12 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         ret = getSignalingServerList( pCtx );
+    }
+
+    /* Print metric. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        printMetrics( pCtx );
     }
 
     return ret;
