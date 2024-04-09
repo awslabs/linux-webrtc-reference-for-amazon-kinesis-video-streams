@@ -1,17 +1,18 @@
 #include <string.h>
 #include <time.h>
-#include "httpsLibwebsockets.h"
+#include "networkingLibwebsockets.h"
 #include "libwebsockets.h"
 #include "openssl/sha.h"
 
-#define HTTPS_LWS_DEFAULT_REGION "us-west-2"
-#define HTTPS_LWS_KVS_SERVICE_NAME "kinesisvideo"
-#define HTTPS_LWS_TIME_LENGTH ( 17 ) /* length of ISO8601 format (e.g. 20111008T070709Z) with NULL terminator */
-#define HTTPS_LWS_STRING_CONTENT_TYPE "content-type"
-#define HTTPS_LWS_STRING_CONTENT_TYPE_VALUE "application/json"
-#define HTTPS_LWS_STRING_SCHEMA_DELIMITER_STRING "://"
-#define HTTPS_LWS_MAX_URI_LENGTH ( 10000 )
-#define HTTPS_LWS_MAX_BUFFER_LENGTH ( LWS_PRE + 2048 ) // General buffer for libwebsockets to send/read data.
+#define NETWORKING_LWS_DEFAULT_REGION "us-west-2"
+#define NETWORKING_LWS_KVS_SERVICE_NAME "kinesisvideo"
+#define NETWORKING_LWS_TIME_LENGTH ( 17 ) /* length of ISO8601 format (e.g. 20111008T070709Z) with NULL terminator */
+#define NETWORKING_LWS_STRING_CONTENT_TYPE "content-type"
+#define NETWORKING_LWS_STRING_CONTENT_TYPE_VALUE "application/json"
+#define NETWORKING_LWS_STRING_SCHEMA_DELIMITER_STRING "://"
+#define NETWORKING_LWS_MAX_URI_LENGTH ( 10000 )
+#define NETWORKING_LWS_MAX_BUFFER_LENGTH ( LWS_PRE + 2048 ) // General buffer for libwebsockets to send/read data.
+#define NETWORKING_LWS_USER_AGENT_NAME_MAX_LENGTH ( 128 )
 
 static int32_t sha256Init( void * hashContext );
 static int32_t sha256Update( void * hashContext,
@@ -21,8 +22,8 @@ static int32_t sha256Final( void * hashContext,
                             uint8_t * pOutput,
                             size_t outputLen );
 
-char pLwsBuffer[ HTTPS_LWS_MAX_BUFFER_LENGTH ];
-char pathBuffer[HTTPS_LWS_MAX_URI_LENGTH + 1];
+char pLwsBuffer[ NETWORKING_LWS_MAX_BUFFER_LENGTH ];
+char pathBuffer[ NETWORKING_LWS_MAX_URI_LENGTH + 1 ];
 uint32_t pathBufferWrittenLength = 0;
 char sigv4AuthBuffer[ 2048 ];
 size_t sigv4AuthLen = 2048;
@@ -45,10 +46,10 @@ static SigV4Parameters_t sigv4Params =
 {
     .pCredentials     = NULL,
     .pDateIso8601     = NULL,
-    .pRegion          = HTTPS_LWS_DEFAULT_REGION,
-    .regionLen        = sizeof( "HTTPS_LWS_DEFAULT_REGION" ) - 1,
-    .pService         = HTTPS_LWS_KVS_SERVICE_NAME,
-    .serviceLen       = sizeof( HTTPS_LWS_KVS_SERVICE_NAME ) - 1,
+    .pRegion          = NETWORKING_LWS_DEFAULT_REGION,
+    .regionLen        = sizeof( NETWORKING_LWS_DEFAULT_REGION ) - 1,
+    .pService         = NETWORKING_LWS_KVS_SERVICE_NAME,
+    .serviceLen       = sizeof( NETWORKING_LWS_KVS_SERVICE_NAME ) - 1,
     .pCryptoInterface = &cryptoInterface,
     .pHttpParameters  = NULL
 };
@@ -81,9 +82,9 @@ static int32_t sha256Final( void * hashContext,
     return ret == 1? 0:-1;
 }
 
-static HttpsResult_t generateAuthorizationHeader( HttpsContext_t *pCtx )
+static HttpResult_t generateAuthorizationHeader( NetworkingLibwebsocketContext_t *pCtx )
 {
-    HttpsResult_t ret = HTTPS_RESULT_OK;
+    HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     SigV4HttpParameters_t sigv4HttpParams;
     SigV4Status_t sigv4Status = SigV4Success;
     /* Store Signature used in AWS HTTP requests generated using SigV4 library. */
@@ -92,7 +93,7 @@ static HttpsResult_t generateAuthorizationHeader( HttpsContext_t *pCtx )
     char headersBuffer[ 4096 ];
     size_t remainSize = sizeof( headersBuffer );
     int32_t snprintfReturn;
-    HttpsLibwebsocketsAppendHeaders_t *pAppendHeaders = &pCtx->appendHeaders;
+    NetworkingLibwebsocketsAppendHeaders_t *pAppendHeaders = &pCtx->appendHeaders;
     char *pHostEnd;
 
     /* Calculate remaining length of URL after host. */
@@ -113,18 +114,18 @@ static HttpsResult_t generateAuthorizationHeader( HttpsContext_t *pCtx )
 
     if( snprintfReturn < 0 )
     {
-        ret = HTTPS_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
     }
     else if( snprintfReturn == remainSize )
     {
-        ret = HTTPS_LIBWEBSOCKETS_RESULT_AUTH_BUFFER_TOO_SMALL;
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_AUTH_BUFFER_TOO_SMALL;
     }
     else
     {
         /* Do nothing, Coverity happy. */
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         /* Setup the HTTP parameters. */
         sigv4HttpParams.pHttpMethod = "POST";
@@ -155,11 +156,11 @@ static HttpsResult_t generateAuthorizationHeader( HttpsContext_t *pCtx )
         
         if( sigv4Status != SigV4Success )
         {
-            ret = HTTPS_LIBWEBSOCKETS_RESULT_SIGV4_GENERATE_AUTH_FAIL;
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SIGV4_GENERATE_AUTH_FAIL;
         }
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         pCtx->appendHeaders.pAuthorization = sigv4AuthBuffer;
         pCtx->appendHeaders.authorizationLength = sigv4AuthLen;
@@ -168,30 +169,30 @@ static HttpsResult_t generateAuthorizationHeader( HttpsContext_t *pCtx )
     return ret;
 }
 
-static HttpsResult_t getIso8601CurrentTime( char **ppDate, size_t * pDateLength )
+static HttpResult_t getIso8601CurrentTime( char **ppDate, size_t * pDateLength )
 {
-    HttpsResult_t ret = HTTPS_RESULT_OK;
-    static char iso8601TimeBuf[HTTPS_LWS_TIME_LENGTH] = { 0 };
+    HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    static char iso8601TimeBuf[NETWORKING_LWS_TIME_LENGTH] = { 0 };
     time_t now;
     size_t timeLength = 0;
 
     if( ppDate == NULL || pDateLength == NULL )
     {
-        ret = HTTPS_RESULT_BAD_PARAMETER;
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_BAD_PARAMETER;
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         time(&now);
-        timeLength = strftime(iso8601TimeBuf, HTTPS_LWS_TIME_LENGTH, "%Y%m%dT%H%M%SZ", gmtime(&now));
+        timeLength = strftime(iso8601TimeBuf, NETWORKING_LWS_TIME_LENGTH, "%Y%m%dT%H%M%SZ", gmtime(&now));
 
         if( timeLength <= 0 )
         {
-            ret = HTTPS_LIBWEBSOCKETS_RESULT_TIME_BUFFER_TOO_SMALL;
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_TIME_BUFFER_TOO_SMALL;
         }
     }
     
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         *ppDate = iso8601TimeBuf;
         *pDateLength = timeLength;
@@ -200,39 +201,39 @@ static HttpsResult_t getIso8601CurrentTime( char **ppDate, size_t * pDateLength 
     return ret;
 }
 
-static HttpsResult_t getUrlHost( char *pUrl, size_t urlLength, char **ppStart, size_t *pHostLength )
+static HttpResult_t getUrlHost( char *pUrl, size_t urlLength, char **ppStart, size_t *pHostLength )
 {
-    HttpsResult_t ret = HTTPS_RESULT_OK;
+    HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     char *pStart = NULL, *pEnd = pUrl + urlLength, *pCurPtr;
     uint8_t foundEndMark = 0;
 
     if( pUrl == NULL || ppStart == NULL || pHostLength == NULL )
     {
-        ret = HTTPS_RESULT_BAD_PARAMETER;
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_BAD_PARAMETER;
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         // Start from the schema delimiter
-        pStart = strstr(pUrl, HTTPS_LWS_STRING_SCHEMA_DELIMITER_STRING);
+        pStart = strstr(pUrl, NETWORKING_LWS_STRING_SCHEMA_DELIMITER_STRING);
         if( pStart == NULL )
         {
-            ret = HTTPS_LIBWEBSOCKETS_RESULT_SCHEMA_DELIMITER_NOT_FOUND;
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SCHEMA_DELIMITER_NOT_FOUND;
         }
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         // Advance the pStart past the delimiter
-        pStart += strlen(HTTPS_LWS_STRING_SCHEMA_DELIMITER_STRING);
+        pStart += strlen(NETWORKING_LWS_STRING_SCHEMA_DELIMITER_STRING);
 
         if( pStart > pEnd )
         {
-            ret = HTTPS_LIBWEBSOCKETS_RESULT_EXCEED_URL_LENGTH;
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_EXCEED_URL_LENGTH;
         }
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         // Find the delimiter which would indicate end of the host - either one of "/:?"
         pCurPtr = pStart;
@@ -252,7 +253,7 @@ static HttpsResult_t getUrlHost( char *pUrl, size_t urlLength, char **ppStart, s
         }
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         *ppStart = pStart;
         *pHostLength = pCurPtr - pStart;
@@ -261,9 +262,9 @@ static HttpsResult_t getUrlHost( char *pUrl, size_t urlLength, char **ppStart, s
     return ret;
 }
 
-static HttpsResult_t performHttpsRequest( HttpsContext_t *pCtx )
+static HttpResult_t performHttpRequest( NetworkingLibwebsocketContext_t *pCtx )
 {
-    HttpsResult_t ret = HTTPS_RESULT_OK;
+    HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     struct lws_client_connect_info connectInfo;
     struct lws* clientLws;
     int32_t lwsReturn;
@@ -311,14 +312,14 @@ static int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons
     time_t td;
     size_t len;
     uint64_t nowTime, clockSkew = 0;
-    HttpsContext_t *pCtx;
+    NetworkingLibwebsocketContext_t *pCtx;
 
     char pContentLength[ 11 ]; /* It needs 10 bytes for 32 bit integer, +1 for NULL terminator. */
     size_t contentWrittenLength;
 
     ( void ) pUser;
 
-    printf( "HTTPS callback with reason %d\n", reason );
+    printf( "HTTP callback with reason %d\n", reason );
 
     // Early check before accessing the custom data field to see if we are interested in processing the message
     switch (reason)
@@ -338,7 +339,7 @@ static int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons
 
     if( retValue == 0 )
     {
-        pCtx = (HttpsContext_t *)lws_get_opaque_user_data(wsi);
+        pCtx = (NetworkingLibwebsocketContext_t *)lws_get_opaque_user_data(wsi);
     }
 
     if( retValue == 0 )
@@ -455,7 +456,7 @@ static int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons
 
             case LWS_CALLBACK_RECEIVE_CLIENT_HTTP:
                 printf( "Received client http\n" );
-                readLength = HTTPS_LWS_MAX_BUFFER_LENGTH;
+                readLength = NETWORKING_LWS_MAX_BUFFER_LENGTH;
 
                 if( lws_http_client_read(wsi, (char**)&pLwsBuffer, &readLength) < 0 )
                 {
@@ -546,36 +547,37 @@ static int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons
     return retValue;
 }
 
-HttpsResult_t Https_Init( HttpsContext_t *pCtx, void * pCredential )
+HttpResult_t Http_Init( HttpContext_t *pHttpCtx, void * pCredential )
 {
-    HttpsResult_t ret = HTTPS_RESULT_OK;
+    HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     struct lws_context_creation_info creationInfo;
     const lws_retry_bo_t retryPolicy = {
         .secs_since_valid_ping = 10,
         .secs_since_valid_hangup = 7200,
     };
-    HttpsLibwebsocketsCredentials_t *pHttpsLibwebsocketsCredentials = (HttpsLibwebsocketsCredentials_t *)pCredential;
+    NetworkingLibwebsocketContext_t *pCtx = (NetworkingLibwebsocketContext_t *) pHttpCtx;
+    NetworkingLibwebsocketsCredentials_t *pNetworkingLibwebsocketsCredentials = (NetworkingLibwebsocketsCredentials_t *)pCredential;
 
     if( pCtx == NULL || pCredential == NULL )
     {
-        ret = HTTPS_RESULT_BAD_PARAMETER;
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_BAD_PARAMETER;
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        memcpy( &pCtx->libwebsocketsCredentials, pHttpsLibwebsocketsCredentials, sizeof(HttpsLibwebsocketsCredentials_t) );
-        pCtx->sigv4Credential.pAccessKeyId = pHttpsLibwebsocketsCredentials->pAccessKeyId;
-        pCtx->sigv4Credential.accessKeyIdLen = pHttpsLibwebsocketsCredentials->accessKeyIdLength;
-        pCtx->sigv4Credential.pSecretAccessKey = pHttpsLibwebsocketsCredentials->pSecretAccessKey;
-        pCtx->sigv4Credential.secretAccessKeyLen = pHttpsLibwebsocketsCredentials->secretAccessKeyLength;
+        memcpy( &pCtx->libwebsocketsCredentials, pNetworkingLibwebsocketsCredentials, sizeof(NetworkingLibwebsocketsCredentials_t) );
+        pCtx->sigv4Credential.pAccessKeyId = pNetworkingLibwebsocketsCredentials->pAccessKeyId;
+        pCtx->sigv4Credential.accessKeyIdLen = pNetworkingLibwebsocketsCredentials->accessKeyIdLength;
+        pCtx->sigv4Credential.pSecretAccessKey = pNetworkingLibwebsocketsCredentials->pSecretAccessKey;
+        pCtx->sigv4Credential.secretAccessKeyLen = pNetworkingLibwebsocketsCredentials->secretAccessKeyLength;
 
-        if( pCtx->libwebsocketsCredentials.userAgentLength > HTTPS_LWS_USER_AGENT_NAME_MAX_LENGTH )
+        if( pCtx->libwebsocketsCredentials.userAgentLength > NETWORKING_LWS_USER_AGENT_NAME_MAX_LENGTH )
         {
-            ret = HTTPS_LIBWEBSOCKETS_RESULT_USER_AGENT_NAME_TOO_LONG;
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_USER_AGENT_NAME_TOO_LONG;
         }
     }
 
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         protocols[0].name = "https";
         protocols[0].callback = lwsHttpCallbackRoutine;
@@ -601,20 +603,21 @@ HttpsResult_t Https_Init( HttpsContext_t *pCtx, void * pCredential )
 
         if( pCtx->pLwsContext == NULL )
         {
-            ret = HTTPS_LIBWEBSOCKETS_RESULT_INIT_LWS_CONTEXT_FAIL;
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_INIT_LWS_CONTEXT_FAIL;
         }
     }
 
     return ret;
 }
 
-HttpsResult_t Https_Send( HttpsContext_t *pCtx, HttpsRequest_t *pRequest, size_t timeoutMs, HttpsResponse_t *pResponse )
+HttpResult_t Http_Send( HttpContext_t *pHttpCtx, HttpRequest_t *pRequest, size_t timeoutMs, HttpResponse_t *pResponse )
 {
-    HttpsResult_t ret = HTTPS_RESULT_OK;
+    HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     struct lws_client_connect_info connectInfo;
     struct lws *clientLws;
+    NetworkingLibwebsocketContext_t *pCtx = (NetworkingLibwebsocketContext_t *) pHttpCtx;
 
-    /* Append HTTPS headers for signing.
+    /* Append HTTP headers for signing.
      * Refer to https://docs.aws.amazon.com/AmazonECR/latest/APIReference/CommonParameters.html for details. */
     /* user-agent */
     pCtx->appendHeaders.pUserAgent = pCtx->libwebsocketsCredentials.pUserAgent;
@@ -624,16 +627,16 @@ HttpsResult_t Https_Send( HttpsContext_t *pCtx, HttpsRequest_t *pRequest, size_t
     ret = getUrlHost( pRequest->pUrl, pRequest->urlLength, &pCtx->appendHeaders.pHost, &pCtx->appendHeaders.hostLength );
 
     /* x-amz-date */
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         ret = getIso8601CurrentTime( &pCtx->appendHeaders.pDate, &pCtx->appendHeaders.dateLength );
     }
     
     /* content-type - application/json */
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        pCtx->appendHeaders.pContentType = HTTPS_LWS_STRING_CONTENT_TYPE_VALUE;
-        pCtx->appendHeaders.contentTypeLength = strlen( HTTPS_LWS_STRING_CONTENT_TYPE_VALUE );
+        pCtx->appendHeaders.pContentType = NETWORKING_LWS_STRING_CONTENT_TYPE_VALUE;
+        pCtx->appendHeaders.contentTypeLength = strlen( NETWORKING_LWS_STRING_CONTENT_TYPE_VALUE );
 
         /* content-length - body length */
         if( pRequest->pBody != NULL )
@@ -646,15 +649,15 @@ HttpsResult_t Https_Send( HttpsContext_t *pCtx, HttpsRequest_t *pRequest, size_t
     }
 
     /* Authorization */
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         ret = generateAuthorizationHeader( pCtx );
     }
 
     /* Blocking execution until getting response from server. */
-    if( ret == HTTPS_RESULT_OK )
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = performHttpsRequest( pCtx );
+        ret = performHttpRequest( pCtx );
     }
 
     return ret;

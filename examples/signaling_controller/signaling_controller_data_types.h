@@ -11,7 +11,7 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include "signaling_api.h"
-#include "httpsLibwebsockets.h"
+#include "networkingLibwebsockets.h"
 
 /* Refer to https://docs.aws.amazon.com/IAM/latest/APIReference/API_AccessKey.html,
    length of access key ID should be limited to 128. There is no other definition of
@@ -36,11 +36,11 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_PARSE_GET_SIGNALING_CHANNEL_ENDPOINTS_FAIL,
     SIGNALING_CONTROLLER_RESULT_CONSTRUCT_GET_SIGNALING_SERVER_LIST_FAIL,
     SIGNALING_CONTROLLER_RESULT_PARSE_GET_SIGNALING_SERVER_LIST_FAIL,
-    SIGNALING_CONTROLLER_RESULT_INVALID_HTTPS_ENDPOINT,
+    SIGNALING_CONTROLLER_RESULT_INVALID_HTTP_ENDPOINT,
     SIGNALING_CONTROLLER_RESULT_INVALID_WEBSOCKET_SECURE_ENDPOINT,
     SIGNALING_CONTROLLER_RESULT_INVALID_WEBRTC_ENDPOINT,
-    SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL,
-    SIGNALING_CONTROLLER_RESULT_HTTPS_PERFORM_REQUEST_FAIL,
+    SIGNALING_CONTROLLER_RESULT_HTTP_INIT_FAIL,
+    SIGNALING_CONTROLLER_RESULT_HTTP_PERFORM_REQUEST_FAIL,
     SIGNALING_CONTROLLER_RESULT_INACTIVE_SIGNALING_CHANNEL,
     SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_ARN,
     SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_NAME,
@@ -117,8 +117,8 @@ typedef struct SignalingControllerContext
     uint8_t iceServerConfigsCount;
     SignalingControllerIceServerConfig_t iceServerConfigs[SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT];
 
-    /* HTTPS Context */
-    HttpsContext_t httpsContext;
+    /* HTTP Context */
+    HttpContext_t httpContext;
 } SignalingControllerContext_t;
 
 #ifdef __cplusplus

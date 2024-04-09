@@ -19,12 +19,12 @@ set( WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS
 
 file(
   GLOB
-  WEBRTC_APPLICATION_HTTPS_LIBWEBSOCKETS_SOURCE_FILES
-  "examples/https/httpsLibwebsockets/*.c" )
+  WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES
+  "examples/networking/networkingLibwebsockets/*.c" )
 
-set( WEBRTC_APPLICATION_HTTPS_LIBWEBSOCKETS_INCLUDE_DIRS
-    "examples/https/"
-    "examples/https/httpsLibwebsockets/" )
+set( WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS
+    "examples/networking/"
+    "examples/networking/networkingLibwebsockets/" )
 
 file(
   GLOB
@@ -37,12 +37,12 @@ set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
 add_executable(
     WebRTCLinuxApplicationMaster
     ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES}
-    ${WEBRTC_APPLICATION_HTTPS_LIBWEBSOCKETS_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES} )
 
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
-                            ${WEBRTC_APPLICATION_HTTPS_LIBWEBSOCKETS_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS} )
 
 # Include dependencies

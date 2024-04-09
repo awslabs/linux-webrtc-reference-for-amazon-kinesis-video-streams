@@ -3,47 +3,47 @@
 #include "signaling_controller.h"
 #include "libwebsockets.h"
 #include "signaling_api.h"
-#include "httpsLibwebsockets.h"
+#include "networkingLibwebsockets.h"
 
 #define MAX_URI_CHAR_LEN ( 10000 )
 #define MAX_JSON_PARAMETER_STRING_LEN ( 10 * 1024 )
 
-static SignalingControllerResult_t HttpsLibwebsockets_Init( SignalingControllerContext_t *pCtx )
+static SignalingControllerResult_t HttpLibwebsockets_Init( SignalingControllerContext_t *pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
-    HttpsResult_t retHttps;
-    HttpsLibwebsocketsCredentials_t httpsLibwebsocketsCred;
+    HttpResult_t retHttp;
+    NetworkingLibwebsocketsCredentials_t libwebsocketsCred;
 
-    httpsLibwebsocketsCred.pUserAgent = pCtx->credential.pUserAgentName;
-    httpsLibwebsocketsCred.userAgentLength = pCtx->credential.userAgentNameLength;
-    httpsLibwebsocketsCred.pRegion = pCtx->credential.pRegion;
-    httpsLibwebsocketsCred.regionLength = pCtx->credential.regionLength;
-    httpsLibwebsocketsCred.pAccessKeyId = pCtx->credential.pAccessKeyId;
-    httpsLibwebsocketsCred.accessKeyIdLength = pCtx->credential.accessKeyIdLength;
-    httpsLibwebsocketsCred.pSecretAccessKey = pCtx->credential.pSecretAccessKey;
-    httpsLibwebsocketsCred.secretAccessKeyLength = pCtx->credential.secretAccessKeyLength;
-    httpsLibwebsocketsCred.pCaCertPath = pCtx->credential.pCaCertPath;
+    libwebsocketsCred.pUserAgent = pCtx->credential.pUserAgentName;
+    libwebsocketsCred.userAgentLength = pCtx->credential.userAgentNameLength;
+    libwebsocketsCred.pRegion = pCtx->credential.pRegion;
+    libwebsocketsCred.regionLength = pCtx->credential.regionLength;
+    libwebsocketsCred.pAccessKeyId = pCtx->credential.pAccessKeyId;
+    libwebsocketsCred.accessKeyIdLength = pCtx->credential.accessKeyIdLength;
+    libwebsocketsCred.pSecretAccessKey = pCtx->credential.pSecretAccessKey;
+    libwebsocketsCred.secretAccessKeyLength = pCtx->credential.secretAccessKeyLength;
+    libwebsocketsCred.pCaCertPath = pCtx->credential.pCaCertPath;
 
-    retHttps = Https_Init( &pCtx->httpsContext, &httpsLibwebsocketsCred );
+    retHttp = Http_Init( &pCtx->httpContext, &libwebsocketsCred );
 
-    if( retHttps != HTTPS_RESULT_OK )
+    if( retHttp != HTTP_RESULT_OK )
     {
-        ret = SIGNALING_CONTROLLER_RESULT_HTTPS_INIT_FAIL;
+        ret = SIGNALING_CONTROLLER_RESULT_HTTP_INIT_FAIL;
     }
 
     return ret;
 }
 
-static SignalingControllerResult_t HttpsLibwebsockets_PerformRequest( SignalingControllerContext_t *pCtx, HttpsRequest_t *pRequest, size_t timeoutMs, HttpsResponse_t *pResponse )
+static SignalingControllerResult_t HttpLibwebsockets_PerformRequest( SignalingControllerContext_t *pCtx, HttpRequest_t *pRequest, size_t timeoutMs, HttpResponse_t *pResponse )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
-    HttpsResult_t retHttps;
+    HttpResult_t retHttp;
 
-    retHttps = Https_Send( &pCtx->httpsContext, pRequest, timeoutMs, pResponse );
+    retHttp = Http_Send( &pCtx->httpContext, pRequest, timeoutMs, pResponse );
 
-    if( retHttps != HTTPS_RESULT_OK )
+    if( retHttp != HTTP_RESULT_OK )
     {
-        ret = SIGNALING_CONTROLLER_RESULT_HTTPS_PERFORM_REQUEST_FAIL;
+        ret = SIGNALING_CONTROLLER_RESULT_HTTP_PERFORM_REQUEST_FAIL;
     }
 
     return ret;
@@ -136,8 +136,8 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
     SignalingDescribeSignalingChannelResponse_t describeSignalingChannelResponse;
     char url[MAX_URI_CHAR_LEN];
     char paramsJson[MAX_JSON_PARAMETER_STRING_LEN];
-    HttpsRequest_t request;
-    HttpsResponse_t response;
+    HttpRequest_t request;
+    HttpResponse_t response;
     char responseBuffer[MAX_JSON_PARAMETER_STRING_LEN];
 
     // Prepare URL buffer
@@ -159,17 +159,17 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        memset( &request, 0, sizeof(HttpsRequest_t) );
+        memset( &request, 0, sizeof(HttpRequest_t) );
         request.pUrl = signalRequest.pUrl;
         request.urlLength = signalRequest.urlLength;
         request.pBody = signalRequest.pBody;
         request.bodyLength = signalRequest.bodyLength;
 
-        memset( &response, 0, sizeof(HttpsResponse_t) );
+        memset( &response, 0, sizeof(HttpResponse_t) );
         response.pBuffer = responseBuffer;
         response.bufferLength = MAX_JSON_PARAMETER_STRING_LEN;
 
-        ret = HttpsLibwebsockets_PerformRequest( pCtx, &request, 0, &response );
+        ret = HttpLibwebsockets_PerformRequest( pCtx, &request, 0, &response );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -238,8 +238,8 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
     SignalingGetSignalingChannelEndpointResponse_t getSignalingChannelEndpointResponse;
     char url[MAX_URI_CHAR_LEN];
     char paramsJson[MAX_JSON_PARAMETER_STRING_LEN];
-    HttpsRequest_t request;
-    HttpsResponse_t response;
+    HttpRequest_t request;
+    HttpResponse_t response;
     char responseBuffer[MAX_JSON_PARAMETER_STRING_LEN];
 
     // Prepare URL buffer
@@ -263,17 +263,17 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        memset( &request, 0, sizeof(HttpsRequest_t) );
+        memset( &request, 0, sizeof(HttpRequest_t) );
         request.pUrl = signalRequest.pUrl;
         request.urlLength = signalRequest.urlLength;
         request.pBody = signalRequest.pBody;
         request.bodyLength = signalRequest.bodyLength;
 
-        memset( &response, 0, sizeof(HttpsResponse_t) );
+        memset( &response, 0, sizeof(HttpResponse_t) );
         response.pBuffer = responseBuffer;
         response.bufferLength = MAX_JSON_PARAMETER_STRING_LEN;
 
-        ret = HttpsLibwebsockets_PerformRequest( pCtx, &request, 0, &response );
+        ret = HttpLibwebsockets_PerformRequest( pCtx, &request, 0, &response );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -291,7 +291,7 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
     {
         if( getSignalingChannelEndpointResponse.pEndpointHttps == NULL || getSignalingChannelEndpointResponse.endpointHttpsLength > SIGNALING_AWS_MAX_ARN_LEN )
         {
-            ret = SIGNALING_CONTROLLER_RESULT_INVALID_HTTPS_ENDPOINT;
+            ret = SIGNALING_CONTROLLER_RESULT_INVALID_HTTP_ENDPOINT;
         }
         else
         {
@@ -341,8 +341,8 @@ static SignalingControllerResult_t getSignalingServerList( SignalingControllerCo
     SignalingGetIceServerConfigResponse_t getIceServerConfigResponse;
     char url[MAX_URI_CHAR_LEN];
     char paramsJson[MAX_JSON_PARAMETER_STRING_LEN];
-    HttpsRequest_t request;
-    HttpsResponse_t response;
+    HttpRequest_t request;
+    HttpResponse_t response;
     char responseBuffer[MAX_JSON_PARAMETER_STRING_LEN];
 
     // Prepare URL buffer
@@ -368,17 +368,17 @@ static SignalingControllerResult_t getSignalingServerList( SignalingControllerCo
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        memset( &request, 0, sizeof(HttpsRequest_t) );
+        memset( &request, 0, sizeof(HttpRequest_t) );
         request.pUrl = signalRequest.pUrl;
         request.urlLength = signalRequest.urlLength;
         request.pBody = signalRequest.pBody;
         request.bodyLength = signalRequest.bodyLength;
 
-        memset( &response, 0, sizeof(HttpsResponse_t) );
+        memset( &response, 0, sizeof(HttpResponse_t) );
         response.pBuffer = responseBuffer;
         response.bufferLength = MAX_JSON_PARAMETER_STRING_LEN;
 
-        ret = HttpsLibwebsockets_PerformRequest( pCtx, &request, 0, &response );
+        ret = HttpLibwebsockets_PerformRequest( pCtx, &request, 0, &response );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -451,10 +451,10 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
         }
     }
 
-    /* Initialize HTTPS. */
+    /* Initialize HTTP. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        ret = HttpsLibwebsockets_Init( pCtx );
+        ret = HttpLibwebsockets_Init( pCtx );
     }
 
     return ret;
