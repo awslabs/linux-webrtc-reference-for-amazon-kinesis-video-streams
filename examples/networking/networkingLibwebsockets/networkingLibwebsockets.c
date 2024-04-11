@@ -5,7 +5,11 @@
 #include "libwebsockets.h"
 #include "openssl/sha.h"
 
-#define NETWORKING_LWS_STRING_SCHEMA_DELIMITER_STRING "://"
+#define NETWORKING_LWS_STRING_SCHEMA_DELIMITER "://"
+#define NETWORKING_LWS_STRING_HTTPS "https"
+#define NETWORKING_LWS_STRING_HTTPS_METHOD "POST"
+#define NETWORKING_LWS_STRING_WSS "wss"
+#define NETWORKING_LWS_STRING_WSS_METHOD "GET"
 
 static int32_t sha256Init( void * hashContext );
 static int32_t sha256Update( void * hashContext,
@@ -71,11 +75,141 @@ static int32_t sha256Final( void * hashContext,
     return ret == 1? 0:-1;
 }
 
+NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsocketCanonicalRequest_t *pCanonicalRequest )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    SigV4HttpParameters_t sigv4HttpParams;
+    SigV4Status_t sigv4Status = SigV4Success;
+    /* Store Signature used in AWS HTTP requests generated using SigV4 library. */
+    char * signature = NULL;
+    size_t signatureLen = 0;
+    uint8_t isHttp;
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        if( pCanonicalRequest->verb == NETWORKING_LWS_HTTP_VERB_GET )
+        {
+            /* We only use GET method in websocket. */
+            isHttp = 0U;
+        }
+        else if( pCanonicalRequest->verb == NETWORKING_LWS_HTTP_VERB_POST )
+        {
+            /* We only use POST method in HTTP. */
+            isHttp = 1U;
+        }
+        else
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_INVALID_AUTH_VERB;
+        }
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        /* Setup the HTTP parameters for SigV4. */
+        if( isHttp )
+        {
+            sigv4HttpParams.pHttpMethod = NETWORKING_LWS_STRING_HTTPS_METHOD;
+            sigv4HttpParams.httpMethodLen = strlen( NETWORKING_LWS_STRING_HTTPS_METHOD );
+        }
+        else
+        {
+            sigv4HttpParams.pHttpMethod = NETWORKING_LWS_STRING_WSS_METHOD;
+            sigv4HttpParams.httpMethodLen = strlen( NETWORKING_LWS_STRING_WSS_METHOD );
+        }
+        sigv4HttpParams.pPath = pCanonicalRequest->pPath;
+        sigv4HttpParams.pathLen = pCanonicalRequest->pathLength;
+        sigv4HttpParams.pQuery = pCanonicalRequest->pCanonicalQueryString;
+        sigv4HttpParams.queryLen = pCanonicalRequest->canonicalQueryStringLength;
+        sigv4HttpParams.pHeaders = pCanonicalRequest->pCanonicalHeaders;
+        sigv4HttpParams.headersLen = pCanonicalRequest->canonicalHeadersLength;
+        sigv4HttpParams.pPayload = pCanonicalRequest->pPayload;
+        sigv4HttpParams.payloadLen = pCanonicalRequest->payloadLength;
+        sigv4HttpParams.flags = 0;
+        
+        /* Initializing sigv4Params with Http parameters required for the HTTP request. */
+        sigv4Params.pHttpParameters = &sigv4HttpParams;
+        sigv4Params.pRegion = networkingLibwebsocketContext.libwebsocketsCredentials.pRegion;
+        sigv4Params.regionLen = networkingLibwebsocketContext.libwebsocketsCredentials.regionLength;
+        sigv4Params.pCredentials = &networkingLibwebsocketContext.sigv4Credential;
+        sigv4Params.pDateIso8601 = networkingLibwebsocketContext.appendHeaders.pDate;
+        cryptoInterface.pHashContext = &networkingLibwebsocketContext.sha256Ctx;
+
+        /* Reset buffer length then generate authorization. */
+        networkingLibwebsocketContext.sigv4AuthLen = NETWORKING_LWS_SIGV4_AUTH_BUFFER_LENGTH;
+        sigv4Status = SigV4_GenerateHTTPAuthorization( &sigv4Params, networkingLibwebsocketContext.sigv4AuthBuffer, &networkingLibwebsocketContext.sigv4AuthLen, &signature, &signatureLen );
+        
+        if( sigv4Status != SigV4Success )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SIGV4_GENERATE_AUTH_FAIL;
+        }
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        networkingLibwebsocketContext.appendHeaders.pAuthorization = networkingLibwebsocketContext.sigv4AuthBuffer;
+        networkingLibwebsocketContext.appendHeaders.authorizationLength = networkingLibwebsocketContext.sigv4AuthLen;
+    }
+
+    return ret;
+}
+
+NetworkingLibwebsocketsResult_t performLwsConnect( char *pHost, size_t hostLength, uint16_t port, uint8_t isHttp )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    struct lws_client_connect_info connectInfo;
+    struct lws* clientLws;
+    int32_t lwsReturn;
+    static char host[ NETWORKING_LWS_URI_HOST_MAX_LENGTH + 1 ];
+
+    if( hostLength > NETWORKING_LWS_URI_HOST_MAX_LENGTH )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_HOST_BUFFER_TOO_SMALL;
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        memcpy( host, pHost, hostLength );
+        host[ hostLength ] = '\0';
+
+        memset( &connectInfo, 0, sizeof( struct lws_client_connect_info ) );
+        connectInfo.context = networkingLibwebsocketContext.pLwsContext;
+        connectInfo.ssl_connection = LCCSCF_USE_SSL;
+        connectInfo.port = port;
+        connectInfo.address = host;
+        connectInfo.path = networkingLibwebsocketContext.pathBuffer;
+        connectInfo.host = connectInfo.address;
+        connectInfo.pwsi = &clientLws;
+        connectInfo.opaque_user_data = NULL;
+
+        if( isHttp )
+        {
+            connectInfo.method = NETWORKING_LWS_STRING_HTTPS_METHOD;
+            connectInfo.protocol = NETWORKING_LWS_STRING_HTTPS;
+        }
+        else
+        {
+            connectInfo.method = NULL;
+            connectInfo.protocol = NETWORKING_LWS_STRING_WSS;
+        }
+
+        networkingLibwebsocketContext.pLws = lws_client_connect_via_info( &connectInfo );
+
+        networkingLibwebsocketContext.terminateLwsService = 0U;
+        while( networkingLibwebsocketContext.terminateLwsService == 0U )
+        {
+            lwsReturn = lws_service(networkingLibwebsocketContext.pLwsContext, 0);
+        }
+    }
+
+    return ret;
+}
+
 NetworkingLibwebsocketsResult_t getPathFromUrl( char *pUrl, size_t urlLength, char **ppPath, size_t *pPathLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    char *pHost;
+    char *pHost, *pPathEnd;
     size_t hostLength;
+    char *pStart;
 
     if( pUrl == NULL || ppPath == NULL )
     {
@@ -90,86 +224,23 @@ NetworkingLibwebsocketsResult_t getPathFromUrl( char *pUrl, size_t urlLength, ch
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        /* Calculate remaining length of URL after host. */
-        *ppPath = pHost + hostLength;
-        *pPathLength = urlLength - ( urlLength - hostLength );
-    }
+        /* Find '?' as end of path if any query parameters. */
+        pStart = strchr( pHost + hostLength, '?' );
 
-    return ret;
-}
-
-NetworkingLibwebsocketsResult_t generateAuthorizationHeader()
-{
-    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    SigV4HttpParameters_t sigv4HttpParams;
-    SigV4Status_t sigv4Status = SigV4Success;
-    /* Store Signature used in AWS HTTP requests generated using SigV4 library. */
-    char * signature = NULL;
-    size_t signatureLen = 0;
-    char headersBuffer[ 4096 ];
-    size_t remainSize = sizeof( headersBuffer );
-    int32_t snprintfReturn;
-    NetworkingLibwebsocketsAppendHeaders_t *pAppendHeaders = &networkingLibwebsocketContext.appendHeaders;
-
-    /* Prepare headers for Authorization.
-     * Format: "user-agent: AWS-SDK-KVS\r\nhost: kinesisvideo.us-west-2.amazonaws.com\r\n..." */
-    snprintfReturn = snprintf( headersBuffer, remainSize, "%s: %.*s\r\n%s: %.*s\r\n%s: %.*s\r\n",
-                               "host", ( int ) pAppendHeaders->hostLength, pAppendHeaders->pHost,
-                               "user-agent", ( int ) pAppendHeaders->userAgentLength, pAppendHeaders->pUserAgent,
-                               "x-amz-date", ( int ) pAppendHeaders->dateLength, pAppendHeaders->pDate );
-
-    if( snprintfReturn < 0 )
-    {
-        ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
-    }
-    else if( snprintfReturn == remainSize )
-    {
-        ret = NETWORKING_LIBWEBSOCKETS_RESULT_AUTH_BUFFER_TOO_SMALL;
-    }
-    else
-    {
-        /* Do nothing, Coverity happy. */
-    }
-
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    {
-        /* Setup the HTTP parameters. */
-        sigv4HttpParams.pHttpMethod = "POST";
-        sigv4HttpParams.httpMethodLen = strlen("POST");
-        /* None of the requests parameters below are pre-canonicalized */
-        sigv4HttpParams.flags = 0;
-        sigv4HttpParams.pPath = networkingLibwebsocketContext.pathBuffer;
-        sigv4HttpParams.pathLen = networkingLibwebsocketContext.pathBufferWrittenLength;
-        /* AWS S3 request does not require any Query parameters. */
-        sigv4HttpParams.pQuery = NULL;
-        sigv4HttpParams.queryLen = 0;
-        sigv4HttpParams.pHeaders = headersBuffer;
-        sigv4HttpParams.headersLen = snprintfReturn;
-        sigv4HttpParams.pPayload = networkingLibwebsocketContext.pRequest->pBody;
-        sigv4HttpParams.payloadLen = networkingLibwebsocketContext.pRequest->bodyLength;
-        
-        /* Initializing sigv4Params with Http parameters required for the HTTP request. */
-        sigv4Params.pRegion = networkingLibwebsocketContext.libwebsocketsCredentials.pRegion;
-        sigv4Params.regionLen = networkingLibwebsocketContext.libwebsocketsCredentials.regionLength;
-        sigv4Params.pHttpParameters = &sigv4HttpParams;
-        sigv4Params.pCredentials = &networkingLibwebsocketContext.sigv4Credential;
-        sigv4Params.pDateIso8601 = networkingLibwebsocketContext.appendHeaders.pDate;
-        cryptoInterface.pHashContext = &networkingLibwebsocketContext.sha256Ctx;
-
-        /* Reset buffer length then generate authorization. */
-        networkingLibwebsocketContext.sigv4AuthLen = NETWORKING_SIGV4_AUTH_BUFFER_LENGTH;
-        sigv4Status = SigV4_GenerateHTTPAuthorization( &sigv4Params, networkingLibwebsocketContext.sigv4AuthBuffer, &networkingLibwebsocketContext.sigv4AuthLen, &signature, &signatureLen );
-        
-        if( sigv4Status != SigV4Success )
+        if( pStart == NULL )
         {
-            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SIGV4_GENERATE_AUTH_FAIL;
+            /* All the remaining part after the host belongs to the path. */
+            pPathEnd = pUrl + urlLength;
+            *ppPath = pHost + hostLength;
+            *pPathLength = pPathEnd - *ppPath;
         }
-    }
-
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    {
-        networkingLibwebsocketContext.appendHeaders.pAuthorization = networkingLibwebsocketContext.sigv4AuthBuffer;
-        networkingLibwebsocketContext.appendHeaders.authorizationLength = networkingLibwebsocketContext.sigv4AuthLen;
+        else
+        {
+            /* The part after the host until '?' belongs to the path. */
+            pPathEnd = pStart;
+            *ppPath = pHost + hostLength;
+            *pPathLength = pPathEnd - *ppPath;
+        }
     }
 
     return ret;
@@ -221,7 +292,7 @@ NetworkingLibwebsocketsResult_t getUrlHost( char *pUrl, size_t urlLength, char *
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         // Start from the schema delimiter
-        pStart = strstr(pUrl, NETWORKING_LWS_STRING_SCHEMA_DELIMITER_STRING);
+        pStart = strstr(pUrl, NETWORKING_LWS_STRING_SCHEMA_DELIMITER);
         if( pStart == NULL )
         {
             ret = NETWORKING_LIBWEBSOCKETS_RESULT_SCHEMA_DELIMITER_NOT_FOUND;
@@ -231,7 +302,7 @@ NetworkingLibwebsocketsResult_t getUrlHost( char *pUrl, size_t urlLength, char *
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         // Advance the pStart past the delimiter
-        pStart += strlen(NETWORKING_LWS_STRING_SCHEMA_DELIMITER_STRING);
+        pStart += strlen(NETWORKING_LWS_STRING_SCHEMA_DELIMITER);
 
         if( pStart > pEnd )
         {
@@ -299,9 +370,9 @@ NetworkingLibwebsocketsResult_t NetworkingLibwebsockets_Init( NetworkingLibwebso
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK && !first )
     {
-        protocols[0].name = "https";
+        protocols[0].name = NETWORKING_LWS_STRING_HTTPS;
         protocols[0].callback = lwsHttpCallbackRoutine;
-        protocols[1].name = "wss";
+        protocols[1].name = NETWORKING_LWS_STRING_WSS;
         protocols[1].callback = lwsWebsocketCallbackRoutine;
 
         memset(&creationInfo, 0, sizeof(struct lws_context_creation_info));

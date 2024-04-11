@@ -20,7 +20,10 @@ extern "C" {
 #define NETWORKING_LWS_MAX_URI_LENGTH ( 10000 )
 #define NETWORKING_LWS_MAX_BUFFER_LENGTH ( LWS_PRE + 2048 ) // General buffer for libwebsockets to send/read data.
 #define NETWORKING_LWS_USER_AGENT_NAME_MAX_LENGTH ( 128 )
-#define NETWORKING_SIGV4_AUTH_BUFFER_LENGTH ( 2048 )
+#define NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH ( 4096 )
+#define NETWORKING_LWS_SIGV4_AUTH_BUFFER_LENGTH ( 2048 )
+#define NETWORKING_LWS_URI_HOST_MAX_LENGTH ( 128 )
+#define NETWORKING_LWS_QUERY_PARAM_MAX_NUM ( 4 )
 
 typedef enum NetworkingLibwebsocketsResult
 {
@@ -37,6 +40,9 @@ typedef enum NetworkingLibwebsocketsResult
     NETWORKING_LIBWEBSOCKETS_RESULT_USER_AGENT_NAME_TOO_LONG,
     NETWORKING_LIBWEBSOCKETS_RESULT_INIT_LWS_CONTEXT_FAIL,
     NETWORKING_LIBWEBSOCKETS_RESULT_PATH_BUFFER_TOO_SMALL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_HOST_BUFFER_TOO_SMALL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_INVALID_AUTH_VERB,
+    NETWORKING_LIBWEBSOCKETS_RESULT_UNEXPECTED_WEBSOCKET_URL,
 } NetworkingLibwebsocketsResult_t;
 
 typedef struct NetworkingLibwebsocketsAppendHeaders
@@ -52,6 +58,8 @@ typedef struct NetworkingLibwebsocketsAppendHeaders
     size_t contentLength;
     char *pAuthorization;
     size_t authorizationLength;
+    char *pChannelArn;
+    size_t channelArnLength;
 } NetworkingLibwebsocketsAppendHeaders_t;
 
 typedef struct NetworkingLibwebsocketsCredentials
@@ -91,7 +99,8 @@ typedef struct NetworkingLibwebsocketContext
     /* SigV4 credential */
     char pathBuffer[ NETWORKING_LWS_MAX_URI_LENGTH + 1 ];
     uint32_t pathBufferWrittenLength;
-    char sigv4AuthBuffer[ NETWORKING_SIGV4_AUTH_BUFFER_LENGTH ];
+    char sigv4Metadatabuffer[ NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH ];
+    char sigv4AuthBuffer[ NETWORKING_LWS_SIGV4_AUTH_BUFFER_LENGTH ];
     size_t sigv4AuthLen;
     SigV4Credentials_t sigv4Credential;
 

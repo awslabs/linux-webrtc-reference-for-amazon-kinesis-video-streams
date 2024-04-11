@@ -49,13 +49,19 @@ static SignalingControllerResult_t HttpLibwebsockets_PerformRequest( SignalingCo
     return ret;
 }
 
-static SignalingControllerResult_t WebsocketLibwebsockets_Connect( SignalingControllerContext_t *pCtx, WebsocketServerInfo_t *pServerInfo )
+static SignalingControllerResult_t WebsocketLibwebsockets_Connect( WebsocketServerInfo_t *pServerInfo )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     WebsocketResult_t retWebsocket;
 
-    // retWebsocket = Websocket_Connect(  );
+    retWebsocket = Websocket_Connect( pServerInfo );
 
+    if( retWebsocket != WEBSOCKET_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_WSS_CONNECT_FAIL;
+    }
+
+    return ret;
 }
 
 static void printMetrics( SignalingControllerContext_t * pCtx )
@@ -439,6 +445,7 @@ static SignalingControllerResult_t getSignalingServerList( SignalingControllerCo
 
     return ret;
 }
+
 static SignalingControllerResult_t connectWssEndpoint( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
@@ -446,6 +453,7 @@ static SignalingControllerResult_t connectWssEndpoint( SignalingControllerContex
     SignalingRequest_t signalRequest;
     SignalingConnectWssEndpointRequest_t connectWssEndpointRequest;
     char url[MAX_URI_CHAR_LEN];
+    WebsocketServerInfo_t serverInfo;
 
     // Prepare URL buffer
     signalRequest.pUrl = &url[0];
@@ -474,7 +482,10 @@ static SignalingControllerResult_t connectWssEndpoint( SignalingControllerContex
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        // ret = WebsocketLibwebsockets_Connect( pCtx, &serverInfo );
+        serverInfo.pUrl = signalRequest.pUrl;
+        serverInfo.urlLength = signalRequest.urlLength;
+        serverInfo.port = 443;
+        ret = WebsocketLibwebsockets_Connect( &serverInfo );
     }
 
     return ret;
@@ -568,16 +579,16 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
         ret = getSignalingChannelEndpoints( pCtx );
     }
 
-    /* Connect websocket secure endpoint. */
-    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
-    {
-        ret = connectWssEndpoint( pCtx );
-    }
-
     /* Query ICE server list with HTTPS endpoint. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         ret = getSignalingServerList( pCtx );
+    }
+
+    /* Connect websocket secure endpoint. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        ret = connectWssEndpoint( pCtx );
     }
 
     /* Print metric. */

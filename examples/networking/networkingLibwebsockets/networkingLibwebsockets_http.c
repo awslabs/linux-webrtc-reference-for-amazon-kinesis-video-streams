@@ -2,39 +2,72 @@
 #include "networkingLibwebsockets_private.h"
 #include "libwebsockets.h"
 
-#define NETWORKING_LWS_STRING_CONTENT_TYPE "content-type"
-#define NETWORKING_LWS_STRING_CONTENT_TYPE_VALUE "application/json"
-
-static HttpResult_t performHttpRequest()
+static NetworkingLibwebsocketsResult_t signHttpRequest( HttpRequest_t *pHttpRequest )
 {
-    HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    struct lws_client_connect_info connectInfo;
-    struct lws* clientLws;
-    int32_t lwsReturn;
-    static char pHost[31];
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    int32_t writtenLength;
+    NetworkingLibwebsocketsAppendHeaders_t *pAppendHeaders = &networkingLibwebsocketContext.appendHeaders;
+    NetworkingLibwebsocketCanonicalRequest_t canonicalRequest;
+    char *pPath;
+    size_t pathLength;
 
-    memcpy( pHost, networkingLibwebsocketContext.appendHeaders.pHost, networkingLibwebsocketContext.appendHeaders.hostLength );
-    pHost[networkingLibwebsocketContext.appendHeaders.hostLength] = '\0';
+    /* Follow https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html to create canonical headers.
+     * HTTP Format: "host: kinesisvideo.us-west-2.amazonaws.com\r\nuser-agent: AWS-SDK-KVS\r\n..."
+     *
+     * Note that we re-use the parsed result in pAppendHeaders from Http_Send(). */
+    writtenLength = snprintf( networkingLibwebsocketContext.sigv4Metadatabuffer, NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH, "%s: %.*s\r\n%s: %.*s\r\n%s: %.*s\r\n",
+                                "host", ( int ) pAppendHeaders->hostLength, pAppendHeaders->pHost,
+                                "user-agent", ( int ) pAppendHeaders->userAgentLength, pAppendHeaders->pUserAgent,
+                                "x-amz-date", ( int ) pAppendHeaders->dateLength, pAppendHeaders->pDate );
 
-    memset( &connectInfo, 0, sizeof( struct lws_client_connect_info ) );
-    connectInfo.context = networkingLibwebsocketContext.pLwsContext;
-    connectInfo.ssl_connection = LCCSCF_USE_SSL;
-    connectInfo.port = 443;
-    connectInfo.address = pHost;
-    connectInfo.path = networkingLibwebsocketContext.pathBuffer;
-    connectInfo.host = connectInfo.address;
-    connectInfo.method = "POST";
-    connectInfo.protocol = "https";
-    connectInfo.pwsi = &clientLws;
-
-    connectInfo.opaque_user_data = NULL;
-
-    networkingLibwebsocketContext.pLws = lws_client_connect_via_info( &connectInfo );
-
-    networkingLibwebsocketContext.terminateLwsService = 0U;
-    while( networkingLibwebsocketContext.terminateLwsService == 0U )
+    if( writtenLength < 0 )
     {
-        lwsReturn = lws_service(networkingLibwebsocketContext.pLwsContext, 0);
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+    }
+    else if( writtenLength == NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_AUTH_BUFFER_TOO_SMALL;
+    }
+    else
+    {
+        /* Do nothing, Coverity happy. */
+    }
+
+    /* Find the path for request. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        ret = getPathFromUrl( pHttpRequest->pUrl, pHttpRequest->urlLength, &pPath, &pathLength );
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        if( pathLength > NETWORKING_LWS_MAX_URI_LENGTH )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_PATH_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            memcpy( networkingLibwebsocketContext.pathBuffer, pPath, pathLength );
+            networkingLibwebsocketContext.pathBuffer[ pathLength ] = '\0';
+            networkingLibwebsocketContext.pathBuffer[ 0 ] = '/';
+            networkingLibwebsocketContext.pathBufferWrittenLength = pathLength;
+        }
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        memset( &canonicalRequest, 0, sizeof( canonicalRequest ) );
+        canonicalRequest.verb = NETWORKING_LWS_HTTP_VERB_POST;
+        canonicalRequest.pPath = pPath;
+        canonicalRequest.pathLength = pathLength;
+        canonicalRequest.pCanonicalQueryString = NULL;
+        canonicalRequest.canonicalQueryStringLength = 0U;
+        canonicalRequest.pCanonicalHeaders = networkingLibwebsocketContext.sigv4Metadatabuffer;
+        canonicalRequest.canonicalHeadersLength = writtenLength;
+        canonicalRequest.pPayload = pHttpRequest->pBody;
+        canonicalRequest.payloadLength = pHttpRequest->bodyLength;
+
+        ret = generateAuthorizationHeader( &canonicalRequest );
     }
 
     return ret;
@@ -64,223 +97,200 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
 
     printf( "HTTP callback with reason %d\n", reason );
 
-    // Early check before accessing the custom data field to see if we are interested in processing the message
-    switch (reason)
-    {
+    switch (reason) {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-        case LWS_CALLBACK_CLOSED_CLIENT_HTTP:
-        case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
-        case LWS_CALLBACK_RECEIVE_CLIENT_HTTP_READ:
-        case LWS_CALLBACK_RECEIVE_CLIENT_HTTP:
-        case LWS_CALLBACK_COMPLETED_CLIENT_HTTP:
-        case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
-        case LWS_CALLBACK_CLIENT_HTTP_WRITEABLE:
+            // pCurPtr = pDataIn == NULL ? "(None)" : (PCHAR) pDataIn;
+            // DLOGW("Client connection failed. Connection error string: %s", pCurPtr);
+            // STRNCPY(pLwsCallInfo->callInfo.errorBuffer, pCurPtr, CALL_INFO_ERROR_BUFFER_LEN);
+
+            // // TODO: Attempt to get more meaningful service return code
+
+            // ATOMIC_STORE_BOOL(&pRequestInfo->terminating, TRUE);
+            // ATOMIC_STORE(&pLwsCallInfo->pSignalingClient->result, (SIZE_T) SERVICE_CALL_UNKNOWN);
+
             break;
-        default:
-            retValue = 0;
-    }
 
-    if( retValue == 0 )
-    {
-        switch (reason) {
-            case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-                // pCurPtr = pDataIn == NULL ? "(None)" : (PCHAR) pDataIn;
-                // DLOGW("Client connection failed. Connection error string: %s", pCurPtr);
-                // STRNCPY(pLwsCallInfo->callInfo.errorBuffer, pCurPtr, CALL_INFO_ERROR_BUFFER_LEN);
+        case LWS_CALLBACK_CLOSED_CLIENT_HTTP:
+            // DLOGD("Client http closed");
+            // ATOMIC_STORE_BOOL(&pRequestInfo->terminating, TRUE);
 
-                // // TODO: Attempt to get more meaningful service return code
+            break;
 
-                // ATOMIC_STORE_BOOL(&pRequestInfo->terminating, TRUE);
-                // ATOMIC_STORE(&pLwsCallInfo->pSignalingClient->result, (SIZE_T) SERVICE_CALL_UNKNOWN);
+        case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
+            status = lws_http_client_http_response(wsi);
+            // getStateMachineCurrentState(pSignalingClient->pStateMachine, &pStateMachineState);
 
-                break;
+            printf( "Connected with server response: %d\n", status );
+            // pLwsCallInfo->callInfo.callResult = getServiceCallResultFromHttpStatus((UINT32) status);
 
-            case LWS_CALLBACK_CLOSED_CLIENT_HTTP:
-                // DLOGD("Client http closed");
-                // ATOMIC_STORE_BOOL(&pRequestInfo->terminating, TRUE);
+            // len = (SIZE_T) lws_hdr_copy(wsi, &dateHdrBuffer[0], MAX_DATE_HEADER_BUFFER_LENGTH, WSI_TOKEN_HTTP_DATE);
 
-                break;
+            // time(&td);
 
-            case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
-                status = lws_http_client_http_response(wsi);
-                // getStateMachineCurrentState(pSignalingClient->pStateMachine, &pStateMachineState);
+            // if (len) {
+            //     // on failure to parse lws_http_date_unix returns non zero value
+            //     if (0 == lws_http_date_parse_unix(&dateHdrBuffer[0], len, &td)) {
+            //         DLOGV("Date Header Returned By Server:  %s", dateHdrBuffer);
 
-                printf( "Connected with server response: %d\n", status );
-                // pLwsCallInfo->callInfo.callResult = getServiceCallResultFromHttpStatus((UINT32) status);
+            //         serverTime = ((UINT64) td) * HUNDREDS_OF_NANOS_IN_A_SECOND;
 
-                // len = (SIZE_T) lws_hdr_copy(wsi, &dateHdrBuffer[0], MAX_DATE_HEADER_BUFFER_LENGTH, WSI_TOKEN_HTTP_DATE);
+            //         if (serverTime > nowTime + MIN_CLOCK_SKEW_TIME_TO_CORRECT) {
+            //             // Server time is ahead
+            //             clockSkew = (serverTime - nowTime);
+            //             DLOGD("Detected Clock Skew!  Server time is AHEAD of Device time: Server time: %" PRIu64 ", now time: %" PRIu64, serverTime,
+            //                   nowTime);
+            //         } else if (nowTime > serverTime + MIN_CLOCK_SKEW_TIME_TO_CORRECT) {
+            //             clockSkew = (nowTime - serverTime);
+            //             clockSkew |= ((UINT64) (1ULL << 63));
+            //             DLOGD("Detected Clock Skew!  Device time is AHEAD of Server time: Server time: %" PRIu64 ", now time: %" PRIu64, serverTime,
+            //                   nowTime);
+            //             // PIC hashTable implementation only stores UINT64 so I will flip the sign of the msb
+            //             // This limits the range of the max clock skew we can represent to just under 2925 years.
+            //         }
 
-                // time(&td);
+            //         hashTableContains(pSignalingClient->diagnostics.pEndpointToClockSkewHashMap, pStateMachineState->state, &skewMapContains);
+            //         if (clockSkew > 0) {
+            //             hashTablePut(pSignalingClient->diagnostics.pEndpointToClockSkewHashMap, pStateMachineState->state, clockSkew);
+            //         } else if (clockSkew == 0 && skewMapContains) {
+            //             // This means the item is in the map so at one point there was a clock skew offset but it has been corrected
+            //             // So we should no longer be correcting for a clock skew, remove this item from the map
+            //             hashTableRemove(pSignalingClient->diagnostics.pEndpointToClockSkewHashMap, pStateMachineState->state);
+            //         }
+            //     }
+            // }
 
-                // if (len) {
-                //     // on failure to parse lws_http_date_unix returns non zero value
-                //     if (0 == lws_http_date_parse_unix(&dateHdrBuffer[0], len, &td)) {
-                //         DLOGV("Date Header Returned By Server:  %s", dateHdrBuffer);
+            // // Store the Request ID header
+            // if ((size = lws_hdr_custom_copy(wsi, pBuffer, LWS_SCRATCH_BUFFER_SIZE, SIGNALING_REQUEST_ID_HEADER_NAME,
+            //                                 (SIZEOF(SIGNALING_REQUEST_ID_HEADER_NAME) - 1) * SIZEOF(CHAR))) > 0) {
+            //     pBuffer[size] = '\0';
+            //     DLOGI("Request ID: %s", pBuffer);
+            // }
 
-                //         serverTime = ((UINT64) td) * HUNDREDS_OF_NANOS_IN_A_SECOND;
+            break;
 
-                //         if (serverTime > nowTime + MIN_CLOCK_SKEW_TIME_TO_CORRECT) {
-                //             // Server time is ahead
-                //             clockSkew = (serverTime - nowTime);
-                //             DLOGD("Detected Clock Skew!  Server time is AHEAD of Device time: Server time: %" PRIu64 ", now time: %" PRIu64, serverTime,
-                //                   nowTime);
-                //         } else if (nowTime > serverTime + MIN_CLOCK_SKEW_TIME_TO_CORRECT) {
-                //             clockSkew = (nowTime - serverTime);
-                //             clockSkew |= ((UINT64) (1ULL << 63));
-                //             DLOGD("Detected Clock Skew!  Device time is AHEAD of Server time: Server time: %" PRIu64 ", now time: %" PRIu64, serverTime,
-                //                   nowTime);
-                //             // PIC hashTable implementation only stores UINT64 so I will flip the sign of the msb
-                //             // This limits the range of the max clock skew we can represent to just under 2925 years.
-                //         }
+        case LWS_CALLBACK_RECEIVE_CLIENT_HTTP_READ:
+            printf( "Received client http read: %lu bytes\n", dataSize );
+            lwsl_hexdump_debug(pDataIn, dataSize);
 
-                //         hashTableContains(pSignalingClient->diagnostics.pEndpointToClockSkewHashMap, pStateMachineState->state, &skewMapContains);
-                //         if (clockSkew > 0) {
-                //             hashTablePut(pSignalingClient->diagnostics.pEndpointToClockSkewHashMap, pStateMachineState->state, clockSkew);
-                //         } else if (clockSkew == 0 && skewMapContains) {
-                //             // This means the item is in the map so at one point there was a clock skew offset but it has been corrected
-                //             // So we should no longer be correcting for a clock skew, remove this item from the map
-                //             hashTableRemove(pSignalingClient->diagnostics.pEndpointToClockSkewHashMap, pStateMachineState->state);
-                //         }
-                //     }
-                // }
-
-                // // Store the Request ID header
-                // if ((size = lws_hdr_custom_copy(wsi, pBuffer, LWS_SCRATCH_BUFFER_SIZE, SIGNALING_REQUEST_ID_HEADER_NAME,
-                //                                 (SIZEOF(SIGNALING_REQUEST_ID_HEADER_NAME) - 1) * SIZEOF(CHAR))) > 0) {
-                //     pBuffer[size] = '\0';
-                //     DLOGI("Request ID: %s", pBuffer);
-                // }
-
-                break;
-
-            case LWS_CALLBACK_RECEIVE_CLIENT_HTTP_READ:
-                printf( "Received client http read: %lu bytes\n", dataSize );
-                lwsl_hexdump_debug(pDataIn, dataSize);
-
-                if( dataSize != 0 )
+            if( dataSize != 0 )
+            {
+                if( dataSize >= networkingLibwebsocketContext.pResponse->bufferLength )
                 {
-                    if( dataSize >= networkingLibwebsocketContext.pResponse->bufferLength )
-                    {
-                        /* Receive data is larger than buffer size. */
-                        retValue = -2;
-                    }
-                    else
-                    {
-                        memcpy( networkingLibwebsocketContext.pResponse->pBuffer, pDataIn, dataSize );
-                        networkingLibwebsocketContext.pResponse->pBuffer[dataSize] = '\0';
-                        networkingLibwebsocketContext.pResponse->bufferLength = dataSize;
-                        
-                        printf( "%s\n", networkingLibwebsocketContext.pResponse->pBuffer );
-                    }
-
-                    // if (pLwsCallInfo->callInfo.callResult != SERVICE_CALL_RESULT_OK) {
-                    //     DLOGW("Received client http read response:  %s", pLwsCallInfo->callInfo.responseData);
-                    //     if (pLwsCallInfo->callInfo.callResult == SERVICE_CALL_FORBIDDEN) {
-                    //         if (isCallResultSignatureExpired(&pLwsCallInfo->callInfo)) {
-                    //             // Set more specific result, this is so in the state machine
-                    //             // We don't call GetToken again rather RETRY the existing API (now with clock skew correction)
-                    //             pLwsCallInfo->callInfo.callResult = SERVICE_CALL_SIGNATURE_EXPIRED;
-                    //         } else if (isCallResultSignatureNotYetCurrent(&pLwsCallInfo->callInfo)) {
-                    //             // server time is ahead
-                    //             pLwsCallInfo->callInfo.callResult = SERVICE_CALL_SIGNATURE_NOT_YET_CURRENT;
-                    //         }
-                    //     }
-                    // } else {
-                    //     DLOGV("Received client http read response:  %s", pLwsCallInfo->callInfo.responseData);
-                    // }
-                }
-
-                break;
-
-            case LWS_CALLBACK_RECEIVE_CLIENT_HTTP:
-                printf( "Received client http\n" );
-                readLength = NETWORKING_LWS_MAX_BUFFER_LENGTH;
-
-                if( lws_http_client_read(wsi, (char**)networkingLibwebsocketContext.pLwsBuffer, &readLength) < 0 )
-                {
-                    retValue = -1;
-                }
-
-                break;
-
-            case LWS_CALLBACK_COMPLETED_CLIENT_HTTP:
-                // DLOGD("Http client completed");
-                break;
-
-            case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
-                printf( "Client append handshake header\n" );
-
-                ppStartPtr = (char**) pDataIn;
-                pEndPtr = *ppStartPtr + dataSize - 1;
-
-                // Append headers
-                printf( "Appending header - Authorization=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.authorizationLength, networkingLibwebsocketContext.appendHeaders.pAuthorization );
-                status = lws_add_http_header_by_name( wsi, "Authorization", networkingLibwebsocketContext.appendHeaders.pAuthorization, networkingLibwebsocketContext.appendHeaders.authorizationLength,
-                                                      ( unsigned char ** ) ppStartPtr, pEndPtr );
-
-                /* user-agent */
-                printf( "Appending header - user-agent=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.userAgentLength, networkingLibwebsocketContext.appendHeaders.pUserAgent );
-                status = lws_add_http_header_by_name( wsi, "user-agent", networkingLibwebsocketContext.appendHeaders.pUserAgent, networkingLibwebsocketContext.appendHeaders.userAgentLength,
-                                                      ( unsigned char ** ) ppStartPtr, pEndPtr );
-
-                printf( "Appending header - x-amz-date=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.dateLength, networkingLibwebsocketContext.appendHeaders.pDate );
-                status = lws_add_http_header_by_name( wsi, "x-amz-date", networkingLibwebsocketContext.appendHeaders.pDate, networkingLibwebsocketContext.appendHeaders.dateLength,
-                                                      ( unsigned char ** ) ppStartPtr, pEndPtr );
-
-                printf( "Appending header - content-type=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.contentTypeLength, networkingLibwebsocketContext.appendHeaders.pContentType );
-                status = lws_add_http_header_by_name( wsi, "content-type", networkingLibwebsocketContext.appendHeaders.pContentType, networkingLibwebsocketContext.appendHeaders.contentTypeLength,
-                                                      ( unsigned char ** ) ppStartPtr, pEndPtr );
-
-                printf( "Appending header - content-length=%lu\n", networkingLibwebsocketContext.appendHeaders.contentLength );
-                contentWrittenLength = snprintf( pContentLength, 11, "%lu", networkingLibwebsocketContext.appendHeaders.contentLength );
-                status = lws_add_http_header_by_name( wsi, "content-length", pContentLength, contentWrittenLength,
-                                                      ( unsigned char ** ) ppStartPtr, pEndPtr );
-
-                lws_client_http_body_pending(wsi, 1);
-                lws_callback_on_writable(wsi);
-
-                break;
-
-            case LWS_CALLBACK_CLIENT_HTTP_WRITEABLE:
-                printf( "Sending the body %.*s, size %lu\n", ( int ) networkingLibwebsocketContext.pRequest->bodyLength, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength );
-
-                writtenBodyLength = lws_write(wsi, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength, LWS_WRITE_TEXT);
-
-                if( writtenBodyLength != networkingLibwebsocketContext.pRequest->bodyLength )
-                {
-                    printf( "Failed to write out the body of POST request entirely. Expected to write %lu, wrote %d\n", networkingLibwebsocketContext.pRequest->bodyLength, writtenBodyLength );
-
-                    if( writtenBodyLength > 0 )
-                    {
-                        // Schedule again
-                        lws_client_http_body_pending(wsi, 1);
-                        lws_callback_on_writable(wsi);
-                    }
-                    else
-                    {
-                        // Quit
-                        retValue = 1;
-                    }
+                    /* Receive data is larger than buffer size. */
+                    retValue = -2;
                 }
                 else
                 {
-                    lws_client_http_body_pending(wsi, 0);
+                    memcpy( networkingLibwebsocketContext.pResponse->pBuffer, pDataIn, dataSize );
+                    networkingLibwebsocketContext.pResponse->pBuffer[dataSize] = '\0';
+                    networkingLibwebsocketContext.pResponse->bufferLength = dataSize;
+                    
+                    printf( "%s\n", networkingLibwebsocketContext.pResponse->pBuffer );
                 }
 
-                break;
+                // if (pLwsCallInfo->callInfo.callResult != SERVICE_CALL_RESULT_OK) {
+                //     DLOGW("Received client http read response:  %s", pLwsCallInfo->callInfo.responseData);
+                //     if (pLwsCallInfo->callInfo.callResult == SERVICE_CALL_FORBIDDEN) {
+                //         if (isCallResultSignatureExpired(&pLwsCallInfo->callInfo)) {
+                //             // Set more specific result, this is so in the state machine
+                //             // We don't call GetToken again rather RETRY the existing API (now with clock skew correction)
+                //             pLwsCallInfo->callInfo.callResult = SERVICE_CALL_SIGNATURE_EXPIRED;
+                //         } else if (isCallResultSignatureNotYetCurrent(&pLwsCallInfo->callInfo)) {
+                //             // server time is ahead
+                //             pLwsCallInfo->callInfo.callResult = SERVICE_CALL_SIGNATURE_NOT_YET_CURRENT;
+                //         }
+                //     }
+                // } else {
+                //     DLOGV("Received client http read response:  %s", pLwsCallInfo->callInfo.responseData);
+                // }
+            }
 
-            case LWS_CALLBACK_WSI_DESTROY:
-                networkingLibwebsocketContext.terminateLwsService = 1U;
-                break;
+            break;
 
-            default:
-                break;
-        }
+        case LWS_CALLBACK_RECEIVE_CLIENT_HTTP:
+            printf( "Received client http\n" );
+            readLength = NETWORKING_LWS_MAX_BUFFER_LENGTH;
+
+            if( lws_http_client_read(wsi, (char**)networkingLibwebsocketContext.pLwsBuffer, &readLength) < 0 )
+            {
+                retValue = -1;
+            }
+
+            break;
+
+        case LWS_CALLBACK_COMPLETED_CLIENT_HTTP:
+            // DLOGD("Http client completed");
+            break;
+
+        case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
+            printf( "Client append handshake header\n" );
+
+            ppStartPtr = (char**) pDataIn;
+            pEndPtr = *ppStartPtr + dataSize - 1;
+
+            // Append headers
+            printf( "Appending header - Authorization=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.authorizationLength, networkingLibwebsocketContext.appendHeaders.pAuthorization );
+            status = lws_add_http_header_by_name( wsi, "Authorization", networkingLibwebsocketContext.appendHeaders.pAuthorization, networkingLibwebsocketContext.appendHeaders.authorizationLength,
+                                                    ( unsigned char ** ) ppStartPtr, pEndPtr );
+
+            /* user-agent */
+            printf( "Appending header - user-agent=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.userAgentLength, networkingLibwebsocketContext.appendHeaders.pUserAgent );
+            status = lws_add_http_header_by_name( wsi, "user-agent", networkingLibwebsocketContext.appendHeaders.pUserAgent, networkingLibwebsocketContext.appendHeaders.userAgentLength,
+                                                    ( unsigned char ** ) ppStartPtr, pEndPtr );
+
+            printf( "Appending header - x-amz-date=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.dateLength, networkingLibwebsocketContext.appendHeaders.pDate );
+            status = lws_add_http_header_by_name( wsi, "x-amz-date", networkingLibwebsocketContext.appendHeaders.pDate, networkingLibwebsocketContext.appendHeaders.dateLength,
+                                                    ( unsigned char ** ) ppStartPtr, pEndPtr );
+
+            printf( "Appending header - content-type=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.contentTypeLength, networkingLibwebsocketContext.appendHeaders.pContentType );
+            status = lws_add_http_header_by_name( wsi, "content-type", networkingLibwebsocketContext.appendHeaders.pContentType, networkingLibwebsocketContext.appendHeaders.contentTypeLength,
+                                                    ( unsigned char ** ) ppStartPtr, pEndPtr );
+
+            printf( "Appending header - content-length=%lu\n", networkingLibwebsocketContext.appendHeaders.contentLength );
+            contentWrittenLength = snprintf( pContentLength, 11, "%lu", networkingLibwebsocketContext.appendHeaders.contentLength );
+            status = lws_add_http_header_by_name( wsi, "content-length", pContentLength, contentWrittenLength,
+                                                    ( unsigned char ** ) ppStartPtr, pEndPtr );
+
+            lws_client_http_body_pending(wsi, 1);
+            lws_callback_on_writable(wsi);
+
+            break;
+
+        case LWS_CALLBACK_CLIENT_HTTP_WRITEABLE:
+            printf( "Sending the body %.*s, size %lu\n", ( int ) networkingLibwebsocketContext.pRequest->bodyLength, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength );
+
+            writtenBodyLength = lws_write(wsi, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength, LWS_WRITE_TEXT);
+
+            if( writtenBodyLength != networkingLibwebsocketContext.pRequest->bodyLength )
+            {
+                printf( "Failed to write out the body of POST request entirely. Expected to write %lu, wrote %d\n", networkingLibwebsocketContext.pRequest->bodyLength, writtenBodyLength );
+
+                if( writtenBodyLength > 0 )
+                {
+                    // Schedule again
+                    lws_client_http_body_pending(wsi, 1);
+                    lws_callback_on_writable(wsi);
+                }
+                else
+                {
+                    // Quit
+                    retValue = 1;
+                }
+            }
+            else
+            {
+                lws_client_http_body_pending(wsi, 0);
+            }
+
+            break;
+
+        case LWS_CALLBACK_WSI_DESTROY:
+            networkingLibwebsocketContext.terminateLwsService = 1U;
+            break;
+
+        default:
+            break;
     }
-
-    // if (STATUS_FAILED(retStatus)) {
-    //     lws_cancel_service(lws_get_context(wsi));
-    // }
 
     return retValue;
 }
@@ -295,10 +305,6 @@ HttpResult_t Http_Init( void * pCredential )
 HttpResult_t Http_Send( HttpRequest_t *pRequest, size_t timeoutMs, HttpResponse_t *pResponse )
 {
     HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    struct lws_client_connect_info connectInfo;
-    struct lws *clientLws;
-    char *pPath;
-    size_t pathLength;
 
     /* Append HTTP headers for signing.
      * Refer to https://docs.aws.amazon.com/AmazonECR/latest/APIReference/CommonParameters.html for details. */
@@ -313,8 +319,8 @@ HttpResult_t Http_Send( HttpRequest_t *pRequest, size_t timeoutMs, HttpResponse_
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         ret = getIso8601CurrentTime( &networkingLibwebsocketContext.appendHeaders.pDate, &networkingLibwebsocketContext.appendHeaders.dateLength );
-    }
-    
+    }    
+
     /* content-type - application/json */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
@@ -331,37 +337,16 @@ HttpResult_t Http_Send( HttpRequest_t *pRequest, size_t timeoutMs, HttpResponse_
         networkingLibwebsocketContext.pResponse = pResponse;
     }
 
-    /* Calculate authorization headers */
-    /* Find path from URL first. Then use the path to generate authorization headers. */
+    /* Sign this request. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = getPathFromUrl( pRequest->pUrl, pRequest->urlLength, &pPath, &pathLength );
-    }
-
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    {
-        if( pathLength > NETWORKING_LWS_MAX_URI_LENGTH )
-        {
-            ret = NETWORKING_LIBWEBSOCKETS_RESULT_PATH_BUFFER_TOO_SMALL;
-        }
-        else
-        {
-            memcpy( networkingLibwebsocketContext.pathBuffer, pPath, pathLength );
-            networkingLibwebsocketContext.pathBuffer[ pathLength ] = '\0';
-            networkingLibwebsocketContext.pathBuffer[ 0 ] = '/';
-            networkingLibwebsocketContext.pathBufferWrittenLength = pathLength;
-        }
-    }
-
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    {
-        ret = generateAuthorizationHeader();
+        ret = signHttpRequest( pRequest );
     }
 
     /* Blocking execution until getting response from server. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = performHttpRequest();
+        ret = performLwsConnect( networkingLibwebsocketContext.appendHeaders.pHost, networkingLibwebsocketContext.appendHeaders.hostLength, 443U, 1U );
     }
 
     return ret;
