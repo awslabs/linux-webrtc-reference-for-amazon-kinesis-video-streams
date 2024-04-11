@@ -1,13 +1,323 @@
 #include "networkingLibwebsockets.h"
 #include "networkingLibwebsockets_private.h"
 
-#define NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME  "X-Amz-ChannelARN"
+#define NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME "X-Amz-ChannelARN"
+#define NETWORKING_LWS_STRING_CREDENTIAL_PARAM_NAME "X-Amz-Credential"
+#define NETWORKING_LWS_STRING_DATE_PARAM_NAME "X-Amz-Date"
+#define NETWORKING_LWS_STRING_EXPIRES_PARAM_NAME "X-Amz-Expires"
+#define NETWORKING_LWS_STRING_SIGNED_HEADERS_PARAM_NAME "X-Amz-SignedHeaders"
+#define NETWORKING_LWS_STRING_SIGNATURE_PARAM_NAME "X-Amz-Signature"
+#define NETWORKING_LWS_STRING_SIGNED_HEADERS_VALUE "host"
 
-static NetworkingLibwebsocketsResult_t generateQueryParametersString( char *pQueryStart, size_t queryLength, char *pOutput, size_t *pOutputLength )
+#define NETWORKING_LWS_STRING_CREDENTIAL_VALUE_TEMPLATE "%.*s/%.*s/%.*s/" NETWORKING_LWS_KVS_SERVICE_NAME "/aws4_request"
+
+#define NETWORKING_LWS_CREDENTIAL_PARAM_DATE_LENGTH ( 8 )
+#define NETWORKING_LWS_STATIC_CRED_EXPIRES_SECONDS ( 604800 )
+
+static NetworkingLibwebsocketsResult_t writeUriEncodedAlgorithm( char **ppBuffer, size_t *pBufferLength )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t writtenLength;
+
+    writtenLength = snprintf( *ppBuffer, *pBufferLength, "X-Amz-Algorithm=AWS4-HMAC-SHA256" );
+
+    if( writtenLength < 0 )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+    }
+    else if( writtenLength == *pBufferLength )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+    }
+    else
+    {
+        *ppBuffer += writtenLength;
+        *pBufferLength -= writtenLength;
+    }
+
+    return ret;
+}
+
+static NetworkingLibwebsocketsResult_t writeUriEncodedChannelArn( char **ppBuffer, size_t *pBufferLength, char *pChannelArn, size_t channelArnLength )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t writtenLength;
+    size_t encodedLength;
+
+    /* X-Amz-ChannelARN query parameter. */
+    writtenLength = snprintf( *ppBuffer, *pBufferLength, "&X-Amz-ChannelARN=" );
+
+    if( writtenLength < 0 )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+    }
+    else if( writtenLength == *pBufferLength )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+    }
+    else
+    {
+        *ppBuffer += writtenLength;
+        *pBufferLength -= writtenLength;
+    }
+
+    /* X-Amz-ChannelARN value (plaintext). */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        writtenLength = snprintf( *ppBuffer, *pBufferLength, "%.*s",
+                                  ( int ) channelArnLength, pChannelArn );
+
+        if( writtenLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( writtenLength == *pBufferLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            /* Keep the pointer and *pBufferLength for URI encoded. */
+        }
+    }
+
+    /* X-Amz-ChannelARN value (URI encoded). */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        encodedLength = *pBufferLength - writtenLength;
+        ret = uriEncodedString( *ppBuffer, writtenLength, (*ppBuffer) + writtenLength, &encodedLength );
+
+        /* Move and update pointer/remain length. */
+        if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+        {
+            memmove( *ppBuffer, *ppBuffer + writtenLength, encodedLength );
+            *ppBuffer += encodedLength;
+            *pBufferLength -= encodedLength;
+        }
+    }
+
+    return ret;
+}
+
+static NetworkingLibwebsocketsResult_t writeUriEncodedCredential( char **ppBuffer, size_t *pBufferLength )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t writtenLength;
+    size_t encodedLength;
+
+    /* X-Amz-Credential query parameter. */
+    writtenLength = snprintf( *ppBuffer, *pBufferLength, "&" NETWORKING_LWS_STRING_CREDENTIAL_PARAM_NAME "=" );
+
+    if( writtenLength < 0 )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+    }
+    else if( writtenLength == *pBufferLength )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+    }
+    else
+    {
+        *ppBuffer += writtenLength;
+        *pBufferLength -= writtenLength;
+    }
+
+    /* X-Amz-Credential value (plaintext). */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        writtenLength = snprintf( *ppBuffer, *pBufferLength, NETWORKING_LWS_STRING_CREDENTIAL_VALUE_TEMPLATE,
+                                  ( int ) networkingLibwebsocketContext.libwebsocketsCredentials.accessKeyIdLength, networkingLibwebsocketContext.libwebsocketsCredentials.pAccessKeyId,
+                                  NETWORKING_LWS_CREDENTIAL_PARAM_DATE_LENGTH, networkingLibwebsocketContext.appendHeaders.pDate,
+                                  ( int ) networkingLibwebsocketContext.libwebsocketsCredentials.regionLength, networkingLibwebsocketContext.libwebsocketsCredentials.pRegion );
+
+        if( writtenLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( writtenLength == *pBufferLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            /* Keep the pointer and pBufferLength for URI encoded. */
+        }
+    }
+
+    /* X-Amz-Credential value (URI encoded) */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        encodedLength = *pBufferLength - writtenLength;
+        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+
+        /* Move and update pointer/remain length. */
+        if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+        {
+            memmove( *ppBuffer, *ppBuffer + writtenLength, encodedLength );
+            *ppBuffer += encodedLength;
+            *pBufferLength -= encodedLength;
+        }
+    }
+
+    return ret;
+}
+
+static NetworkingLibwebsocketsResult_t writeUriEncodedDate( char **ppBuffer, size_t *pBufferLength )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t writtenLength;
+    size_t encodedLength;
+
+    /* X-Amz-Date query parameter. */
+    writtenLength = snprintf( *ppBuffer, *pBufferLength, "&" NETWORKING_LWS_STRING_DATE_PARAM_NAME "=" );
+
+    if( writtenLength < 0 )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+    }
+    else if( writtenLength == *pBufferLength )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+    }
+    else
+    {
+        *ppBuffer += writtenLength;
+        *pBufferLength -= writtenLength;
+    }
+
+    /* X-Amz-Date value (plaintext). */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        writtenLength = snprintf( *ppBuffer, *pBufferLength, "%.*s",
+                                  ( int ) networkingLibwebsocketContext.appendHeaders.dateLength, networkingLibwebsocketContext.appendHeaders.pDate );
+
+        if( writtenLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( writtenLength == *pBufferLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            /* Keep the pointer and pBufferLength for URI encoded. */
+        }
+    }
+
+    /* X-Amz-Date value (URI encoded) */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        encodedLength = *pBufferLength - writtenLength;
+        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+
+        /* Move and update pointer/remain length. */
+        if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+        {
+            memmove( *ppBuffer, *ppBuffer + writtenLength, encodedLength );
+            *ppBuffer += encodedLength;
+            *pBufferLength -= encodedLength;
+        }
+    }
+
+    return ret;
+}
+
+static NetworkingLibwebsocketsResult_t writeUriEncodedExpires( char **ppBuffer, size_t *pBufferLength )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t writtenLength;
+    size_t encodedLength;
+
+    /* X-Amz-Expires query parameter. */
+    writtenLength = snprintf( *ppBuffer, *pBufferLength, "&" NETWORKING_LWS_STRING_EXPIRES_PARAM_NAME "=" );
+
+    if( writtenLength < 0 )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+    }
+    else if( writtenLength == *pBufferLength )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+    }
+    else
+    {
+        *ppBuffer += writtenLength;
+        *pBufferLength -= writtenLength;
+    }
+
+    /* X-Amz-Expires value (plaintext). */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        writtenLength = snprintf( *ppBuffer, *pBufferLength, "%d", NETWORKING_LWS_STATIC_CRED_EXPIRES_SECONDS );
+
+        if( writtenLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( writtenLength == *pBufferLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            /* Keep the pointer and pBufferLength for URI encoded. */
+        }
+    }
+
+    /* X-Amz-Expires value (URI encoded) */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        encodedLength = *pBufferLength - writtenLength;
+        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+
+        /* Move and update pointer/remain length. */
+        if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+        {
+            memmove( *ppBuffer, *ppBuffer + writtenLength, encodedLength );
+            *ppBuffer += encodedLength;
+            *pBufferLength -= encodedLength;
+        }
+    }
+
+    return ret;
+}
+
+static NetworkingLibwebsocketsResult_t writeUriEncodedSignedHeaders( char **ppBuffer, size_t *pBufferLength )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t writtenLength;
+
+    /* X-Amz-SignedHeaders query parameter. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        writtenLength = snprintf( *ppBuffer, *pBufferLength, "&" NETWORKING_LWS_STRING_SIGNED_HEADERS_PARAM_NAME "=" NETWORKING_LWS_STRING_SIGNED_HEADERS_VALUE );
+
+        if( writtenLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( writtenLength == *pBufferLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            *ppBuffer += writtenLength;
+            *pBufferLength -= writtenLength;
+        }
+    }
+
+    return ret;
+}
+
+static NetworkingLibwebsocketsResult_t generateQueryParameters( char *pQueryStart, size_t queryLength, char *pOutput, size_t *pOutputLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     char *pChannelArnQueryParam, *pChannelArnValue, *pEqual;
     size_t channelArnQueryParamLength, channelArnValueLength;
+    char *pCurrentWrite = pOutput;
+    size_t remainLength;
 
     if( pOutput == NULL || pOutputLength == NULL )
     {
@@ -42,10 +352,50 @@ static NetworkingLibwebsocketsResult_t generateQueryParametersString( char *pQue
         }
     }
 
+    /* Append X-Amz-Algorithm, X-Amz-ChannelARN, X-Amz-Credential, X-Amz-Date, X-Amz-Expires, and X-Amz-SignedHeaders first
+     * to generate signature. Then append X-Amz-Signature after getting it from sigv4 API.
+     *
+     * Note that the order of query parameters is important. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        /* Put all parameters, including signing parameters, to output buffer. */
+        remainLength = *pOutputLength;
 
+        ret = writeUriEncodedAlgorithm( &pCurrentWrite, &remainLength );
+    }
+
+    /* X-Amz-ChannelARN query parameter. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        ret = writeUriEncodedChannelArn( &pCurrentWrite, &remainLength, pChannelArnValue, channelArnValueLength );
+    }
+
+    /* X-Amz-Credential query parameter. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        ret = writeUriEncodedCredential( &pCurrentWrite, &remainLength );
+    }
+
+    /* X-Amz-Date query parameter. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        ret = writeUriEncodedDate( &pCurrentWrite, &remainLength );
+    }
+
+    /* X-Amz-Expires query parameter. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        ret = writeUriEncodedExpires( &pCurrentWrite, &remainLength );
+    }
+
+    /* X-Amz-SignedHeaders query parameter. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        ret = writeUriEncodedSignedHeaders( &pCurrentWrite, &remainLength );
+    }
+    
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        *pOutputLength = *pOutputLength - remainLength;
     }
 
     return ret;
@@ -54,47 +404,118 @@ static NetworkingLibwebsocketsResult_t generateQueryParametersString( char *pQue
 static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo_t *pWebsocketServerInfo )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    // int32_t writtenLength;
-    // NetworkingLibwebsocketsAppendHeaders_t *pAppendHeaders = &networkingLibwebsocketContext.appendHeaders;
-    // NetworkingLibwebsocketCanonicalRequest_t canonicalRequest;
-    // char *pPath, *pQueryStart, *pUrlEnd;
-    // size_t pathLength, queryLength;
-    // size_t queryParamsStringLength;
+    int32_t headerLength;
+    NetworkingLibwebsocketsAppendHeaders_t *pAppendHeaders = &networkingLibwebsocketContext.appendHeaders;
+    NetworkingLibwebsocketCanonicalRequest_t canonicalRequest;
+    char *pPath, *pQueryStart, *pUrlEnd;
+    size_t pathLength, queryLength, remainLength;
+    size_t queryParamsStringLength;
     
-    // /* Find the path for request. */
-    // ret = getPathFromUrl( pWebsocketServerInfo->pUrl, pWebsocketServerInfo->urlLength, &pPath, &pathLength );
+    /* Find the path for request. */
+    ret = getPathFromUrl( pWebsocketServerInfo->pUrl, pWebsocketServerInfo->urlLength, &pPath, &pathLength );
 
-    // if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    // {
-    //     pUrlEnd = pWebsocketServerInfo->pUrl + pWebsocketServerInfo->urlLength;
-    //     pQueryStart = pPath + pathLength;
-    //     queryLength = pUrlEnd - pQueryStart;
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        pUrlEnd = pWebsocketServerInfo->pUrl + pWebsocketServerInfo->urlLength;
+        pQueryStart = pPath + pathLength + 1; // +1 to skip '?' mark.
+        queryLength = pUrlEnd - pQueryStart;
 
-    //     if( queryLength <= 0 )
-    //     {
-    //         ret = NETWORKING_LIBWEBSOCKETS_RESULT_UNEXPECTED_WEBSOCKET_URL;
-    //     }
-    // }
+        if( queryLength <= 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_UNEXPECTED_WEBSOCKET_URL;
+        }
+    }
 
-    // if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    // {
-    //     /* Follow https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html to create query parameters. */
-    //     queryParamsStringLength = NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH;
-    //     ret = generateQueryParametersString( pQueryStart,
-    //                                          queryLength,
-    //                                          networkingLibwebsocketContext.sigv4Metadatabuffer,
-    //                                          &queryParamsStringLength );
-    // }
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        /* Follow https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html to create query parameters. */
+        queryParamsStringLength = NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH;
+        ret = generateQueryParameters( pQueryStart,
+                                             queryLength,
+                                             networkingLibwebsocketContext.sigv4Metadatabuffer,
+                                             &queryParamsStringLength );
+    }
 
-    // if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    // {
-    //     writtenLength = NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH - queryParamsStringLength;
+    /* Follow https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html to create canonical headers.
+     * Websocket Format: "host: kinesisvideo.us-west-2.amazonaws.com\r\n"
+     *
+     * Note that we re-use the parsed result in pAppendHeaders from Websocket_Connect(). */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        remainLength = NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH - queryParamsStringLength;
 
-    //     ret = uriEncodedQueryParametersString( networkingLibwebsocketContext.sigv4Metadatabuffer,
-    //                                            queryParamsStringLength,
-    //                                            networkingLibwebsocketContext.sigv4Metadatabuffer + queryParamsStringLength,
-    //                                            &writtenLength );
-    // }
+        headerLength = snprintf( networkingLibwebsocketContext.sigv4Metadatabuffer + queryParamsStringLength, remainLength, "%s: %.*s\r\n",
+                                 "host", ( int ) pAppendHeaders->hostLength, pAppendHeaders->pHost );
+
+        if( headerLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( headerLength == remainLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_AUTH_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            /* Do nothing, Coverity happy. */
+        }
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        memset( &canonicalRequest, 0, sizeof( canonicalRequest ) );
+        canonicalRequest.verb = NETWORKING_LWS_HTTP_VERB_GET;
+        canonicalRequest.pPath = pPath;
+        canonicalRequest.pathLength = pathLength;
+        canonicalRequest.pCanonicalQueryString = networkingLibwebsocketContext.sigv4Metadatabuffer;
+        canonicalRequest.canonicalQueryStringLength = queryParamsStringLength;
+        canonicalRequest.pCanonicalHeaders = networkingLibwebsocketContext.sigv4Metadatabuffer + queryParamsStringLength;
+        canonicalRequest.canonicalHeadersLength = headerLength;
+        canonicalRequest.pPayload = NULL;
+        canonicalRequest.payloadLength = 0U;
+
+        ret = generateAuthorizationHeader( &canonicalRequest );
+    }
+
+    /* Append signature. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        remainLength = NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH - queryParamsStringLength;
+
+        headerLength = snprintf( networkingLibwebsocketContext.sigv4Metadatabuffer + queryParamsStringLength, remainLength, "&" NETWORKING_LWS_STRING_SIGNATURE_PARAM_NAME "=%.*s",
+                                 ( int ) pAppendHeaders->signatureLength, pAppendHeaders->pSignature );
+
+        if( headerLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( headerLength == remainLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            /* Do nothing, coverity happy. */
+        }
+    }
+
+    /* Store query parameters into path buffer. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        pathLength = 1U + 1U + queryParamsStringLength + headerLength + 1U; // "/?" + URI encoded query parameters + NULL terminator ("/?X-Amz-Algorithm=AWS4-HMAC-SHA256&...")
+        if( pathLength >= NETWORKING_LWS_MAX_URI_LENGTH )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_PATH_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            networkingLibwebsocketContext.pathBuffer[ 0 ] = '/';
+            networkingLibwebsocketContext.pathBuffer[ 1 ] = '?';
+            memcpy( &networkingLibwebsocketContext.pathBuffer[ 2 ], networkingLibwebsocketContext.sigv4Metadatabuffer, queryParamsStringLength + headerLength );
+            networkingLibwebsocketContext.pathBuffer[ pathLength - 1 ] = '\0'; // Append NULL terminator for libwebsockets.
+            networkingLibwebsocketContext.pathBufferWrittenLength = pathLength - 1;
+        }
+    }
 
     return ret;
 }
@@ -102,183 +523,36 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
 int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize)
 {
     int32_t retValue = 0;
-    int32_t status;
 
     printf( "Websocket callback with reason %d\n", reason );
     
     switch (reason)
     {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-            // pCurPtr = pDataIn == NULL ? "(None)" : (PCHAR) pDataIn;
-            // DLOGW("Client connection failed. Connection error string: %s", pCurPtr);
-            // STRNCPY(pLwsCallInfo->callInfo.errorBuffer, pCurPtr, CALL_INFO_ERROR_BUFFER_LEN);
-
-            // // TODO: Attempt to get more meaningful service return code
-
-            // ATOMIC_STORE_BOOL(&pRequestInfo->terminating, TRUE);
-            // connected = ATOMIC_EXCHANGE_BOOL(&pSignalingClient->connected, FALSE);
-
-            // CVAR_BROADCAST(pSignalingClient->receiveCvar);
-            // CVAR_BROADCAST(pSignalingClient->sendCvar);
-            // ATOMIC_STORE(&pSignalingClient->messageResult, (SIZE_T) SERVICE_CALL_UNKNOWN);
-            // ATOMIC_STORE(&pSignalingClient->result, (SIZE_T) SERVICE_CALL_UNKNOWN);
-
-            // if (connected && !ATOMIC_LOAD_BOOL(&pSignalingClient->shutdown)) {
-            //     // Handle re-connection in a reconnect handler thread. Set the terminated indicator before the thread
-            //     // creation and the thread itself will reset it. NOTE: Need to check for a failure and reset.
-            //     ATOMIC_STORE_BOOL(&pSignalingClient->reconnecterTracker.terminated, FALSE);
-            //     retStatus = THREAD_CREATE(&pSignalingClient->reconnecterTracker.threadId, reconnectHandler, (PVOID) pSignalingClient);
-            //     if (STATUS_FAILED(retStatus)) {
-            //         ATOMIC_STORE_BOOL(&pSignalingClient->reconnecterTracker.terminated, TRUE);
-            //         CHK(FALSE, retStatus);
-            //     }
-
-            //     CHK_STATUS(THREAD_DETACH(pSignalingClient->reconnecterTracker.threadId));
-            // }
-
+            printf( "Client WSS connection error\n" );
+            networkingLibwebsocketContext.terminateLwsService = 1U;
             break;
-        case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
-            printf( "Client HTTP established" );
-            status = lws_http_client_http_response(wsi);
-            printf( "Connected with server response: %d\n", status );
 
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
-            printf( "Connection established" );
-            status = lws_http_client_http_response(wsi);
-            // getStateMachineCurrentState(pSignalingClient->pStateMachine, &pStateMachineState);
-
-            printf( "Connected with server response: %d\n", status );
-
-            // // Set the call result to succeeded
-            // ATOMIC_STORE(&pSignalingClient->result, (SIZE_T) SERVICE_CALL_RESULT_OK);
-            // ATOMIC_STORE_BOOL(&pSignalingClient->connected, TRUE);
-
-            // // Store the time when we connect for diagnostics
-            // MUTEX_LOCK(pSignalingClient->diagnosticsLock);
-            // pSignalingClient->diagnostics.connectTime = SIGNALING_GET_CURRENT_TIME(pSignalingClient);
-            // MUTEX_UNLOCK(pSignalingClient->diagnosticsLock);
-
-            // // Notify the listener thread
-            // CVAR_BROADCAST(pSignalingClient->connectedCvar);
-
+            printf( "Connection established\n" );
+            networkingLibwebsocketContext.terminateLwsService = 1U;
             break;
 
         case LWS_CALLBACK_CLIENT_CLOSED:
-            printf( "Client WSS closed" );
-
-            // ATOMIC_STORE_BOOL(&pRequestInfo->terminating, TRUE);
-            // connected = ATOMIC_EXCHANGE_BOOL(&pSignalingClient->connected, FALSE);
-
-            // CVAR_BROADCAST(pSignalingClient->receiveCvar);
-            // CVAR_BROADCAST(pSignalingClient->sendCvar);
-            // ATOMIC_STORE(&pSignalingClient->messageResult, (SIZE_T) SERVICE_CALL_UNKNOWN);
-
-            // if (connected && ATOMIC_LOAD(&pSignalingClient->result) != SERVICE_CALL_RESULT_SIGNALING_RECONNECT_ICE &&
-            //     !ATOMIC_LOAD_BOOL(&pSignalingClient->shutdown)) {
-            //     // Set the result failed
-            //     ATOMIC_STORE(&pSignalingClient->result, (SIZE_T) SERVICE_CALL_UNKNOWN);
-
-            //     // Handle re-connection in a reconnect handler thread. Set the terminated indicator before the thread
-            //     // creation and the thread itself will reset it. NOTE: Need to check for a failure and reset.
-            //     ATOMIC_STORE_BOOL(&pSignalingClient->reconnecterTracker.terminated, FALSE);
-            //     retStatus = THREAD_CREATE(&pSignalingClient->reconnecterTracker.threadId, reconnectHandler, (PVOID) pSignalingClient);
-            //     if (STATUS_FAILED(retStatus)) {
-            //         ATOMIC_STORE_BOOL(&pSignalingClient->reconnecterTracker.terminated, TRUE);
-            //         CHK(FALSE, retStatus);
-            //     }
-            //     CHK_STATUS(THREAD_DETACH(pSignalingClient->reconnecterTracker.threadId));
-            // }
-
+            printf( "Client WSS closed\n" );
+            networkingLibwebsocketContext.terminateLwsService = 1U;
             break;
 
         case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE:
-            // status = 0;
-            // pCurPtr = NULL;
-            // size = (UINT32) dataSize;
-            // if (dataSize > SIZEOF(UINT16)) {
-            //     // The status should be the first two bytes in network order
-            //     status = getInt16(*(PINT16) pDataIn);
-
-            //     // Set the string past the status
-            //     pCurPtr = (PCHAR) ((PBYTE) pDataIn + SIZEOF(UINT16));
-            //     size -= SIZEOF(UINT16);
-            // }
-
-            // DLOGD("Peer initiated close with %d (0x%08x). Message: %.*s", status, (UINT32) status, size, pCurPtr);
-
-            // // Store the state as the result
-            // retValue = -1;
-
-            // ATOMIC_STORE(&pSignalingClient->result, (SIZE_T) status);
-
+            printf( "Peer closed the connection\n" );
+            networkingLibwebsocketContext.terminateLwsService = 1U;
             break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
 
-            // Check if it's a binary data
-            // CHK(!lws_frame_is_binary(wsi), STATUS_SIGNALING_RECEIVE_BINARY_DATA_NOT_SUPPORTED);
-
-            // // Skip if it's the first and last fragment and the size is 0
-            // CHK(!(lws_is_first_fragment(wsi) && lws_is_final_fragment(wsi) && dataSize == 0), retStatus);
-
-            // // Check what type of a message it is. We will set the size to 0 on first and flush on last
-            // if (lws_is_first_fragment(wsi)) {
-            //     pLwsCallInfo->receiveBufferSize = 0;
-            // }
-
-            // // Store the data in the buffer
-            // CHK(pLwsCallInfo->receiveBufferSize + (UINT32) dataSize + LWS_PRE <= SIZEOF(pLwsCallInfo->receiveBuffer),
-            //     STATUS_SIGNALING_RECEIVED_MESSAGE_LARGER_THAN_MAX_DATA_LEN);
-            // MEMCPY(&pLwsCallInfo->receiveBuffer[LWS_PRE + pLwsCallInfo->receiveBufferSize], pDataIn, dataSize);
-            // pLwsCallInfo->receiveBufferSize += (UINT32) dataSize;
-
-            // // Flush on last
-            // if (lws_is_final_fragment(wsi)) {
-            //     CHK_STATUS(receiveLwsMessage(pLwsCallInfo->pSignalingClient, (PCHAR) &pLwsCallInfo->receiveBuffer[LWS_PRE],
-            //                                  pLwsCallInfo->receiveBufferSize / SIZEOF(CHAR)));
-            // }
-
-            // lws_callback_on_writable(wsi);
-
             break;
 
         case LWS_CALLBACK_CLIENT_WRITEABLE:
-            // DLOGD("Client is writable");
-
-            // // Check if we are attempting to terminate the connection
-            // if (!ATOMIC_LOAD_BOOL(&pSignalingClient->connected) && ATOMIC_LOAD(&pSignalingClient->messageResult) == SERVICE_CALL_UNKNOWN) {
-            //     retValue = 1;
-            //     CHK(FALSE, retStatus);
-            // }
-
-            // offset = (UINT32) ATOMIC_LOAD(&pLwsCallInfo->sendOffset);
-            // bufferSize = (UINT32) ATOMIC_LOAD(&pLwsCallInfo->sendBufferSize);
-            // writeSize = (INT32) (bufferSize - offset);
-
-            // // Check if we need to do anything
-            // CHK(writeSize > 0, retStatus);
-
-            // // Send data and notify on completion
-            // size = lws_write(wsi, &(pLwsCallInfo->sendBuffer[pLwsCallInfo->sendOffset]), (SIZE_T) writeSize, LWS_WRITE_TEXT);
-
-            // if (size < 0) {
-            //     DLOGW("Write failed. Returned write size is %d", size);
-            //     // Quit
-            //     retValue = -1;
-            //     CHK(FALSE, retStatus);
-            // }
-
-            // if (size == writeSize) {
-            //     // Notify the listener
-            //     ATOMIC_STORE(&pLwsCallInfo->sendOffset, 0);
-            //     ATOMIC_STORE(&pLwsCallInfo->sendBufferSize, 0);
-            //     CVAR_BROADCAST(pLwsCallInfo->pSignalingClient->sendCvar);
-            // } else {
-            //     // Partial write
-            //     DLOGV("Failed to write out the data entirely. Wrote %d out of %d", size, writeSize);
-            //     // Schedule again
-            //     lws_callback_on_writable(wsi);
-            // }
 
             break;
 
@@ -308,38 +582,6 @@ WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         ret = getIso8601CurrentTime( &networkingLibwebsocketContext.appendHeaders.pDate, &networkingLibwebsocketContext.appendHeaders.dateLength );
-    }
-
-    /* 
-        wss://m-d73cdb00.kinesisvideo.us-west-2.amazonaws.com?
-        X-Amz-Algorithm=AWS4-HMAC-SHA256&
-        X-Amz-ChannelARN=arn%3Aaws%3Akinesisvideo%3Aus-west-2%3A767859759493%3Achannel%2FtestSignalChannelUS%2F1692761105940&
-        X-Amz-Credential=AKIA3FSACDGC5A2V4ICB%2F20240410%2Fus-west-2%2Fkinesisvideo%2Faws4_request&
-        X-Amz-Date=20240410T033722Z&
-        X-Amz-Expires=604800&
-        X-Amz-SignedHeaders=host&
-        X-Amz-Signature=4b71a1b835e4a30275bd98543373404a79bff83b710f123bd54ced9e75cf4e45
-    */
-
-    /* Store path into path buffer. */
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    {
-        ret = getPathFromUrl( pServerInfo->pUrl, pServerInfo->urlLength, &pPath, &pathLength );
-    }
-
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
-    {
-        if( pathLength >= NETWORKING_LWS_MAX_URI_LENGTH )
-        {
-            ret = NETWORKING_LIBWEBSOCKETS_RESULT_PATH_BUFFER_TOO_SMALL;
-        }
-        else
-        {
-            memcpy( &networkingLibwebsocketContext.pathBuffer[1], pPath, pathLength );
-            networkingLibwebsocketContext.pathBuffer[ pathLength + 1 ] = '\0';
-            networkingLibwebsocketContext.pathBuffer[ 0 ] = '/';
-            networkingLibwebsocketContext.pathBufferWrittenLength = pathLength;
-        }
     }
 
     /* Create query parameters. */

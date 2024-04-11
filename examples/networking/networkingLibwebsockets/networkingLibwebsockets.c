@@ -10,6 +10,8 @@
 #define NETWORKING_LWS_STRING_HTTPS_METHOD "POST"
 #define NETWORKING_LWS_STRING_WSS "wss"
 #define NETWORKING_LWS_STRING_WSS_METHOD "GET"
+#define NETWORKING_LWS_URI_ENCODED_CHAR_SIZE ( 3 ) // We need 3 char spaces to translate symbols, such as from '/' to "%2F".
+#define NETWORKING_LWS_URI_ENCODED_FORWARD_SLASH "%2F"
 
 static int32_t sha256Init( void * hashContext );
 static int32_t sha256Update( void * hashContext,
@@ -75,14 +77,81 @@ static int32_t sha256Final( void * hashContext,
     return ret == 1? 0:-1;
 }
 
+NetworkingLibwebsocketsResult_t uriEncodedString( char *pSrc, size_t srcLength, char *pDst, size_t *pDstLength )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t encodedLength = 0, remainLength;
+    char *pCurPtr = pSrc, *pEnc = pDst;
+    char ch;
+    const char alpha[17] = "0123456789ABCDEF";
+
+    if( pSrc == NULL || pDst == NULL || pDstLength == NULL )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        // Set the remainLength length
+        remainLength = *pDstLength;
+
+        while( ( ( size_t ) ( pCurPtr - pSrc ) < srcLength ) && ( ( ch = *pCurPtr++ ) != '\0') )
+        {
+            if( ( ch >= 'A' && ch <= 'Z' ) || ( ch >= 'a' && ch <= 'z' ) || ( ch >= '0' && ch <= '9' ) || ch == '_' || ch == '-' || ch == '~' || ch == '.')
+            {
+                if( remainLength < 1U )
+                {
+                    ret = NETWORKING_LIBWEBSOCKETS_RESULT_URI_ENCODED_BUFFER_TOO_SMALL;
+                    break;
+                }
+                
+                encodedLength++;
+                *pEnc++ = ch;
+                remainLength--;
+            }
+            else if( ch == '/' )
+            {
+                if( remainLength < NETWORKING_LWS_URI_ENCODED_CHAR_SIZE )
+                {
+                    ret = NETWORKING_LIBWEBSOCKETS_RESULT_URI_ENCODED_BUFFER_TOO_SMALL;
+                    break;
+                }
+                
+                encodedLength += NETWORKING_LWS_URI_ENCODED_CHAR_SIZE;
+                strncpy( pEnc, NETWORKING_LWS_URI_ENCODED_FORWARD_SLASH, remainLength );
+                pEnc += NETWORKING_LWS_URI_ENCODED_CHAR_SIZE;
+                remainLength -= NETWORKING_LWS_URI_ENCODED_CHAR_SIZE;
+            }
+            else
+            {
+                if( remainLength < NETWORKING_LWS_URI_ENCODED_CHAR_SIZE )
+                {
+                    ret = NETWORKING_LIBWEBSOCKETS_RESULT_URI_ENCODED_BUFFER_TOO_SMALL;
+                    break;
+                }
+                
+                encodedLength += NETWORKING_LWS_URI_ENCODED_CHAR_SIZE;
+                *pEnc++ = '%';
+                *pEnc++ = alpha[ch >> 4];
+                *pEnc++ = alpha[ch & 0x0f];
+                remainLength -= NETWORKING_LWS_URI_ENCODED_CHAR_SIZE;
+            }
+        }
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        *pDstLength -= remainLength;
+    }
+
+    return ret;
+}
+
 NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsocketCanonicalRequest_t *pCanonicalRequest )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     SigV4HttpParameters_t sigv4HttpParams;
     SigV4Status_t sigv4Status = SigV4Success;
-    /* Store Signature used in AWS HTTP requests generated using SigV4 library. */
-    char * signature = NULL;
-    size_t signatureLen = 0;
     uint8_t isHttp;
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -106,6 +175,7 @@ NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsoc
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         /* Setup the HTTP parameters for SigV4. */
+        sigv4HttpParams.flags = 0;
         if( isHttp )
         {
             sigv4HttpParams.pHttpMethod = NETWORKING_LWS_STRING_HTTPS_METHOD;
@@ -115,6 +185,7 @@ NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsoc
         {
             sigv4HttpParams.pHttpMethod = NETWORKING_LWS_STRING_WSS_METHOD;
             sigv4HttpParams.httpMethodLen = strlen( NETWORKING_LWS_STRING_WSS_METHOD );
+            sigv4HttpParams.flags |= SIGV4_HTTP_QUERY_IS_CANONICAL_FLAG;
         }
         sigv4HttpParams.pPath = pCanonicalRequest->pPath;
         sigv4HttpParams.pathLen = pCanonicalRequest->pathLength;
@@ -124,7 +195,6 @@ NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsoc
         sigv4HttpParams.headersLen = pCanonicalRequest->canonicalHeadersLength;
         sigv4HttpParams.pPayload = pCanonicalRequest->pPayload;
         sigv4HttpParams.payloadLen = pCanonicalRequest->payloadLength;
-        sigv4HttpParams.flags = 0;
         
         /* Initializing sigv4Params with Http parameters required for the HTTP request. */
         sigv4Params.pHttpParameters = &sigv4HttpParams;
@@ -136,7 +206,8 @@ NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsoc
 
         /* Reset buffer length then generate authorization. */
         networkingLibwebsocketContext.sigv4AuthLen = NETWORKING_LWS_SIGV4_AUTH_BUFFER_LENGTH;
-        sigv4Status = SigV4_GenerateHTTPAuthorization( &sigv4Params, networkingLibwebsocketContext.sigv4AuthBuffer, &networkingLibwebsocketContext.sigv4AuthLen, &signature, &signatureLen );
+        sigv4Status = SigV4_GenerateHTTPAuthorization( &sigv4Params, networkingLibwebsocketContext.sigv4AuthBuffer, &networkingLibwebsocketContext.sigv4AuthLen,
+                                                       &networkingLibwebsocketContext.appendHeaders.pSignature, &networkingLibwebsocketContext.appendHeaders.signatureLength );
         
         if( sigv4Status != SigV4Success )
         {

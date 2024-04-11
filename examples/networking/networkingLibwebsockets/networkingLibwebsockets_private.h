@@ -42,6 +42,7 @@ NetworkingLibwebsocketsResult_t getPathFromUrl( char *pUrl, size_t urlLength, ch
 NetworkingLibwebsocketsResult_t getIso8601CurrentTime( char **ppDate, size_t * pDateLength );
 NetworkingLibwebsocketsResult_t performLwsConnect( char *pHost, size_t hostLength, uint16_t port, uint8_t isHttp );
 NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsocketCanonicalRequest_t *pCanonicalRequest );
+NetworkingLibwebsocketsResult_t uriEncodedString( char *pSrc, size_t srcLength, char *pDst, size_t *pDstLength );
 
 /* HTTP functions */
 int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize);

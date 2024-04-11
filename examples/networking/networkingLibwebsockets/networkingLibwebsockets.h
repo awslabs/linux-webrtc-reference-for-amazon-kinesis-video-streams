@@ -41,12 +41,16 @@ typedef enum NetworkingLibwebsocketsResult
     NETWORKING_LIBWEBSOCKETS_RESULT_INIT_LWS_CONTEXT_FAIL,
     NETWORKING_LIBWEBSOCKETS_RESULT_PATH_BUFFER_TOO_SMALL,
     NETWORKING_LIBWEBSOCKETS_RESULT_HOST_BUFFER_TOO_SMALL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL,
     NETWORKING_LIBWEBSOCKETS_RESULT_INVALID_AUTH_VERB,
     NETWORKING_LIBWEBSOCKETS_RESULT_UNEXPECTED_WEBSOCKET_URL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_URI_ENCODED_BUFFER_TOO_SMALL,
 } NetworkingLibwebsocketsResult_t;
 
 typedef struct NetworkingLibwebsocketsAppendHeaders
 {
+    char *pChannelArn;
+    size_t channelArnLength;
     char *pUserAgent;
     size_t userAgentLength;
     char *pHost;
@@ -58,8 +62,8 @@ typedef struct NetworkingLibwebsocketsAppendHeaders
     size_t contentLength;
     char *pAuthorization;
     size_t authorizationLength;
-    char *pChannelArn;
-    size_t channelArnLength;
+    char *pSignature;
+    size_t signatureLength;
 } NetworkingLibwebsocketsAppendHeaders_t;
 
 typedef struct NetworkingLibwebsocketsCredentials
