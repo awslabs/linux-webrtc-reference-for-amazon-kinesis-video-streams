@@ -67,6 +67,7 @@ static SignalingControllerResult_t WebsocketLibwebsockets_Connect( WebsocketServ
 static void printMetrics( SignalingControllerContext_t * pCtx )
 {
     uint8_t i, j;
+    long long duration_ms;
 
     /* channel info */
     printf( "======================================== Channel Info ========================================\n" );
@@ -93,6 +94,21 @@ static void printMetrics( SignalingControllerContext_t * pCtx )
             printf( "        URI: %s\n", pCtx->iceServerConfigs[i].uris[j] );
         }
     }
+
+    /* Print each step duration */
+    printf( "\n======================================== Duration ========================================\n" );
+    duration_ms = (pCtx->metrics.describeSignalingChannelEndTime.tv_sec - pCtx->metrics.describeSignalingChannelStartTime.tv_sec) * 1000LL +
+                  (pCtx->metrics.describeSignalingChannelEndTime.tv_usec - pCtx->metrics.describeSignalingChannelStartTime.tv_usec) / 1000LL;
+    printf( "Duration of Describe Signaling Channel: %lld ms\n", duration_ms );
+    duration_ms = (pCtx->metrics.getSignalingEndpointsEndTime.tv_sec - pCtx->metrics.getSignalingEndpointsStartTime.tv_sec) * 1000LL +
+                  (pCtx->metrics.getSignalingEndpointsEndTime.tv_usec - pCtx->metrics.getSignalingEndpointsStartTime.tv_usec) / 1000LL;
+    printf( "Duration of Get Signaling Endpoints: %lld ms\n", duration_ms );
+    duration_ms = (pCtx->metrics.getIceServerListEndTime.tv_sec - pCtx->metrics.getIceServerListStartTime.tv_sec) * 1000LL +
+                  (pCtx->metrics.getIceServerListEndTime.tv_usec - pCtx->metrics.getIceServerListStartTime.tv_usec) / 1000LL;
+    printf( "Duration of Get Ice Server List: %lld ms\n", duration_ms );
+    duration_ms = (pCtx->metrics.connectWssServerEndTime.tv_sec - pCtx->metrics.connectWssServerStartTime.tv_sec) * 1000LL +
+                  (pCtx->metrics.connectWssServerEndTime.tv_usec - pCtx->metrics.connectWssServerStartTime.tv_usec) / 1000LL;
+    printf( "Duration of Connect Websocket Server: %lld ms\n", duration_ms );
 }
 
 static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t *pCtx, SignalingGetIceServerConfigResponse_t *pGetIceServerConfigResponse )
@@ -378,7 +394,7 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
     return ret;
 }
 
-static SignalingControllerResult_t getSignalingServerList( SignalingControllerContext_t * pCtx )
+static SignalingControllerResult_t getIceServerList( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t retSignal;
@@ -570,25 +586,33 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
     /* Execute describe channel if no channel ARN. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
+        gettimeofday( &pCtx->metrics.describeSignalingChannelStartTime, NULL );
         ret = describeSignalingChannel( pCtx );
+        gettimeofday( &pCtx->metrics.describeSignalingChannelEndTime, NULL );
     }
 
     /* Query signaling channel endpoints with channel ARN. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
+        gettimeofday( &pCtx->metrics.getSignalingEndpointsStartTime, NULL );
         ret = getSignalingChannelEndpoints( pCtx );
+        gettimeofday( &pCtx->metrics.getSignalingEndpointsEndTime, NULL );
     }
 
     /* Query ICE server list with HTTPS endpoint. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        ret = getSignalingServerList( pCtx );
+        gettimeofday( &pCtx->metrics.getIceServerListStartTime, NULL );
+        ret = getIceServerList( pCtx );
+        gettimeofday( &pCtx->metrics.getIceServerListEndTime, NULL );
     }
 
     /* Connect websocket secure endpoint. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
+        gettimeofday( &pCtx->metrics.connectWssServerStartTime, NULL );
         ret = connectWssEndpoint( pCtx );
+        gettimeofday( &pCtx->metrics.connectWssServerEndTime, NULL );
     }
 
     /* Print metric. */

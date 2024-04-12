@@ -10,6 +10,7 @@ extern "C" {
 /* Standard includes. */
 #include <stdint.h>
 #include <stddef.h>
+#include <time.h>
 #include "signaling_api.h"
 #include "networkingLibwebsockets.h"
 
@@ -106,6 +107,18 @@ typedef struct SignalingControllerIceServerConfig
     size_t passwordLength;                                                                                          //!< Length of password
 } SignalingControllerIceServerConfig_t;
 
+typedef struct SignalingControllerMetrics
+{
+    struct timeval describeSignalingChannelStartTime;
+    struct timeval describeSignalingChannelEndTime;
+    struct timeval getSignalingEndpointsStartTime;
+    struct timeval getSignalingEndpointsEndTime;
+    struct timeval getIceServerListStartTime;
+    struct timeval getIceServerListEndTime;
+    struct timeval connectWssServerStartTime;
+    struct timeval connectWssServerEndTime;
+} SignalingControllerMetrics_t;
+
 typedef struct SignalingControllerContext
 {
     /* Signaling Component Context */
@@ -117,6 +130,8 @@ typedef struct SignalingControllerContext
 
     uint8_t iceServerConfigsCount;
     SignalingControllerIceServerConfig_t iceServerConfigs[SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT];
+
+    SignalingControllerMetrics_t metrics;
 } SignalingControllerContext_t;
 
 #ifdef __cplusplus
