@@ -523,6 +523,8 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
 int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize)
 {
     int32_t retValue = 0;
+    int32_t skipProcess = 0;
+    NetworkingLibwebsocketsResult_t websocketRet = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 
     printf( "Websocket callback with reason %d\n", reason );
     
@@ -549,6 +551,47 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
             break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
+            if( lws_frame_is_binary(wsi) ||
+                dataSize == 0 )
+            {
+                /* Binary data is not supported. */
+                skipProcess = 1;
+            }
+
+            if( skipProcess == 0 )
+            {
+                /* Store the message into buffer. */
+                // Check what type of a message it is. We will set the size to 0 on first and flush on last
+                if( lws_is_first_fragment(wsi) )
+                {
+                    networkingLibwebsocketContext.websocketRxBufferLength = 0;
+                }
+
+                // Store the data in the buffer
+                if( networkingLibwebsocketContext.websocketRxBufferLength + dataSize < NETWORKING_LWS_WEBSOCKET_RX_BUFFER_LENGTH )
+                {
+                    memcpy( &networkingLibwebsocketContext.websocketRxBuffer[ networkingLibwebsocketContext.websocketRxBufferLength ], pDataIn, dataSize );
+                    networkingLibwebsocketContext.websocketRxBufferLength += dataSize;
+                    printf( "Receive length %ld message from server, totally %ld\n", dataSize, networkingLibwebsocketContext.websocketRxBufferLength );
+                }
+                else
+                {
+                    printf( "Buffer is not enough for received message, totally %ld\n", networkingLibwebsocketContext.websocketRxBufferLength + dataSize );
+                    retValue = 1;
+                    break;
+                }
+
+                /* callback to user if it's the final fragment. */
+                if( lws_is_final_fragment(wsi) )
+                {
+                    if( networkingLibwebsocketContext.websocketMessageCallback != NULL )
+                    {
+                        networkingLibwebsocketContext.websocketMessageCallback( networkingLibwebsocketContext.websocketRxBuffer,
+                                                                                networkingLibwebsocketContext.websocketRxBufferLength,
+                                                                                networkingLibwebsocketContext.pWebsocketMessageCallbackContext );
+                    }
+                }
+            }
 
             break;
 
@@ -599,9 +642,27 @@ WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
     return ret;
 }
 
-WebsocketResult_t Websocket_Init( void * pCredential )
+WebsocketResult_t Websocket_Init( void * pCredential, WebsocketMessageCallback_t websocketMessageCallback, void *pCallbackContext )
 {
+    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     NetworkingLibwebsocketsCredentials_t *pNetworkingLibwebsocketsCredentials = (NetworkingLibwebsocketsCredentials_t *)pCredential;
 
-    return NetworkingLibwebsockets_Init( pNetworkingLibwebsocketsCredentials );
+    ret = NetworkingLibwebsockets_Init( pNetworkingLibwebsocketsCredentials );
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        networkingLibwebsocketContext.websocketMessageCallback = websocketMessageCallback;
+        networkingLibwebsocketContext.pWebsocketMessageCallbackContext = pCallbackContext;
+    }
+
+    return ret;
+}
+
+WebsocketResult_t Websocket_Recv()
+{
+    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    
+    ret = performLwsRecv();
+
+    return ret;
 }

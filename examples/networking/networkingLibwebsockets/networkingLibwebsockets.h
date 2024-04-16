@@ -24,6 +24,7 @@ extern "C" {
 #define NETWORKING_LWS_SIGV4_AUTH_BUFFER_LENGTH ( 2048 )
 #define NETWORKING_LWS_URI_HOST_MAX_LENGTH ( 128 )
 #define NETWORKING_LWS_QUERY_PARAM_MAX_NUM ( 4 )
+#define NETWORKING_LWS_WEBSOCKET_RX_BUFFER_LENGTH ( 10000 )
 
 typedef enum NetworkingLibwebsocketsResult
 {
@@ -45,6 +46,8 @@ typedef enum NetworkingLibwebsocketsResult
     NETWORKING_LIBWEBSOCKETS_RESULT_INVALID_AUTH_VERB,
     NETWORKING_LIBWEBSOCKETS_RESULT_UNEXPECTED_WEBSOCKET_URL,
     NETWORKING_LIBWEBSOCKETS_RESULT_URI_ENCODED_BUFFER_TOO_SMALL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_UNKNOWN_MESSAGE,
+    NETWORKING_LIBWEBSOCKETS_RESULT_BASE64_DECODE_FAIL,
 } NetworkingLibwebsocketsResult_t;
 
 typedef struct NetworkingLibwebsocketsAppendHeaders
@@ -110,6 +113,12 @@ typedef struct NetworkingLibwebsocketContext
 
     /* OpenSSL SHA256 context. */
     SHA256_CTX sha256Ctx;
+
+    /* Callback function to let user handle received message. */
+    WebsocketMessageCallback_t websocketMessageCallback;
+    void * pWebsocketMessageCallbackContext;
+    char websocketRxBuffer[ NETWORKING_LWS_WEBSOCKET_RX_BUFFER_LENGTH ];
+    size_t websocketRxBufferLength;
 } NetworkingLibwebsocketContext_t;
 
 #ifdef __cplusplus

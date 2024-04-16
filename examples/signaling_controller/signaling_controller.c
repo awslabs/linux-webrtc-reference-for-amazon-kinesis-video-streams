@@ -4,9 +4,67 @@
 #include "libwebsockets.h"
 #include "signaling_api.h"
 #include "networkingLibwebsockets.h"
+#include "base64.h"
 
 #define MAX_URI_CHAR_LEN ( 10000 )
 #define MAX_JSON_PARAMETER_STRING_LEN ( 10 * 1024 )
+
+static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t *pCtx, SignalingIceServerList_t *pIceServerList );
+
+static WebsocketResult_t handleWssMessage( char *pMessage, size_t messageLength, void *pUserContext )
+{
+    WebsocketResult_t ret = WEBSOCKET_RESULT_OK;
+    SignalingResult_t retSignal;
+    SignalingWssRecvMessage_t wssRecvMessage;
+    SignalingControllerContext_t *pCtx = ( SignalingControllerContext_t * ) pUserContext;
+    SignalingControllerReceiveEvent_t receiveEvent;
+    Base64Result_t retBase64;
+    
+    // Parse the response
+    retSignal = Signaling_parseWssRecvMessage( pMessage, (size_t) messageLength, &wssRecvMessage );
+    if( retSignal != SIGNALING_RESULT_OK )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_UNKNOWN_MESSAGE;
+    }
+
+    if( ret == WEBSOCKET_RESULT_OK &&
+        wssRecvMessage.iceServerList.iceServerNum > 0U &&
+        wssRecvMessage.messageType == SIGNALING_TYPE_MESSAGE_SDP_OFFER )
+    {
+        ret = updateIceServerConfigs( pCtx, &wssRecvMessage.iceServerList );
+    }
+
+    /* Decode base64 payload. */
+    if( ret == WEBSOCKET_RESULT_OK )
+    {
+        pCtx->decodeBufferLength = SIGNALING_CONTROLLER_DECODED_BUFFER_LENGTH;
+        retBase64 = base64Decode( wssRecvMessage.pBase64EncodedPayload, wssRecvMessage.base64EncodedPayloadLength, pCtx->decodeBuffer, &pCtx->decodeBufferLength );
+
+        if( retBase64 != BASE64_RESULT_OK )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_BASE64_DECODE_FAIL;
+        }
+    }
+
+    if( ret == WEBSOCKET_RESULT_OK )
+    {
+        memset( &receiveEvent, 0, sizeof( SignalingControllerReceiveEvent_t ) );
+        receiveEvent.pSenderClientId = wssRecvMessage.pSenderClientId;
+        receiveEvent.senderClientIdLength = wssRecvMessage.senderClientIdLength;
+        receiveEvent.pCorrelationId = wssRecvMessage.statusResponse.pCorrelationId;
+        receiveEvent.correlationIdLength = wssRecvMessage.statusResponse.correlationIdLength;
+        receiveEvent.messageType = wssRecvMessage.messageType;
+        receiveEvent.pDecodeMessage = pCtx->decodeBuffer;
+        receiveEvent.decodeMessageLength = pCtx->decodeBufferLength;
+
+        if( pCtx->receiveMessageCallback != NULL )
+        {
+            pCtx->receiveMessageCallback( &receiveEvent, pCtx->pReceiveMessageCallbackContext );
+        }
+    }
+
+    return ret;
+}
 
 static SignalingControllerResult_t HttpLibwebsockets_Init( SignalingControllerContext_t *pCtx )
 {
@@ -29,6 +87,32 @@ static SignalingControllerResult_t HttpLibwebsockets_Init( SignalingControllerCo
     if( retHttp != HTTP_RESULT_OK )
     {
         ret = SIGNALING_CONTROLLER_RESULT_HTTP_INIT_FAIL;
+    }
+
+    return ret;
+}
+
+static SignalingControllerResult_t WebsocketLibwebsockets_Init( SignalingControllerContext_t *pCtx )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    WebsocketResult_t retWebsocket;
+    NetworkingLibwebsocketsCredentials_t libwebsocketsCred;
+
+    libwebsocketsCred.pUserAgent = pCtx->credential.pUserAgentName;
+    libwebsocketsCred.userAgentLength = pCtx->credential.userAgentNameLength;
+    libwebsocketsCred.pRegion = pCtx->credential.pRegion;
+    libwebsocketsCred.regionLength = pCtx->credential.regionLength;
+    libwebsocketsCred.pAccessKeyId = pCtx->credential.pAccessKeyId;
+    libwebsocketsCred.accessKeyIdLength = pCtx->credential.accessKeyIdLength;
+    libwebsocketsCred.pSecretAccessKey = pCtx->credential.pSecretAccessKey;
+    libwebsocketsCred.secretAccessKeyLength = pCtx->credential.secretAccessKeyLength;
+    libwebsocketsCred.pCaCertPath = pCtx->credential.pCaCertPath;
+
+    retWebsocket = Websocket_Init( &libwebsocketsCred, handleWssMessage, pCtx );
+
+    if( retWebsocket != HTTP_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_WEBSOCKET_INIT_FAIL;
     }
 
     return ret;
@@ -111,30 +195,30 @@ static void printMetrics( SignalingControllerContext_t * pCtx )
     printf( "Duration of Connect Websocket Server: %lld ms\n", duration_ms );
 }
 
-static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t *pCtx, SignalingGetIceServerConfigResponse_t *pGetIceServerConfigResponse )
+static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t *pCtx, SignalingIceServerList_t *pIceServerList )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     uint8_t i, j;
 
-    if( pCtx == NULL || pGetIceServerConfigResponse == NULL )
+    if( pCtx == NULL || pIceServerList == NULL )
     {
         ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        for( i=0 ; i<pGetIceServerConfigResponse->iceServerNum ; i++ )
+        for( i=0 ; i<pIceServerList->iceServerNum ; i++ )
         {
             if( i >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT )
             {
                 break;
             }
-            else if( pGetIceServerConfigResponse->iceServer[i].userNameLength >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_USER_NAME_LENGTH )
+            else if( pIceServerList->iceServer[i].userNameLength >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_USER_NAME_LENGTH )
             {
                 ret = SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_USERNAME;
                 break;
             }
-            else if( pGetIceServerConfigResponse->iceServer[i].passwordLength >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_PASSWORD_LENGTH )
+            else if( pIceServerList->iceServer[i].passwordLength >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_PASSWORD_LENGTH )
             {
                 ret = SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_PASSWORD;
                 break;
@@ -144,19 +228,19 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
                 /* Do nothing, coverity happy. */
             }
 
-            memcpy( pCtx->iceServerConfigs[i].userName, pGetIceServerConfigResponse->iceServer[i].pUserName, pGetIceServerConfigResponse->iceServer[i].userNameLength );
-            pCtx->iceServerConfigs[i].userNameLength = pGetIceServerConfigResponse->iceServer[i].userNameLength;
-            memcpy( pCtx->iceServerConfigs[i].password, pGetIceServerConfigResponse->iceServer[i].pPassword, pGetIceServerConfigResponse->iceServer[i].passwordLength );
-            pCtx->iceServerConfigs[i].passwordLength = pGetIceServerConfigResponse->iceServer[i].passwordLength;
-            pCtx->iceServerConfigs[i].ttlSeconds = pGetIceServerConfigResponse->iceServer[i].messageTtlSeconds;
+            memcpy( pCtx->iceServerConfigs[i].userName, pIceServerList->iceServer[i].pUserName, pIceServerList->iceServer[i].userNameLength );
+            pCtx->iceServerConfigs[i].userNameLength = pIceServerList->iceServer[i].userNameLength;
+            memcpy( pCtx->iceServerConfigs[i].password, pIceServerList->iceServer[i].pPassword, pIceServerList->iceServer[i].passwordLength );
+            pCtx->iceServerConfigs[i].passwordLength = pIceServerList->iceServer[i].passwordLength;
+            pCtx->iceServerConfigs[i].ttlSeconds = pIceServerList->iceServer[i].messageTtlSeconds;
 
-            for( j=0 ; j<pGetIceServerConfigResponse->iceServer[i].urisNum ; j++ )
+            for( j=0 ; j<pIceServerList->iceServer[i].urisNum ; j++ )
             {
                 if( j >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_URIS_COUNT )
                 {
                     break;
                 }
-                else if( pGetIceServerConfigResponse->iceServer[i].urisLength[j] >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_URI_LENGTH )
+                else if( pIceServerList->iceServer[i].urisLength[j] >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_URI_LENGTH )
                 {
                     ret = SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_URI;
                     break;
@@ -166,8 +250,8 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
                     /* Do nothing, coverity happy. */
                 }
 
-                memcpy( &pCtx->iceServerConfigs[i].uris[j], pGetIceServerConfigResponse->iceServer[i].pUris[j], pGetIceServerConfigResponse->iceServer[i].urisLength[j] );
-                pCtx->iceServerConfigs[i].urisLength[j] = pGetIceServerConfigResponse->iceServer[i].urisLength[j];
+                memcpy( &pCtx->iceServerConfigs[i].uris[j], pIceServerList->iceServer[i].pUris[j], pIceServerList->iceServer[i].urisLength[j] );
+                pCtx->iceServerConfigs[i].urisLength[j] = pIceServerList->iceServer[i].urisLength[j];
             }
 
             if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -507,7 +591,7 @@ static SignalingControllerResult_t connectWssEndpoint( SignalingControllerContex
     return ret;
 }
 
-SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx, SignalingControllerCredential_t * pCred )
+SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx, SignalingControllerCredential_t * pCred, SignalingControllerReceiveMessageCallback receiveMessageCallback, void *pReceiveMessageCallbackContext )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t retSignal;
@@ -541,6 +625,9 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
         pCtx->credential.secretAccessKeyLength = pCred->secretAccessKeyLength;
 
         pCtx->credential.pCaCertPath = pCred->pCaCertPath;
+
+        pCtx->receiveMessageCallback = receiveMessageCallback;
+        pCtx->pReceiveMessageCallbackContext = pReceiveMessageCallbackContext;
     }
 
     /* Initialize signaling component. */
@@ -562,6 +649,12 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         ret = HttpLibwebsockets_Init( pCtx );
+    }
+
+    /* Initializa Websocket. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        ret = WebsocketLibwebsockets_Init( pCtx );
     }
 
     return ret;
@@ -627,6 +720,18 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
 SignalingControllerResult_t SignalingController_ProcessLoop( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    WebsocketResult_t websocketRet;
+
+    for( ;; )
+    {
+        websocketRet = Websocket_Recv();
+
+        if( websocketRet != WEBSOCKET_RESULT_OK )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_WSS_RECV_FAIL;
+            break;
+        }
+    }
 
     return ret;
 }

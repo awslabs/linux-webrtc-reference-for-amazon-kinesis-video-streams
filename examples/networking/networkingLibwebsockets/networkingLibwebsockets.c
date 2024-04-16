@@ -275,6 +275,16 @@ NetworkingLibwebsocketsResult_t performLwsConnect( char *pHost, size_t hostLengt
     return ret;
 }
 
+NetworkingLibwebsocketsResult_t performLwsRecv()
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    int32_t lwsReturn;
+
+    lwsReturn = lws_service(networkingLibwebsocketContext.pLwsContext, 0);
+
+    return ret;
+}
+
 NetworkingLibwebsocketsResult_t getPathFromUrl( char *pUrl, size_t urlLength, char **ppPath, size_t *pPathLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;

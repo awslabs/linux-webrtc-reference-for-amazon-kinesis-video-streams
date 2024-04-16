@@ -23,8 +23,11 @@ typedef struct WebsocketServerInfo
     uint16_t port;
 } WebsocketServerInfo_t;
 
-WebsocketResult_t Websocket_Init( void * pCredential );
+typedef WebsocketResult_t (*WebsocketMessageCallback_t)( char *pMessage, size_t messageLength, void *pUserContext );
+
+WebsocketResult_t Websocket_Init( void * pCredential, WebsocketMessageCallback_t receiveMessageCallback, void *pCallbackContext );
 WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo );
+WebsocketResult_t Websocket_Recv();
 
 #ifdef __cplusplus
 }

@@ -24,6 +24,20 @@ extern "C" {
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_URI_LENGTH ( 256 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_USER_NAME_LENGTH ( 256 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_PASSWORD_LENGTH ( 256 )
+#define SIGNALING_CONTROLLER_DECODED_BUFFER_LENGTH ( 10000 )
+
+typedef struct SignalingControllerReceiveEvent
+{
+    const char *pSenderClientId;
+    size_t senderClientIdLength;
+    SignalingTypeMessage_t messageType;
+    const char *pDecodeMessage;
+    size_t decodeMessageLength;
+    const char *pCorrelationId;
+    size_t correlationIdLength;
+} SignalingControllerReceiveEvent_t;
+
+typedef int32_t (*SignalingControllerReceiveMessageCallback)( SignalingControllerReceiveEvent_t *pEvent, void *pUserContext );
 
 typedef enum SignalingControllerResult
 {
@@ -48,7 +62,9 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_URI,
     SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_USERNAME,
     SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_PASSWORD,
+    SIGNALING_CONTROLLER_RESULT_WEBSOCKET_INIT_FAIL,
     SIGNALING_CONTROLLER_RESULT_WSS_CONNECT_FAIL,
+    SIGNALING_CONTROLLER_RESULT_WSS_RECV_FAIL,
 } SignalingControllerResult_t;
 
 typedef struct SignalingControllerCredential
@@ -132,6 +148,11 @@ typedef struct SignalingControllerContext
     SignalingControllerIceServerConfig_t iceServerConfigs[SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT];
 
     SignalingControllerMetrics_t metrics;
+
+    SignalingControllerReceiveMessageCallback receiveMessageCallback;
+    void *pReceiveMessageCallbackContext;
+    char decodeBuffer[ SIGNALING_CONTROLLER_DECODED_BUFFER_LENGTH ];
+    size_t decodeBufferLength;
 } SignalingControllerContext_t;
 
 #ifdef __cplusplus

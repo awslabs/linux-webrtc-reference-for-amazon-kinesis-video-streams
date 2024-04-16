@@ -49,6 +49,7 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
 
 /* Websocket functions */
 int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize);
+NetworkingLibwebsocketsResult_t performLwsRecv();
 
 extern NetworkingLibwebsocketContext_t networkingLibwebsocketContext;
 
