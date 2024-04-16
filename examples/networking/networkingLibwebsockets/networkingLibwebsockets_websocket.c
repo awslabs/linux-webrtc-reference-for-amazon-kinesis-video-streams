@@ -1,3 +1,4 @@
+#include "logging.h"
 #include "networkingLibwebsockets.h"
 #include "networkingLibwebsockets_private.h"
 
@@ -526,27 +527,27 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
     int32_t skipProcess = 0;
     NetworkingLibwebsocketsResult_t websocketRet = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 
-    printf( "Websocket callback with reason %d\n", reason );
+    LogInfo( ( "Websocket callback with reason %d", reason ) );
     
     switch (reason)
     {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-            printf( "Client WSS connection error\n" );
+            LogWarn( ( "Client WSS connection error" ) );
             networkingLibwebsocketContext.terminateLwsService = 1U;
             break;
 
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
-            printf( "Connection established\n" );
+            LogInfo( ( "Connection established" ) );
             networkingLibwebsocketContext.terminateLwsService = 1U;
             break;
 
         case LWS_CALLBACK_CLIENT_CLOSED:
-            printf( "Client WSS closed\n" );
+            LogInfo( ( "Client WSS closed" ) );
             networkingLibwebsocketContext.terminateLwsService = 1U;
             break;
 
         case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE:
-            printf( "Peer closed the connection\n" );
+            LogInfo( ( "Peer closed the connection" ) );
             networkingLibwebsocketContext.terminateLwsService = 1U;
             break;
 
@@ -572,11 +573,11 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
                 {
                     memcpy( &networkingLibwebsocketContext.websocketRxBuffer[ networkingLibwebsocketContext.websocketRxBufferLength ], pDataIn, dataSize );
                     networkingLibwebsocketContext.websocketRxBufferLength += dataSize;
-                    printf( "Receive length %ld message from server, totally %ld\n", dataSize, networkingLibwebsocketContext.websocketRxBufferLength );
+                    LogDebug( ( "Receive length %ld message from server, totally %ld", dataSize, networkingLibwebsocketContext.websocketRxBufferLength ) );
                 }
                 else
                 {
-                    printf( "Buffer is not enough for received message, totally %ld\n", networkingLibwebsocketContext.websocketRxBufferLength + dataSize );
+                    LogWarn( ( "Buffer is not enough for received message, totally %ld", networkingLibwebsocketContext.websocketRxBufferLength + dataSize ) );
                     retValue = 1;
                     break;
                 }

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <pthread.h>
 #include "demo_config.h"
+#include "logging.h"
 #include "signaling_controller.h"
 
 SignalingControllerContext_t signalingControllerContext;
@@ -9,17 +10,12 @@ SignalingControllerContext_t signalingControllerContext;
 int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t *pEvent, void *pUserContext )
 {
     ( void ) pUserContext;
-    printf( "Received Message from websocket server!\n"
-            "Message Type: %x\n"
-            "Sender ID: %.*s\n"
-            "Correlation ID: %.*s\n"
-            "Message: Length %ld\n"
-            "%.*s\n",
-            pEvent->messageType,
-            ( int ) pEvent->senderClientIdLength, pEvent->pSenderClientId,
-            ( int ) pEvent->correlationIdLength, pEvent->pCorrelationId,
-            pEvent->decodeMessageLength,
-            ( int ) pEvent->decodeMessageLength, pEvent->pDecodeMessage );
+    LogInfo( ( "Received Message from websocket server!" ) );
+    LogDebug( ( "Message Type: %x", pEvent->messageType ) );
+    LogDebug( ( "Sender ID: %.*s", ( int ) pEvent->senderClientIdLength, pEvent->pSenderClientId ) );
+    LogDebug( ( "Correlation ID: %.*s", ( int ) pEvent->correlationIdLength, pEvent->pCorrelationId ) );
+    LogDebug( ( "Message Length: %ld, Message:", pEvent->decodeMessageLength ) );
+    LogDebug( ( "%.*s", ( int ) pEvent->decodeMessageLength, pEvent->pDecodeMessage ) );
     return 0;
 }
 

@@ -4,8 +4,6 @@ set(CMAKE_COREJSON_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon
 include( ${CMAKE_SIGNALING_DIRECTORY}/signalingFilePaths.cmake )
 include( ${CMAKE_COREJSON_DIRECTORY}/jsonFilePaths.cmake )
 
-add_compile_definitions( SIGNALING_DO_NOT_USE_CUSTOM_CONFIG )
-
 add_library( signaling
              ${SIGNALING_SOURCES}
              ${JSON_SOURCES} )
@@ -16,3 +14,5 @@ target_include_directories( signaling PRIVATE
 
 set( SIGNALING_INCLUDE_PUBLIC_DIRS ${SIGNALING_INCLUDE_PUBLIC_DIRS}
                                    ${JSON_INCLUDE_PUBLIC_DIRS} )
+
+target_compile_definitions( signaling PUBLIC SIGNALING_DO_NOT_USE_CUSTOM_CONFIG )

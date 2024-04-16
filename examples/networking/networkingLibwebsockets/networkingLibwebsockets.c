@@ -1,5 +1,6 @@
 #include <string.h>
 #include <time.h>
+#include "logging.h"
 #include "networkingLibwebsockets.h"
 #include "networkingLibwebsockets_private.h"
 #include "libwebsockets.h"

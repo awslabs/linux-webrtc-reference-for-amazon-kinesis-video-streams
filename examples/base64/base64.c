@@ -1,3 +1,4 @@
+#include "logging.h"
 #include "base64.h"
 
 /**

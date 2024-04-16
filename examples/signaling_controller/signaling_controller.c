@@ -1,5 +1,5 @@
 #include <string.h>
-
+#include "logging.h"
 #include "signaling_controller.h"
 #include "libwebsockets.h"
 #include "signaling_api.h"
@@ -154,45 +154,45 @@ static void printMetrics( SignalingControllerContext_t * pCtx )
     long long duration_ms;
 
     /* channel info */
-    printf( "======================================== Channel Info ========================================\n" );
-    printf( "Signaling Channel Name: %s\n", pCtx->channelInfo.signalingChannelName );
-    printf( "Signaling Channel ARN: %s\n", pCtx->channelInfo.signalingChannelARN );
-    printf( "Signaling Channel TTL (seconds): %u\n", pCtx->channelInfo.signalingChannelTtlSeconds );
-    printf( "\n======================================== Endpoints Info ========================================\n" );
-    printf( "HTTPS Endpoint: %s\n", pCtx->channelInfo.endpointHttps );
-    printf( "WSS Endpoint: %s\n", pCtx->channelInfo.endpointWebsocketSecure );
-    printf( "WebRTC Endpoint: %s\n", pCtx->channelInfo.endpointWebrtc[0]=='\0'? "N/A":pCtx->channelInfo.endpointWebrtc );
+    LogDebug( ( "======================================== Channel Info ========================================" ) );
+    LogDebug( ( "Signaling Channel Name: %s", pCtx->channelInfo.signalingChannelName ) );
+    LogDebug( ( "Signaling Channel ARN: %s", pCtx->channelInfo.signalingChannelARN ) );
+    LogDebug( ( "Signaling Channel TTL (seconds): %u", pCtx->channelInfo.signalingChannelTtlSeconds ) );
+    LogDebug( ( "======================================== Endpoints Info ========================================" ) );
+    LogDebug( ( "HTTPS Endpoint: %s", pCtx->channelInfo.endpointHttps ) );
+    LogDebug( ( "WSS Endpoint: %s", pCtx->channelInfo.endpointWebsocketSecure ) );
+    LogDebug( ( "WebRTC Endpoint: %s", pCtx->channelInfo.endpointWebrtc[0]=='\0'? "N/A":pCtx->channelInfo.endpointWebrtc ) );
 
     /* Ice server list */
-    printf( "\n======================================== Ice Server List ========================================\n" );
-    printf( "Ice Server Count: %u\n", pCtx->iceServerConfigsCount );
+    LogDebug( ( "======================================== Ice Server List ========================================" ) );
+    LogDebug( ( "Ice Server Count: %u", pCtx->iceServerConfigsCount ) );
     for( i=0 ; i<pCtx->iceServerConfigsCount ; i++ )
     {
-        printf( "======================================== Ice Server[%u] ========================================\n", i );
-        printf( "    TTL (secodns): %u\n", pCtx->iceServerConfigs[i].ttlSeconds );
-        printf( "    User Name: %s\n", pCtx->iceServerConfigs[i].userName );
-        printf( "    Password: %s\n", pCtx->iceServerConfigs[i].password );
-        printf( "    URI Count: %u\n", pCtx->iceServerConfigs[i].uriCount );
+        LogDebug( ( "======================================== Ice Server[%u] ========================================", i ) );
+        LogDebug( ( "    TTL (secodns): %u", pCtx->iceServerConfigs[i].ttlSeconds ) );
+        LogDebug( ( "    User Name: %s", pCtx->iceServerConfigs[i].userName ) );
+        LogDebug( ( "    Password: %s", pCtx->iceServerConfigs[i].password ) );
+        LogDebug( ( "    URI Count: %u", pCtx->iceServerConfigs[i].uriCount ) );
         for( j=0 ; j<pCtx->iceServerConfigs[i].uriCount ; j++ )
         {
-            printf( "        URI: %s\n", pCtx->iceServerConfigs[i].uris[j] );
+            LogDebug( ( "        URI: %s", pCtx->iceServerConfigs[i].uris[j] ) );
         }
     }
 
     /* Print each step duration */
-    printf( "\n======================================== Duration ========================================\n" );
+    LogDebug( ( "======================================== Duration ========================================" ) );
     duration_ms = (pCtx->metrics.describeSignalingChannelEndTime.tv_sec - pCtx->metrics.describeSignalingChannelStartTime.tv_sec) * 1000LL +
                   (pCtx->metrics.describeSignalingChannelEndTime.tv_usec - pCtx->metrics.describeSignalingChannelStartTime.tv_usec) / 1000LL;
-    printf( "Duration of Describe Signaling Channel: %lld ms\n", duration_ms );
+    LogDebug( ( "Duration of Describe Signaling Channel: %lld ms", duration_ms ) );
     duration_ms = (pCtx->metrics.getSignalingEndpointsEndTime.tv_sec - pCtx->metrics.getSignalingEndpointsStartTime.tv_sec) * 1000LL +
                   (pCtx->metrics.getSignalingEndpointsEndTime.tv_usec - pCtx->metrics.getSignalingEndpointsStartTime.tv_usec) / 1000LL;
-    printf( "Duration of Get Signaling Endpoints: %lld ms\n", duration_ms );
+    LogDebug( ( "Duration of Get Signaling Endpoints: %lld ms", duration_ms ) );
     duration_ms = (pCtx->metrics.getIceServerListEndTime.tv_sec - pCtx->metrics.getIceServerListStartTime.tv_sec) * 1000LL +
                   (pCtx->metrics.getIceServerListEndTime.tv_usec - pCtx->metrics.getIceServerListStartTime.tv_usec) / 1000LL;
-    printf( "Duration of Get Ice Server List: %lld ms\n", duration_ms );
+    LogDebug( ( "Duration of Get Ice Server List: %lld ms", duration_ms ) );
     duration_ms = (pCtx->metrics.connectWssServerEndTime.tv_sec - pCtx->metrics.connectWssServerStartTime.tv_sec) * 1000LL +
                   (pCtx->metrics.connectWssServerEndTime.tv_usec - pCtx->metrics.connectWssServerStartTime.tv_usec) / 1000LL;
-    printf( "Duration of Connect Websocket Server: %lld ms\n", duration_ms );
+    LogDebug( ( "Duration of Connect Websocket Server: %lld ms", duration_ms ) );
 }
 
 static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t *pCtx, SignalingIceServerList_t *pIceServerList )

@@ -28,11 +28,12 @@ set( WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS
 
 file(
   GLOB
-  WEBRTC_APPLICATION_BASE64_UTILS_SOURCE_FILES
+  WEBRTC_APPLICATION_UTILS_SOURCE_FILES
   "examples/base64/*.c" )
 
-set( WEBRTC_APPLICATION_BASE64_UTILS_INCLUDE_DIRS
-     "examples/base64/" )
+set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
+     "examples/base64/"
+     "examples/logging/" )
 
 file(
   GLOB
@@ -47,13 +48,13 @@ add_executable(
     ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES}
     ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
-    ${WEBRTC_APPLICATION_BASE64_UTILS_SOURCE_FILES} )
+    ${WEBRTC_APPLICATION_UTILS_SOURCE_FILES} )
 
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS}
-                            ${WEBRTC_APPLICATION_BASE64_UTILS_INCLUDE_DIRS} )
+                            ${WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS} )
 
 # Include dependencies
 ## Include sigV4
@@ -76,6 +77,7 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/signaling.cmake )
 
 ## Set signaling include directories
+target_compile_definitions( WebRTCLinuxApplicationMaster PUBLIC SIGNALING_DO_NOT_USE_CUSTOM_CONFIG )
 message(STATUS "including signaling directories: ${SIGNALING_INCLUDE_PUBLIC_DIRS}")
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${SIGNALING_INCLUDE_PUBLIC_DIRS} )

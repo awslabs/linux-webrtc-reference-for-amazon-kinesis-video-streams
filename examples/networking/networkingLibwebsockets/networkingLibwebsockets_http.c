@@ -1,3 +1,4 @@
+#include "logging.h"
 #include "networkingLibwebsockets.h"
 #include "networkingLibwebsockets_private.h"
 #include "libwebsockets.h"
@@ -16,9 +17,9 @@ static NetworkingLibwebsocketsResult_t signHttpRequest( HttpRequest_t *pHttpRequ
      *
      * Note that we re-use the parsed result in pAppendHeaders from Http_Send(). */
     writtenLength = snprintf( networkingLibwebsocketContext.sigv4Metadatabuffer, NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH, "%s: %.*s\r\n%s: %.*s\r\n%s: %.*s\r\n",
-                                "host", ( int ) pAppendHeaders->hostLength, pAppendHeaders->pHost,
-                                "user-agent", ( int ) pAppendHeaders->userAgentLength, pAppendHeaders->pUserAgent,
-                                "x-amz-date", ( int ) pAppendHeaders->dateLength, pAppendHeaders->pDate );
+                              "host", ( int ) pAppendHeaders->hostLength, pAppendHeaders->pHost,
+                              "user-agent", ( int ) pAppendHeaders->userAgentLength, pAppendHeaders->pUserAgent,
+                              "x-amz-date", ( int ) pAppendHeaders->dateLength, pAppendHeaders->pDate );
 
     if( writtenLength < 0 )
     {
@@ -95,7 +96,7 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
 
     ( void ) pUser;
 
-    printf( "HTTP callback with reason %d\n", reason );
+    LogInfo( ( "HTTP callback with reason %d ", reason ) );
 
     switch (reason) {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
@@ -120,7 +121,7 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
             status = lws_http_client_http_response(wsi);
             // getStateMachineCurrentState(pSignalingClient->pStateMachine, &pStateMachineState);
 
-            printf( "Connected with server response: %d\n", status );
+            LogInfo( ( "Connected with server response: %d ", status ) );
             // pLwsCallInfo->callInfo.callResult = getServiceCallResultFromHttpStatus((UINT32) status);
 
             // len = (SIZE_T) lws_hdr_copy(wsi, &dateHdrBuffer[0], MAX_DATE_HEADER_BUFFER_LENGTH, WSI_TOKEN_HTTP_DATE);
@@ -169,8 +170,8 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
             break;
 
         case LWS_CALLBACK_RECEIVE_CLIENT_HTTP_READ:
-            printf( "Received client http read: %lu bytes\n", dataSize );
-            lwsl_hexdump_debug(pDataIn, dataSize);
+            LogInfo( ( "Received client http read: %lu bytes ", dataSize ) );
+            lwsl_hexdump_debug( pDataIn, dataSize );
 
             if( dataSize != 0 )
             {
@@ -185,7 +186,7 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
                     networkingLibwebsocketContext.pResponse->pBuffer[dataSize] = '\0';
                     networkingLibwebsocketContext.pResponse->bufferLength = dataSize;
                     
-                    printf( "%s\n", networkingLibwebsocketContext.pResponse->pBuffer );
+                    LogDebug( ( "%s ", networkingLibwebsocketContext.pResponse->pBuffer ) );
                 }
 
                 // if (pLwsCallInfo->callInfo.callResult != SERVICE_CALL_RESULT_OK) {
@@ -208,7 +209,6 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
             break;
 
         case LWS_CALLBACK_RECEIVE_CLIENT_HTTP:
-            printf( "Received client http\n" );
             readLength = NETWORKING_LWS_MAX_BUFFER_LENGTH;
 
             if( lws_http_client_read(wsi, (char**)networkingLibwebsocketContext.pLwsBuffer, &readLength) < 0 )
@@ -223,30 +223,28 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
             break;
 
         case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
-            printf( "Client append handshake header\n" );
-
             ppStartPtr = (char**) pDataIn;
             pEndPtr = *ppStartPtr + dataSize - 1;
 
             // Append headers
-            printf( "Appending header - Authorization=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.authorizationLength, networkingLibwebsocketContext.appendHeaders.pAuthorization );
+            LogDebug( ( "Appending header - Authorization=%.*s ", ( int ) networkingLibwebsocketContext.appendHeaders.authorizationLength, networkingLibwebsocketContext.appendHeaders.pAuthorization ) );
             status = lws_add_http_header_by_name( wsi, "Authorization", networkingLibwebsocketContext.appendHeaders.pAuthorization, networkingLibwebsocketContext.appendHeaders.authorizationLength,
                                                     ( unsigned char ** ) ppStartPtr, pEndPtr );
 
             /* user-agent */
-            printf( "Appending header - user-agent=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.userAgentLength, networkingLibwebsocketContext.appendHeaders.pUserAgent );
+            LogDebug( ( "Appending header - user-agent=%.*s ", ( int ) networkingLibwebsocketContext.appendHeaders.userAgentLength, networkingLibwebsocketContext.appendHeaders.pUserAgent ) );
             status = lws_add_http_header_by_name( wsi, "user-agent", networkingLibwebsocketContext.appendHeaders.pUserAgent, networkingLibwebsocketContext.appendHeaders.userAgentLength,
                                                     ( unsigned char ** ) ppStartPtr, pEndPtr );
 
-            printf( "Appending header - x-amz-date=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.dateLength, networkingLibwebsocketContext.appendHeaders.pDate );
+            LogDebug( ( "Appending header - x-amz-date=%.*s ", ( int ) networkingLibwebsocketContext.appendHeaders.dateLength, networkingLibwebsocketContext.appendHeaders.pDate ) );
             status = lws_add_http_header_by_name( wsi, "x-amz-date", networkingLibwebsocketContext.appendHeaders.pDate, networkingLibwebsocketContext.appendHeaders.dateLength,
                                                     ( unsigned char ** ) ppStartPtr, pEndPtr );
 
-            printf( "Appending header - content-type=%.*s\n", ( int ) networkingLibwebsocketContext.appendHeaders.contentTypeLength, networkingLibwebsocketContext.appendHeaders.pContentType );
+            LogDebug( ( "Appending header - content-type=%.*s ", ( int ) networkingLibwebsocketContext.appendHeaders.contentTypeLength, networkingLibwebsocketContext.appendHeaders.pContentType ) );
             status = lws_add_http_header_by_name( wsi, "content-type", networkingLibwebsocketContext.appendHeaders.pContentType, networkingLibwebsocketContext.appendHeaders.contentTypeLength,
                                                     ( unsigned char ** ) ppStartPtr, pEndPtr );
 
-            printf( "Appending header - content-length=%lu\n", networkingLibwebsocketContext.appendHeaders.contentLength );
+            LogDebug( ( "Appending header - content-length=%lu ", networkingLibwebsocketContext.appendHeaders.contentLength ) );
             contentWrittenLength = snprintf( pContentLength, 11, "%lu", networkingLibwebsocketContext.appendHeaders.contentLength );
             status = lws_add_http_header_by_name( wsi, "content-length", pContentLength, contentWrittenLength,
                                                     ( unsigned char ** ) ppStartPtr, pEndPtr );
@@ -257,13 +255,13 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
             break;
 
         case LWS_CALLBACK_CLIENT_HTTP_WRITEABLE:
-            printf( "Sending the body %.*s, size %lu\n", ( int ) networkingLibwebsocketContext.pRequest->bodyLength, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength );
+            LogDebug( ( "Sending the body %.*s, size %lu ", ( int ) networkingLibwebsocketContext.pRequest->bodyLength, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength ) );
 
             writtenBodyLength = lws_write(wsi, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength, LWS_WRITE_TEXT);
 
             if( writtenBodyLength != networkingLibwebsocketContext.pRequest->bodyLength )
             {
-                printf( "Failed to write out the body of POST request entirely. Expected to write %lu, wrote %d\n", networkingLibwebsocketContext.pRequest->bodyLength, writtenBodyLength );
+                LogInfo( ( "Failed to write out the body of POST request entirely. Expected to write %lu, wrote %d ", networkingLibwebsocketContext.pRequest->bodyLength, writtenBodyLength ) );
 
                 if( writtenBodyLength > 0 )
                 {
