@@ -7,3 +7,9 @@
 [submodule "libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk"]
 	path = libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk
 	url = https://github.com/aws/SigV4-for-AWS-IoT-embedded-sdk
+[submodule "libraries/components/amazon-kinesis-video-streams-sdp"]
+	path = libraries/components/amazon-kinesis-video-streams-sdp
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-sdp/
+[submodule "libraries/json/coreJSON"]
+	path = libraries/json/coreJSON
+	url = https://github.com/FreeRTOS/coreJSON

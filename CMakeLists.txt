@@ -37,6 +37,14 @@ set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
 
 file(
   GLOB
+  WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES
+  "examples/sdp_controller/*.c" )
+
+set( WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS
+    "examples/sdp_controller/" )
+
+file(
+  GLOB
   WEBRTC_APPLICATION_MASTER_SOURCE_FILES
   "examples/master/*.c" )
 
@@ -48,13 +56,15 @@ add_executable(
     ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES}
     ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
-    ${WEBRTC_APPLICATION_UTILS_SOURCE_FILES} )
+    ${WEBRTC_APPLICATION_UTILS_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES} )
 
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS}
-                            ${WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS} )
+                            ${WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS} )
 
 # Include dependencies
 ## Include sigV4
@@ -73,6 +83,13 @@ message(STATUS "including libwebsockets directories: ${LIBWEBSOCKETS_INCLUDE_DIR
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${LIBWEBSOCKETS_INCLUDE_DIRS} )
 
+## Include coreJSON
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/coreJSON.cmake )
+
+## Set coreJSON include directories
+target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                            ${JSON_INCLUDE_PUBLIC_DIRS} )
+
 ## Include signaling
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/signaling.cmake )
 
@@ -82,6 +99,14 @@ message(STATUS "including signaling directories: ${SIGNALING_INCLUDE_PUBLIC_DIRS
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${SIGNALING_INCLUDE_PUBLIC_DIRS} )
 
+## Include SDP
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/sdp.cmake )
+
+## Set SDP include directories
+target_compile_definitions( WebRTCLinuxApplicationMaster PUBLIC SDP_DO_NOT_USE_CUSTOM_CONFIG )
+target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                            ${SDP_INCLUDE_PUBLIC_DIRS} )
+
 # link application with dependencies
 message(STATUS "linking websockets to WebRTCLinuxApplication")
-target_link_libraries(WebRTCLinuxApplicationMaster websockets sigv4 signaling)
+target_link_libraries(WebRTCLinuxApplicationMaster websockets sigv4 signaling corejson sdp)
