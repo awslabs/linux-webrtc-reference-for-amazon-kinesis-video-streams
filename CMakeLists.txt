@@ -41,7 +41,7 @@ file(
   "examples/sdp_controller/*.c" )
 
 set( WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS
-    "examples/sdp_controller/" )
+     "examples/sdp_controller/" )
 
 file(
   GLOB
