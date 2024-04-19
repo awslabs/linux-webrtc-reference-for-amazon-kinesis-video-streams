@@ -37,8 +37,8 @@ static WebsocketResult_t handleWssMessage( char *pMessage, size_t messageLength,
     /* Decode base64 payload. */
     if( ret == WEBSOCKET_RESULT_OK )
     {
-        pCtx->decodeBufferLength = SIGNALING_CONTROLLER_DECODED_BUFFER_LENGTH;
-        retBase64 = base64Decode( wssRecvMessage.pBase64EncodedPayload, wssRecvMessage.base64EncodedPayloadLength, pCtx->decodeBuffer, &pCtx->decodeBufferLength );
+        pCtx->base64BufferLength = SIGNALING_CONTROLLER_MAX_CONTENT_LENGTH;
+        retBase64 = base64Decode( wssRecvMessage.pBase64EncodedPayload, wssRecvMessage.base64EncodedPayloadLength, pCtx->base64Buffer, &pCtx->base64BufferLength );
 
         if( retBase64 != BASE64_RESULT_OK )
         {
@@ -49,13 +49,13 @@ static WebsocketResult_t handleWssMessage( char *pMessage, size_t messageLength,
     if( ret == WEBSOCKET_RESULT_OK )
     {
         memset( &receiveEvent, 0, sizeof( SignalingControllerReceiveEvent_t ) );
-        receiveEvent.pSenderClientId = wssRecvMessage.pSenderClientId;
-        receiveEvent.senderClientIdLength = wssRecvMessage.senderClientIdLength;
+        receiveEvent.pRemoteClientId = wssRecvMessage.pSenderClientId;
+        receiveEvent.remoteClientIdLength = wssRecvMessage.senderClientIdLength;
         receiveEvent.pCorrelationId = wssRecvMessage.statusResponse.pCorrelationId;
         receiveEvent.correlationIdLength = wssRecvMessage.statusResponse.correlationIdLength;
         receiveEvent.messageType = wssRecvMessage.messageType;
-        receiveEvent.pDecodeMessage = pCtx->decodeBuffer;
-        receiveEvent.decodeMessageLength = pCtx->decodeBufferLength;
+        receiveEvent.pDecodeMessage = pCtx->base64Buffer;
+        receiveEvent.decodeMessageLength = pCtx->base64BufferLength;
 
         if( pCtx->receiveMessageCallback != NULL )
         {
@@ -591,11 +591,93 @@ static SignalingControllerResult_t connectWssEndpoint( SignalingControllerContex
     return ret;
 }
 
+static SignalingControllerResult_t handleEvent( SignalingControllerContext_t *pCtx, SignalingControllerEventMessage_t *pEventMsg )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    WebsocketResult_t websocketRet;
+    size_t ringBufferIndex;
+    SignalingControllerEventStatus_t callbackEventStatus = SIGNALING_CONTROLLER_EVENT_STATUS_NONE;
+    Base64Result_t retBase64;
+    SignalingWssSendMessage_t wssSendMessage;
+    SignalingControllerEventContentSend_t *pEventContentSend;
+    SignalingResult_t retSignal;
+
+    switch( pEventMsg->event )
+    {
+        case SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE:
+            /* Allocate the ring buffer to store constructed signaling messages. */
+            pEventContentSend = ( SignalingControllerEventContentSend_t* )(pEventMsg->pEventContent);
+            callbackEventStatus = SIGNALING_CONTROLLER_EVENT_STATUS_SENT_FAIL;
+
+            /* Then fill the event information, like correlation ID, recipient client ID and base64 encoded message.
+             * Note that the message now is not based encoded yet. */
+            pCtx->base64BufferLength = SIGNALING_CONTROLLER_MAX_CONTENT_LENGTH;
+            retBase64 = base64Encode( pEventContentSend->pDecodeMessage, pEventContentSend->decodeMessageLength, pCtx->base64Buffer, &pCtx->base64BufferLength );
+            if( retBase64 != BASE64_RESULT_OK )
+            {
+                ret = SIGNALING_CONTROLLER_RESULT_BASE64_ENCODE_FAIL;
+            }
+
+            if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+            {
+                /* Construct signaling message into ring buffer. */
+                memset( &wssSendMessage, 0, sizeof( SignalingWssSendMessage_t ) );
+
+                // Prepare the buffer to send
+                wssSendMessage.messageType = pEventContentSend->messageType;
+                wssSendMessage.pBase64EncodedMessage = pCtx->base64Buffer;
+                wssSendMessage.base64EncodedMessageLength = pCtx->base64BufferLength;
+                wssSendMessage.pCorrelationId = pEventContentSend->pCorrelationId;
+                wssSendMessage.correlationIdLength = pEventContentSend->correlationIdLength;
+                wssSendMessage.pRecipientClientId = pEventContentSend->pRemoteClientId;
+                wssSendMessage.recipientClientIdLength = pEventContentSend->remoteClientIdLength;
+
+                /* We must preserve LWS_PRE ahead of buffer for libwebsockets. */
+                pCtx->constructedSignalingBufferLength = SIGNALING_CONTROLLER_MAX_CONTENT_LENGTH;
+                retSignal = Signaling_constructWssMessage( &wssSendMessage, pCtx->constructedSignalingBuffer, &pCtx->constructedSignalingBufferLength );
+                if( retSignal != SIGNALING_RESULT_OK )
+                {
+                    LogError( ( "Fail to construct Wss message, result: %d", retSignal ) );
+                    ret = SIGNALING_CONTROLLER_RESULT_CONSTRUCT_SIGNALING_MSG_FAIL;
+                }
+            }
+
+            if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+            {
+                // /* Finally, sent it to websocket layer. */
+                websocketRet = Websocket_Send( pCtx->constructedSignalingBuffer, pCtx->constructedSignalingBufferLength );
+                if( websocketRet != SIGNALING_RESULT_OK )
+                {
+                    LogError( ( "Fail to construct Wss message, result: %d", retSignal ) );
+                    ret = SIGNALING_CONTROLLER_RESULT_CONSTRUCT_SIGNALING_MSG_FAIL;
+                    callbackEventStatus = SIGNALING_CONTROLLER_EVENT_STATUS_SENT_FAIL;
+                }
+                else
+                {
+                    callbackEventStatus = SIGNALING_CONTROLLER_EVENT_STATUS_SENT_DONE;
+                }
+            }
+            break;
+        default:
+            /* Ignore unknown event. */
+            LogWarn( ( "Received unknown event %d", pEventMsg->event ) );
+            break;
+    }
+    
+    if( pEventMsg->onCompleteCallback != NULL && callbackEventStatus != SIGNALING_CONTROLLER_EVENT_STATUS_NONE )
+    {
+        pEventMsg->onCompleteCallback( callbackEventStatus, pEventMsg->pOnCompleteCallbackContext );
+    }
+
+    return ret;
+}
+
 SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx, SignalingControllerCredential_t * pCred, SignalingControllerReceiveMessageCallback receiveMessageCallback, void *pReceiveMessageCallbackContext )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t retSignal;
     SignalingAwsControlPlaneInfo_t awsControlPlaneInfo;
+    MessageQueueResult_t retMessageQueue;
 
     if( pCtx == NULL || pCred == NULL )
     {
@@ -655,6 +737,16 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         ret = WebsocketLibwebsockets_Init( pCtx );
+    }
+
+    /* Initializa Message Queue. */
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        retMessageQueue = MessageQueue_Create( &pCtx->sendMessageQueue, "/SignalingController" );
+        if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_MQ_INIT_FAIL;
+        }
     }
 
     return ret;
@@ -721,6 +813,9 @@ SignalingControllerResult_t SignalingController_ProcessLoop( SignalingController
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     WebsocketResult_t websocketRet;
+    MessageQueueResult_t messageQueueRet;
+    SignalingControllerEventMessage_t eventMsg;
+    size_t eventMsgLength;
 
     for( ;; )
     {
@@ -731,15 +826,49 @@ SignalingControllerResult_t SignalingController_ProcessLoop( SignalingController
             ret = SIGNALING_CONTROLLER_RESULT_WSS_RECV_FAIL;
             break;
         }
+
+        messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );
+        if( messageQueueRet == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
+        {
+            /* Handle event. */
+            eventMsgLength = sizeof( SignalingControllerEventMessage_t );
+            messageQueueRet = MessageQueue_Recv( &pCtx->sendMessageQueue, &eventMsg, &eventMsgLength );
+            if( messageQueueRet == MESSAGE_QUEUE_RESULT_OK )
+            {
+                /* Received message, process it. */
+                ret = handleEvent( pCtx, &eventMsg );
+            }
+        }
     }
 
     return ret;
 }
 
-SignalingControllerResult_t SignalingController_SendMessage( SignalingControllerContext_t * pCtx, char * pMessage, size_t messageLength )
+SignalingControllerResult_t SignalingController_SendMessage( SignalingControllerContext_t *pCtx, SignalingControllerEventMessage_t *pEventMsg )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    MessageQueueResult_t retMessageQueue;
+    WebsocketResult_t websocketRet;
+
+    if( pCtx == NULL || pEventMsg == NULL )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        retMessageQueue = MessageQueue_Send( &pCtx->sendMessageQueue, pEventMsg, sizeof( SignalingControllerEventMessage_t ) );
+        if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+        {
+            ret = SIGNALING_CONTROLLER_RESULT_MQ_SEND_FAIL;
+        }
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        /* Wake the thread running lws_service() up to handle event. */
+        websocketRet = Websocket_Signal();
+    }
 
     return ret;
 }
-

@@ -526,6 +526,10 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
     int32_t retValue = 0;
     int32_t skipProcess = 0;
     NetworkingLibwebsocketsResult_t websocketRet = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    int writeSize = 0;
+    size_t remainSize = 0;
+    size_t index;
+    NetworkingLibwebsocketBufferInfo_t *pRingBufferInfo;
 
     LogInfo( ( "Websocket callback with reason %d", reason ) );
     
@@ -585,11 +589,11 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
                 /* callback to user if it's the final fragment. */
                 if( lws_is_final_fragment(wsi) )
                 {
-                    if( networkingLibwebsocketContext.websocketMessageCallback != NULL )
+                    if( networkingLibwebsocketContext.websocketRxCallback != NULL )
                     {
-                        networkingLibwebsocketContext.websocketMessageCallback( networkingLibwebsocketContext.websocketRxBuffer,
-                                                                                networkingLibwebsocketContext.websocketRxBufferLength,
-                                                                                networkingLibwebsocketContext.pWebsocketMessageCallbackContext );
+                        networkingLibwebsocketContext.websocketRxCallback( networkingLibwebsocketContext.websocketRxBuffer,
+                                                                           networkingLibwebsocketContext.websocketRxBufferLength,
+                                                                           networkingLibwebsocketContext.pWebsocketRxCallbackContext );
                     }
                 }
             }
@@ -597,9 +601,38 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
             break;
 
         case LWS_CALLBACK_CLIENT_WRITEABLE:
+            websocketRet = getRingBufferCurrentIndex( &networkingLibwebsocketContext.websocketTxRingBuffer, &index );
+            
+            /* If the ring buffer is empty, it returns NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_EMPTY instead of NETWORKING_LIBWEBSOCKETS_RESULT_OK. */
+            if( websocketRet == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+            {
+                /* Have pending message to send. */
+                pRingBufferInfo = &networkingLibwebsocketContext.websocketTxRingBuffer.bufferInfo[ index ];
+                remainSize = pRingBufferInfo->bufferLength - pRingBufferInfo->offset;
 
+                writeSize = lws_write( wsi,
+                                       &pRingBufferInfo->buffer[ LWS_PRE + pRingBufferInfo->offset ],
+                                       remainSize,
+                                       LWS_WRITE_TEXT );
+
+                if( writeSize < 0 )
+                {
+                    /* Some thing wrong in libwebsockets. */
+                    LogError( ( "lws_write fail, which should never happen in writeable callback, result: %d.", writeSize ) );
+                }
+                else if( writeSize == remainSize )
+                {
+                    /* Entire message is sent successfully, free ring buffer. */
+                    websocketRet = freeRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer, index );
+                }
+                else
+                {
+                    /* Partially send, update offset and trigger next write. */
+                    pRingBufferInfo->offset += writeSize;
+                    lws_callback_on_writable( wsi );
+                }
+            }
             break;
-
         default:
             break;
     }
@@ -643,7 +676,7 @@ WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
     return ret;
 }
 
-WebsocketResult_t Websocket_Init( void * pCredential, WebsocketMessageCallback_t websocketMessageCallback, void *pCallbackContext )
+WebsocketResult_t Websocket_Init( void * pCredential, WebsocketMessageCallback_t rxCallback, void *pRxCallbackContext )
 {
     WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     NetworkingLibwebsocketsCredentials_t *pNetworkingLibwebsocketsCredentials = (NetworkingLibwebsocketsCredentials_t *)pCredential;
@@ -652,8 +685,43 @@ WebsocketResult_t Websocket_Init( void * pCredential, WebsocketMessageCallback_t
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        networkingLibwebsocketContext.websocketMessageCallback = websocketMessageCallback;
-        networkingLibwebsocketContext.pWebsocketMessageCallbackContext = pCallbackContext;
+        networkingLibwebsocketContext.websocketRxCallback = rxCallback;
+        networkingLibwebsocketContext.pWebsocketRxCallbackContext = pRxCallbackContext;
+    }
+
+    return ret;
+}
+
+WebsocketResult_t Websocket_Send( char *pMessage, size_t messageLength )
+{
+    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t index;
+
+    if( pMessage == NULL )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_BAD_PARAMETER;
+    }
+    else if( messageLength > NETWORKING_LWS_RING_BUFFER_LENGTH - LWS_PRE )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_TOO_SMALL;
+    }
+    else
+    {
+        /* Do nothing, coverity happy. */
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        ret = allocateRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer, &index );
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        memcpy( &networkingLibwebsocketContext.websocketTxRingBuffer.bufferInfo[ index ].buffer[ LWS_PRE ], pMessage, messageLength );
+        networkingLibwebsocketContext.websocketTxRingBuffer.bufferInfo[ index ].bufferLength = messageLength;
+        networkingLibwebsocketContext.websocketTxRingBuffer.bufferInfo[ index ].offset = 0U;
+
+        lws_callback_on_writable( networkingLibwebsocketContext.pLws[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ] );
     }
 
     return ret;
@@ -666,4 +734,12 @@ WebsocketResult_t Websocket_Recv()
     ret = performLwsRecv();
 
     return ret;
+}
+
+WebsocketResult_t Websocket_Signal()
+{
+    /* wake the thread running lws_service() up to handle events. */
+    NetworkingLibwebsockets_Signal( networkingLibwebsocketContext.pLwsContext );
+
+    return NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 }

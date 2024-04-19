@@ -13,6 +13,7 @@ extern "C" {
 #include <time.h>
 #include "signaling_api.h"
 #include "networkingLibwebsockets.h"
+#include "message_queue.h"
 
 /* Refer to https://docs.aws.amazon.com/IAM/latest/APIReference/API_AccessKey.html,
    length of access key ID should be limited to 128. There is no other definition of
@@ -24,12 +25,19 @@ extern "C" {
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_URI_LENGTH ( 256 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_USER_NAME_LENGTH ( 256 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_PASSWORD_LENGTH ( 256 )
-#define SIGNALING_CONTROLLER_DECODED_BUFFER_LENGTH ( 10000 )
+#define SIGNALING_CONTROLLER_MAX_CONTENT_LENGTH ( 10000 )
+
+typedef enum SignalingControllerEventStatus
+{
+    SIGNALING_CONTROLLER_EVENT_STATUS_NONE = 0,
+    SIGNALING_CONTROLLER_EVENT_STATUS_SENT_DONE,
+    SIGNALING_CONTROLLER_EVENT_STATUS_SENT_FAIL,
+} SignalingControllerEventStatus_t;
 
 typedef struct SignalingControllerReceiveEvent
 {
-    const char *pSenderClientId;
-    size_t senderClientIdLength;
+    const char *pRemoteClientId;
+    size_t remoteClientIdLength;
     SignalingTypeMessage_t messageType;
     const char *pDecodeMessage;
     size_t decodeMessageLength;
@@ -37,7 +45,10 @@ typedef struct SignalingControllerReceiveEvent
     size_t correlationIdLength;
 } SignalingControllerReceiveEvent_t;
 
+typedef SignalingControllerReceiveEvent_t SignalingControllerEventContentSend_t;
+
 typedef int32_t (*SignalingControllerReceiveMessageCallback)( SignalingControllerReceiveEvent_t *pEvent, void *pUserContext );
+typedef int32_t (*SignalingControllerCompleteSendCallback)( SignalingControllerEventStatus_t status, void *pUserContext );
 
 typedef enum SignalingControllerResult
 {
@@ -65,6 +76,10 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_WEBSOCKET_INIT_FAIL,
     SIGNALING_CONTROLLER_RESULT_WSS_CONNECT_FAIL,
     SIGNALING_CONTROLLER_RESULT_WSS_RECV_FAIL,
+    SIGNALING_CONTROLLER_RESULT_MQ_INIT_FAIL,
+    SIGNALING_CONTROLLER_RESULT_MQ_SEND_FAIL,
+    SIGNALING_CONTROLLER_RESULT_BASE64_ENCODE_FAIL,
+    SIGNALING_CONTROLLER_RESULT_CONSTRUCT_SIGNALING_MSG_FAIL,
 } SignalingControllerResult_t;
 
 typedef struct SignalingControllerCredential
@@ -135,6 +150,21 @@ typedef struct SignalingControllerMetrics
     struct timeval connectWssServerEndTime;
 } SignalingControllerMetrics_t;
 
+typedef enum SignalingControllerEvent
+{
+    SIGNALING_CONTROLLER_EVENT_NONE = 0,
+    SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
+} SignalingControllerEvent_t;
+
+typedef struct SignalingControllerEventMessage
+{
+    SignalingControllerEvent_t event;
+    void *pEventContent;
+    size_t eventContentLength;
+    SignalingControllerCompleteSendCallback onCompleteCallback;
+    void *pOnCompleteCallbackContext;
+} SignalingControllerEventMessage_t;
+
 typedef struct SignalingControllerContext
 {
     /* Signaling Component Context */
@@ -151,8 +181,12 @@ typedef struct SignalingControllerContext
 
     SignalingControllerReceiveMessageCallback receiveMessageCallback;
     void *pReceiveMessageCallbackContext;
-    char decodeBuffer[ SIGNALING_CONTROLLER_DECODED_BUFFER_LENGTH ];
-    size_t decodeBufferLength;
+    char base64Buffer[ SIGNALING_CONTROLLER_MAX_CONTENT_LENGTH ];
+    size_t base64BufferLength;
+    char constructedSignalingBuffer[ SIGNALING_CONTROLLER_MAX_CONTENT_LENGTH ];
+    size_t constructedSignalingBufferLength;
+
+    MessageQueueHandler_t sendMessageQueue;
 } SignalingControllerContext_t;
 
 #ifdef __cplusplus

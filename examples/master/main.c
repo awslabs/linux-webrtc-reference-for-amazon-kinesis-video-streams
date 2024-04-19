@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <pthread.h>
 #include "demo_config.h"
 #include "logging.h"
 #include "demo_data_types.h"
@@ -82,7 +81,7 @@ int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t *pEvent, void 
 
     LogInfo( ( "Received Message from websocket server!" ) );
     LogDebug( ( "Message Type: %x", pEvent->messageType ) );
-    LogDebug( ( "Sender ID: %.*s", ( int ) pEvent->senderClientIdLength, pEvent->pSenderClientId ) );
+    LogDebug( ( "Sender ID: %.*s", ( int ) pEvent->remoteClientIdLength, pEvent->pRemoteClientId ) );
     LogDebug( ( "Correlation ID: %.*s", ( int ) pEvent->correlationIdLength, pEvent->pCorrelationId ) );
     LogDebug( ( "Message Length: %ld, Message:", pEvent->decodeMessageLength ) );
     LogDebug( ( "%.*s", ( int ) pEvent->decodeMessageLength, pEvent->pDecodeMessage ) );

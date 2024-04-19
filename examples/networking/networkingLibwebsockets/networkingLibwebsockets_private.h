@@ -43,6 +43,7 @@ NetworkingLibwebsocketsResult_t getIso8601CurrentTime( char **ppDate, size_t * p
 NetworkingLibwebsocketsResult_t performLwsConnect( char *pHost, size_t hostLength, uint16_t port, uint8_t isHttp );
 NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsocketCanonicalRequest_t *pCanonicalRequest );
 NetworkingLibwebsocketsResult_t uriEncodedString( char *pSrc, size_t srcLength, char *pDst, size_t *pDstLength );
+void NetworkingLibwebsockets_Signal( struct lws_context *pLwsContext );
 
 /* HTTP functions */
 int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize);
@@ -50,6 +51,9 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
 /* Websocket functions */
 int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize);
 NetworkingLibwebsocketsResult_t performLwsRecv();
+NetworkingLibwebsocketsResult_t allocateRingBuffer( NetworkingLibwebsocketRingBuffer_t *pRingBuffer, size_t *pNextIdx );
+NetworkingLibwebsocketsResult_t freeRingBuffer( NetworkingLibwebsocketRingBuffer_t *pRingBuffer, size_t idx );
+NetworkingLibwebsocketsResult_t getRingBufferCurrentIndex( NetworkingLibwebsocketRingBuffer_t *pRingBuffer, size_t *pCurrentIdx );
 
 extern NetworkingLibwebsocketContext_t networkingLibwebsocketContext;
 

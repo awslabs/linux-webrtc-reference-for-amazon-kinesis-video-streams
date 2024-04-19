@@ -22,7 +22,7 @@ static int32_t sha256Final( void * hashContext,
                             uint8_t * pOutput,
                             size_t outputLen );
 
-static struct lws_protocols protocols[3];
+static struct lws_protocols protocols[ NETWORKING_LWS_PROTOCOLS_NUM + 1 ];
 NetworkingLibwebsocketContext_t networkingLibwebsocketContext;
 
 /**
@@ -76,6 +76,73 @@ static int32_t sha256Final( void * hashContext,
     ret = SHA256_Final( pOutput, hashContext );
 
     return ret == 1? 0:-1;
+}
+
+NetworkingLibwebsocketsResult_t initRingBuffer( NetworkingLibwebsocketRingBuffer_t *pRingBuffer )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+
+    pRingBuffer->start = 0;
+    pRingBuffer->end = 0;
+
+    return ret;
+}
+
+NetworkingLibwebsocketsResult_t getRingBufferCurrentIndex( NetworkingLibwebsocketRingBuffer_t *pRingBuffer, size_t *pCurrentIdx )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t nextIndex = ( pRingBuffer->end + 1 ) % NETWORKING_LWS_RING_BUFFER_NUM;
+    uint8_t isEmpty = pRingBuffer->end == pRingBuffer->start? 1:0;
+
+    if( isEmpty )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_EMPTY;
+    }
+    else
+    {
+        *pCurrentIdx = pRingBuffer->start;
+    }
+
+    return ret;
+}
+
+NetworkingLibwebsocketsResult_t allocateRingBuffer( NetworkingLibwebsocketRingBuffer_t *pRingBuffer, size_t *pNextIdx )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t nextIndex = ( pRingBuffer->end + 1 ) % NETWORKING_LWS_RING_BUFFER_NUM;
+    uint8_t isFull = nextIndex == pRingBuffer->start? 1:0;
+
+    if( isFull )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_FULL;
+    }
+    else
+    {
+        pRingBuffer->end = nextIndex;
+        *pNextIdx = nextIndex;
+    }
+
+    return ret;
+}
+
+NetworkingLibwebsocketsResult_t freeRingBuffer( NetworkingLibwebsocketRingBuffer_t *pRingBuffer, size_t idx )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t nextIndex = ( pRingBuffer->start + 1 ) % NETWORKING_LWS_RING_BUFFER_NUM;
+    uint8_t isCorrectIdx = ( idx == pRingBuffer->start )? 1:0;
+
+    if( !isCorrectIdx )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_FREE_WRONG_INDEX;
+    }
+    else
+    {
+        pRingBuffer->start = nextIndex;
+        pRingBuffer->bufferInfo[ idx ].bufferLength = 0;
+        pRingBuffer->bufferInfo[ idx ].offset = 0;
+    }
+
+    return ret;
 }
 
 NetworkingLibwebsocketsResult_t uriEncodedString( char *pSrc, size_t srcLength, char *pDst, size_t *pDstLength )
@@ -257,14 +324,14 @@ NetworkingLibwebsocketsResult_t performLwsConnect( char *pHost, size_t hostLengt
         {
             connectInfo.method = NETWORKING_LWS_STRING_HTTPS_METHOD;
             connectInfo.protocol = NETWORKING_LWS_STRING_HTTPS;
+            networkingLibwebsocketContext.pLws[ NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ] = lws_client_connect_via_info( &connectInfo );
         }
         else
         {
             connectInfo.method = NULL;
             connectInfo.protocol = NETWORKING_LWS_STRING_WSS;
+            networkingLibwebsocketContext.pLws[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ] = lws_client_connect_via_info( &connectInfo );
         }
-
-        networkingLibwebsocketContext.pLws = lws_client_connect_via_info( &connectInfo );
 
         networkingLibwebsocketContext.terminateLwsService = 0U;
         while( networkingLibwebsocketContext.terminateLwsService == 0U )
@@ -421,6 +488,11 @@ NetworkingLibwebsocketsResult_t getUrlHost( char *pUrl, size_t urlLength, char *
     return ret;
 }
 
+void NetworkingLibwebsockets_Signal( struct lws_context *pLwsContext )
+{
+    lws_cancel_service( pLwsContext );
+}
+
 NetworkingLibwebsocketsResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t * pCredential )
 {
     HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
@@ -452,10 +524,10 @@ NetworkingLibwebsocketsResult_t NetworkingLibwebsockets_Init( NetworkingLibwebso
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK && !first )
     {
-        protocols[0].name = NETWORKING_LWS_STRING_HTTPS;
-        protocols[0].callback = lwsHttpCallbackRoutine;
-        protocols[1].name = NETWORKING_LWS_STRING_WSS;
-        protocols[1].callback = lwsWebsocketCallbackRoutine;
+        protocols[ NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ].name = NETWORKING_LWS_STRING_HTTPS;
+        protocols[ NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ].callback = lwsHttpCallbackRoutine;
+        protocols[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ].name = NETWORKING_LWS_STRING_WSS;
+        protocols[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ].callback = lwsWebsocketCallbackRoutine;
 
         memset(&creationInfo, 0, sizeof(struct lws_context_creation_info));
         creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
@@ -478,6 +550,12 @@ NetworkingLibwebsocketsResult_t NetworkingLibwebsockets_Init( NetworkingLibwebso
         {
             ret = NETWORKING_LIBWEBSOCKETS_RESULT_INIT_LWS_CONTEXT_FAIL;
         }
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK && !first )
+    {
+        /* Initialize Tx ring buffer. */
+        ret = initRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer );
     }
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK && !first )

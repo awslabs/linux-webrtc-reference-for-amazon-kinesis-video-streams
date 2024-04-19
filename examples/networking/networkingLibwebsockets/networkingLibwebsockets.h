@@ -25,6 +25,11 @@ extern "C" {
 #define NETWORKING_LWS_URI_HOST_MAX_LENGTH ( 128 )
 #define NETWORKING_LWS_QUERY_PARAM_MAX_NUM ( 4 )
 #define NETWORKING_LWS_WEBSOCKET_RX_BUFFER_LENGTH ( 10000 )
+#define NETWORKING_LWS_PROTOCOLS_NUM ( 2 )
+#define NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ( 0 )
+#define NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ( 1 )
+#define NETWORKING_LWS_RING_BUFFER_NUM ( 5 )
+#define NETWORKING_LWS_RING_BUFFER_LENGTH ( LWS_PRE + 10000 )
 
 typedef enum NetworkingLibwebsocketsResult
 {
@@ -48,6 +53,10 @@ typedef enum NetworkingLibwebsocketsResult
     NETWORKING_LIBWEBSOCKETS_RESULT_URI_ENCODED_BUFFER_TOO_SMALL,
     NETWORKING_LIBWEBSOCKETS_RESULT_UNKNOWN_MESSAGE,
     NETWORKING_LIBWEBSOCKETS_RESULT_BASE64_DECODE_FAIL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_EMPTY,
+    NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_FULL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_TOO_SMALL,
+    NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_FREE_WRONG_INDEX,
 } NetworkingLibwebsocketsResult_t;
 
 typedef struct NetworkingLibwebsocketsAppendHeaders
@@ -89,10 +98,26 @@ typedef struct NetworkingLibwebsocketsCredentials
     char * pCaCertPath;
 } NetworkingLibwebsocketsCredentials_t;
 
+typedef struct NetworkingLibwebsocketBufferInfo
+{
+    uint8_t buffer[ NETWORKING_LWS_RING_BUFFER_LENGTH ];
+    size_t bufferLength;
+    size_t offset;
+    WebsocketMessageCallback_t txCallback;
+    void * pTxCallbackContext;
+} NetworkingLibwebsocketBufferInfo_t;
+
+typedef struct NetworkingLibwebsocketRingBuffer
+{
+    size_t start;
+    size_t end;
+    NetworkingLibwebsocketBufferInfo_t bufferInfo[ NETWORKING_LWS_RING_BUFFER_NUM ];
+} NetworkingLibwebsocketRingBuffer_t;
+
 typedef struct NetworkingLibwebsocketContext
 {
     struct lws_context *pLwsContext;
-    struct lws *pLws;
+    struct lws *pLws[ NETWORKING_LWS_PROTOCOLS_NUM ];
     uint8_t terminateLwsService;
     char pLwsBuffer[ NETWORKING_LWS_MAX_BUFFER_LENGTH ];
 
@@ -114,11 +139,14 @@ typedef struct NetworkingLibwebsocketContext
     /* OpenSSL SHA256 context. */
     SHA256_CTX sha256Ctx;
 
-    /* Callback function to let user handle received message. */
-    WebsocketMessageCallback_t websocketMessageCallback;
-    void * pWebsocketMessageCallbackContext;
+    /* Rx path: callback user to handle received message. */
+    WebsocketMessageCallback_t websocketRxCallback;
+    void * pWebsocketRxCallbackContext;
     char websocketRxBuffer[ NETWORKING_LWS_WEBSOCKET_RX_BUFFER_LENGTH ];
     size_t websocketRxBufferLength;
+
+    /* Tx path: notify user that Tx sent done. */
+    NetworkingLibwebsocketRingBuffer_t websocketTxRingBuffer;
 } NetworkingLibwebsocketContext_t;
 
 #ifdef __cplusplus
