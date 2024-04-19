@@ -1,0 +1,40 @@
+#ifndef MESSAGE_QUEUE_H
+#define MESSAGE_QUEUE_H
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdio.h>
+#include <mqueue.h>
+
+typedef enum MessageQueueResult
+{
+    MESSAGE_QUEUE_RESULT_OK = 0,
+    MESSAGE_QUEUE_RESULT_MQ_IS_EMPTY,
+    MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE,
+    MESSAGE_QUEUE_RESULT_BAD_PARAMETER,
+    MESSAGE_QUEUE_RESULT_MQ_OPEN_FAILED,
+    MESSAGE_QUEUE_RESULT_MQ_SEND_FAILED,
+    MESSAGE_QUEUE_RESULT_MQ_RECV_FAILED,
+    MESSAGE_QUEUE_RESULT_MQ_GETATTR_FAILED,
+} MessageQueueResult_t;
+
+typedef struct MessageQueueHandler
+{
+    const char *pQueueName;
+    mqd_t messageQueue;
+} MessageQueueHandler_t;
+
+MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHandler, const char *pQueueName );
+MessageQueueResult_t MessageQueue_Send( MessageQueueHandler_t *pMessageQueueHandler, void *pMessage, size_t messageLength );
+MessageQueueResult_t MessageQueue_Recv( MessageQueueHandler_t *pMessageQueueHandler, void *pMessage, size_t *pMessageLength );
+MessageQueueResult_t MessageQueue_IsEmpty( MessageQueueHandler_t *pMessageQueueHandler );
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* MESSAGE_QUEUE_H */
