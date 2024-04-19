@@ -19,6 +19,7 @@ typedef enum Base64Result
 } Base64Result_t;
 
 Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, char *pOutputData, size_t *pOutputDataLength );
+Base64Result_t base64Encode( const char *pInputData, size_t inputDataLength, char *pOutputData, size_t *pOutputDataLength );
 
 #ifdef __cplusplus
 }

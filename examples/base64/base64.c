@@ -2,9 +2,19 @@
 #include "base64.h"
 
 /**
+ * Padding values for mod3 indicating how many '=' to append
+ */
+uint8_t base64EncodePadding[3] = {0, 2, 1};
+
+/**
  * Padding values for mod4 indicating how many '=' has been padded. NOTE: value for 1 is invalid = 0xff
  */
 uint8_t base64DecodePadding[4] = {0, 0xff, 2, 1};
+
+/**
+ * Base64 encoding alphabet
+ */
+uint8_t base64EecodeAlpha[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /**
  * Base64 decoding alphabet - an array of 256 values corresponding to the encoded base64 indexes
@@ -40,6 +50,77 @@ uint8_t base64DecodeAlpha[256] =
     0,  0,  0,  0,  0,  0,
 };
 
+Base64Result_t base64Encode( const char *pInputData, size_t inputDataLength, char *pOutputData, size_t *pOutputDataLength )
+{
+    Base64Result_t ret = BASE64_RESULT_OK;
+    uint32_t padding, i;
+    size_t mod3;
+    const char *pInput = pInputData;
+    char *pOutput = pOutputData;
+    size_t outputLength = 0;
+    uint8_t b0, b1, b2;
+
+    if( pInputData == NULL || pOutputData == NULL || pOutputDataLength == NULL )
+    {
+        ret = BASE64_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == BASE64_RESULT_OK )
+    {
+        mod3 = inputDataLength % 3;
+        padding = base64EncodePadding[mod3];
+        outputLength = 4 * ( inputDataLength + padding ) / 3;
+
+        if( outputLength > *pOutputDataLength )
+        {
+            ret = BASE64_RESULT_BUFFER_TOO_SMALL;
+        }
+    }
+
+    if( ret == BASE64_RESULT_OK )
+    {
+        // Need to have at least a triade to process in the loop
+        if( inputDataLength >= 3 )
+        {
+            for( i = 0; i <= inputDataLength - 3; i += 3 )
+            {
+                b0 = *pInput++;
+                b1 = *pInput++;
+                b2 = *pInput++;
+
+                *pOutput++ = base64EecodeAlpha[ b0 >> 2 ];
+                *pOutput++ = base64EecodeAlpha[ ( ( 0x03 & b0 ) << 4 ) + ( b1 >> 4 ) ];
+                *pOutput++ = base64EecodeAlpha[ ( ( 0x0f & b1 ) << 2 ) + ( b2 >> 6 ) ];
+                *pOutput++ = base64EecodeAlpha[ 0x3f & b2 ];
+            }
+        }
+    }
+
+    if( ret == BASE64_RESULT_OK )
+    {
+        // Process the padding
+        if( padding == 1 )
+        {
+            *pOutput++ = base64EecodeAlpha[ *pInput >> 2 ];
+            *pOutput++ = base64EecodeAlpha[ ( ( 0x03 & *pInput ) << 4 ) + ( *( pInput + 1 ) >> 4 ) ];
+            *pOutput++ = base64EecodeAlpha[ ( 0x0f & *( pInput + 1 )) << 2 ];
+            *pOutput++ = '=';
+        }
+        else if( padding == 2 )
+        {
+            *pOutput++ = base64EecodeAlpha[ *pInput >> 2 ];
+            *pOutput++ = base64EecodeAlpha[ ( 0x03 & *pInput ) << 4 ];
+            *pOutput++ = '=';
+            *pOutput++ = '=';
+        }
+
+        // Set the correct size
+        *pOutputDataLength = outputLength;
+    }
+
+    return ret;
+}
+
 Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, char *pOutputData, size_t *pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
@@ -49,7 +130,7 @@ Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, cha
     size_t outputLength = 0;
     uint8_t b0, b1, b2, b3;
 
-    if( pInput == NULL || pOutput == NULL || pOutputDataLength == NULL )
+    if( pInputData == NULL || pOutputData == NULL || pOutputDataLength == NULL )
     {
         ret = BASE64_RESULT_BAD_PARAMETER;
     }
@@ -94,7 +175,7 @@ Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, cha
         // Check against the buffer size that's been supplied
         if( *pOutputDataLength < outputLength )
         {
-            return BASE64_RESULT_BUFFER_TOO_SMALL;
+            ret = BASE64_RESULT_BUFFER_TOO_SMALL;
         }
     }
 

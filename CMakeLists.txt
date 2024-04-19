@@ -29,11 +29,13 @@ set( WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS
 file(
   GLOB
   WEBRTC_APPLICATION_UTILS_SOURCE_FILES
-  "examples/base64/*.c" )
+  "examples/base64/*.c"
+  "examples/message_queue/linux/*.c" )
 
 set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
      "examples/base64/"
-     "examples/logging/" )
+     "examples/logging/"
+     "examples/message_queue/linux/" )
 
 file(
   GLOB
@@ -107,6 +109,6 @@ target_compile_definitions( WebRTCLinuxApplicationMaster PUBLIC SDP_DO_NOT_USE_C
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${SDP_INCLUDE_PUBLIC_DIRS} )
 
-# link application with dependencies
+# link application with dependencies, note that rt is librt providing message queue's APIs
 message(STATUS "linking websockets to WebRTCLinuxApplication")
-target_link_libraries(WebRTCLinuxApplicationMaster websockets sigv4 signaling corejson sdp)
+target_link_libraries(WebRTCLinuxApplicationMaster websockets sigv4 signaling corejson sdp rt)
