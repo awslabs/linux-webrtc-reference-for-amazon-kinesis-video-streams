@@ -645,7 +645,10 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t *pC
 
             if( ret == SIGNALING_CONTROLLER_RESULT_OK )
             {
-                // /* Finally, sent it to websocket layer. */
+                LogDebug( ( "Constructed WSS message length: %ld, message: \n%.*s", pCtx->constructedSignalingBufferLength,
+                            ( int ) pCtx->constructedSignalingBufferLength, pCtx->constructedSignalingBuffer ) );
+
+                /* Finally, sent it to websocket layer. */
                 websocketRet = Websocket_Send( pCtx->constructedSignalingBuffer, pCtx->constructedSignalingBufferLength );
                 if( websocketRet != SIGNALING_RESULT_OK )
                 {
@@ -751,6 +754,22 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     }
 
     return ret;
+}
+
+void SignalingController_Deinit( SignalingControllerContext_t *pCtx )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+
+    if( pCtx == NULL )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        /* Free mqueue. */
+        MessageQueue_Destroy( &pCtx->sendMessageQueue );
+    }
 }
 
 SignalingControllerResult_t SignalingController_ConnectServers( SignalingControllerContext_t * pCtx )

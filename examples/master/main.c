@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #include "demo_config.h"
 #include "logging.h"
 #include "demo_data_types.h"
@@ -84,6 +85,12 @@ const char videoAttribute19Name[] = "rtcp-fb";
 const char videoAttribute19Value[] = "106 goog-remb";
 const char videoAttribute20Name[] = "rtcp-fb";
 const char videoAttribute20Value[] = "106 transport-cc";
+
+static void terminateHandler( int sig )
+{
+    SignalingController_Deinit( &signalingControllerContext );
+    exit( 0 );
+}
 
 static uint8_t storeAndParseSdpOffer( const char *pEventSdpOffer, size_t eventSdpOfferlength, DemoSessionInformation_t *pSessionInDescriptionOffer )
 {
@@ -625,7 +632,6 @@ static uint8_t addressSdpOffer( const char *pEventSdpOffer, size_t eventSdpOffer
 static void respondWithSdpAnswer( const char *pRemoteClientId, size_t remoteClientIdLength )
 {
     uint8_t skipProcess = 0;
-    const char correlationId[] = "fakeCorelationId";
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerEventMessage_t eventMessage = {
         .event = SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
@@ -643,8 +649,8 @@ static void respondWithSdpAnswer( const char *pRemoteClientId, size_t remoteClie
 
     if( !skipProcess )
     {
-        eventMessage.eventContent.correlationIdLength = strlen( correlationId );
-        memcpy( eventMessage.eventContent.correlationId, correlationId, eventMessage.eventContent.correlationIdLength );
+        eventMessage.eventContent.correlationIdLength = 0U;
+        memset( eventMessage.eventContent.correlationId, 0, SIGNALING_CONTROLLER_CORRELATION_ID_MAX_LENGTH );
         eventMessage.eventContent.messageType = SIGNALING_TYPE_MESSAGE_SDP_ANSWER;
         eventMessage.eventContent.pDecodeMessage = demoContext.sessionInformationSdpAnswer.sdpBuffer;
         eventMessage.eventContent.decodeMessageLength = demoContext.sessionInformationSdpAnswer.sdpBufferLength;
@@ -721,6 +727,8 @@ int main()
     signalingControllerCred.pCaCertPath = AWS_CA_CERT_PATH;
 
     signalingControllerReturn = SignalingController_Init( &signalingControllerContext, &signalingControllerCred, handleSignalingMessage, NULL );
+
+    signal( SIGINT, terminateHandler );
 
     if( signalingControllerReturn == SIGNALING_CONTROLLER_RESULT_OK )
     {

@@ -1,21 +1,22 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "logging.h"
 #include "message_queue.h"
 
-const char *pQueueNames[ 10 ];
-size_t queueNamesCount = 0;
-
-static void cleanup_mqueues(void)
+void MessageQueue_Destroy( MessageQueueHandler_t *pMessageQueueHandler )
 {
-    size_t i;
-
-    for( i=0 ; i<queueNamesCount ; i++ )
+    if( pMessageQueueHandler != NULL )
     {
-        if( mq_unlink( pQueueNames[i] ) == -1 )
+        if( mq_close( pMessageQueueHandler->messageQueue ) == -1 )
         {
-            LogError( ( "mq_unlink error, queue name [%ld] = %s", i, pQueueNames[i] ) );
+            LogError( ( "mq_close error, errno: %d, queue name: %s", errno, pMessageQueueHandler->pQueueName ) );
+        }
+
+        if( mq_unlink( pMessageQueueHandler->pQueueName ) == -1 )
+        {
+            LogError( ( "mq_unlink error, errno: %d, queue name: %s", errno, pMessageQueueHandler->pQueueName ) );
         }
     }
 }
@@ -23,7 +24,6 @@ static void cleanup_mqueues(void)
 MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHandler, const char *pQueueName, size_t messageMaxLength, size_t messageQueueMaxNum )
 {
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
-    static uint8_t first = 1;
     struct mq_attr attr;
 
     if( pMessageQueueHandler == NULL || pQueueName == NULL )
@@ -37,7 +37,7 @@ MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHa
         attr.mq_msgsize = messageMaxLength;
         attr.mq_maxmsg = messageQueueMaxNum;
 
-        pMessageQueueHandler->messageQueue = mq_open( pQueueName, O_RDWR | O_CREAT, 0644, &attr );
+        pMessageQueueHandler->messageQueue = mq_open( pQueueName, O_RDWR | O_CREAT, 0666, &attr );
 
         if( pMessageQueueHandler->messageQueue == ( mqd_t ) -1 )
         {
@@ -46,14 +46,6 @@ MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHa
         else
         {
             pMessageQueueHandler->pQueueName = pQueueName;
-            pQueueNames[ queueNamesCount ] = pQueueName;
-            queueNamesCount++;
-
-            if( first )
-            {
-                first = 0;
-                atexit( cleanup_mqueues );
-            }
         }
     }
 
