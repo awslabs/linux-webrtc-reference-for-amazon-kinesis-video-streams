@@ -13,3 +13,6 @@
 [submodule "libraries/json/coreJSON"]
 	path = libraries/json/coreJSON
 	url = https://github.com/FreeRTOS/coreJSON
+[submodule "libraries/components/iceaws"]
+	path = libraries/components/iceaws
+	url = https://github.com/kar-rahul-aws/iceaws

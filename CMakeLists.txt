@@ -109,6 +109,13 @@ target_compile_definitions( WebRTCLinuxApplicationMaster PUBLIC SDP_DO_NOT_USE_C
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${SDP_INCLUDE_PUBLIC_DIRS} )
 
+## Include ICE
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/ice.cmake )
+
+## Set SDP include directories
+target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                            ${ICE_INCLUDE_PUBLIC_DIRS} )
+
 # link application with dependencies, note that rt is librt providing message queue's APIs
 message(STATUS "linking websockets to WebRTCLinuxApplication")
-target_link_libraries(WebRTCLinuxApplicationMaster websockets sigv4 signaling corejson sdp rt)
+target_link_libraries(WebRTCLinuxApplicationMaster websockets sigv4 signaling corejson sdp ice rt)

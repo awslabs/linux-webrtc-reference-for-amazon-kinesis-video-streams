@@ -1,6 +1,6 @@
 # This cmake file is used to include libwebsockets as static library.
-set(CMAKE_SIGNALING_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-sdp)
-include( ${CMAKE_SIGNALING_DIRECTORY}/sdpFilePaths.cmake )
+set(CMAKE_SDP_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-sdp)
+include( ${CMAKE_SDP_DIRECTORY}/sdpFilePaths.cmake )
 
 add_library( sdp
              ${SDP_SOURCES} )
