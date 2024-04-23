@@ -9,6 +9,7 @@ extern "C" {
 
 #include <stdio.h>
 #include "sdp_controller.h"
+#include "signaling_controller.h"
 
 #define DEMO_SDP_BUFFER_MAX_LENGTH ( 10000 )
 
@@ -21,6 +22,9 @@ typedef struct DemoSessionInformation
 
 typedef struct DemoContext
 {
+    /* Signaling component. */
+    SignalingControllerContext_t signalingControllerContext;
+
     DemoSessionInformation_t sessionInformationSdpOffer;
     DemoSessionInformation_t sessionInformationSdpAnswer;
     char sdpConstructedBuffer[ DEMO_SDP_BUFFER_MAX_LENGTH ];

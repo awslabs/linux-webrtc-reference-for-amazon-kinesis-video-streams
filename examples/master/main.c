@@ -10,7 +10,6 @@
 #include "sdp_controller.h"
 
 DemoContext_t demoContext;
-SignalingControllerContext_t signalingControllerContext;
 
 extern uint8_t prepareSdpAnswer( DemoSessionInformation_t *pSessionInDescriptionOffer, DemoSessionInformation_t *pSessionInDescriptionAnswer );
 extern uint8_t serializeSdpMessage( DemoSessionInformation_t *pSessionInDescriptionAnswer, DemoContext_t *pDemoContext );
@@ -18,7 +17,7 @@ extern uint8_t addressSdpOffer( const char *pEventSdpOffer, size_t eventSdpOffer
 
 static void terminateHandler( int sig )
 {
-    SignalingController_Deinit( &signalingControllerContext );
+    SignalingController_Deinit( &demoContext.signalingControllerContext );
     exit( 0 );
 }
 
@@ -50,7 +49,7 @@ static void respondWithSdpAnswer( const char *pRemoteClientId, size_t remoteClie
         memcpy( eventMessage.eventContent.remoteClientId, pRemoteClientId, remoteClientIdLength );
         eventMessage.eventContent.remoteClientIdLength = remoteClientIdLength;
         
-        signalingControllerReturn = SignalingController_SendMessage( &signalingControllerContext, &eventMessage );
+        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &eventMessage );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             skipProcess = 1;
@@ -121,19 +120,19 @@ int main()
     signalingControllerCred.secretAccessKeyLength = strlen(AWS_SECRET_ACCESS_KEY);
     signalingControllerCred.pCaCertPath = AWS_CA_CERT_PATH;
 
-    signalingControllerReturn = SignalingController_Init( &signalingControllerContext, &signalingControllerCred, handleSignalingMessage, NULL );
+    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &signalingControllerCred, handleSignalingMessage, NULL );
 
     signal( SIGINT, terminateHandler );
 
     if( signalingControllerReturn == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        signalingControllerReturn = SignalingController_ConnectServers( &signalingControllerContext );
+        signalingControllerReturn = SignalingController_ConnectServers( &demoContext.signalingControllerContext );
     }
 
     if( signalingControllerReturn == SIGNALING_CONTROLLER_RESULT_OK )
     {
         /* This should never return unless exception happens. */
-        signalingControllerReturn = SignalingController_ProcessLoop( &signalingControllerContext );
+        signalingControllerReturn = SignalingController_ProcessLoop( &demoContext.signalingControllerContext );
     }
 
     return 0;
