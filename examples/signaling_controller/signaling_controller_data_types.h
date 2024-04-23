@@ -26,6 +26,8 @@ extern "C" {
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_USER_NAME_LENGTH ( 256 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_PASSWORD_LENGTH ( 256 )
 #define SIGNALING_CONTROLLER_MAX_CONTENT_LENGTH ( 10000 )
+#define SIGNALING_CONTROLLER_CORRELATION_ID_MAX_LENGTH ( 256 )
+#define SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH ( 256 )
 
 typedef enum SignalingControllerEventStatus
 {
@@ -45,7 +47,16 @@ typedef struct SignalingControllerReceiveEvent
     size_t correlationIdLength;
 } SignalingControllerReceiveEvent_t;
 
-typedef SignalingControllerReceiveEvent_t SignalingControllerEventContentSend_t;
+typedef struct SignalingControllerEventContentSend
+{
+    char remoteClientId[ SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH ];
+    size_t remoteClientIdLength;
+    SignalingTypeMessage_t messageType;
+    char *pDecodeMessage;
+    size_t decodeMessageLength;
+    char correlationId[ SIGNALING_CONTROLLER_CORRELATION_ID_MAX_LENGTH ];
+    size_t correlationIdLength;
+} SignalingControllerEventContentSend_t;
 
 typedef int32_t (*SignalingControllerReceiveMessageCallback)( SignalingControllerReceiveEvent_t *pEvent, void *pUserContext );
 typedef int32_t (*SignalingControllerCompleteSendCallback)( SignalingControllerEventStatus_t status, void *pUserContext );
@@ -159,8 +170,7 @@ typedef enum SignalingControllerEvent
 typedef struct SignalingControllerEventMessage
 {
     SignalingControllerEvent_t event;
-    void *pEventContent;
-    size_t eventContentLength;
+    SignalingControllerEventContentSend_t eventContent;
     SignalingControllerCompleteSendCallback onCompleteCallback;
     void *pOnCompleteCallbackContext;
 } SignalingControllerEventMessage_t;

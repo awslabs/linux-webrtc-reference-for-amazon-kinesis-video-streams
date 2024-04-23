@@ -10,18 +10,21 @@ extern "C" {
 #include <stdio.h>
 #include "sdp_controller.h"
 
-#define DEMO_SDP_OFFER_BUFFER_MAX_LENGTH ( 10000 )
+#define DEMO_SDP_BUFFER_MAX_LENGTH ( 10000 )
 
 typedef struct DemoSessionInformation
 {
-    char sdpOfferBuffer[ DEMO_SDP_OFFER_BUFFER_MAX_LENGTH ];
-    size_t sdpOfferBufferLength;
-    SdpControllerSdpOffer_t sdpOffer;
+    char sdpBuffer[ DEMO_SDP_BUFFER_MAX_LENGTH ];
+    size_t sdpBufferLength;
+    SdpControllerSdpDescription_t sdpDescription;
 } DemoSessionInformation_t;
 
 typedef struct DemoContext
 {
-    DemoSessionInformation_t sessionInformation;
+    DemoSessionInformation_t sessionInformationSdpOffer;
+    DemoSessionInformation_t sessionInformationSdpAnswer;
+    char sdpConstructedBuffer[ DEMO_SDP_BUFFER_MAX_LENGTH ];
+    size_t sdpConstructedBufferLength;
 } DemoContext_t;
 
 #ifdef __cplusplus

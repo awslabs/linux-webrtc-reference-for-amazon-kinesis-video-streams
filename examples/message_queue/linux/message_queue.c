@@ -1,10 +1,30 @@
 #include <fcntl.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include "logging.h"
 #include "message_queue.h"
 
-MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHandler, const char *pQueueName )
+const char *pQueueNames[ 10 ];
+size_t queueNamesCount = 0;
+
+static void cleanup_mqueues(void)
+{
+    size_t i;
+
+    for( i=0 ; i<queueNamesCount ; i++ )
+    {
+        if( mq_unlink( pQueueNames[i] ) == -1 )
+        {
+            LogError( ( "mq_unlink error, queue name [%ld] = %s", i, pQueueNames[i] ) );
+        }
+    }
+}
+
+MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHandler, const char *pQueueName, size_t messageMaxLength, size_t messageQueueMaxNum )
 {
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
+    static uint8_t first = 1;
+    struct mq_attr attr;
 
     if( pMessageQueueHandler == NULL || pQueueName == NULL )
     {
@@ -13,7 +33,11 @@ MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHa
 
     if( ret == MESSAGE_QUEUE_RESULT_OK )
     {
-        pMessageQueueHandler->messageQueue = mq_open( pQueueName, O_RDWR | O_CREAT );
+        memset( &attr, 0, sizeof( struct mq_attr ) );
+        attr.mq_msgsize = messageMaxLength;
+        attr.mq_maxmsg = messageQueueMaxNum;
+
+        pMessageQueueHandler->messageQueue = mq_open( pQueueName, O_RDWR | O_CREAT, 0644, &attr );
 
         if( pMessageQueueHandler->messageQueue == ( mqd_t ) -1 )
         {
@@ -22,6 +46,14 @@ MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHa
         else
         {
             pMessageQueueHandler->pQueueName = pQueueName;
+            pQueueNames[ queueNamesCount ] = pQueueName;
+            queueNamesCount++;
+
+            if( first )
+            {
+                first = 0;
+                atexit( cleanup_mqueues );
+            }
         }
     }
 

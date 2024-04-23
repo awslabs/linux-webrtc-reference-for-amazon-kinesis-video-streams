@@ -28,7 +28,7 @@ typedef struct MessageQueueHandler
     mqd_t messageQueue;
 } MessageQueueHandler_t;
 
-MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHandler, const char *pQueueName );
+MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t *pMessageQueueHandler, const char *pQueueName, size_t messageMaxLength, size_t messageQueueMaxNum );
 MessageQueueResult_t MessageQueue_Send( MessageQueueHandler_t *pMessageQueueHandler, void *pMessage, size_t messageLength );
 MessageQueueResult_t MessageQueue_Recv( MessageQueueHandler_t *pMessageQueueHandler, void *pMessage, size_t *pMessageLength );
 MessageQueueResult_t MessageQueue_IsEmpty( MessageQueueHandler_t *pMessageQueueHandler );

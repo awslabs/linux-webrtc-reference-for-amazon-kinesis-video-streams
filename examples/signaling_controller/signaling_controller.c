@@ -8,6 +8,7 @@
 
 #define MAX_URI_CHAR_LEN ( 10000 )
 #define MAX_JSON_PARAMETER_STRING_LEN ( 10 * 1024 )
+#define MAX_QUEUE_MSG_NUM ( 10 )
 
 static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t *pCtx, SignalingIceServerList_t *pIceServerList );
 
@@ -606,7 +607,7 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t *pC
     {
         case SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE:
             /* Allocate the ring buffer to store constructed signaling messages. */
-            pEventContentSend = ( SignalingControllerEventContentSend_t* )(pEventMsg->pEventContent);
+            pEventContentSend = &pEventMsg->eventContent;
             callbackEventStatus = SIGNALING_CONTROLLER_EVENT_STATUS_SENT_FAIL;
 
             /* Then fill the event information, like correlation ID, recipient client ID and base64 encoded message.
@@ -627,9 +628,9 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t *pC
                 wssSendMessage.messageType = pEventContentSend->messageType;
                 wssSendMessage.pBase64EncodedMessage = pCtx->base64Buffer;
                 wssSendMessage.base64EncodedMessageLength = pCtx->base64BufferLength;
-                wssSendMessage.pCorrelationId = pEventContentSend->pCorrelationId;
+                wssSendMessage.pCorrelationId = pEventContentSend->correlationId;
                 wssSendMessage.correlationIdLength = pEventContentSend->correlationIdLength;
-                wssSendMessage.pRecipientClientId = pEventContentSend->pRemoteClientId;
+                wssSendMessage.pRecipientClientId = pEventContentSend->remoteClientId;
                 wssSendMessage.recipientClientIdLength = pEventContentSend->remoteClientIdLength;
 
                 /* We must preserve LWS_PRE ahead of buffer for libwebsockets. */
@@ -742,7 +743,7 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     /* Initializa Message Queue. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        retMessageQueue = MessageQueue_Create( &pCtx->sendMessageQueue, "/SignalingController" );
+        retMessageQueue = MessageQueue_Create( &pCtx->sendMessageQueue, "/SignalingController", sizeof( SignalingControllerEventMessage_t ), MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             ret = SIGNALING_CONTROLLER_RESULT_MQ_INIT_FAIL;

@@ -10,10 +10,21 @@ extern "C" {
 #include <stdio.h>
 #include <stdint.h>
 
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT 2
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT 2
-#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT 256
-#define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT 5
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ( 256 )
+#define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ( 5 )
+
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_USER_NAME "-"
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_SESSION_VERSION ( 2 )
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_NET_TYPE "IN"
+#define SDP_CONTROLLER_ORIGIN_IPV4_TYPE "IP4"
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS "127.0.0.1"
+
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_SESSION_NAME "-"
+
+#define SDP_CONTROLLER_MESSAGE_TEMPLATE_HEAD "{\"type\": \"%s\", \"sdp\": \""
+#define SDP_CONTROLLER_MESSAGE_TEMPLATE_TAIL "\"}"
 
 typedef enum SdpControllerResult
 {
@@ -23,10 +34,13 @@ typedef enum SdpControllerResult
     SDP_CONTROLLER_RESULT_NOT_SDP_OFFER,
     SDP_CONTROLLER_RESULT_SDP_DESERIALIZER_INIT_FAIL,
     SDP_CONTROLLER_RESULT_SDP_DESERIALIZER_PARSE_ATTRIBUTE_FAIL,
+    SDP_CONTROLLER_RESULT_SDP_SERIALIZER_INIT_FAIL,
+    SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL,
     SDP_CONTROLLER_RESULT_SDP_SESSION_ATTRIBUTE_MAX_EXCEDDED,
     SDP_CONTROLLER_RESULT_SDP_MEDIA_ATTRIBUTE_MAX_EXCEDDED,
     SDP_CONTROLLER_RESULT_SDP_NON_NUMBERIC_STRING,
     SDP_CONTROLLER_RESULT_SDP_CONVERTED_BUFFER_TOO_SMALL,
+    SDP_CONTROLLER_RESULT_SDP_SNPRINTF_FAIL,
 } SdpControllerResult_t;
 
 /*
@@ -109,8 +123,6 @@ typedef struct SdpControllerMediaDescription
     SdpControllerAttributes_t attributes[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
 
     uint8_t mediaAttributesCount;
-
-    uint8_t mediaBandwidthCount;
 } SdpControllerMediaDescription_t;
 
 typedef struct SdpControllerSdpOffer
@@ -147,6 +159,8 @@ typedef struct SdpControllerSdpOffer
 
     SdpControllerConnectionInformation_t connectionInformation;
 
+    SdpControllerTiming_t timingDescription;
+
     SdpControllerAttributes_t attributes[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
 
     SdpControllerMediaDescription_t mediaDescriptions[ SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ];
@@ -154,11 +168,20 @@ typedef struct SdpControllerSdpOffer
     uint16_t sessionAttributesCount;
 
     uint16_t mediaCount;
-} SdpControllerSdpOffer_t;
+} SdpControllerSdpDescription_t;
+
+typedef enum SdpControllerMessageType
+{
+    SDP_CONTROLLER_MESSAGE_TYPE_NONE = 0,
+    SDP_CONTROLLER_MESSAGE_TYPE_OFFER,
+    SDP_CONTROLLER_MESSAGE_TYPE_ANSWER,
+} SdpControllerMessageType_t;
 
 SdpControllerResult_t SdpController_GetSdpOfferContent( const char *pSdpMessage, size_t sdpMessageLength, const char **ppSdpOfferContent, size_t *pSdpOfferContentLength );
-SdpControllerResult_t SdpController_ConvertSdpContentNewline( const char *pSdpContent, size_t sdpContentLength, char **ppSdpConvertedContent, size_t *pSdpConvertedContentLength );
-SdpControllerResult_t SdpController_DeserializeSdpOffer( const char *pSdpOfferContent, size_t sdpOfferContentLength, SdpControllerSdpOffer_t *pOffer );
+SdpControllerResult_t SdpController_DeserializeSdpContentNewline( const char *pSdpContent, size_t sdpContentLength, char **ppSdpConvertedContent, size_t *pSdpConvertedContentLength );
+SdpControllerResult_t SdpController_DeserializeSdpOffer( const char *pSdpOfferContent, size_t sdpOfferContentLength, SdpControllerSdpDescription_t *pOffer );
+SdpControllerResult_t SdpController_SerializeSdpMessage( SdpControllerMessageType_t messageType, SdpControllerSdpDescription_t *pSdpDescription, char *pSdpMessage, size_t *pSdpMessageLength );
+SdpControllerResult_t SdpController_SerializeSdpNewline( const char *pSdpContent, size_t sdpContentLength, char *pSdpConvertedContent, size_t *pSdpConvertedContentLength );
 
 #ifdef __cplusplus
 }

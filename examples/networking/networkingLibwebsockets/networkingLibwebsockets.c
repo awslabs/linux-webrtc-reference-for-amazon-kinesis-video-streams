@@ -91,7 +91,6 @@ NetworkingLibwebsocketsResult_t initRingBuffer( NetworkingLibwebsocketRingBuffer
 NetworkingLibwebsocketsResult_t getRingBufferCurrentIndex( NetworkingLibwebsocketRingBuffer_t *pRingBuffer, size_t *pCurrentIdx )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    size_t nextIndex = ( pRingBuffer->end + 1 ) % NETWORKING_LWS_RING_BUFFER_NUM;
     uint8_t isEmpty = pRingBuffer->end == pRingBuffer->start? 1:0;
 
     if( isEmpty )
@@ -114,12 +113,13 @@ NetworkingLibwebsocketsResult_t allocateRingBuffer( NetworkingLibwebsocketRingBu
 
     if( isFull )
     {
+        LogWarn( ( "Ring buffer is now full" ) );
         ret = NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_FULL;
     }
     else
     {
+        *pNextIdx = pRingBuffer->end;
         pRingBuffer->end = nextIndex;
-        *pNextIdx = nextIndex;
     }
 
     return ret;
@@ -133,7 +133,12 @@ NetworkingLibwebsocketsResult_t freeRingBuffer( NetworkingLibwebsocketRingBuffer
 
     if( !isCorrectIdx )
     {
+        LogError( ( "Freeing incorrect index: %ld, expected index: %ld", idx, pRingBuffer->start ) );
         ret = NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_FREE_WRONG_INDEX;
+    }
+    else if( pRingBuffer->start == pRingBuffer->end )
+    {
+        /* Ring buffer is now empty, not necessary to free. */
     }
     else
     {

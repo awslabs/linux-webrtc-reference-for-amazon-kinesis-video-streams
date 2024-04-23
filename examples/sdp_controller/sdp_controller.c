@@ -3,6 +3,7 @@
 #include "sdp_controller.h"
 #include "core_json.h"
 #include "sdp_deserializer.h"
+#include "sdp_serializer.h"
 
 #define SDP_CONTROLLER_SDP_OFFER_MESSAGE_TYPE_KEY "type"
 #define SDP_CONTROLLER_SDP_OFFER_MESSAGE_TYPE_VALUE "offer"
@@ -43,7 +44,7 @@ static SdpControllerResult_t convertStringToUl( const char *pStr, size_t strLeng
     return ret;
 }
 
-static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpOffer_t *pOffer, const char *pAttributeBuffer, size_t attributeBufferLength )
+static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t *pOffer, const char *pAttributeBuffer, size_t attributeBufferLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -77,7 +78,7 @@ static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpOffer_t *pOff
     return ret;
 }
 
-static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpOffer_t *pOffer, const char *pAttributeBuffer, size_t attributeBufferLength )
+static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpDescription_t *pOffer, const char *pAttributeBuffer, size_t attributeBufferLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -109,7 +110,224 @@ static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpOffer_t *pO
     return ret;
 }
 
-SdpControllerResult_t SdpController_DeserializeSdpOffer( const char *pSdpOfferContent, size_t sdpOfferContentLength, SdpControllerSdpOffer_t *pOffer )
+static SdpControllerResult_t serializeOrigin( SdpSerializerContext_t *pCtx, SdpControllerOrigin_t *pOrigin )
+{
+    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    SdpResult_t sdpResult = SDP_RESULT_OK;
+    SdpOriginator_t origin;
+
+    memset( &origin, 0, sizeof( SdpOriginator_t ) );
+    origin.sessionId = pOrigin->sessionId;
+    origin.sessionVersion = pOrigin->sessionVersion;
+    origin.pUserName = pOrigin->pUserName;
+    origin.userNameLength = pOrigin->userNameLength;
+    origin.connectionInfo.networkType = SDP_NETWORK_IN;
+    origin.connectionInfo.addressType = SDP_ADDRESS_IPV4;
+    origin.connectionInfo.pAddress = pOrigin->sdpConnectionInformation.pConnectionAddress;
+    origin.connectionInfo.addressLength = pOrigin->sdpConnectionInformation.connectionAddressLength;
+
+    sdpResult = SdpSerializer_AddOriginator( pCtx, SDP_TYPE_ORIGINATOR, &origin );
+    if( sdpResult != SDP_RESULT_OK )
+    {
+        LogError( ( "Serialize SDP origin failure, result: %d", sdpResult ) );
+        ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+    }
+
+    return ret;
+}
+
+static SdpControllerResult_t serializeTiming( SdpSerializerContext_t *pCtx, SdpControllerTiming_t *pTiming )
+{
+    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    SdpResult_t sdpResult = SDP_RESULT_OK;
+    SdpTimeDescription_t time;
+
+    memset( &time, 0, sizeof( SdpTimeDescription_t ) );
+    time.startTime = pTiming->startTime;
+    time.stopTime = pTiming->stopTime;
+
+    sdpResult = SdpSerializer_AddTimeActive( pCtx, SDP_TYPE_TIME_ACTIVE, &time );
+    if( sdpResult != SDP_RESULT_OK )
+    {
+        LogError( ( "Serialize SDP time active failure, result: %d", sdpResult ) );
+        ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+    }
+
+    return ret;
+}
+
+static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t *pCtx, SdpControllerAttributes_t *pAttributes, uint16_t attributeCount )
+{
+    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    SdpResult_t sdpResult = SDP_RESULT_OK;
+    SdpAttribute_t attribute;
+    uint32_t i;
+    SdpControllerAttributes_t *pCurrentAttrubute = pAttributes;
+
+    for( i=0 ; i<attributeCount ; i++ )
+    {
+        attribute.pAttributeName = (pCurrentAttrubute + i)->pAttributeName;
+        attribute.attributeNameLength = (pCurrentAttrubute + i)->attributeNameLength;
+        attribute.pAttributeValue = (pCurrentAttrubute + i)->pAttributeValue;
+        attribute.attributeValueLength = (pCurrentAttrubute + i)->attributeValueLength;
+
+        sdpResult = SdpSerializer_AddAttribute( pCtx, SDP_TYPE_ATTRIBUTE, &attribute );
+        if( sdpResult != SDP_RESULT_OK )
+        {
+            LogError( ( "Serialize SDP attribute failure, result: %d", sdpResult ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+        }
+    }
+
+    return ret;
+}
+
+static SdpControllerResult_t serializeConnectionInfo( SdpSerializerContext_t *pCtx, SdpControllerConnectionInformation_t *pConnectionInfo )
+{
+    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    SdpResult_t sdpResult = SDP_RESULT_OK;
+    SdpConnectionInfo_t connInfo;
+
+    connInfo.networkType = SDP_NETWORK_IN;
+    connInfo.addressType = SDP_ADDRESS_IPV4;
+    connInfo.pAddress = pConnectionInfo->pConnectionAddress;
+    connInfo.addressLength = pConnectionInfo->connectionAddressLength;
+
+    sdpResult = SdpSerializer_AddConnectionInfo( pCtx, SDP_TYPE_CONNINFO, &connInfo );
+    if( sdpResult != SDP_RESULT_OK )
+    {
+        LogError( ( "Serialize SDP connection information failure, result: %d", sdpResult ) );
+        ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+    }
+
+    return ret;
+}
+
+static SdpControllerResult_t serializeMedias( SdpSerializerContext_t *pCtx, SdpControllerMediaDescription_t *pMediaDescriptions, uint16_t mediaCount )
+{
+    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    SdpResult_t sdpResult = SDP_RESULT_OK;
+    SdpAttribute_t attribute;
+    uint32_t i;
+    SdpControllerMediaDescription_t *pCurrentMedia = pMediaDescriptions;
+
+    for( i=0 ; i<mediaCount ; i++ )
+    {
+        pCurrentMedia = pMediaDescriptions + i;
+
+        /* Media name */
+        sdpResult = SdpSerializer_AddBuffer( pCtx, SDP_TYPE_MEDIA, pCurrentMedia->pMediaName, pCurrentMedia->mediaNameLength );
+        if( sdpResult != SDP_RESULT_OK )
+        {
+            LogError( ( "Serialize SDP media name failure, result: %d", sdpResult ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+            break;
+        }
+
+        /* Media title */
+        if( pCurrentMedia->pMediaTitle )
+        {
+            sdpResult = SdpSerializer_AddBuffer( pCtx, SDP_TYPE_MEDIA, pCurrentMedia->pMediaTitle, pCurrentMedia->mediaTitleLength );
+            if( sdpResult != SDP_RESULT_OK )
+            {
+                LogError( ( "Serialize SDP media title failure, result: %d", sdpResult ) );
+                ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+                break;
+            }
+        }
+
+        /* Media connection information */
+        ret = serializeConnectionInfo( pCtx, &pCurrentMedia->connectionInformation );
+        if( ret != SDP_CONTROLLER_RESULT_OK )
+        {
+            break;
+        }
+
+        /* Append media attributes. */
+        ret = serializeAttributes( pCtx, &pCurrentMedia->attributes[ 0 ], pCurrentMedia->mediaAttributesCount );
+        if( ret != SDP_CONTROLLER_RESULT_OK )
+        {
+            break;
+        }
+    }
+
+    return ret;
+}
+
+static SdpControllerResult_t serializeSdpMessage( SdpControllerSdpDescription_t *pSdpDescription, char *pOutputBuffer, size_t *pOutputBufferSize )
+{
+    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    SdpResult_t sdpResult = SDP_RESULT_OK;
+    SdpSerializerContext_t ctx;
+    const char *pBuffer;
+
+    sdpResult = SdpSerializer_Init( &ctx, pOutputBuffer, *pOutputBufferSize );
+    if( sdpResult != SDP_RESULT_OK )
+    {
+        LogError( ( "Init SDP serializer failure, result: %d", sdpResult ) );
+        ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_INIT_FAIL;
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        /* Append version. */
+        sdpResult = SdpSerializer_AddU64( &ctx, SDP_TYPE_VERSION, pSdpDescription->version );
+        if( sdpResult != SDP_RESULT_OK )
+        {
+            LogError( ( "Serialize SDP version failure, result: %d", sdpResult ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+        }
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        /* Append origin. */
+        ret = serializeOrigin( &ctx, &pSdpDescription->origin );
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        /* Append session name. */
+        sdpResult = SdpSerializer_AddBuffer( &ctx, SDP_TYPE_SESSION_NAME, pSdpDescription->pSessionName, pSdpDescription->sessionNameLength );
+        if( sdpResult != SDP_RESULT_OK )
+        {
+            LogError( ( "Serialize SDP session name failure, result: %d", sdpResult ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+        }
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        /* Append timing description. */
+        ret = serializeTiming( &ctx, &pSdpDescription->timingDescription );
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        /* Append session attributes. */
+        ret = serializeAttributes( &ctx, &pSdpDescription->attributes[ 0 ], pSdpDescription->sessionAttributesCount );
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        /* Append media information. */
+        ret = serializeMedias( &ctx, &pSdpDescription->mediaDescriptions[ 0 ], pSdpDescription->mediaCount );
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        sdpResult = SdpSerializer_Finalize( &ctx, &pBuffer, pOutputBufferSize );
+        if( sdpResult != SDP_RESULT_OK )
+        {
+            LogError( ( "Serialize SDP finalize failure, result: %d", sdpResult ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_SERIALIZER_ADD_FAIL;
+        }
+    }
+
+    return ret;
+}
+
+SdpControllerResult_t SdpController_DeserializeSdpOffer( const char *pSdpOfferContent, size_t sdpOfferContentLength, SdpControllerSdpDescription_t *pOffer )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -126,7 +344,7 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char *pSdpOfferCo
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        memset( pOffer, 0, sizeof( SdpControllerSdpOffer_t ) );
+        memset( pOffer, 0, sizeof( SdpControllerSdpDescription_t ) );
 
         sdpResult = SdpDeserializer_Init( &ctx, pSdpOfferContent, sdpOfferContentLength );
         if( sdpResult != SDP_RESULT_OK )
@@ -298,7 +516,7 @@ SdpControllerResult_t SdpController_GetSdpOfferContent( const char *pSdpMessage,
     return ret;
 }
 
-SdpControllerResult_t SdpController_ConvertSdpContentNewline( const char *pSdpContent, size_t sdpContentLength, char **ppSdpConvertedContent, size_t *pSdpConvertedContentLength )
+SdpControllerResult_t SdpController_DeserializeSdpContentNewline( const char *pSdpContent, size_t sdpContentLength, char **ppSdpConvertedContent, size_t *pSdpConvertedContentLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     const char *pCurSdp = pSdpContent, *pNext;
@@ -341,6 +559,161 @@ SdpControllerResult_t SdpController_ConvertSdpContentNewline( const char *pSdpCo
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         *pSdpConvertedContentLength = outputLength;
+    }
+
+    return ret;
+}
+
+SdpControllerResult_t SdpController_SerializeSdpNewline( const char *pSdpContent, size_t sdpContentLength, char *pSdpConvertedContent, size_t *pSdpConvertedContentLength )
+{
+    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    const char *pCurSdp = pSdpContent, *pNext, *pTail;
+    char *pCurOutput = pSdpConvertedContent;
+    size_t lineLength, outputLength = 0;
+    int writtenLength;
+
+    if( pSdpContent == NULL || pSdpConvertedContent == NULL || pSdpConvertedContentLength == NULL )
+    {
+        ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        pTail = pSdpContent + sdpContentLength;
+
+        while( ( pNext = memchr( pCurSdp, '\n', pTail - pCurSdp ) ) != NULL )
+        {
+            lineLength = pNext - pCurSdp;
+
+            if( lineLength > 0 &&
+                pCurSdp[ lineLength - 1 ] == '\r' )
+            {
+                lineLength--;
+            }
+            else
+            {
+                /* do nothing, coverity happy. */
+            }
+
+            if( *pSdpConvertedContentLength < outputLength + lineLength + 4 )
+            {
+                ret = SDP_CONTROLLER_RESULT_SDP_CONVERTED_BUFFER_TOO_SMALL;
+                break;
+            }
+
+            writtenLength = snprintf( pCurOutput, *pSdpConvertedContentLength - outputLength, "%.*s\\r\\n",
+                                      ( int ) lineLength,
+                                      pCurSdp );
+            if( writtenLength < 0 )
+            {
+                ret = SDP_CONTROLLER_RESULT_SDP_SNPRINTF_FAIL;
+                LogError( ( "snprintf returns fail %d", writtenLength ) );
+                break;
+            }
+            else
+            {
+                outputLength += lineLength + 4;
+                pCurOutput += lineLength + 4;
+            }
+
+            pCurSdp = pNext + 1;
+        }
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        if( pTail > pCurSdp )
+        {
+            /* Copy the ending string. */
+            lineLength = pTail - pCurSdp;
+            memcpy( pCurOutput, pCurSdp, lineLength );
+
+            outputLength += lineLength;
+            pCurOutput += lineLength;
+            pCurSdp += lineLength;
+        }
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        *pSdpConvertedContentLength = outputLength;
+    }
+
+    return ret;
+}
+
+SdpControllerResult_t SdpController_SerializeSdpMessage( SdpControllerMessageType_t messageType, SdpControllerSdpDescription_t *pSdpDescription, char *pSdpMessage, size_t *pSdpMessageLength )
+{
+    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    int written;
+    char *pCurrentOutput = pSdpMessage;
+    size_t outputBufferWrittenSize = 0U, remainSize;
+
+    if( pSdpDescription == NULL || pSdpMessage == NULL || pSdpMessageLength == NULL )
+    {
+        ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        remainSize = *pSdpMessageLength - outputBufferWrittenSize;
+        written = snprintf( pCurrentOutput, remainSize, SDP_CONTROLLER_MESSAGE_TEMPLATE_HEAD, messageType==SDP_CONTROLLER_MESSAGE_TYPE_OFFER? "offer":"answer" );
+
+        if( written < 0 )
+        {
+            LogError( ( "Unexpected behavior, snprintf returns %d", written ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_SNPRINTF_FAIL;
+        }
+        else if( written == remainSize )
+        {
+            LogError( ( "output buffer full" ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_CONVERTED_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            pCurrentOutput += written;
+            outputBufferWrittenSize += written;
+        }
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        remainSize = *pSdpMessageLength - outputBufferWrittenSize;
+        ret = serializeSdpMessage( pSdpDescription, pCurrentOutput, &remainSize );
+        if( ret == SDP_CONTROLLER_RESULT_OK )
+        {
+            /* remainSize is updated to written length in serializeSdpMessage. */
+            pCurrentOutput += remainSize;
+            outputBufferWrittenSize += remainSize;
+        }
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        remainSize = *pSdpMessageLength - outputBufferWrittenSize;
+        written = snprintf( pCurrentOutput, remainSize, SDP_CONTROLLER_MESSAGE_TEMPLATE_TAIL );
+
+        if( written < 0 )
+        {
+            LogError( ( "Unexpected behavior, snprintf returns %d", written ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_SNPRINTF_FAIL;
+        }
+        else if( written == remainSize )
+        {
+            LogError( ( "output buffer full" ) );
+            ret = SDP_CONTROLLER_RESULT_SDP_CONVERTED_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            pCurrentOutput += written;
+            outputBufferWrittenSize += written;
+        }
+    }
+
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        /* Update written length for user. */
+        *pSdpMessageLength = outputBufferWrittenSize;
     }
 
     return ret;
