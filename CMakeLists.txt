@@ -30,12 +30,14 @@ file(
   GLOB
   WEBRTC_APPLICATION_UTILS_SOURCE_FILES
   "examples/base64/*.c"
-  "examples/message_queue/linux/*.c" )
+  "examples/message_queue/linux/*.c"
+  "examples/string_utils/*.c" )
 
 set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
      "examples/base64/"
      "examples/logging/"
-     "examples/message_queue/linux/" )
+     "examples/message_queue/linux/"
+     "examples/string_utils" )
 
 file(
   GLOB
@@ -44,6 +46,14 @@ file(
 
 set( WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS
      "examples/sdp_controller/" )
+
+file(
+  GLOB
+  WEBRTC_APPLICATION_ICE_CONTROLLER_SOURCE_FILES
+  "examples/ice_controller/*.c" )
+
+set( WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS
+    "examples/ice_controller/" )
 
 file(
   GLOB
@@ -59,14 +69,16 @@ add_executable(
     ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
     ${WEBRTC_APPLICATION_UTILS_SOURCE_FILES}
-    ${WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES} )
+    ${WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_ICE_CONTROLLER_SOURCE_FILES} )
 
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS}
-                            ${WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS} )
+                            ${WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS} )
 
 # Include dependencies
 ## Include sigV4

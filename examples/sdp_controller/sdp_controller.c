@@ -4,45 +4,12 @@
 #include "core_json.h"
 #include "sdp_deserializer.h"
 #include "sdp_serializer.h"
+#include "string_utils.h"
 
 #define SDP_CONTROLLER_SDP_OFFER_MESSAGE_TYPE_KEY "type"
 #define SDP_CONTROLLER_SDP_OFFER_MESSAGE_TYPE_VALUE "offer"
 #define SDP_CONTROLLER_SDP_OFFER_MESSAGE_CONTENT_KEY "sdp"
 #define SDP_CONTROLLER_SDP_NEWLINE_ENDING "\\n"
-
-static SdpControllerResult_t convertStringToUl( const char *pStr, size_t strLength, uint32_t *pOutUl )
-{
-    SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
-    uint32_t i, result = 0;
-
-    if( pStr == NULL || pOutUl == NULL )
-    {
-        return SDP_CONTROLLER_RESULT_BAD_PARAMETER;
-    }
-
-    if( ret == SDP_CONTROLLER_RESULT_OK )
-    {
-        for( i = 0; pStr[i] != '\0' && i < strLength; i++ )
-        { 
-            if( pStr[i] >= '0' && pStr[i] <= '9' )
-            {
-                result = result * 10 + ( pStr[i] - '0' );
-            }
-            else
-            {
-                ret = SDP_CONTROLLER_RESULT_SDP_NON_NUMBERIC_STRING;
-                break;
-            }
-        } 
-    }
-
-    if( ret == SDP_CONTROLLER_RESULT_OK )
-    {
-        *pOutUl = result;
-    }
-    
-    return ret;
-}
 
 static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t *pOffer, const char *pAttributeBuffer, size_t attributeBufferLength )
 {
@@ -331,6 +298,7 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char *pSdpOfferCo
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
+    StringUtilsResult_t stringResult;
     SdpDeserializerContext_t ctx;
     const char *pValue;
     char *pEnd;
@@ -426,13 +394,14 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char *pSdpOfferCo
             else if( type == SDP_TYPE_VERSION )
             {
                 // Version
-                ret = convertStringToUl( pValue, valueLength, &pOffer->version );
-                if( ret != SDP_CONTROLLER_RESULT_OK )
+                stringResult = StringUtils_ConvertStringToUl( pValue, valueLength, &pOffer->version );
+                if( stringResult != STRING_UTILS_RESULT_OK )
                 {
-                    LogError( ( "convertStringToUl fail, result %d, converting %.*s to %u",
-                                ret,
+                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
+                                stringResult,
                                 ( int ) valueLength, pValue,
                                 pOffer->version ) );
+                    ret = SDP_CONTROLLER_RESULT_SDP_INVALID_VERSION;
                     break;
                 }
             }

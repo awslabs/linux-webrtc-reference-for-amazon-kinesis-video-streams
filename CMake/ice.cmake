@@ -15,4 +15,8 @@ add_library( ice
              ${ICE_SOURCES} )
 
 target_include_directories( ice PRIVATE
-                            ${ICE_INCLUDE_PUBLIC_DIRS} )
+                            ${ICE_INCLUDE_PUBLIC_DIRS}
+                            ${JSON_INCLUDE_PUBLIC_DIRS} )
+
+target_link_libraries( ice PRIVATE
+                       corejson )
