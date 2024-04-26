@@ -856,6 +856,7 @@ SignalingControllerResult_t SignalingController_ProcessLoop( SignalingController
             if( messageQueueRet == MESSAGE_QUEUE_RESULT_OK )
             {
                 /* Received message, process it. */
+                LogDebug( ( "EventMsg: event: %d, pOnCompleteCallbackContext: %p", eventMsg.event, eventMsg.pOnCompleteCallbackContext ) );
                 ret = handleEvent( pCtx, &eventMsg );
             }
         }

@@ -121,10 +121,17 @@ target_compile_definitions( WebRTCLinuxApplicationMaster PUBLIC SDP_DO_NOT_USE_C
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${SDP_INCLUDE_PUBLIC_DIRS} )
 
+## Include STUN
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/stun.cmake )
+
+## Set STUN include directories
+target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                            ${STUN_INCLUDE_PUBLIC_DIRS} )
+
 ## Include ICE
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/ice.cmake )
 
-## Set SDP include directories
+## Set ICE include directories
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${ICE_INCLUDE_PUBLIC_DIRS} )
 

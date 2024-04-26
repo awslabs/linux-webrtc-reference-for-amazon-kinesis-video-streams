@@ -13,6 +13,9 @@
 [submodule "libraries/json/coreJSON"]
 	path = libraries/json/coreJSON
 	url = https://github.com/FreeRTOS/coreJSON
-[submodule "libraries/components/iceaws"]
-	path = libraries/components/iceaws
-	url = https://github.com/kar-rahul-aws/iceaws
+[submodule "libraries/components/amazon-kinesis-video-streams-ice"]
+	path = libraries/components/amazon-kinesis-video-streams-ice
+	url = https://github.com/kar-rahul-aws/amazon-kinesis-video-streams-ice
+[submodule "libraries/components/amazon-kinesis-video-streams-stun"]
+	path = libraries/components/amazon-kinesis-video-streams-stun
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-stun

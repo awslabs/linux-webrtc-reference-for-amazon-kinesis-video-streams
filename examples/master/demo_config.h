@@ -13,4 +13,6 @@
 
 #define AWS_CA_CERT_PATH "cert/cert.pem"
 
+#define AWS_MAX_VIEWER_NUM ( 2 )
+
 #endif /* DEMO_CONFIG_H */

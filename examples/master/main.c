@@ -10,6 +10,12 @@
 #include "signaling_controller.h"
 #include "sdp_controller.h"
 
+#define IS_USERNAME_FOUND_BIT ( 1 << 0 )
+#define IS_PASSWORD_FOUND_BIT ( 1 << 1 )
+#define SET_REMOTE_INFO_USERNAME_FOUND( isFoundBit ) ( isFoundBit |= IS_USERNAME_FOUND_BIT )
+#define SET_REMOTE_INFO_PASSWORD_FOUND( isFoundBit ) ( isFoundBit |= IS_PASSWORD_FOUND_BIT )
+#define IS_REMOTE_INFO_ALL_FOUND( isFoundBit ) ( isFoundBit & IS_USERNAME_FOUND_BIT && isFoundBit & IS_PASSWORD_FOUND_BIT )
+
 DemoContext_t demoContext;
 
 extern uint8_t prepareSdpAnswer( DemoSessionInformation_t *pSessionInDescriptionOffer, DemoSessionInformation_t *pSessionInDescriptionAnswer );
@@ -22,7 +28,7 @@ static void terminateHandler( int sig )
     exit( 0 );
 }
 
-static void respondWithSdpAnswer( const char *pRemoteClientId, size_t remoteClientIdLength, DemoContext_t *pDemoContext )
+static uint8_t respondWithSdpAnswer( const char *pRemoteClientId, size_t remoteClientIdLength, DemoContext_t *pDemoContext )
 {
     uint8_t skipProcess = 0;
     SignalingControllerResult_t signalingControllerReturn;
@@ -57,6 +63,8 @@ static void respondWithSdpAnswer( const char *pRemoteClientId, size_t remoteClie
             LogError( ( "Send signaling message fail, result: %d", signalingControllerReturn ) );
         }
     }
+
+    return skipProcess;
 }
 
 static int initializeIceController( DemoContext_t *pDemoContext )
@@ -64,7 +72,7 @@ static int initializeIceController( DemoContext_t *pDemoContext )
     int ret = 0;
     IceControllerResult_t iceControllerReturn;
 
-    iceControllerReturn = IceController_Init( &pDemoContext->iceControllerContext );
+    iceControllerReturn = IceController_Init( &pDemoContext->iceControllerContext, &pDemoContext->signalingControllerContext );
     if( iceControllerReturn != ICE_CONTROLLER_RESULT_OK )
     {
         LogError( ( "Fail to initialize ice controller." ) );
@@ -72,6 +80,107 @@ static int initializeIceController( DemoContext_t *pDemoContext )
     }
 
     return ret;
+}
+
+static uint8_t searchUserNamePassWord( SdpControllerAttributes_t *pAttributes, size_t attributesCount,
+                                       const char **ppRemoteUserName, size_t *pRemoteUserNameLength, const char **ppRemotePassword, size_t *pRemotePasswordLength )
+{
+    uint8_t isFound = 0;
+    size_t i;
+
+    for( i=0 ; i<attributesCount ; i++ )
+    {
+        if( pAttributes[i].attributeNameLength == strlen( "ice-ufrag" ) &&
+            strncmp( pAttributes[i].pAttributeName, "ice-ufrag", pAttributes[i].attributeNameLength ) == 0 )
+        {
+            /* Found user name. */
+            SET_REMOTE_INFO_USERNAME_FOUND( isFound );
+            *ppRemoteUserName = pAttributes[i].pAttributeValue;
+            *pRemoteUserNameLength = pAttributes[i].attributeValueLength;
+        }
+        else if( pAttributes[i].attributeNameLength == strlen( "ice-pwd" ) &&
+                 strncmp( pAttributes[i].pAttributeName, "ice-pwd", pAttributes[i].attributeNameLength ) == 0 )
+        {
+            /* Found password. */
+            SET_REMOTE_INFO_PASSWORD_FOUND( isFound );
+            *ppRemotePassword = pAttributes[i].pAttributeValue;
+            *pRemotePasswordLength = pAttributes[i].attributeValueLength;
+        }
+        else
+        {
+            continue;
+        }
+
+        if( IS_REMOTE_INFO_ALL_FOUND( isFound ) )
+        {
+            break;
+        }
+    }
+
+    return isFound;
+}
+
+static uint8_t getRemoteInfo( DemoSessionInformation_t *pSessionInformation, const char **ppRemoteUserName, size_t *pRemoteUserNameLength, const char **ppRemotePassword, size_t *pRemotePasswordLength )
+{
+    uint8_t skipProcess = 0;
+    SdpControllerSdpDescription_t *pSessionDescription = &pSessionInformation->sdpDescription;
+    size_t i;
+    uint8_t isFound;
+
+    /* Assuming that the username & password in a single session description is same. */
+    /* Search session attributes first. */
+    isFound = searchUserNamePassWord( pSessionDescription->attributes, pSessionDescription->sessionAttributesCount,
+                                      ppRemoteUserName, pRemoteUserNameLength,
+                                      ppRemotePassword, pRemotePasswordLength );
+
+    if( !IS_REMOTE_INFO_ALL_FOUND( isFound ) )
+    {
+        /* Search media attributes if not found in session attributes. */
+        for( i=0 ; i<pSessionDescription->mediaCount ; i++ )
+        {
+            isFound = 0;
+            isFound = searchUserNamePassWord( pSessionDescription->mediaDescriptions[i].attributes, pSessionDescription->mediaDescriptions[i].mediaAttributesCount,
+                                              ppRemoteUserName, pRemoteUserNameLength,
+                                              ppRemotePassword, pRemotePasswordLength );
+            if( IS_REMOTE_INFO_ALL_FOUND( isFound ) )
+            {
+                break;
+            }
+        }
+    }
+
+    if( !IS_REMOTE_INFO_ALL_FOUND( isFound ) )
+    {
+        /* Can't find user name & pass word, drop this remote description. */
+        LogWarn( ( "No remote username & password found in session description, drop this message" ) );
+        skipProcess = 1;
+    }
+
+    return skipProcess;
+}
+
+static uint8_t setRemoteDescription( IceControllerContext_t *pIceControllerCtx, DemoSessionInformation_t *pSessionInformation, const char *pRemoteClientId, size_t remoteClientIdLength )
+{
+    uint8_t skipProcess = 0;
+    const char *pRemoteUserName;
+    size_t remoteUserNameLength;
+    const char *pRemotePassword;
+    size_t remotePasswordLength;
+    IceControllerResult_t iceControllerResult;
+
+    skipProcess = getRemoteInfo( pSessionInformation, &pRemoteUserName, &remoteUserNameLength, &pRemotePassword, &remotePasswordLength );
+
+    if( skipProcess == 0 )
+    {
+        iceControllerResult = IceController_SetRemoteDescription( pIceControllerCtx, pRemoteClientId, remoteClientIdLength, pRemoteUserName, remoteUserNameLength, pRemotePassword, remotePasswordLength );
+        if( iceControllerResult != 0 )
+        {
+            LogError( ( "Fail to set remote description, result: %d", iceControllerResult ) );
+            skipProcess = 1;
+        }
+    }
+
+    return skipProcess;
 }
 
 int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t *pEvent, void *pUserContext )
@@ -96,7 +205,12 @@ int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t *pEvent, void 
 
             if( !skipProcess )
             {
-                respondWithSdpAnswer( pEvent->pRemoteClientId, pEvent->remoteClientIdLength, &demoContext );
+                skipProcess = respondWithSdpAnswer( pEvent->pRemoteClientId, pEvent->remoteClientIdLength, &demoContext );
+            }
+
+            if( !skipProcess )
+            {
+                skipProcess = setRemoteDescription( &demoContext.iceControllerContext, &demoContext.sessionInformationSdpOffer, pEvent->pRemoteClientId, pEvent->remoteClientIdLength );
             }
             break;
         case SIGNALING_TYPE_MESSAGE_SDP_ANSWER:
@@ -120,86 +234,6 @@ int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t *pEvent, void 
     }
 
     return 0;
-}
-
-typedef struct demoIceCandidate
-{
-    char *pCandidate;
-    size_t candidateLength;
-    int32_t sdpMid;
-    int32_t sdpMLineIndex;
-    char *pUsernameFragment;
-    size_t usernameFragmentLength;
-} demoIceCandidate_t;
-
-#define ICE_CANDIDATE_JSON_TEMPLATE "{\"candidate\":\"%.*s\",\"sdpMid\":\"%d\",\"sdpMLineIndex\":%d,\"usernameFragment\":\"%.*s\"}"
-#define ICE_CANDIDATE_JSON_MAX_LENGTH ( 1024 )
-
-int32_t sendIceCandidateCompleteCallback( SignalingControllerEventStatus_t status, void *pUserContext )
-{
-    free( pUserContext );
-
-    return 0;
-}
-
-int32_t sendIceCandidate( const char *pRemoteClientId, size_t remoteClientIdLength, demoIceCandidate_t *pIceCandidate )
-{
-    int32_t ret = 0;
-    int written;
-    char *pBuffer;
-    SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerEventMessage_t eventMessage = {
-        .event = SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
-        .onCompleteCallback = sendIceCandidateCompleteCallback,
-        .pOnCompleteCallbackContext = NULL,
-    };
-
-    if( pIceCandidate == NULL )
-    {
-        ret = -1;
-    }
-
-    if( ret == 0 )
-    {
-        /* Format this into candidate string. */
-        pBuffer = ( char * ) malloc( ICE_CANDIDATE_JSON_MAX_LENGTH );
-        memset( pBuffer, 0, sizeof( pBuffer ) );
-
-        written = snprintf( pBuffer, ICE_CANDIDATE_JSON_MAX_LENGTH, ICE_CANDIDATE_JSON_TEMPLATE,
-                            ( int ) pIceCandidate->candidateLength, pIceCandidate->pCandidate,
-                            pIceCandidate->sdpMid,
-                            pIceCandidate->sdpMLineIndex,
-                            ( int ) pIceCandidate->usernameFragmentLength, pIceCandidate->pUsernameFragment );
-
-        if( written < 0 )
-        {
-            LogError( ( "snprintf returns fail, errno: %d", errno ) );
-            ret = -2;
-        }
-    }
-
-    if( ret == 0 )
-    {
-        eventMessage.eventContent.correlationIdLength = 0U;
-        eventMessage.eventContent.messageType = SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE;
-        eventMessage.eventContent.pDecodeMessage = pBuffer;
-        eventMessage.eventContent.decodeMessageLength = written;
-        memcpy( eventMessage.eventContent.remoteClientId, pRemoteClientId, remoteClientIdLength );
-        eventMessage.eventContent.remoteClientIdLength = remoteClientIdLength;
-
-        /* We dynamically allocate buffer for signaling controller to keep using it.
-         * callback it as context to free memory. */
-        eventMessage.pOnCompleteCallbackContext = pBuffer;
-        
-        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &eventMessage );
-        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
-        {
-            LogError( ( "Send signaling message fail, result: %d", signalingControllerReturn ) );
-            ret = -3;
-        }
-    }
-
-    return ret;
 }
 
 int main()

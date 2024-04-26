@@ -1,19 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <ifaddrs.h>
-#include <poll.h>
-#include <errno.h>
 #include "logging.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
 #include "ice_api.h"
-#include "stun_endianness.h"
 #include "core_json.h"
 #include "string_utils.h"
 
@@ -86,153 +77,63 @@ static IceControllerResult_t parseIceCandidate( const char *pDecodeMessage, size
     return ret;
 }
 
-// static void*
-// listenForIncomingPackets( void *d )
-// {
-//     int retval = 0;
-//     while( retval <= 0 )
-//     {
-//         retval = poll(rfds, nfds, CONNECTION_LISTENER_SOCKET_WAIT_FOR_DATA_TIMEOUT / HUNDREDS_OF_NANOS_IN_A_MILLISECOND);
-//     }
-// }
+static IceControllerRemoteInfo_t *allocateRemoteInfo( IceControllerContext_t *pCtx )
+{
+    IceControllerRemoteInfo_t *pRet = NULL;
+    int32_t i;
 
-// int socketBind( IceIPAddress_t * pHostIpAddress, int sockfd )
-// {
-//     int retStatus = 0;
-//     struct sockaddr_in ipv4Addr;
-//     struct sockaddr_in6 ipv6Addr;
-//     struct sockaddr* sockAddr = NULL;
-//     socklen_t addrLen;
+    for( i=0 ; i<AWS_MAX_VIEWER_NUM ; i++ )
+    {
+        if( pCtx->remoteInfo[i].isUsed == 0 )
+        {
+            pRet = &pCtx->remoteInfo[i];
+            pRet->isUsed = 1;
+            break;
+        }
+    }
 
-//     char ipAddrStr[KVS_IP_ADDRESS_STRING_BUFFER_LEN];
+    return pRet;
+}
 
-//     if ( pHostIpAddress->ipAddress.family == STUN_ADDRESS_IPv4 ) {
-//         memset(&ipv4Addr, 0x00, sizeof(ipv4Addr));
-//         ipv4Addr.sin_family = AF_INET;
-//         ipv4Addr.sin_port = 0; // use next available port
-//         memcpy(&ipv4Addr.sin_addr, pHostIpAddress->ipAddress.address, STUN_IPV4_ADDRESS_SIZE);
-//         sockAddr = (struct sockaddr*) &ipv4Addr;
-//         addrLen = sizeof(struct sockaddr_in);
+static void freeRemoteInfo( IceControllerContext_t *pCtx, int32_t index )
+{
+    pCtx->remoteInfo[index].isUsed = 0;
+}
 
-//     } else {
-//         memset(&ipv6Addr, 0x00, sizeof(ipv6Addr));
-//         ipv6Addr.sin6_family = AF_INET6;
-//         ipv6Addr.sin6_port = 0; // use next available port
-//         memcpy(&ipv6Addr.sin6_addr, pHostIpAddress->ipAddress.address, STUN_IPV4_ADDRESS_SIZE);
-//         sockAddr = (struct sockaddr*) &ipv6Addr;
-//         addrLen = sizeof(struct sockaddr_in6);
-//     }
+static IceControllerResult_t initializeIceAgent( IceControllerRemoteInfo_t *RemoteInfo )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    uint32_t i;
 
-//     if (bind(sockfd, sockAddr, addrLen) < 0) {
-//         printf("bind() failed for ip%s address: %s, port %u with errno %s", IS_IPV4_ADDR(pHostIpAddress->ipAddress) ? "" : "V6", ipAddrStr,
-//               pHostIpAddress->ipAddress.port, strerror(errno));
-//     }
+    for( i=0 ; i<ICE_MAX_LOCAL_CANDIDATE_COUNT ; i++ )
+    {
+        RemoteInfo->iceAgent.localCandidates[i] = &RemoteInfo->localCandidates[i];
+    }
 
-//     if (getsockname(sockfd, sockAddr, &addrLen) < 0) {
-//         printf("getsockname() failed with errno %s", strerror(errno));
+    for( i=0 ; i<ICE_MAX_REMOTE_CANDIDATE_COUNT ; i++ )
+    {
+        RemoteInfo->iceAgent.remoteCandidates[i] = &RemoteInfo->remoteCandidates[i];
+    }
 
-//     }
+    for( i=0 ; i<ICE_MAX_CANDIDATE_PAIR_COUNT ; i++ )
+    {
+        RemoteInfo->iceAgent.iceCandidatePairs[i] = &RemoteInfo->candidatePairs[i];
+    }
 
-//     pHostIpAddress->ipAddress.port = (uint16_t) pHostIpAddress->ipAddress.family == STUN_ADDRESS_IPv4 ? ipv4Addr.sin_port : ipv6Addr.sin6_port;
+    for( i=0 ; i<ICE_MAX_CANDIDATE_PAIR_COUNT ; i++ )
+    {
+        /* TODO: the buffer assignment might be changed later in ICE component. */
+        RemoteInfo->iceAgent.stunMessageBuffers[i] = RemoteInfo->stunBuffers[i];
+    }
 
-//     return retStatus;
-// }
+    return ret;
+}
 
-// int createSocketConnection( IceIPAddress_t * pBindAddr )
-// {
-//     int retStatus;
-
-//     sockets[ socketUsed ] = socket( pBindAddr->ipAddress.family == STUN_ADDRESS_IPv4 ? AF_INET : AF_INET6, SOCK_DGRAM, 0 );
-
-//     if ( sockets[ socketUsed ] == -1) 
-//     {
-//         printf("socket() failed to create socket with errno %s", strerror(errno));
-//     }
-    
-//     if( pBindAddr )
-//     {
-//         retStatus = socketBind( pBindAddr, sockets[ socketUsed ] );
-//     }
-//     if( !retStatus )
-//     {
-//         socketUsed++;
-//         rfds[nfds].fd = sockets[ socketUsed - 1 ];
-//         rfds[nfds].events = POLLIN | POLLPRI;
-//         rfds[nfds].revents = 0;
-//         nfds++;
-//     }
-//     return retStatus;
-// }
-
-// void getLocalIPAdresses( void )
-// {
-//     struct ifaddrs *ifap, *ifa;
-//     struct sockaddr_in *sa;
-//     struct sockaddr_in6 *saIPv6;
-//     struct sockaddr_in* pIpv4Addr = NULL;
-//     struct sockaddr_in6* pIpv6Addr = NULL;
-//     char addr[ 16 ];
-
-//     getifaddrs (&ifap);
-//     for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
-//         if (ifa->ifa_addr && ifa->ifa_addr->sa_family==AF_INET ) 
-//         {
-//             destIp[ destIpLen ].ipAddress.family = STUN_ADDRESS_IPv4;
-//             destIp[ destIpLen ].ipAddress.port = 0;
-//             pIpv4Addr = (struct sockaddr_in*) ifa->ifa_addr;
-//             memcpy( destIp[ destIpLen ].ipAddress.address , &pIpv4Addr->sin_addr, STUN_IPV4_ADDRESS_SIZE );
-//             destIp[ destIpLen ].isPointToPoint = ((ifa->ifa_flags & IFF_POINTOPOINT) != 0);
-//             destIpLen++;
-//         }
-//         else if (ifa->ifa_addr && ifa->ifa_addr->sa_family==AF_INET6)
-//         {
-//             getnameinfo( ifa->ifa_addr, sizeof(struct sockaddr_in6), addr, sizeof(addr), NULL, 0, NI_NUMERICHOST );
-//             destIp[ destIpLen ].ipAddress.family = STUN_ADDRESS_IPv6;
-//             destIp[ destIpLen ].ipAddress.port = 0;
-//             pIpv6Addr = (struct sockaddr_in6*) ifa->ifa_addr;
-//             memcpy( destIp[ destIpLen ].ipAddress.address , &pIpv6Addr->sin6_addr, STUN_IPV6_ADDRESS_SIZE );
-//             destIp[ destIpLen ].isPointToPoint = ((ifa->ifa_flags & IFF_POINTOPOINT) != 0);
-//             destIpLen++;
-//         }
-//     }
-
-//     freeifaddrs(ifap);
-//     return ;
-// }
-
-// int IceController_AddHostCandidates( IceAgent_t * pIceAgent )
-// {
-//     int retStatus;
-//     int i;
-//     getLocalIPAdresses();
-
-//     for( i = 0; i < destIpLen-1; i++ )
-//     {
-//         retStatus = createSocketConnection( &destIp[ i ] );
-
-//         if( retStatus == 0 )
-//         {
-            
-//             retStatus = Ice_AddHostCandidate( destIp[ i ], pIceAgent );
-//             if( retStatus != 0 )
-//             {
-//                 printf(" Host Candidate addition failed\n ");
-//             }
-//         }
-//         else
-//         {
-//             printf("Socket creation failed\n");
-//         }
-//     }
-
-// }
-
-// int IceController_Init( char * localName, char * remoteName, char * localPwd, char * remotePwd )
-IceControllerResult_t IceController_Init( IceControllerContext_t *pCtx )
+IceControllerResult_t IceController_Init( IceControllerContext_t *pCtx, SignalingControllerContext_t *pSignalingControllerContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
 
-    if( pCtx == NULL )
+    if( pCtx == NULL || pSignalingControllerContext == NULL )
     {
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
@@ -246,6 +147,8 @@ IceControllerResult_t IceController_Init( IceControllerContext_t *pCtx )
         pCtx->localUserName[ ICE_CONTROLLER_USER_NAME_LENGTH ] = '\0';
         generateJSONValidString( pCtx->localPassword, ICE_CONTROLLER_PASSWORD_LENGTH );
         pCtx->localPassword[ ICE_CONTROLLER_PASSWORD_LENGTH ] = '\0';
+
+        pCtx->pSignalingControllerContext = pSignalingControllerContext;
     }
 
     return ret;
@@ -327,7 +230,7 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char *pDecode
                 else
                 {
                     /* Also update port in address following network endianness. */
-                    ret = IceControllerNet_Htos( pCandidate->port, &pCandidate->iceIpAddress.ipAddress.port );
+                    ret = IceControllerNet_Htons( pCandidate->port, &pCandidate->iceIpAddress.ipAddress.port );
                 }
                 break;
             case ICE_CONTROLLER_CANDIDATE_DESERIALIZER_STATE_TYPE_ID:
@@ -339,19 +242,19 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char *pDecode
             case ICE_CONTROLLER_CANDIDATE_DESERIALIZER_STATE_TYPE_VAL:
                 isAllElementsParsed = 1;
 
-                if( strncmp( pCurr, "host", tokenLength ) == 0 )
+                if( strncmp( pCurr, ICE_CONTROLLER_CANDIDATE_TYPE_HOST_STRING, tokenLength ) == 0 )
                 {
                     pCandidate->candidateType = ICE_CANDIDATE_TYPE_HOST;
                 }
-                else if( strncmp( pCurr, "srflx", tokenLength ) == 0 )
+                else if( strncmp( pCurr, ICE_CONTROLLER_CANDIDATE_TYPE_SRFLX_STRING, tokenLength ) == 0 )
                 {
                     pCandidate->candidateType = ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
                 }
-                else if( strncmp( pCurr, "prflx", tokenLength ) == 0 )
+                else if( strncmp( pCurr, ICE_CONTROLLER_CANDIDATE_TYPE_PRFLX_STRING, tokenLength ) == 0 )
                 {
                     pCandidate->candidateType = ICE_CANDIDATE_TYPE_PEER_REFLEXIVE;
                 }
-                else if( strncmp( pCurr, "relay", tokenLength ) == 0 )
+                else if( strncmp( pCurr, ICE_CONTROLLER_CANDIDATE_TYPE_RELAY_STRING, tokenLength ) == 0 )
                 {
                     pCandidate->candidateType = ICE_CANDIDATE_TYPE_RELAYED;
                 }
@@ -378,42 +281,81 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char *pDecode
     return ret;
 }
 
+IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t *pCtx, const char *pRemoteClientId, size_t remoteClientIdLength, const char *pRemoteUserName, size_t remoteUserNameLength, const char *pRemotePassword, size_t remotePasswordLength )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    char combinedName[ MAX_ICE_CONFIG_USER_NAME_LEN + 1 ];
+    IceControllerRemoteInfo_t *pRemoteInfo;
 
+    if( pCtx == NULL || pRemoteClientId == NULL ||
+        pRemoteUserName == NULL || pRemotePassword == NULL )
+    {
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
 
-    // char combinedName[ MAX_ICE_CONFIG_USER_NAME_LEN ];
-    // int i;
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        pRemoteInfo = allocateRemoteInfo( pCtx );
+        if( pRemoteInfo == NULL )
+        {
+            LogWarn( ( "Fail to allocate remote info" ) );
+            ret = ICE_CONTROLLER_RESULT_EXCEED_REMOTE_PEER;
+        }
+    }
 
-    // strcat( combinedName, localName );
-    // strcat( combinedName, remoteName );
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Store remote client ID into context. */
+        if( remoteClientIdLength > SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH )
+        {
+            LogWarn( ( "Remote ID is too long to store, length: %ld", remoteClientIdLength ) );
+            ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_CLIENT_ID;
+        }
+        else
+        {
+            memcpy( pRemoteInfo->remoteClientId, pRemoteClientId, remoteClientIdLength );
+            pRemoteInfo->remoteClientIdLength = remoteClientIdLength;
+        }
+    }
 
-    // retStatus = Ice_CreateIceAgent( &IceAgent, localName, localPwd, remoteName, remotePwd, combinedName, &TransactionIdStore );
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Prepare combine name and create Ice Agent. */
+        if( remoteUserNameLength + ICE_CONTROLLER_USER_NAME_LENGTH > MAX_ICE_CONFIG_USER_NAME_LEN )
+        {
+            LogWarn( ( "Remote user name is too long to store, length: %ld", remoteUserNameLength ) );
+            ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_USERNAME;
+        }
+        else
+        {
+            memcpy( combinedName, pCtx->localUserName, ICE_CONTROLLER_USER_NAME_LENGTH );
+            memcpy( combinedName + ICE_CONTROLLER_USER_NAME_LENGTH, pRemoteUserName, remoteUserNameLength );
+            combinedName[ remoteUserNameLength + ICE_CONTROLLER_USER_NAME_LENGTH ] = '\0';
 
-    // if( retStatus == 0 )
-    // {
-    //     for( i = 0; i < ICE_MAX_LOCAL_CANDIDATE_COUNT; i++ )
-    //     {
-    //         IceAgent.localCandidates[i] = &localCandidates[i];
-    //     }
-    //     for( i = 0; i < ICE_MAX_REMOTE_CANDIDATE_COUNT; i++ )
-    //     {
-    //         IceAgent.remoteCandidates[i] = &remoteCandidates[i];
-    //     }
-    //     for( i = 0; i < ICE_MAX_CANDIDATE_PAIR_COUNT; i++ )
-    //     {
-    //         IceAgent.iceCandidatePairs[i] = &candidatePairs[i];
-    //     }
-    //     for( i = 0; i < ICE_MAX_CANDIDATE_PAIR_COUNT; i++ )
-    //     {
-    //         IceAgent.stunMessageBuffers[i] = &stunBuffers[i];
-    //     }
+            iceResult = Ice_CreateIceAgent( &pRemoteInfo->iceAgent,
+                                            pCtx->localUserName, pCtx->localPassword,
+                                            ( char* ) pRemoteUserName, ( char* ) pRemotePassword,
+                                            combinedName,
+                                            &pRemoteInfo->transactionIdStore );
+            if( iceResult != ICE_RESULT_OK )
+            {
+                LogError( ( "Fail to create ICE agent, result: %d", iceResult ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_ICE_AGENT;
+            }
+        }
+    }
 
-    //     retStatus = IceController_AddHostCandidates( &IceAgent );
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Initialize candidate pointers in Ice Agent. */
+        ret = initializeIceAgent( pRemoteInfo );
+    }
 
-    //     pthread_create( &thread_id, NULL, listenForIncomingPackets, &thread_id );
-    // }
-    // else
-    // {
-    //     printf("Creation of Ice Agent failed.\n");
-    // }
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        ret = IceControllerNet_AddHostCandidates( pCtx, pRemoteInfo );
+    }
 
-    // return retStatus;
+    return ret;
+}
