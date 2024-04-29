@@ -24,6 +24,7 @@ extern "C" {
 IceControllerResult_t IceControllerNet_ConvertIpString( const char *pIpAddr, size_t ipAddrLength, IceIPAddress_t *pDest );
 IceControllerResult_t IceControllerNet_Htons( uint16_t port, uint16_t *pOutPort );
 IceControllerResult_t IceControllerNet_AddHostCandidates( IceControllerContext_t *pCtx, IceControllerRemoteInfo_t *pRemoteInfo );
+IceControllerResult_t IceControllerNet_AttachPolling( int socketFd, struct pollfd *pFds, size_t *pFdsCount );
 
 #ifdef __cplusplus
 }

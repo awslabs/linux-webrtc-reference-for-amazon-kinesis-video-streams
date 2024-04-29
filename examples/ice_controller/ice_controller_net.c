@@ -128,27 +128,6 @@ static IceControllerResult_t createSocketConnection( int *pSocketFd, IceIPAddres
     return ret;
 }
 
-static IceControllerResult_t attachPolling( int socketFd, struct pollfd *pRfds, size_t *pRfdsCount )
-{
-    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-
-    if( *pRfdsCount >= ICE_MAX_LOCAL_CANDIDATE_COUNT )
-    {
-        LogError( ( "No enough buffer for rfds" ) );
-        ret = ICE_CONTROLLER_RESULT_RFDS_TOO_SMALL;
-    }
-
-    if( ret == ICE_CONTROLLER_RESULT_OK )
-    {
-        pRfds[ *pRfdsCount ].fd = socketFd;
-        pRfds[ *pRfdsCount ].events = POLLIN;
-        pRfds[ *pRfdsCount ].revents = 0;
-        *pRfdsCount++;
-    }
-
-    return ret;
-}
-
 static const char *getCandidateTypeString( IceCandidateType_t candidateType )
 {
     const char *ret;
@@ -175,7 +154,7 @@ static const char *getCandidateTypeString( IceCandidateType_t candidateType )
     return ret;
 }
 
-int32_t sendIceCandidateCompleteCallback( SignalingControllerEventStatus_t status, void *pUserContext )
+static int32_t sendIceCandidateCompleteCallback( SignalingControllerEventStatus_t status, void *pUserContext )
 {
     LogDebug( ( "Freeing buffer at %p", pUserContext ) );
     free( pUserContext );
@@ -270,6 +249,27 @@ static IceControllerResult_t sendIceCandidate( IceControllerContext_t *pCtx, Ice
     return ret;
 }
 
+IceControllerResult_t IceControllerNet_AttachPolling( int socketFd, struct pollfd *pFds, size_t *pFdsCount )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+
+    if( *pFdsCount >= ICE_MAX_LOCAL_CANDIDATE_COUNT )
+    {
+        LogError( ( "No enough buffer for rfds" ) );
+        ret = ICE_CONTROLLER_RESULT_RFDS_TOO_SMALL;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        pFds[ *pFdsCount ].fd = socketFd;
+        pFds[ *pFdsCount ].events = POLLIN;
+        pFds[ *pFdsCount ].revents = 0;
+        *pFdsCount++;
+    }
+
+    return ret;
+}
+
 IceControllerResult_t IceControllerNet_ConvertIpString( const char *pIpAddr, size_t ipAddrLength, IceIPAddress_t *pDest )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
@@ -316,7 +316,7 @@ IceControllerResult_t IceControllerNet_AddHostCandidates( IceControllerContext_t
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
     uint32_t i;
-    size_t localIpStartIndex = pCtx->socketsFdLocalCandidatesCount;
+    size_t localIpStartIndex = pRemoteInfo->socketsFdLocalCandidatesCount;
     size_t localIpEndIndex;
     IceCandidate_t *pCandidate;
 
@@ -326,7 +326,7 @@ IceControllerResult_t IceControllerNet_AddHostCandidates( IceControllerContext_t
 
     for( i=localIpStartIndex ; i<localIpEndIndex ; i++ )
     {
-        ret = createSocketConnection( &pCtx->socketsFdLocalCandidates[i], &pCtx->localIpAddresses[i], ICE_SOCKET_PROTOCOL_UDP );
+        ret = createSocketConnection( &pRemoteInfo->socketsFdLocalCandidates[i], &pCtx->localIpAddresses[i], ICE_SOCKET_PROTOCOL_UDP );
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
@@ -338,17 +338,6 @@ IceControllerResult_t IceControllerNet_AddHostCandidates( IceControllerContext_t
                 break;
             }
         }
-        
-        if( ret == ICE_CONTROLLER_RESULT_OK )
-        {
-            ret = attachPolling( pCtx->socketsFdLocalCandidates[i], pCtx->rfds, &pCtx->rfdsCount );
-            if( ret != ICE_CONTROLLER_RESULT_OK )
-            {
-                /* Free resource that already created. */
-                close( pCtx->socketsFdLocalCandidates[i] );
-                break;
-            }
-        }
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
@@ -356,11 +345,11 @@ IceControllerResult_t IceControllerNet_AddHostCandidates( IceControllerContext_t
             if( ret != ICE_CONTROLLER_RESULT_OK )
             {
                 /* Free resource that already created. */
-                close( pCtx->socketsFdLocalCandidates[i] );
+                close( pRemoteInfo->socketsFdLocalCandidates[i] );
                 break;
             }
 
-            pCtx->socketsFdLocalCandidatesCount++;
+            pRemoteInfo->socketsFdLocalCandidatesCount++;
         }
     }
 

@@ -11,8 +11,11 @@ extern "C" {
 #include "ice_controller_data_types.h"
 
 IceControllerResult_t IceController_Init( IceControllerContext_t *pCtx, SignalingControllerContext_t *pSignalingControllerContext );
+IceControllerResult_t IceController_Deinit( IceControllerContext_t *pCtx );
 IceControllerResult_t IceController_DeserializeIceCandidate( const char *pDecodeMessage, size_t decodeMessageLength, IceControllerCandidate_t *pCandidate );
 IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t *pCtx, const char *pRemoteClientId, size_t remoteClientIdLength, const char *pRemoteUserName, size_t remoteUserNameLength, const char *pRemotePassword, size_t remotePasswordLength );
+IceControllerResult_t IceController_SendRemoteCandidateRequest( IceControllerContext_t *pCtx, const char *pRemoteClientId, size_t remoteClientIdLength, IceControllerCandidate_t *pCandidate );
+IceControllerResult_t IceController_ProcessLoop( IceControllerContext_t *pCtx );
 
 #ifdef __cplusplus
 }

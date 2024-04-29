@@ -4,11 +4,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <errno.h>
+#include <pthread.h>
 #include "demo_config.h"
 #include "logging.h"
 #include "demo_data_types.h"
 #include "signaling_controller.h"
 #include "sdp_controller.h"
+#include "ice_controller.h"
 
 #define IS_USERNAME_FOUND_BIT ( 1 << 0 )
 #define IS_PASSWORD_FOUND_BIT ( 1 << 1 )
@@ -25,6 +27,7 @@ extern uint8_t addressSdpOffer( const char *pEventSdpOffer, size_t eventSdpOffer
 static void terminateHandler( int sig )
 {
     SignalingController_Deinit( &demoContext.signalingControllerContext );
+    IceController_Deinit( &demoContext.iceControllerContext );
     exit( 0 );
 }
 
@@ -217,10 +220,20 @@ int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t *pEvent, void 
             break;
         case SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE:
             iceControllerResult = IceController_DeserializeIceCandidate( pEvent->pDecodeMessage, pEvent->decodeMessageLength, &candidate );
-
             if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
             {
-                LogWarn( ( "IceController_DeserializeIceCandidate fail, dropping ICE candidate." ) );
+                LogWarn( ( "IceController_DeserializeIceCandidate fail, result: %d, dropping ICE candidate.", iceControllerResult ) );
+                skipProcess = 1;
+            }
+
+            if( !skipProcess )
+            {
+                iceControllerResult = IceController_SendRemoteCandidateRequest( &demoContext.iceControllerContext, pEvent->pRemoteClientId, pEvent->remoteClientIdLength, &candidate );
+                if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
+                {
+                    LogWarn( ( "IceController_SendRemoteCandidateRequest fail, result: %d, dropping ICE candidate.", iceControllerResult ) );
+                    skipProcess = 1;
+                }
             }
             break;
         case SIGNALING_TYPE_MESSAGE_GO_AWAY:
@@ -236,11 +249,25 @@ int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t *pEvent, void 
     return 0;
 }
 
+void *executeIceController( void *pArgs )
+{
+    IceControllerContext_t *pIceControllerContext = (IceControllerContext_t *) pArgs;
+    IceControllerResult_t iceControllerReturn;
+    
+    while( 1 )
+    {
+        iceControllerReturn = IceController_ProcessLoop( pIceControllerContext );
+    }
+
+    return 0;
+}
+
 int main()
 {
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerCredential_t signalingControllerCred;
+    pthread_t threadIceController;
 
     srand( time( NULL ) );
 
@@ -283,6 +310,11 @@ int main()
             LogError( ( "Fail to connect with signaling controller." ) );
             ret = -1;
         }
+    }
+
+    if( ret == 0 )
+    {
+        pthread_create( &threadIceController, NULL, executeIceController, &demoContext.iceControllerContext );
     }
 
     if( ret == 0 )

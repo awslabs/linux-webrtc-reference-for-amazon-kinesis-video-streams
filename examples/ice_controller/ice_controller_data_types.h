@@ -33,11 +33,16 @@ typedef enum IceControllerResult
     ICE_CONTROLLER_RESULT_INVALID_JSON,
     ICE_CONTROLLER_RESULT_INVALID_REMOTE_CLIENT_ID,
     ICE_CONTROLLER_RESULT_INVALID_REMOTE_USERNAME,
+    ICE_CONTROLLER_RESULT_UNKNOWN_REMOTE_CLIENT_ID,
     ICE_CONTROLLER_RESULT_FAIL_CREATE_ICE_AGENT,
     ICE_CONTROLLER_RESULT_FAIL_SOCKET_CREATE,
     ICE_CONTROLLER_RESULT_FAIL_SOCKET_BIND,
     ICE_CONTROLLER_RESULT_FAIL_SOCKET_GETSOCKNAME,
     ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE,
+    ICE_CONTROLLER_RESULT_FAIL_ADD_REMOTE_CANDIDATE,
+    ICE_CONTROLLER_RESULT_FAIL_MQ_INIT,
+    ICE_CONTROLLER_RESULT_FAIL_MQ_SEND,
+    ICE_CONTROLLER_RESULT_FAIL_POLLING,
     ICE_CONTROLLER_RESULT_JSON_CANDIDATE_NOT_FOUND,
     ICE_CONTROLLER_RESULT_JSON_CANDIDATE_INVALID_PRIORITY,
     ICE_CONTROLLER_RESULT_JSON_CANDIDATE_INVALID_PROTOCOL,
@@ -65,6 +70,8 @@ typedef enum IceControllerCandidateDeserializerState
 
 typedef struct IceControllerCandidate
 {
+    char remoteClientId[ SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH ];
+    size_t remoteClientIdLength;
     IceSocketProtocol_t protocol;
     uint32_t priority;
     IceIPAddress_t iceIpAddress;
@@ -78,6 +85,8 @@ typedef struct IceControllerSignalingRemoteInfo
     uint8_t isUsed;
     char remoteClientId[ SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH ];
     size_t remoteClientIdLength;
+    int socketsFdLocalCandidates[ ICE_MAX_LOCAL_CANDIDATE_COUNT ];
+    size_t socketsFdLocalCandidatesCount;
 
     /* For ICE component. */
     IceAgent_t iceAgent;
@@ -87,6 +96,23 @@ typedef struct IceControllerSignalingRemoteInfo
     uint8_t stunBuffers[ ICE_MAX_CANDIDATE_PAIR_COUNT ][ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
     TransactionIdStore_t transactionIdStore;
 } IceControllerRemoteInfo_t;
+
+typedef enum IceControllerRequestType
+{
+    ICE_CONTROLLER_REQUEST_TYPE_NONE = 0,
+    ICE_CONTROLLER_REQUEST_TYPE_ADD_REMOTE_CANDIDATE,
+} IceControllerRequestType_t;
+
+typedef struct IceControllerRequestMessage
+{
+    IceControllerRequestType_t requestType;
+
+    /* Decode the request message based on request type. */
+    union RequestContent_t
+    {
+        IceControllerCandidate_t remoteCandidate; /* ICE_CONTROLLER_REQUEST_TYPE_ADD_REMOTE_CANDIDATE */
+    } requestContent;
+} IceControllerRequestMessage_t;
 
 typedef struct IceControllerContext
 {
@@ -99,11 +125,11 @@ typedef struct IceControllerContext
     IceControllerRemoteInfo_t remoteInfo[ AWS_MAX_VIEWER_NUM ];
     IceIPAddress_t localIpAddresses[ ICE_MAX_LOCAL_CANDIDATE_COUNT ];
     size_t localIpAddressesCount;
-    int socketsFdLocalCandidates[ ICE_MAX_LOCAL_CANDIDATE_COUNT ];
-    size_t socketsFdLocalCandidatesCount;
-    struct pollfd rfds[ ICE_MAX_LOCAL_CANDIDATE_COUNT ];
-    size_t rfdsCount;
     size_t candidateFoundationCounter;
+    struct pollfd fds[ AWS_MAX_VIEWER_NUM * ICE_MAX_LOCAL_CANDIDATE_COUNT + 1 ]; /* 1 for message queue, AWS_MAX_VIEWER_NUM * ICE_MAX_LOCAL_CANDIDATE_COUNT for all sockets listening local port. */
+
+    /* Request queue. */
+    MessageQueueHandler_t requestQueue;
 } IceControllerContext_t;
 
 #ifdef __cplusplus

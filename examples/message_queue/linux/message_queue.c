@@ -11,12 +11,12 @@ void MessageQueue_Destroy( MessageQueueHandler_t *pMessageQueueHandler )
     {
         if( mq_close( pMessageQueueHandler->messageQueue ) == -1 )
         {
-            LogError( ( "mq_close error, errno: %d, queue name: %s", errno, pMessageQueueHandler->pQueueName ) );
+            LogError( ( "mq_close error, errno: %s, queue name: %s", strerror( errno ), pMessageQueueHandler->pQueueName ) );
         }
 
         if( mq_unlink( pMessageQueueHandler->pQueueName ) == -1 )
         {
-            LogError( ( "mq_unlink error, errno: %d, queue name: %s", errno, pMessageQueueHandler->pQueueName ) );
+            LogError( ( "mq_unlink error, errno: %s, queue name: %s", strerror( errno ), pMessageQueueHandler->pQueueName ) );
         }
     }
 }
@@ -123,6 +123,24 @@ MessageQueueResult_t MessageQueue_IsEmpty( MessageQueueHandler_t *pMessageQueueH
         {
             ret = MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE;
         }
+    }
+
+    return ret;
+}
+
+MessageQueueResult_t MessageQueue_AttachPoll( MessageQueueHandler_t *pMessageQueueHandler, struct pollfd *pPollFd, uint32_t PollEvents )
+{
+    MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
+
+    if( pMessageQueueHandler == NULL || pPollFd == NULL )
+    {
+        ret = MESSAGE_QUEUE_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == MESSAGE_QUEUE_RESULT_OK )
+    {
+        pPollFd->fd = pMessageQueueHandler->messageQueue;
+        pPollFd->events = POLLIN;
     }
 
     return ret;

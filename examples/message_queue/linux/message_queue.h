@@ -9,6 +9,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <mqueue.h>
+#include <poll.h>
 
 typedef enum MessageQueueResult
 {
@@ -33,6 +34,7 @@ void MessageQueue_Destroy( MessageQueueHandler_t *pMessageQueueHandler );
 MessageQueueResult_t MessageQueue_Send( MessageQueueHandler_t *pMessageQueueHandler, void *pMessage, size_t messageLength );
 MessageQueueResult_t MessageQueue_Recv( MessageQueueHandler_t *pMessageQueueHandler, void *pMessage, size_t *pMessageLength );
 MessageQueueResult_t MessageQueue_IsEmpty( MessageQueueHandler_t *pMessageQueueHandler );
+MessageQueueResult_t MessageQueue_AttachPoll( MessageQueueHandler_t *pMessageQueueHandler, struct pollfd *pPollFd, uint32_t PollEvents );
 
 #ifdef __cplusplus
 }

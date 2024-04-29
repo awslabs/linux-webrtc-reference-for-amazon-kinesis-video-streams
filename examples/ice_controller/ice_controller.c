@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <poll.h>
 #include "logging.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
@@ -9,6 +10,8 @@
 #include "string_utils.h"
 
 #define ICE_CONTROLLER_CANDIDATE_JSON_KEY "candidate"
+#define MAX_QUEUE_MSG_NUM ( 10 )
+#define POLL_TIMEOUT_MS 500
 
 /* Generate a printable string that does not
  * need to be escaped when encoding in JSON
@@ -100,30 +103,142 @@ static void freeRemoteInfo( IceControllerContext_t *pCtx, int32_t index )
     pCtx->remoteInfo[index].isUsed = 0;
 }
 
-static IceControllerResult_t initializeIceAgent( IceControllerRemoteInfo_t *RemoteInfo )
+static IceControllerResult_t initializeIceAgent( IceControllerRemoteInfo_t *pRemoteInfo )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     uint32_t i;
 
     for( i=0 ; i<ICE_MAX_LOCAL_CANDIDATE_COUNT ; i++ )
     {
-        RemoteInfo->iceAgent.localCandidates[i] = &RemoteInfo->localCandidates[i];
+        pRemoteInfo->iceAgent.localCandidates[i] = &pRemoteInfo->localCandidates[i];
     }
 
     for( i=0 ; i<ICE_MAX_REMOTE_CANDIDATE_COUNT ; i++ )
     {
-        RemoteInfo->iceAgent.remoteCandidates[i] = &RemoteInfo->remoteCandidates[i];
+        pRemoteInfo->iceAgent.remoteCandidates[i] = &pRemoteInfo->remoteCandidates[i];
     }
 
     for( i=0 ; i<ICE_MAX_CANDIDATE_PAIR_COUNT ; i++ )
     {
-        RemoteInfo->iceAgent.iceCandidatePairs[i] = &RemoteInfo->candidatePairs[i];
+        pRemoteInfo->iceAgent.iceCandidatePairs[i] = &pRemoteInfo->candidatePairs[i];
     }
 
     for( i=0 ; i<ICE_MAX_CANDIDATE_PAIR_COUNT ; i++ )
     {
         /* TODO: the buffer assignment might be changed later in ICE component. */
-        RemoteInfo->iceAgent.stunMessageBuffers[i] = RemoteInfo->stunBuffers[i];
+        pRemoteInfo->iceAgent.stunMessageBuffers[i] = pRemoteInfo->stunBuffers[i];
+    }
+
+    return ret;
+}
+
+static IceControllerResult_t findRemoteInfo( IceControllerContext_t *pCtx, const char *pRemoteClientId, size_t remoteClientIdLength, IceControllerRemoteInfo_t **ppRemoteInfo )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    size_t remoteInfoIndex;
+    uint8_t isRemoteInfoFound=0;
+
+    if( remoteClientIdLength > SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH )
+    {
+        ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_CLIENT_ID;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( remoteInfoIndex=0 ; remoteInfoIndex<AWS_MAX_VIEWER_NUM ; remoteInfoIndex++ )
+        {
+            if( strncmp( pCtx->remoteInfo[ remoteInfoIndex ].remoteClientId, pRemoteClientId, remoteClientIdLength ) == 0 )
+            {
+                isRemoteInfoFound = 1;
+                *ppRemoteInfo = &pCtx->remoteInfo[ remoteInfoIndex ];
+                break;
+            }
+        }
+
+        if( !isRemoteInfoFound )
+        {
+            ret = ICE_CONTROLLER_RESULT_UNKNOWN_REMOTE_CLIENT_ID;
+        }
+    }
+
+    return ret;
+}
+
+static IceControllerResult_t handleAddRemoteCandidateRequest( IceControllerContext_t *pCtx, IceControllerRequestMessage_t *pRequestMessage, size_t requestMessageLength )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    IceControllerCandidate_t *pCandidate = (IceControllerCandidate_t *)&pRequestMessage->requestContent;
+    IceControllerRemoteInfo_t *pRemoteInfo;
+    IceCandidate_t *pOutCandidate;
+
+    /* Find remote info index by mapping remote client ID. */
+    ret = findRemoteInfo( pCtx, pCandidate->remoteClientId, pCandidate->remoteClientIdLength, &pRemoteInfo );
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        iceResult = Ice_AddRemoteCandidate( &pRemoteInfo->iceAgent,
+                                            pCandidate->candidateType,
+                                            &pOutCandidate,
+                                            pCandidate->iceIpAddress,
+                                            pCandidate->protocol,
+                                            pCandidate->priority );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to add remote candidate, result: %d", iceResult ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_ADD_REMOTE_CANDIDATE;
+        }
+    }
+
+    return ret;
+}
+
+static IceControllerResult_t handleRequest( IceControllerContext_t *pCtx, MessageQueueHandler_t *pRequestQueue )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    MessageQueueResult_t retMessageQueue;
+    IceControllerRequestMessage_t requestMsg;
+    size_t requestMsgLength;
+
+    retMessageQueue = MessageQueue_IsEmpty( pRequestQueue );
+    if( retMessageQueue == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
+    {
+        /* Handle event. */
+        requestMsgLength = sizeof( IceControllerRequestMessage_t );
+        retMessageQueue = MessageQueue_Recv( pRequestQueue, &requestMsg, &requestMsgLength );
+        if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
+        {
+            /* Received message, process it. */
+            LogDebug( ( "Receive request type: %d", requestMsg.requestType ) );
+            switch( requestMsg.requestType )
+            {
+                case ICE_CONTROLLER_REQUEST_TYPE_ADD_REMOTE_CANDIDATE:
+                    ret = handleAddRemoteCandidateRequest( pCtx, &requestMsg, requestMsgLength );
+                    break;
+                default:
+                    /* Unknown request, drop it. */
+                    LogDebug( ( "Dropping unknown request" ) );
+                    break;
+            }
+        }
+    }
+
+    return ret;
+}
+
+IceControllerResult_t IceController_Deinit( IceControllerContext_t *pCtx )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+
+    if( pCtx == NULL )
+    {
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        /* Free mqueue. */
+        MessageQueue_Destroy( &pCtx->requestQueue );
     }
 
     return ret;
@@ -132,6 +247,7 @@ static IceControllerResult_t initializeIceAgent( IceControllerRemoteInfo_t *Remo
 IceControllerResult_t IceController_Init( IceControllerContext_t *pCtx, SignalingControllerContext_t *pSignalingControllerContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    MessageQueueResult_t retMessageQueue;
 
     if( pCtx == NULL || pSignalingControllerContext == NULL )
     {
@@ -149,6 +265,16 @@ IceControllerResult_t IceController_Init( IceControllerContext_t *pCtx, Signalin
         pCtx->localPassword[ ICE_CONTROLLER_PASSWORD_LENGTH ] = '\0';
 
         pCtx->pSignalingControllerContext = pSignalingControllerContext;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        retMessageQueue = MessageQueue_Create( &pCtx->requestQueue, "/IceController", sizeof( IceControllerRequestMessage_t ), MAX_QUEUE_MSG_NUM );
+        if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+        {
+            LogError( ( "Fail to open message queue, errno: %s", strerror( errno ) ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MQ_INIT;
+        }
     }
 
     return ret;
@@ -355,6 +481,123 @@ IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         ret = IceControllerNet_AddHostCandidates( pCtx, pRemoteInfo );
+    }
+
+    return ret;
+}
+
+IceControllerResult_t IceController_SendRemoteCandidateRequest( IceControllerContext_t *pCtx, const char *pRemoteClientId, size_t remoteClientIdLength, IceControllerCandidate_t *pCandidate )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    MessageQueueResult_t retMessageQueue;
+    IceControllerRequestMessage_t requestMessage = {
+        .requestType = ICE_CONTROLLER_REQUEST_TYPE_ADD_REMOTE_CANDIDATE,
+    };
+    IceControllerCandidate_t *pMessageContent;
+
+    if( pCtx == NULL || pCandidate == NULL || pRemoteClientId == NULL )
+    {
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( remoteClientIdLength > SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH )
+    {
+        ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_CLIENT_ID;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        pMessageContent = &requestMessage.requestContent.remoteCandidate;
+        memcpy( pMessageContent, pCandidate, sizeof( IceControllerCandidate_t ) );
+        memcpy( pMessageContent->remoteClientId, pRemoteClientId, remoteClientIdLength );
+        pMessageContent->remoteClientIdLength = remoteClientIdLength;
+
+        retMessageQueue = MessageQueue_Send( &pCtx->requestQueue, &requestMessage, sizeof( IceControllerRequestMessage_t ) );
+        if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+        {
+            ret = ICE_CONTROLLER_RESULT_FAIL_MQ_SEND;
+        }
+    }
+
+    return ret;
+}
+
+IceControllerResult_t IceController_ProcessLoop( IceControllerContext_t *pCtx )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    MessageQueueResult_t retMessageQueue;
+    size_t i, remoteInfoIndex, fdsCount;
+    int pollResult;
+
+    if( pCtx == NULL )
+    {
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* We leverage poll() to monitor bother message queue, request, and socket data together. */
+        for( ;; )
+        {
+            fdsCount = 0;
+
+            retMessageQueue = MessageQueue_AttachPoll( &pCtx->requestQueue, &pCtx->fds[ fdsCount++ ], POLLIN );
+            if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+            {
+                LogError( ( "MessageQueue_AttachPoll return fail, result: %d", retMessageQueue ) );
+                break;
+            }
+
+            // for( remoteInfoIndex=0 ; remoteInfoIndex<AWS_MAX_VIEWER_NUM ; remoteInfoIndex++ )
+            // {
+            //     for( i=0 ; i < pCtx->remoteInfo[ remoteInfoIndex ].socketsFdLocalCandidatesCount ; i++ )
+            //     {
+            //         /* Attach local sockets. */
+            //         pCtx->fds[ fdsCount ].fd = pCtx->remoteInfo[ remoteInfoIndex ].socketsFdLocalCandidates[ i ];
+            //         pCtx->fds[ fdsCount++ ].events = POLLIN;
+            //     }
+            // }
+
+            // Poll the message queue descriptor
+            pollResult = poll( pCtx->fds, fdsCount, POLL_TIMEOUT_MS ); // Wait indefinitely
+            if( pollResult < 0 )
+            {
+                LogError( ( "poll fails , errno: %s", strerror( errno ) ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_POLLING;
+                break;
+            }
+            else if( pollResult == 0 )
+            {
+                /* timeout, skip this round. */
+                continue;
+            }
+            else
+            {
+                /* Do nothing, coverity happy. */
+            }
+
+            /* TODO Handle receiving events socket by socket. */
+            // for( remoteInfoIndex=0 ; remoteInfoIndex<AWS_MAX_VIEWER_NUM ; remoteInfoIndex++ )
+            // {
+            //     for( i=0 ; i < pCtx->remoteInfo[ remoteInfoIndex ].socketsFdLocalCandidatesCount ; i++ )
+            //     {
+            //         if( fds[ remoteInfoIndex + i ].revents & POLLIN )
+            //         {
+            //             /* Receive socket data, handle it. */
+            //         }
+            //     }
+            // }
+
+            /* Handle message queue. */
+            if( pCtx->fds[ 0 ].revents & POLLIN )
+            {
+                ret = handleRequest( pCtx, &pCtx->requestQueue );
+                if( ret != ICE_CONTROLLER_RESULT_OK )
+                {
+                    break;
+                }
+            }
+        }
     }
 
     return ret;
