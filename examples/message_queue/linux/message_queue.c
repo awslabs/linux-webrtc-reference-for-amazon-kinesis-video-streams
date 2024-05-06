@@ -140,7 +140,7 @@ MessageQueueResult_t MessageQueue_AttachPoll( MessageQueueHandler_t *pMessageQue
     if( ret == MESSAGE_QUEUE_RESULT_OK )
     {
         pPollFd->fd = pMessageQueueHandler->messageQueue;
-        pPollFd->events = POLLIN;
+        pPollFd->events = PollEvents;
     }
 
     return ret;

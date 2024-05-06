@@ -893,3 +893,22 @@ SignalingControllerResult_t SignalingController_SendMessage( SignalingController
 
     return ret;
 }
+
+SignalingControllerResult_t SignalingController_QueryIceServerConfigs( SignalingControllerContext_t *pCtx, SignalingControllerIceServerConfig_t **ppIceServerConfigs, size_t *pIceServerConfigsCount )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+
+    if( pCtx == NULL || ppIceServerConfigs == NULL || pIceServerConfigsCount == NULL )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        /* TODO: check if ICE server configs expire. */
+        *ppIceServerConfigs = pCtx->iceServerConfigs;
+        *pIceServerConfigsCount = pCtx->iceServerConfigsCount;
+    }
+
+    return ret;
+}

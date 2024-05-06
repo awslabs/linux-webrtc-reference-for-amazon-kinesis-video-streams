@@ -21,10 +21,14 @@ extern "C" {
                                                    "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
 #define ICE_CANDIDATE_JSON_CANDIDATE_MAX_LENGTH ( 512 )
 
+IceControllerResult_t IceControllerNet_InitRemoteInfo( IceControllerRemoteInfo_t *pRemoteInfo );
 IceControllerResult_t IceControllerNet_ConvertIpString( const char *pIpAddr, size_t ipAddrLength, IceIPAddress_t *pDest );
 IceControllerResult_t IceControllerNet_Htons( uint16_t port, uint16_t *pOutPort );
-IceControllerResult_t IceControllerNet_AddHostCandidates( IceControllerContext_t *pCtx, IceControllerRemoteInfo_t *pRemoteInfo );
-IceControllerResult_t IceControllerNet_AttachPolling( int socketFd, struct pollfd *pFds, size_t *pFdsCount );
+IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_t *pCtx, IceControllerRemoteInfo_t *pRemoteInfo );
+IceControllerResult_t IceControllerNet_AttachPolling( IceControllerContext_t *pCtx, IceControllerSocketContext_t *pSocketContext );
+IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerSocketContext_t *pSocketContext );
+IceControllerResult_t IceControllerNet_DnsLookUp( char *pUrl, StunAttributeAddress_t *pIpAddress );
+IceControllerResult_t IceControllerNet_SendPacket( IceControllerSocketContext_t *pSocketContext, IceIPAddress_t *pDestinationIpAddress, char *pBuffer, size_t length );
 
 #ifdef __cplusplus
 }

@@ -31,12 +31,14 @@ file(
   WEBRTC_APPLICATION_UTILS_SOURCE_FILES
   "examples/base64/*.c"
   "examples/message_queue/linux/*.c"
+  "examples/timer_controller/*.c"
   "examples/string_utils/*.c" )
 
 set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
      "examples/base64/"
      "examples/logging/"
      "examples/message_queue/linux/"
+     "examples/timer_controller/"
      "examples/string_utils" )
 
 file(
