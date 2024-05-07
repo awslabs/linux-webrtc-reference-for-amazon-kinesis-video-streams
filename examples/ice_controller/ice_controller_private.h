@@ -26,7 +26,7 @@ IceControllerResult_t IceControllerNet_ConvertIpString( const char *pIpAddr, siz
 IceControllerResult_t IceControllerNet_Htons( uint16_t port, uint16_t *pOutPort );
 IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_t *pCtx, IceControllerRemoteInfo_t *pRemoteInfo );
 IceControllerResult_t IceControllerNet_AttachPolling( IceControllerContext_t *pCtx, IceControllerSocketContext_t *pSocketContext );
-IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerSocketContext_t *pSocketContext );
+IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *pCtx, IceControllerSocketContext_t *pSocketContext );
 IceControllerResult_t IceControllerNet_DnsLookUp( char *pUrl, StunAttributeAddress_t *pIpAddress );
 IceControllerResult_t IceControllerNet_SendPacket( IceControllerSocketContext_t *pSocketContext, IceIPAddress_t *pDestinationIpAddress, char *pBuffer, size_t length );
 

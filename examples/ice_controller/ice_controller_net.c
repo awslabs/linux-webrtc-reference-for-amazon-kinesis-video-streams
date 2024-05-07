@@ -617,7 +617,7 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
     return ret;
 }
 
-IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerSocketContext_t *pSocketContext )
+IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *pCtx, IceControllerSocketContext_t *pSocketContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
@@ -679,6 +679,17 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerSocketContex
                                             remoteAddress,
                                             &candidatePair );
     }
+
+    /* TODO: if it's STUN response from STUN server for srflx candidate, we should send a ICE candidate to remote peer. */
+    // if( ret == ICE_CONTROLLER_RESULT_OK )
+    // {
+    //     ret = sendIceCandidate( pCtx, pSocketContext->pLocalCandidate, pSocketContext->pRemoteInfo );
+    //     if( ret != ICE_CONTROLLER_RESULT_OK )
+    //     {
+    //         /* Just ignore this failing case and continue the ICE procedure. */
+    //         LogWarn( ( "Fail to send server reflexive candidate to remote peer, result: %d", ret ) );
+    //     }
+    // }
 
     return ret;
 }
