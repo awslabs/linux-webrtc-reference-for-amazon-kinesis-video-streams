@@ -16,9 +16,7 @@ add_library( ice
 
 target_include_directories( ice PRIVATE
                             ${ICE_INCLUDE_PUBLIC_DIRS}
-                            ${JSON_INCLUDE_PUBLIC_DIRS}
                             ${STUN_INCLUDE_PUBLIC_DIRS} )
 
 target_link_libraries( ice PRIVATE
-                       corejson
                        stun )

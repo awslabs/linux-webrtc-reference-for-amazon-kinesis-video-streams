@@ -37,6 +37,8 @@ extern "C" {
  */
 #define ICE_CONTROLLER_ICE_SERVER_PASSWORD_MAX_LENGTH ( 256 )
 
+#define ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS ( 3000 )
+
 #define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX "amazonaws.com"
 #define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX_CN "amazonaws.com.cn"
 #define AWS_DEFAULT_STUN_SERVER_URL "stun.kinesisvideo.%s.%s"
@@ -134,7 +136,6 @@ typedef struct IceControllerSocketContext
 {
     IceCandidateType_t candidateType; /* server socket of host/srflx/relay candidate or client socket connecting with remote. */
     IceCandidate_t *pLocalCandidate;
-    IceCandidate_t *pRemoteCandidate;
     int socketFd;
     IceControllerRemoteInfo_t *pRemoteInfo;
 } IceControllerSocketContext_t;

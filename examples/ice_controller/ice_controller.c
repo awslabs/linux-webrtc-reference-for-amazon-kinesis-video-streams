@@ -20,7 +20,6 @@
 #define ICE_SERVER_TYPE_TURN_LENGTH ( 5 )
 #define ICE_SERVER_TYPE_TURNS "turns:"
 #define ICE_SERVER_TYPE_TURNS_LENGTH ( 6 )
-#define ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS ( 5000 )
 
 static const uint32_t gCrc32Table[256] = {
     0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -203,35 +202,6 @@ static void freeRemoteInfo( IceControllerContext_t *pCtx, int32_t index )
     pCtx->remoteInfo[index].isUsed = 0;
 }
 
-static IceControllerResult_t initializeIceAgent( IceControllerRemoteInfo_t *pRemoteInfo )
-{
-    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    uint32_t i;
-
-    for( i=0 ; i<ICE_MAX_LOCAL_CANDIDATE_COUNT ; i++ )
-    {
-        pRemoteInfo->iceAgent.localCandidates[i] = &pRemoteInfo->localCandidates[i];
-    }
-
-    for( i=0 ; i<ICE_MAX_REMOTE_CANDIDATE_COUNT ; i++ )
-    {
-        pRemoteInfo->iceAgent.remoteCandidates[i] = &pRemoteInfo->remoteCandidates[i];
-    }
-
-    for( i=0 ; i<ICE_MAX_CANDIDATE_PAIR_COUNT ; i++ )
-    {
-        pRemoteInfo->iceAgent.iceCandidatePairs[i] = &pRemoteInfo->candidatePairs[i];
-    }
-
-    for( i=0 ; i<ICE_MAX_CANDIDATE_PAIR_COUNT ; i++ )
-    {
-        /* TODO: the buffer assignment might be changed later in ICE component. */
-        pRemoteInfo->iceAgent.stunMessageBuffers[i] = pRemoteInfo->stunBuffers[i];
-    }
-
-    return ret;
-}
-
 static IceControllerResult_t findRemoteInfo( IceControllerContext_t *pCtx, const char *pRemoteClientId, size_t remoteClientIdLength, IceControllerRemoteInfo_t **ppRemoteInfo )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
@@ -293,6 +263,25 @@ static IceControllerResult_t handleAddRemoteCandidateRequest( IceControllerConte
     return ret;
 }
 
+static IceControllerSocketContext_t *findSocketContextByLocalCandidate( IceControllerRemoteInfo_t *pRemoteInfo, IceCandidate_t *pLocalCandidate )
+{
+    IceControllerSocketContext_t *pReturnContext = NULL;
+    uint32_t i;
+
+    if( pLocalCandidate != NULL )
+    {
+        for( i=0 ; i<pRemoteInfo->socketsContextsCount ; i++ )
+        {
+            if( pRemoteInfo->socketsContexts[i].pLocalCandidate == pLocalCandidate )
+            {
+                pReturnContext = &pRemoteInfo->socketsContexts[i];
+            }
+        }
+    }
+
+    return pReturnContext;
+}
+
 static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContext_t *pCtx, IceControllerRequestMessage_t *pRequestMessage )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
@@ -301,8 +290,10 @@ static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContex
     uint32_t i;
     int pairCount;
     /* TODO: not necessary to prepare STUN buffer after fix. */
-    char stunBuffer[ 1024 ];
+    uint8_t *pStunBuffer = NULL;
+    uint32_t stunBufferLength = 0;
     char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
+    IceControllerSocketContext_t *pSocketContext;
 
     pairCount = Ice_GetValidCandidatePairCount( &pRemoteInfo->iceAgent );
     if( pairCount <= 0 )
@@ -315,18 +306,43 @@ static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContex
     {
         for( i=0 ; i<pairCount ; i++ )
         {
+            ret = ICE_CONTROLLER_RESULT_OK;
+
             iceResult = Ice_CreateRequestForConnectivityCheck( &pRemoteInfo->iceAgent,
-                                                               stunBuffer,
-                                                               transactionIdBuffer );
+                                                               &pStunBuffer,
+                                                               &stunBufferLength,
+                                                               transactionIdBuffer,
+                                                               &pRemoteInfo->iceAgent.iceCandidatePairs[i] );
             if( iceResult != ICE_RESULT_OK )
             {
                 /* Fail to create connectivity check for this round, ignore and continue next round. */
                 LogWarn( ( "Fail to create request for connectivity check, result: %d", iceResult ) );
                 continue;
             }
+            else if( pRemoteInfo->iceAgent.iceCandidatePairs[i].pRemote == NULL )
+            {
+                /* No remote candidate mapped to this pair, ignore and continue next round. */
+                LogWarn( ( "No remote candidate available for this pair, skip this pair" ) );
+                continue;
+            }
+            else
+            {
+                /* Do nothing, coverity happy. */
+            }
 
-            /* TODO: How to get the destination IP address for this round? */
-            // ret = IceControllerNet_SendPacket( IceControllerSocketContext_t *pSocketContext, IceIPAddress_t *pDestinationIpAddress, char *pBuffer, size_t length );
+            pSocketContext = findSocketContextByLocalCandidate( pRemoteInfo, pRemoteInfo->iceAgent.iceCandidatePairs[i].pLocal );
+            if( pSocketContext == NULL )
+            {
+                LogWarn( ( "Not able to find socket context mapping, mapping local candidate: %p", pRemoteInfo->iceAgent.iceCandidatePairs[i].pLocal ) );
+                continue;
+            }
+
+            ret = IceControllerNet_SendPacket( pSocketContext, &pRemoteInfo->iceAgent.iceCandidatePairs[i].pRemote->ipAddress, pStunBuffer, stunBufferLength );
+            if( ret != ICE_CONTROLLER_RESULT_OK )
+            {
+                LogWarn( ( "Unable to send packet to remote address, result: %d", ret ) );
+                continue;
+            }
         }
     }
 
@@ -822,12 +838,16 @@ IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
-    char combinedName[ MAX_ICE_CONFIG_USER_NAME_LEN + 1 ];
+    char remoteUserName[ ICE_MAX_CONFIG_USER_NAME_LEN + 1 ];
+    char remotePassword[ ICE_MAX_CONFIG_CREDENTIAL_LEN + 1 ];
+    char combinedName[ ( ICE_MAX_CONFIG_USER_NAME_LEN << 1 ) + 1 ];
     IceControllerRemoteInfo_t *pRemoteInfo;
     TimerControllerResult_t retTimer;
 
     if( pCtx == NULL || pRemoteClientId == NULL ||
-        pRemoteUserName == NULL || pRemotePassword == NULL )
+        pRemoteUserName == NULL || pRemotePassword == NULL ||
+        remoteUserNameLength > ICE_MAX_CONFIG_USER_NAME_LEN ||
+        remotePasswordLength > ICE_MAX_CONFIG_CREDENTIAL_LEN )
     {
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
@@ -860,20 +880,24 @@ IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         /* Prepare combine name and create Ice Agent. */
-        if( remoteUserNameLength + ICE_CONTROLLER_USER_NAME_LENGTH > MAX_ICE_CONFIG_USER_NAME_LEN )
+        if( remoteUserNameLength + ICE_CONTROLLER_USER_NAME_LENGTH > ( ICE_MAX_CONFIG_USER_NAME_LEN << 1 ) )
         {
             LogWarn( ( "Remote user name is too long to store, length: %ld", remoteUserNameLength ) );
             ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_USERNAME;
         }
         else
         {
+            memcpy( remoteUserName, pRemoteUserName, remoteUserNameLength );
+            remoteUserName[ remoteUserNameLength ] = '\0';
+            memcpy( remotePassword, pRemotePassword, remotePasswordLength );
+            remotePassword[ remotePasswordLength ] = '\0';
             memcpy( combinedName, pCtx->localUserName, ICE_CONTROLLER_USER_NAME_LENGTH );
             memcpy( combinedName + ICE_CONTROLLER_USER_NAME_LENGTH, pRemoteUserName, remoteUserNameLength );
             combinedName[ remoteUserNameLength + ICE_CONTROLLER_USER_NAME_LENGTH ] = '\0';
 
             iceResult = Ice_CreateIceAgent( &pRemoteInfo->iceAgent,
                                             pCtx->localUserName, pCtx->localPassword,
-                                            ( char* ) pRemoteUserName, ( char* ) pRemotePassword,
+                                            remoteUserName, remotePassword,
                                             combinedName,
                                             &pRemoteInfo->transactionIdStore,
                                             IceController_CalculateCrc32,

@@ -262,7 +262,7 @@ static IceControllerResult_t addPollingEvent( int socketFd, struct pollfd *pFds,
         pFds[ *pFdsCount ].fd = socketFd;
         pFds[ *pFdsCount ].events = events;
         pFds[ *pFdsCount ].revents = 0;
-        *pFdsCount++;
+        (*pFdsCount)++;
     }
 
     return ret;
@@ -474,8 +474,10 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
     IceCandidate_t *pCandidate;
     IceControllerSocketContext_t *pSocketContext;
     /* TODO: not necessary to prepare STUN buffer after fix. */
-    char stunBuffer[ 1024 ];
+    uint8_t *pStunBuffer;
+    uint32_t stunBufferLength;
     char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
+    char ipBuffer[ INET_ADDRSTRLEN ];
 
     for( i=0 ; i<pCtx->iceServersCount ; i++ )
     {
@@ -501,14 +503,14 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
         if( pCtx->iceServers[ i ].ipAddress.ipAddress.family == STUN_ADDRESS_IPv4 )
         {
             pSocketContext = &pRemoteInfo->socketsContexts[ pRemoteInfo->socketsContextsCount ];
-            LogDebug( ( "Create srflx candidate with local IP %s", inet_ntop( AF_INET, pLocalIpAddress->ipAddress.address, stunBuffer, INET_ADDRSTRLEN ) ) );
+            LogDebug( ( "Create srflx candidate with local IP %s", inet_ntop( AF_INET, pLocalIpAddress->ipAddress.address, ipBuffer, INET_ADDRSTRLEN ) ) );
             ret = createSocketConnection( &pSocketContext->socketFd, pLocalIpAddress, ICE_SOCKET_PROTOCOL_UDP );
         }
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
             iceResult = Ice_AddSrflxCandidate( *pLocalIpAddress, &pRemoteInfo->iceAgent, &pCandidate,
-                                               stunBuffer, transactionIdBuffer );
+                                               transactionIdBuffer, &pStunBuffer, &stunBufferLength );
             if( iceResult != ICE_RESULT_OK )
             {
                 /* Free resource that already created. */
@@ -522,7 +524,7 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
         /* TODO: Send STUN request to STUN server to get IP address as srflx candidate. */
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            ret = IceControllerNet_SendPacket( pSocketContext, &pCtx->iceServers[ i ].ipAddress, stunBuffer, sizeof( stunBuffer ) );
+            ret = IceControllerNet_SendPacket( pSocketContext, &pCtx->iceServers[ i ].ipAddress, pStunBuffer, stunBufferLength );
         }
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -539,7 +541,6 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
             pSocketContext->pLocalCandidate = pCandidate;
-            pSocketContext->pRemoteCandidate = NULL;
             pSocketContext->candidateType = ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
             pSocketContext->pRemoteInfo = pRemoteInfo;
             pRemoteInfo->socketsContextsCount++;
@@ -554,12 +555,15 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
     uint32_t i;
     IceCandidate_t *pCandidate;
     IceControllerSocketContext_t *pSocketContext;
+    char ipBuffer[ INET_ADDRSTRLEN ];
 
     pCtx->localIpAddressesCount = ICE_MAX_LOCAL_CANDIDATE_COUNT;
     getLocalIPAdresses( pCtx->localIpAddresses, &pCtx->localIpAddressesCount );
 
     for( i=0 ; i<pCtx->localIpAddressesCount ; i++ )
     {
+        LogDebug( ( "Creating host candidate with IP address: %s", inet_ntop( AF_INET, pCtx->localIpAddresses[i].ipAddress.address, ipBuffer, INET_ADDRSTRLEN ) ) );
+
         pSocketContext = &pRemoteInfo->socketsContexts[ pRemoteInfo->socketsContextsCount ];
         ret = createSocketConnection( &pSocketContext->socketFd, &pCtx->localIpAddresses[i], ICE_SOCKET_PROTOCOL_UDP );
 
@@ -601,7 +605,6 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
             pSocketContext->pLocalCandidate = pCandidate;
-            pSocketContext->pRemoteCandidate = NULL;
             pSocketContext->candidateType = ICE_CANDIDATE_TYPE_HOST;
             pSocketContext->pRemoteInfo = pRemoteInfo;
             pRemoteInfo->socketsContextsCount++;
@@ -628,8 +631,10 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     struct sockaddr_in* pIpv4Address;
     struct sockaddr_in6* pIpv6Address;
     IceIPAddress_t remoteAddress;
-    /* TODO: workaround here, we should be able to remove candidatePair after fixing Ice_HandleStunResponse. */
+    /* TODO: workaround here, we should be able to remove candidatePair after fixing Ice_HandleStunPacket. */
     IceCandidatePair_t candidatePair;
+    uint8_t *pSentStunBuffer;
+    uint32_t sentStunBufferLength;
 
     readBytes = recvfrom( pSocketContext->socketFd, receiveBuffer, RX_BUFFER_SIZE, 0, &srcAddress, &srcAddressLength );
     if( readBytes < 0 )
@@ -671,25 +676,31 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         // TODO: how do I get candidate pair?
-        iceResult = Ice_HandleStunResponse( &pSocketContext->pRemoteInfo->iceAgent,
-                                            receiveBuffer,
-                                            readBytes,
-                                            transactionIdBuffer,
-                                            pSocketContext->pLocalCandidate,
-                                            remoteAddress,
-                                            &candidatePair );
+        memset( &candidatePair, 0, sizeof( IceCandidatePair_t ) );
+
+        iceResult = Ice_HandleStunPacket( &pSocketContext->pRemoteInfo->iceAgent,
+                                          receiveBuffer,
+                                          readBytes,
+                                          transactionIdBuffer,
+                                          &pSentStunBuffer,
+                                          &sentStunBufferLength,
+                                          pSocketContext->pLocalCandidate,
+                                          &remoteAddress,
+                                          &candidatePair );
+        
+        switch( iceResult )
+        {
+            case ICE_RESULT_UPDATED_SRFLX_CANDIDATE_ADDRESS:
+                /* This packet is actually from STUN server for SRFLX candidate. Send srflx ICE candidate to remote peer. */
+                if( sendIceCandidate( pCtx, pSocketContext->pLocalCandidate, pSocketContext->pRemoteInfo ) != ICE_CONTROLLER_RESULT_OK )
+                {
+                    /* Just ignore this failing case and continue the ICE procedure. */
+                    LogWarn( ( "Fail to send server reflexive candidate to remote peer, result: %d", ret ) );
+                }
+                break;
+        }
     }
 
-    /* TODO: if it's STUN response from STUN server for srflx candidate, we should send a ICE candidate to remote peer. */
-    // if( ret == ICE_CONTROLLER_RESULT_OK )
-    // {
-    //     ret = sendIceCandidate( pCtx, pSocketContext->pLocalCandidate, pSocketContext->pRemoteInfo );
-    //     if( ret != ICE_CONTROLLER_RESULT_OK )
-    //     {
-    //         /* Just ignore this failing case and continue the ICE procedure. */
-    //         LogWarn( ( "Fail to send server reflexive candidate to remote peer, result: %d", ret ) );
-    //     }
-    // }
 
     return ret;
 }
