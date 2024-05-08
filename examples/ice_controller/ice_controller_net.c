@@ -477,7 +477,6 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
     uint8_t *pStunBuffer;
     uint32_t stunBufferLength;
     char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
-    char ipBuffer[ INET_ADDRSTRLEN ];
 
     for( i=0 ; i<pCtx->iceServersCount ; i++ )
     {
@@ -503,7 +502,8 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
         if( pCtx->iceServers[ i ].ipAddress.ipAddress.family == STUN_ADDRESS_IPv4 )
         {
             pSocketContext = &pRemoteInfo->socketsContexts[ pRemoteInfo->socketsContextsCount ];
-            LogDebug( ( "Create srflx candidate with local IP %s", inet_ntop( AF_INET, pLocalIpAddress->ipAddress.address, ipBuffer, INET_ADDRSTRLEN ) ) );
+            LogDebug( ( "Create srflx candidate with local IP --" ) );
+            IceControllerNet_LogIpAddressInfo( pLocalIpAddress );
             ret = createSocketConnection( &pSocketContext->socketFd, pLocalIpAddress, ICE_SOCKET_PROTOCOL_UDP );
         }
 
@@ -555,15 +555,12 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
     uint32_t i;
     IceCandidate_t *pCandidate;
     IceControllerSocketContext_t *pSocketContext;
-    char ipBuffer[ INET_ADDRSTRLEN ];
 
     pCtx->localIpAddressesCount = ICE_MAX_LOCAL_CANDIDATE_COUNT;
     getLocalIPAdresses( pCtx->localIpAddresses, &pCtx->localIpAddressesCount );
 
     for( i=0 ; i<pCtx->localIpAddressesCount ; i++ )
     {
-        LogDebug( ( "Creating host candidate with IP address: %s", inet_ntop( AF_INET, pCtx->localIpAddresses[i].ipAddress.address, ipBuffer, INET_ADDRSTRLEN ) ) );
-
         pSocketContext = &pRemoteInfo->socketsContexts[ pRemoteInfo->socketsContextsCount ];
         ret = createSocketConnection( &pSocketContext->socketFd, &pCtx->localIpAddresses[i], ICE_SOCKET_PROTOCOL_UDP );
 
@@ -608,6 +605,9 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
             pSocketContext->candidateType = ICE_CANDIDATE_TYPE_HOST;
             pSocketContext->pRemoteInfo = pRemoteInfo;
             pRemoteInfo->socketsContextsCount++;
+            
+            LogDebug( ( "Created host candidate with IP address -- " ) );
+            IceControllerNet_LogIpAddressInfo( &pCtx->localIpAddresses[i] );
         }
 
         /* Prepare srflx candidates based on current host candidate. */
@@ -677,6 +677,9 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     {
         // TODO: how do I get candidate pair?
         memset( &candidatePair, 0, sizeof( IceCandidatePair_t ) );
+        
+        LogDebug( ( "Receiving %d bytes from IP --", readBytes ) );
+        IceControllerNet_LogIpAddressInfo( &remoteAddress );
 
         iceResult = Ice_HandleStunPacket( &pSocketContext->pRemoteInfo->iceAgent,
                                           receiveBuffer,
@@ -687,6 +690,16 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                                           pSocketContext->pLocalCandidate,
                                           &remoteAddress,
                                           &candidatePair );
+        
+        LogDebug( ( "Receiving STUN packets: \n"
+                    "type: 0x%04x\n"
+                    "length:: 0x%04x\n"
+                    "transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                    *(uint16_t*)(receiveBuffer),
+                    *(uint16_t*)(receiveBuffer + 2),
+                    *(uint8_t*)(receiveBuffer + 8), *(uint8_t*)(receiveBuffer + 9), *(uint8_t*)(receiveBuffer + 10), *(uint8_t*)(receiveBuffer + 11),
+                    *(uint8_t*)(receiveBuffer + 12), *(uint8_t*)(receiveBuffer + 13), *(uint8_t*)(receiveBuffer + 14), *(uint8_t*)(receiveBuffer + 15),
+                    *(uint8_t*)(receiveBuffer + 16), *(uint8_t*)(receiveBuffer + 17), *(uint8_t*)(receiveBuffer + 18), *(uint8_t*)(receiveBuffer + 19) ) );
         
         switch( iceResult )
         {
@@ -756,4 +769,10 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char *pUrl, StunAttributeAddre
     }
 
     return ret;
+}
+
+void IceControllerNet_LogIpAddressInfo( IceIPAddress_t *pIceIpAddress )
+{
+    char ipBuffer[ INET_ADDRSTRLEN ];
+    LogDebug( ( "IP address/port: %s/%d", inet_ntop( AF_INET, pIceIpAddress->ipAddress.address, ipBuffer, INET_ADDRSTRLEN ), htons( pIceIpAddress->ipAddress.port ) ) );
 }

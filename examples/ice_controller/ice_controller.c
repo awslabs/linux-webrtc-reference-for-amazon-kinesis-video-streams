@@ -337,6 +337,19 @@ static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContex
                 continue;
             }
 
+            LogDebug( ( "Sending connecitivity check from -- " ) );
+            IceControllerNet_LogIpAddressInfo( &pRemoteInfo->iceAgent.iceCandidatePairs[i].pLocal->ipAddress );
+            LogDebug( ( "Sending connecitivity check to -- " ) );
+            IceControllerNet_LogIpAddressInfo( &pRemoteInfo->iceAgent.iceCandidatePairs[i].pRemote->ipAddress );
+            LogDebug( ( "Sending STUN packets: \n"
+                        "type: 0x%04x\n"
+                        "length:: 0x%04x\n"
+                        "transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                        *(uint16_t*)(pStunBuffer),
+                        *(uint16_t*)(pStunBuffer + 2),
+                        *(uint8_t*)(pStunBuffer + 8), *(uint8_t*)(pStunBuffer + 9), *(uint8_t*)(pStunBuffer + 10), *(uint8_t*)(pStunBuffer + 11),
+                        *(uint8_t*)(pStunBuffer + 12), *(uint8_t*)(pStunBuffer + 13), *(uint8_t*)(pStunBuffer + 14), *(uint8_t*)(pStunBuffer + 15),
+                        *(uint8_t*)(pStunBuffer + 16), *(uint8_t*)(pStunBuffer + 17), *(uint8_t*)(pStunBuffer + 18), *(uint8_t*)(pStunBuffer + 19) ) );
             ret = IceControllerNet_SendPacket( pSocketContext, &pRemoteInfo->iceAgent.iceCandidatePairs[i].pRemote->ipAddress, pStunBuffer, stunBufferLength );
             if( ret != ICE_CONTROLLER_RESULT_OK )
             {

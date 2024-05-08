@@ -119,7 +119,6 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/sdp.cmake )
 
 ## Set SDP include directories
-target_compile_definitions( WebRTCLinuxApplicationMaster PUBLIC SDP_DO_NOT_USE_CUSTOM_CONFIG )
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${SDP_INCLUDE_PUBLIC_DIRS} )
 
