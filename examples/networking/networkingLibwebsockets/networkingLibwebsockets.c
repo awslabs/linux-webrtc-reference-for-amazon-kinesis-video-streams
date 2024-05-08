@@ -4,7 +4,6 @@
 #include "networkingLibwebsockets.h"
 #include "networkingLibwebsockets_private.h"
 #include "libwebsockets.h"
-#include "openssl/sha.h"
 
 #define NETWORKING_LWS_STRING_SCHEMA_DELIMITER "://"
 #define NETWORKING_LWS_STRING_HTTPS "https"
@@ -52,8 +51,15 @@ static SigV4Parameters_t sigv4Params =
 
 static int32_t sha256Init( void * hashContext )
 {
-    SHA256_Init( hashContext );
-    return 0;
+    int32_t ret = 0;
+    const EVP_MD *md = EVP_sha256();
+    ret = EVP_DigestInit( hashContext, md );
+    if( ret != 1 )
+    {
+        LogError( ( "Fail to init EVP_sha256" ) );
+    }
+
+    return ret == 1? 0:-1;
 }
 
 static int32_t sha256Update( void * hashContext,
@@ -61,7 +67,12 @@ static int32_t sha256Update( void * hashContext,
                              size_t inputLen )
 {
     int32_t ret = 0;
-    ret = SHA256_Update( hashContext, pInput, inputLen );
+    ret = EVP_DigestUpdate( hashContext, pInput, inputLen );
+    if( ret != 1 )
+    {
+        LogError( ( "Fail to update EVP_sha256" ) );
+    }
+
     return ret == 1? 0:-1;
 }
 
@@ -70,10 +81,15 @@ static int32_t sha256Final( void * hashContext,
                             size_t outputLen )
 {
     int32_t ret = 0;
+    unsigned int outLength = outputLen;
 
     ( void ) outputLen;
 
-    ret = SHA256_Final( pOutput, hashContext );
+    ret = EVP_DigestFinal( hashContext, pOutput, &outLength );
+    if( ret != 1 )
+    {
+        LogError( ( "Fail to finalize EVP_sha256" ) );
+    }
 
     return ret == 1? 0:-1;
 }
@@ -275,7 +291,8 @@ NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsoc
         sigv4Params.regionLen = networkingLibwebsocketContext.libwebsocketsCredentials.regionLength;
         sigv4Params.pCredentials = &networkingLibwebsocketContext.sigv4Credential;
         sigv4Params.pDateIso8601 = networkingLibwebsocketContext.appendHeaders.pDate;
-        cryptoInterface.pHashContext = &networkingLibwebsocketContext.sha256Ctx;
+        networkingLibwebsocketContext.pEvpMdCtx = EVP_MD_CTX_new();
+        cryptoInterface.pHashContext = networkingLibwebsocketContext.pEvpMdCtx;
 
         /* Reset buffer length then generate authorization. */
         networkingLibwebsocketContext.sigv4AuthLen = NETWORKING_LWS_SIGV4_AUTH_BUFFER_LENGTH;

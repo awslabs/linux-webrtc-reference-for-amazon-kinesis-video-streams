@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #include <stdio.h>
+#include <openssl/evp.h>
 #include "libwebsockets.h"
 #include "sigv4.h"
 
@@ -136,8 +137,8 @@ typedef struct NetworkingLibwebsocketContext
     size_t sigv4AuthLen;
     SigV4Credentials_t sigv4Credential;
 
-    /* OpenSSL SHA256 context. */
-    SHA256_CTX sha256Ctx;
+    /* OpenSSL EVP context. */
+    EVP_MD_CTX *pEvpMdCtx;
 
     /* Rx path: callback user to handle received message. */
     WebsocketMessageCallback_t websocketRxCallback;
