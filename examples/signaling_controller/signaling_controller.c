@@ -6,6 +6,8 @@
 #include "networkingLibwebsockets.h"
 #include "base64.h"
 
+#define SIGNALING_CONTROLLER_MESSAGE_QUEUE_NAME "/WebrtcApplicationSignalingController"
+
 #define MAX_URI_CHAR_LEN ( 10000 )
 #define MAX_JSON_PARAMETER_STRING_LEN ( 10 * 1024 )
 #define MAX_QUEUE_MSG_NUM ( 10 )
@@ -746,7 +748,10 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     /* Initializa Message Queue. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        retMessageQueue = MessageQueue_Create( &pCtx->sendMessageQueue, "/SignalingController", sizeof( SignalingControllerEventMessage_t ), MAX_QUEUE_MSG_NUM );
+        /* Delete message queue from previous round. */
+        MessageQueue_Destroy( NULL, SIGNALING_CONTROLLER_MESSAGE_QUEUE_NAME );
+
+        retMessageQueue = MessageQueue_Create( &pCtx->sendMessageQueue, SIGNALING_CONTROLLER_MESSAGE_QUEUE_NAME, sizeof( SignalingControllerEventMessage_t ), MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             ret = SIGNALING_CONTROLLER_RESULT_MQ_INIT_FAIL;
@@ -768,7 +773,7 @@ void SignalingController_Deinit( SignalingControllerContext_t *pCtx )
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         /* Free mqueue. */
-        MessageQueue_Destroy( &pCtx->sendMessageQueue );
+        MessageQueue_Destroy( &pCtx->sendMessageQueue, SIGNALING_CONTROLLER_MESSAGE_QUEUE_NAME );
     }
 }
 

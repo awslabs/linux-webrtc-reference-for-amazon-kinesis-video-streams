@@ -5,7 +5,7 @@
 #include "logging.h"
 #include "message_queue.h"
 
-void MessageQueue_Destroy( MessageQueueHandler_t *pMessageQueueHandler )
+void MessageQueue_Destroy( MessageQueueHandler_t *pMessageQueueHandler, const char *pQueueName )
 {
     if( pMessageQueueHandler != NULL )
     {
@@ -18,6 +18,11 @@ void MessageQueue_Destroy( MessageQueueHandler_t *pMessageQueueHandler )
         {
             LogError( ( "mq_unlink error, errno: %s, queue name: %s", strerror( errno ), pMessageQueueHandler->pQueueName ) );
         }
+    }
+    else
+    {
+        /* Remove the queue with same name. */
+        mq_unlink( pQueueName );
     }
 }
 

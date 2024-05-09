@@ -10,6 +10,8 @@
 #include "string_utils.h"
 #include "signaling_controller.h"
 
+#define ICE_CONTROLLER_MESSAGE_QUEUE_NAME "/WebrtcApplicationIceController"
+
 #define ICE_CONTROLLER_CANDIDATE_JSON_KEY "candidate"
 #define MAX_QUEUE_MSG_NUM ( 10 )
 #define POLL_TIMEOUT_MS 500
@@ -644,7 +646,7 @@ IceControllerResult_t IceController_Deinit( IceControllerContext_t *pCtx )
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         /* Free mqueue. */
-        MessageQueue_Destroy( &pCtx->requestQueue );
+        MessageQueue_Destroy( &pCtx->requestQueue, ICE_CONTROLLER_MESSAGE_QUEUE_NAME );
     }
 
     return ret;
@@ -683,7 +685,10 @@ IceControllerResult_t IceController_Init( IceControllerContext_t *pCtx, Signalin
     /* Initialize request queue for ice controller and attach it into polling fds. */
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        retMessageQueue = MessageQueue_Create( &pCtx->requestQueue, "/IceController", sizeof( IceControllerRequestMessage_t ), MAX_QUEUE_MSG_NUM );
+        /* Delete message queue from previous round. */
+        MessageQueue_Destroy( NULL, ICE_CONTROLLER_MESSAGE_QUEUE_NAME );
+
+        retMessageQueue = MessageQueue_Create( &pCtx->requestQueue, ICE_CONTROLLER_MESSAGE_QUEUE_NAME, sizeof( IceControllerRequestMessage_t ), MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to open message queue, errno: %s", strerror( errno ) ) );
