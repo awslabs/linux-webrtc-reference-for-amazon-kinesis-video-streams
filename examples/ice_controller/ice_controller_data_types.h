@@ -156,6 +156,7 @@ typedef struct IceControllerSignalingRemoteInfo
     IceCandidatePair_t candidatePairs[ ICE_MAX_CANDIDATE_PAIR_COUNT ];
     uint8_t stunBuffers[ ICE_MAX_CANDIDATE_PAIR_COUNT ][ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
     TransactionIdStore_t transactionIdStore;
+    uint8_t transactionIds[ ICE_MAX_CANDIDATE_PAIR_COUNT ][ STUN_HEADER_TRANSACTION_ID_LENGTH ];
 } IceControllerRemoteInfo_t;
 
 typedef enum IceControllerRequestType

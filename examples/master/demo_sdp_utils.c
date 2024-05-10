@@ -5,8 +5,8 @@
 #include "sdp_controller.h"
 #include "demo_data_types.h"
 
-const char audioAttribute0Name[] = "candidate";
-const char audioAttribute0Value[] = "0 1 udp 2130706431 172.26.66.7 58246 typ host raddr 0.0.0.0 rport 0 generation 0 network-cost 999";
+// const char audioAttribute0Name[] = "candidate";
+// const char audioAttribute0Value[] = "0 1 udp 2130706431 172.26.66.7 58246 typ host raddr 0.0.0.0 rport 0 generation 0 network-cost 999";
 const char audioAttribute1Name[] = "msid";
 const char audioAttribute1Value[] = "myKvsVideoStream myAudioTrack";
 const char audioAttribute2Name[] = "ssrc";
@@ -41,8 +41,8 @@ const char audioAttribute17Name[] = "rtcp-fb";
 const char audioAttribute17Value[] = "111 goog-remb";
 const char audioAttribute18Name[] = "rtcp-fb";
 const char audioAttribute18Value[] = "111 transport-cc";
-const char videoAttribute0Name[] = "candidate";
-const char videoAttribute0Value[] = "0 1 udp 2130706431 172.26.66.7 58246 typ host raddr 0.0.0.0 rport 0 generation 0 network-cost 999";
+// const char videoAttribute0Name[] = "candidate";
+// const char videoAttribute0Value[] = "0 1 udp 2130706431 172.26.66.7 58246 typ host raddr 0.0.0.0 rport 0 generation 0 network-cost 999";
 const char videoAttribute1Name[] = "msid";
 const char videoAttribute1Value[] = "myKvsVideoStream myVideoTrack";
 const char videoAttribute2Name[] = "ssrc";
@@ -323,11 +323,11 @@ static uint8_t populateMediaAttributes( char **ppBuffer, size_t *pBufferLength, 
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].connectionInformation.addressTypeLength = strlen( SDP_CONTROLLER_ORIGIN_IPV4_TYPE );
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].connectionInformation.pConnectionAddress = SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].connectionInformation.connectionAddressLength = strlen( SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS );
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = videoAttribute0Name;
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( videoAttribute0Name );
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = videoAttribute0Value;
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen( videoAttribute0Value );
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = videoAttribute0Name;
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( videoAttribute0Name );
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = videoAttribute0Value;
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen( videoAttribute0Value );
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = videoAttribute1Name;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( videoAttribute1Name );
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = videoAttribute1Value;
@@ -437,11 +437,11 @@ static uint8_t populateMediaAttributes( char **ppBuffer, size_t *pBufferLength, 
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].connectionInformation.pConnectionAddress = SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].connectionInformation.connectionAddressLength = strlen( SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS );
 
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = audioAttribute0Name;
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( audioAttribute0Name );
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = audioAttribute0Value;
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen( audioAttribute0Value );
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = audioAttribute0Name;
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( audioAttribute0Name );
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = audioAttribute0Value;
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen( audioAttribute0Value );
+    // pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = audioAttribute1Name;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( audioAttribute1Name );
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = audioAttribute1Value;
