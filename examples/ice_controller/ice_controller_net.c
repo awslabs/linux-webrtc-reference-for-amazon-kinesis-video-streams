@@ -632,7 +632,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     struct sockaddr_in6* pIpv6Address;
     IceIPAddress_t remoteAddress;
     /* TODO: workaround here, we should be able to remove candidatePair after fixing Ice_HandleStunPacket. */
-    IceCandidatePair_t *pCandidatePair;
+    IceCandidatePair_t *pCandidatePair = NULL;
     uint8_t *pSentStunBuffer;
     uint32_t sentStunBufferLength;
     uint8_t skipProcess = 0;
@@ -728,6 +728,14 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                     if( IceControllerNet_SendPacket( pSocketContext, &pCandidatePair->pRemote->ipAddress, pSentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
                     {
                         LogWarn( ( "Unable to send STUN response for nomination" ) );
+                    }
+                    else
+                    {
+                        LogDebug( ( "ICE_RESULT_SEND_RESPONSE_FOR_NOMINATION" ) );
+                        if( TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
+                        {
+                            TimerController_ResetTimer( &pCtx->connectivityCheckTimer );
+                        }
                     }
                 }
                 break;
