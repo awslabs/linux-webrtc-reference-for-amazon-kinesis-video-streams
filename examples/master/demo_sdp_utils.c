@@ -5,6 +5,9 @@
 #include "sdp_controller.h"
 #include "demo_data_types.h"
 
+const char attributeMidValue0[] = "0";
+const char attributeMidValue1[] = "1";
+
 // const char audioAttribute0Name[] = "candidate";
 // const char audioAttribute0Value[] = "0 1 udp 2130706431 172.26.66.7 58246 typ host raddr 0.0.0.0 rport 0 generation 0 network-cost 999";
 const char audioAttribute1Name[] = "msid";
@@ -30,7 +33,6 @@ const char audioAttribute10Value[] = "sha-256 27:22:01:EC:8F:37:2B:9D:1D:6C:77:A
 const char audioAttribute11Name[] = "setup";
 const char audioAttribute11Value[] = "active";
 const char audioAttribute12Name[] = "mid";
-const char audioAttribute12Value[] = "1";
 const char audioAttribute13Name[] = "sendrecv";
 const char audioAttribute14Name[] = "rtcp-mux";
 const char audioAttribute15Name[] = "rtpmap";
@@ -66,7 +68,6 @@ const char videoAttribute10Value[] = "sha-256 27:22:01:EC:8F:37:2B:9D:1D:6C:77:A
 const char videoAttribute11Name[] = "setup";
 const char videoAttribute11Value[] = "active";
 const char videoAttribute12Name[] = "mid";
-const char videoAttribute12Value[] = "0";
 const char videoAttribute13Name[] = "sendrecv";
 const char videoAttribute14Name[] = "rtcp-mux";
 const char videoAttribute15Name[] = "rtcp-rsize";
@@ -308,11 +309,8 @@ static uint8_t populateSessionAttributes( char **ppBuffer, size_t *pBufferLength
     return skipProcess;
 }
 
-static uint8_t populateMediaAttributes( char **ppBuffer, size_t *pBufferLength, SdpControllerSdpDescription_t *pSdpDescription )
+static void populateVideoAttributes( SdpControllerSdpDescription_t *pSdpDescription )
 {
-    uint8_t skipProcess = 0;
-
-    /* Video */
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].pMediaName = "video 9 UDP/TLS/RTP/SAVPF 106";
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaNameLength = strlen( "video 9 UDP/TLS/RTP/SAVPF 106" );
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].pMediaTitle = NULL;
@@ -385,8 +383,16 @@ static uint8_t populateMediaAttributes( char **ppBuffer, size_t *pBufferLength, 
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = videoAttribute12Name;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( videoAttribute12Name );
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = videoAttribute12Value;
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen( videoAttribute12Value );
+    if( pSdpDescription->mediaCount == 0 )
+    {
+        pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = attributeMidValue0;
+        pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen(attributeMidValue0);
+    }
+    else
+    {
+        pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = attributeMidValue1;
+        pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen(attributeMidValue1);
+    }
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = videoAttribute13Name;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( videoAttribute13Name );
@@ -424,8 +430,10 @@ static uint8_t populateMediaAttributes( char **ppBuffer, size_t *pBufferLength, 
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
 
     pSdpDescription->mediaCount++;
+}
 
-    /* Audio */
+static void populateAudioAttributes( SdpControllerSdpDescription_t *pSdpDescription )
+{
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].pMediaName = "audio 9 UDP/TLS/RTP/SAVPF 111";
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaNameLength = strlen( "audio 9 UDP/TLS/RTP/SAVPF 111" );
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].pMediaTitle = NULL;
@@ -499,8 +507,16 @@ static uint8_t populateMediaAttributes( char **ppBuffer, size_t *pBufferLength, 
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = audioAttribute12Name;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( audioAttribute12Name );
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = audioAttribute12Value;
-    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen( audioAttribute12Value );
+    if( pSdpDescription->mediaCount == 0 )
+    {
+        pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = attributeMidValue0;
+        pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen(attributeMidValue0);
+    }
+    else
+    {
+        pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeValue = attributeMidValue1;
+        pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeValueLength = strlen(attributeMidValue1);
+    }
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].pAttributeName = audioAttribute13Name;
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].attributes[ pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount ].attributeNameLength = strlen( audioAttribute13Name );
@@ -530,6 +546,38 @@ static uint8_t populateMediaAttributes( char **ppBuffer, size_t *pBufferLength, 
     pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaAttributesCount++;
 
     pSdpDescription->mediaCount++;
+}
+
+static uint8_t populateMediaAttributes( char **ppBuffer, size_t *pBufferLength, SdpControllerSdpDescription_t *pSdpLocalDescription, SdpControllerSdpDescription_t *pSdpRemoteDescription )
+{
+    uint8_t skipProcess = 0;
+    int i;
+
+    if( pSdpRemoteDescription )
+    {
+        for( i=0; i<pSdpRemoteDescription->mediaCount; i++ )
+        {
+            if( strncmp( pSdpRemoteDescription->mediaDescriptions[i].pMediaName, "video", 5 ) == 0 )
+            {
+                populateVideoAttributes( pSdpLocalDescription );
+            }
+            else if( strncmp( pSdpRemoteDescription->mediaDescriptions[i].pMediaName, "audio", 5 ) == 0 )
+            {
+                populateAudioAttributes( pSdpLocalDescription );
+            }
+            else
+            {
+                /* Ignore unknown media type. */
+                LogWarn( ("Ignore unknown media type, media name: %.*s",
+                          ( int ) pSdpRemoteDescription->mediaDescriptions[i].mediaNameLength, pSdpRemoteDescription->mediaDescriptions[i].pMediaName ) );
+            }
+        }
+    }
+    else
+    {
+        populateVideoAttributes( pSdpLocalDescription );
+        populateAudioAttributes( pSdpLocalDescription );
+    }
 
     return skipProcess;
 }
@@ -570,7 +618,7 @@ uint8_t prepareSdpAnswer( DemoSessionInformation_t *pSessionInDescriptionOffer, 
     if( !skipProcess )
     {
         /* Media attributes. */
-        skipProcess = populateMediaAttributes( &pSdpBuffer, &remainLength, &pSessionInDescriptionAnswer->sdpDescription );
+        skipProcess = populateMediaAttributes( &pSdpBuffer, &remainLength, &pSessionInDescriptionAnswer->sdpDescription, &pSessionInDescriptionOffer->sdpDescription );
     }
 
     return skipProcess;
