@@ -191,6 +191,15 @@ typedef struct IceControllerIceServer
     IceSocketProtocol_t protocol; //tcp or udp
 } IceControllerIceServer_t;
 
+typedef struct IceControllerStunMsgHeader
+{
+    uint16_t msgType; //StunMessageType_t
+    uint8_t contentLength[2];
+    uint8_t magicCookie[ STUN_HEADER_MAGIC_COOKIE_OFFSET ];
+    uint8_t transactionId[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
+    uint8_t pStunAttributes[0];
+} IceControllerStunMsgHeader_t;
+
 typedef struct IceControllerContext
 {
     /* The signaling controller context initialized by application. */

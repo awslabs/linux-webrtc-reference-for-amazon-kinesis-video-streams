@@ -10,6 +10,11 @@
 #include "signaling_controller.h"
 
 #define RX_BUFFER_SIZE ( 4096 )
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN "UNKNOWN"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_REQUEST "BINDING_REQUEST"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_SUCCESS "BINDING_SUCCESS_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_FAILURE "BINDING_FAILURE_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_INDICATION "BINDING_INDICATION"
 
 uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
 
@@ -26,7 +31,8 @@ static void getLocalIPAdresses( IceIPAddress_t *pLocalIpAddresses, size_t *pLoca
 
     for( pIfAddr = pIfAddrs ; pIfAddr && localIpAddressesNum < localIpAddressesSize ; pIfAddr = pIfAddr->ifa_next )
     {
-        if( pIfAddr->ifa_addr && pIfAddr->ifa_addr->sa_family == AF_INET ) 
+        if( pIfAddr->ifa_addr && pIfAddr->ifa_addr->sa_family == AF_INET &&
+            ( pIfAddr->ifa_flags & IFF_LOOPBACK ) == 0 ) // Ignore loopback interface
         {
             pLocalIpAddresses[ localIpAddressesNum ].ipAddress.family = STUN_ADDRESS_IPv4;
             pLocalIpAddresses[ localIpAddressesNum ].ipAddress.port = 0;
@@ -349,6 +355,51 @@ static IceControllerResult_t IceControllerNet_AddPollingEvent( int socketFd, str
     return ret;
 }
 
+extern uint16_t ReadUint16Swap( const uint8_t * pSrc );
+extern uint16_t ReadUint16NoSwap( const uint8_t * pSrc );
+static const char *convertStunMsgTypeToString( uint16_t stunMsgType )
+{
+    const char *ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
+    static ReadUint16_t readUint16Fn;
+    static uint8_t isFirst = 1;
+    uint8_t isLittleEndian;
+    uint16_t msgType;
+    
+    if( isFirst )
+    {
+        isFirst = 0;
+        isLittleEndian = ( *( uint8_t * )( &( uint16_t ){ 1 } ) == 1 );
+
+        if( isLittleEndian != 0 )
+        {
+            readUint16Fn = ReadUint16Swap;
+        }
+        else
+        {
+            readUint16Fn = ReadUint16NoSwap;
+        }
+    }
+
+    msgType = readUint16Fn( ( uint8_t* ) &stunMsgType );
+    switch( msgType )
+    {
+        case STUN_MESSAGE_TYPE_BINDING_REQUEST:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_REQUEST;
+            break;
+        case STUN_MESSAGE_TYPE_BINDING_SUCCESS_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_SUCCESS;
+            break;
+        case STUN_MESSAGE_TYPE_BINDING_FAILURE_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_FAILURE;
+            break;
+        case STUN_MESSAGE_TYPE_BINDING_INDICATION:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_INDICATION;
+            break;
+    }
+
+    return ret;
+}
+
 IceControllerResult_t IceControllerNet_ConvertIpString( const char *pIpAddr, size_t ipAddrLength, IceIPAddress_t *pDest )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
@@ -476,6 +527,7 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
     uint8_t *pStunBuffer;
     uint32_t stunBufferLength;
     char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
+    char ipBuffer[ INET_ADDRSTRLEN ];
 
     for( i=0 ; i<pCtx->iceServersCount ; i++ )
     {
@@ -501,8 +553,9 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
         if( pCtx->iceServers[ i ].ipAddress.ipAddress.family == STUN_ADDRESS_IPv4 )
         {
             pSocketContext = &pRemoteInfo->socketsContexts[ pRemoteInfo->socketsContextsCount ];
-            LogDebug( ( "Create srflx candidate with local IP --" ) );
-            IceControllerNet_LogIpAddressInfo( pLocalIpAddress );
+            LogDebug( ( "Create srflx candidate with local IP/port: %s/%d",
+                        IceControllerNet_LogIpAddressInfo( pLocalIpAddress, ipBuffer, sizeof( ipBuffer ) ),
+                        pLocalIpAddress->ipAddress.port ) );
             ret = createSocketConnection( &pSocketContext->socketFd, pLocalIpAddress, ICE_SOCKET_PROTOCOL_UDP );
         }
 
@@ -553,6 +606,7 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
     uint32_t i;
     IceCandidate_t *pCandidate;
     IceControllerSocketContext_t *pSocketContext;
+    char ipBuffer[ INET_ADDRSTRLEN ];
 
     pCtx->localIpAddressesCount = ICE_MAX_LOCAL_CANDIDATE_COUNT;
     getLocalIPAdresses( pCtx->localIpAddresses, &pCtx->localIpAddressesCount );
@@ -604,8 +658,9 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
             pSocketContext->pRemoteInfo = pRemoteInfo;
             pRemoteInfo->socketsContextsCount++;
             
-            LogDebug( ( "Created host candidate with IP address -- " ) );
-            IceControllerNet_LogIpAddressInfo( &pCtx->localIpAddresses[i] );
+            LogDebug( ( "Created host candidate with IP/port: %s/%d",
+                        IceControllerNet_LogIpAddressInfo( &pCtx->localIpAddresses[i], ipBuffer, sizeof( ipBuffer ) ),
+                        pCtx->localIpAddresses[i].ipAddress.port ) );
         }
 
         /* Prepare srflx candidates based on current host candidate. */
@@ -633,6 +688,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     uint8_t *pSentStunBuffer;
     uint32_t sentStunBufferLength;
     uint8_t skipProcess = 0;
+    char ipBuffer[ INET_ADDRSTRLEN ];
 
     readBytes = recvfrom( pSocketContext->socketFd, receiveBuffer, RX_BUFFER_SIZE, 0, &srcAddress, &srcAddressLength );
     if( readBytes < 0 )
@@ -673,18 +729,10 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        LogDebug( ( "Receiving %d bytes from IP --", readBytes ) );
-        IceControllerNet_LogIpAddressInfo( &remoteAddress );
-        
-        LogDebug( ( "Receiving STUN packets: STUN header:\n"
-                    "type: 0x%02x%02x\n"
-                    "length:: 0x%02x%02x\n"
-                    "transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-                    *(uint8_t*)(receiveBuffer), *(uint8_t*)(receiveBuffer + 1),
-                    *(uint8_t*)(receiveBuffer + 2), *(uint8_t*)(receiveBuffer + 3),
-                    *(uint8_t*)(receiveBuffer + 8), *(uint8_t*)(receiveBuffer + 9), *(uint8_t*)(receiveBuffer + 10), *(uint8_t*)(receiveBuffer + 11),
-                    *(uint8_t*)(receiveBuffer + 12), *(uint8_t*)(receiveBuffer + 13), *(uint8_t*)(receiveBuffer + 14), *(uint8_t*)(receiveBuffer + 15),
-                    *(uint8_t*)(receiveBuffer + 16), *(uint8_t*)(receiveBuffer + 17), *(uint8_t*)(receiveBuffer + 18), *(uint8_t*)(receiveBuffer + 19) ) );
+        LogDebug( ( "Receiving %d bytes from IP/port: %s/%d", readBytes,
+                    IceControllerNet_LogIpAddressInfo( &remoteAddress, ipBuffer, sizeof( ipBuffer ) ),
+                    remoteAddress.ipAddress.port ) );
+        IceControllerNet_LogStunPacket( receiveBuffer, readBytes );
 
         iceResult = Ice_HandleStunPacket( &pSocketContext->pRemoteInfo->iceAgent,
                                           receiveBuffer,
@@ -706,7 +754,9 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                     LogWarn( ( "Fail to send server reflexive candidate to remote peer, result" ) );
                 }
                 break;
+            case ICE_RESULT_SEND_TRIGGERED_CHECK:
             case ICE_RESULT_SEND_RESPONSE_FOR_NOMINATION:
+            case ICE_RESULT_SEND_RESPONSE_FOR_REMOTE_REQUEST:
                 if( Ice_CreateResponseForRequest( &pSocketContext->pRemoteInfo->iceAgent,
                                                   &pSentStunBuffer,
                                                   &sentStunBufferLength,
@@ -717,79 +767,21 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                 }
                 else
                 {
+                    LogDebug( ( "Sending STUN bind response back to remote" ) );
+                    IceControllerNet_LogStunPacket( pSentStunBuffer, sentStunBufferLength );
+
                     if( IceControllerNet_SendPacket( pSocketContext, &pCandidatePair->pRemote->ipAddress, pSentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
                     {
                         LogWarn( ( "Unable to send STUN response for nomination" ) );
                     }
                     else
                     {
-                        LogDebug( ( "ICE_RESULT_SEND_RESPONSE_FOR_NOMINATION" ) );
-                        if( TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
+                        LogDebug( ( "Sent STUN bind response back to remote" ) );
+                        if( iceResult == ICE_RESULT_SEND_RESPONSE_FOR_NOMINATION && TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
                         {
+                            LogInfo( ( "Sent nominating STUN bind response" ) );
                             TimerController_ResetTimer( &pCtx->connectivityCheckTimer );
                         }
-                    }
-                }
-                break;
-            case ICE_RESULT_SEND_TRIGGERED_CHECK:
-                if( Ice_CreateResponseForRequest( &pSocketContext->pRemoteInfo->iceAgent,
-                                                  &pSentStunBuffer,
-                                                  &sentStunBufferLength,
-                                                  &pCandidatePair->pRemote->ipAddress,
-                                                  transactionIdBuffer ) != ICE_RESULT_OK )
-                {
-                    LogWarn( ( "Unable to create response for triggered check" ) );
-                    skipProcess = 1;
-                }
-
-                if( !skipProcess )
-                {
-                    if( IceControllerNet_SendPacket( pSocketContext, &pCandidatePair->pRemote->ipAddress, pSentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
-                    {
-                        LogWarn( ( "Unable to send STUN response for triggered check" ) );
-                        skipProcess = 1;
-                    }
-                }
-
-                if( !skipProcess )
-                {
-                    if( Ice_CreateRequestForConnectivityCheck( &pSocketContext->pRemoteInfo->iceAgent,
-                                                               &pSentStunBuffer,
-                                                               &sentStunBufferLength,
-                                                               transactionIdBuffer,
-                                                               pCandidatePair ) != ICE_CONTROLLER_RESULT_OK )
-                    {
-                        LogWarn( ( "Unable to create STUN request for triggered check" ) );
-                        skipProcess = 1;
-                    }
-                }
-
-                if( !skipProcess )
-                {
-                    if( IceControllerNet_SendPacket( pSocketContext, &pCandidatePair->pRemote->ipAddress, pSentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
-                    {
-                        LogWarn( ( "Unable to send STUN request for triggered check" ) );
-                        skipProcess = 1;
-                    }
-                }
-                break;
-            case ICE_RESULT_SEND_RESPONSE_FOR_REMOTE_REQUEST:
-                if( Ice_CreateResponseForRequest( &pSocketContext->pRemoteInfo->iceAgent,
-                                                  &pSentStunBuffer,
-                                                  &sentStunBufferLength,
-                                                  &pCandidatePair->pRemote->ipAddress,
-                                                  transactionIdBuffer ) != ICE_RESULT_OK )
-                {
-                    LogWarn( ( "Unable to create response for remote request" ) );
-                    skipProcess = 1;
-                }
-
-                if( !skipProcess )
-                {
-                    if( IceControllerNet_SendPacket( pSocketContext, &pCandidatePair->pRemote->ipAddress, pSentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
-                    {
-                        LogWarn( ( "Unable to send STUN response for remote request" ) );
-                        skipProcess = 1;
                     }
                 }
                 break;
@@ -798,6 +790,9 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                 break;
             case ICE_RESULT_CANDIDATE_PAIR_READY:
                 LogWarn( ( "ICE_RESULT_CANDIDATE_PAIR_READY" ) );
+                break;
+            case ICE_RESULT_OK:
+                LogDebug( ( "Received packet but no following activity" ) );
                 break;
             default:
                 LogWarn( ( "Unknown case: %d", iceResult ) );
@@ -862,8 +857,33 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char *pUrl, StunAttributeAddre
     return ret;
 }
 
-void IceControllerNet_LogIpAddressInfo( IceIPAddress_t *pIceIpAddress )
+const char *IceControllerNet_LogIpAddressInfo( IceIPAddress_t *pIceIpAddress, char *pIpBuffer, size_t ipBufferLength )
 {
-    char ipBuffer[ INET_ADDRSTRLEN ];
-    LogDebug( ( "IP address/port: %s/%d", inet_ntop( AF_INET, pIceIpAddress->ipAddress.address, ipBuffer, INET_ADDRSTRLEN ), pIceIpAddress->ipAddress.port ) );
+    const char *ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
+
+    if( pIceIpAddress != NULL && pIpBuffer != NULL && ipBufferLength >= INET_ADDRSTRLEN )
+    {
+        ret = inet_ntop( AF_INET, pIceIpAddress->ipAddress.address, pIpBuffer, ipBufferLength );
+    }
+
+    return ret;
+}
+
+void IceControllerNet_LogStunPacket( uint8_t *pStunPacket, size_t stunPacketSize )
+{
+    IceControllerStunMsgHeader_t *pStunMsgHeader = ( IceControllerStunMsgHeader_t* ) pStunPacket;
+
+    if( pStunPacket == NULL || stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) )
+    {
+        // invalid STUN packet, ignore it
+    }
+    else
+    {
+        LogDebug( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                    convertStunMsgTypeToString( pStunMsgHeader->msgType ),
+                    pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
+                    pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
+                    pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
+                    pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
+    }
 }
