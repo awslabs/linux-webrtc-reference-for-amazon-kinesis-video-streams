@@ -294,7 +294,6 @@ static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContex
     IceResult_t iceResult;
     uint32_t i;
     int pairCount;
-    /* TODO: not necessary to prepare STUN buffer after fix. */
     uint8_t *pStunBuffer = NULL;
     uint32_t stunBufferLength = 0;
     char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
@@ -479,14 +478,13 @@ static IceControllerResult_t parseIceUri( IceControllerIceServer_t *pIceServer, 
         }
 
         retString = StringUtils_ConvertStringToUl( pCurr, portStringLength, &port );
-        if( retString != STRING_UTILS_RESULT_OK )
+        if( retString != STRING_UTILS_RESULT_OK || port > UINT16_MAX )
         {
             LogWarn( ( "No valid port number, parsed string: %.*s", ( int ) portStringLength, pCurr ) );
             ret = ICE_CONTROLLER_RESULT_INVALID_ICE_SERVER_PORT;
         }
         else
         {
-            /* TODO: error handling if it's larger than 16 bit. */
             pIceServer->ipAddress.ipAddress.port = ( uint16_t ) port;
             pCurr += portStringLength;
         }

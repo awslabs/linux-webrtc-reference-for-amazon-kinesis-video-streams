@@ -473,7 +473,6 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
     uint32_t i;
     IceCandidate_t *pCandidate;
     IceControllerSocketContext_t *pSocketContext;
-    /* TODO: not necessary to prepare STUN buffer after fix. */
     uint8_t *pStunBuffer;
     uint32_t stunBufferLength;
     char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
@@ -521,7 +520,6 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
             }
         }
 
-        /* TODO: Send STUN request to STUN server to get IP address as srflx candidate. */
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
             ret = IceControllerNet_SendPacket( pSocketContext, &pCtx->iceServers[ i ].ipAddress, pStunBuffer, stunBufferLength );
@@ -631,7 +629,6 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     struct sockaddr_in* pIpv4Address;
     struct sockaddr_in6* pIpv6Address;
     IceIPAddress_t remoteAddress;
-    /* TODO: workaround here, we should be able to remove candidatePair after fixing Ice_HandleStunPacket. */
     IceCandidatePair_t *pCandidatePair = NULL;
     uint8_t *pSentStunBuffer;
     uint32_t sentStunBufferLength;
@@ -688,11 +685,6 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                     *(uint8_t*)(receiveBuffer + 8), *(uint8_t*)(receiveBuffer + 9), *(uint8_t*)(receiveBuffer + 10), *(uint8_t*)(receiveBuffer + 11),
                     *(uint8_t*)(receiveBuffer + 12), *(uint8_t*)(receiveBuffer + 13), *(uint8_t*)(receiveBuffer + 14), *(uint8_t*)(receiveBuffer + 15),
                     *(uint8_t*)(receiveBuffer + 16), *(uint8_t*)(receiveBuffer + 17), *(uint8_t*)(receiveBuffer + 18), *(uint8_t*)(receiveBuffer + 19) ) );
-        
-        for( int i=0; i<readBytes; i+=4 )
-        {
-            LogDebug( ("%02x %02x %02x %02x", receiveBuffer[ i ], receiveBuffer[ i+1 ], receiveBuffer[ i+2 ], receiveBuffer[ i+3 ]) );
-        }
 
         iceResult = Ice_HandleStunPacket( &pSocketContext->pRemoteInfo->iceAgent,
                                           receiveBuffer,
