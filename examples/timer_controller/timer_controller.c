@@ -82,7 +82,7 @@ void TimerController_ResetTimer( TimerHandler_t *pTimerHandler )
     if( pTimerHandler != NULL )
     {
         // Cancel the timer
-        if( timer_delete( pTimerHandler->timerId ) != 0 )
+        if( TimerController_SetTimer( pTimerHandler, 0U, 0U ) != TIMER_CONTROLLER_RESULT_OK )
         {
             LogError( ("Fail to reset time, errno: %s", strerror( errno ) ) );
         }
