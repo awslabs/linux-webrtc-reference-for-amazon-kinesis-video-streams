@@ -30,6 +30,7 @@ file(
   GLOB
   WEBRTC_APPLICATION_UTILS_SOURCE_FILES
   "examples/base64/*.c"
+  "examples/logging/*.c"
   "examples/message_queue/linux/*.c"
   "examples/timer_controller/*.c"
   "examples/string_utils/*.c" )
