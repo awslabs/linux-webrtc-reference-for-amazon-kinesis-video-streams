@@ -990,6 +990,7 @@ IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t
         if( retTimer == TIMER_CONTROLLER_RESULT_NOT_SET )
         {
             /* The timer is not set before, start the timer for connectivity check. */
+            onConnectivityCheckTimerExpire( pCtx );
             retTimer = TimerController_SetTimer( &pCtx->connectivityCheckTimer, ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS, ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
             if( retTimer != TIMER_CONTROLLER_RESULT_OK )
             {
