@@ -3,6 +3,7 @@
 #include <ifaddrs.h>
 #include <errno.h>
 #include <netdb.h>
+#include <time.h>
 #include "logging.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
@@ -595,6 +596,7 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
             pSocketContext->candidateType = ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE;
             pSocketContext->pRemoteInfo = pRemoteInfo;
             pRemoteInfo->socketsContextsCount++;
+            pCtx->metrics.pendingSrflxCandidateNum++;
         }
     }
 }
@@ -747,11 +749,16 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
         switch( iceResult )
         {
             case ICE_RESULT_UPDATED_SRFLX_CANDIDATE_ADDRESS:
-                /* This packet is actually from STUN server for SRFLX candidate. Send srflx ICE candidate to remote peer. */
                 if( sendIceCandidate( pCtx, pSocketContext->pLocalCandidate, pSocketContext->pRemoteInfo ) != ICE_CONTROLLER_RESULT_OK )
                 {
                     /* Just ignore this failing case and continue the ICE procedure. */
                     LogWarn( ( "Fail to send server reflexive candidate to remote peer, result" ) );
+                }
+
+                pCtx->metrics.pendingSrflxCandidateNum--;
+                if( pCtx->metrics.pendingSrflxCandidateNum == 0 )
+                {
+                    gettimeofday( &pCtx->metrics.allSrflxCandidateReadyTime, NULL );
                 }
                 break;
             case ICE_RESULT_SEND_TRIGGERED_CHECK:
@@ -777,10 +784,15 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                     else
                     {
                         LogDebug( ( "Sent STUN bind response back to remote" ) );
-                        if( iceResult == ICE_RESULT_SEND_RESPONSE_FOR_NOMINATION && TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
+                        if( iceResult == ICE_RESULT_SEND_RESPONSE_FOR_NOMINATION )
                         {
                             LogInfo( ( "Sent nominating STUN bind response" ) );
-                            TimerController_ResetTimer( &pCtx->connectivityCheckTimer );
+                            gettimeofday( &pCtx->metrics.sentNominationResponseTime, NULL );
+                            if( TIMER_CONTROLLER_RESULT_SET == TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
+                            {
+                                TimerController_ResetTimer( &pCtx->connectivityCheckTimer );
+                                IceController_PrintMetrics( pCtx );
+                            }
                         }
                     }
                 }
@@ -872,6 +884,7 @@ const char *IceControllerNet_LogIpAddressInfo( IceIPAddress_t *pIceIpAddress, ch
 void IceControllerNet_LogStunPacket( uint8_t *pStunPacket, size_t stunPacketSize )
 {
     IceControllerStunMsgHeader_t *pStunMsgHeader = ( IceControllerStunMsgHeader_t* ) pStunPacket;
+    int i, start;
 
     if( pStunPacket == NULL || stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) )
     {
@@ -885,5 +898,12 @@ void IceControllerNet_LogStunPacket( uint8_t *pStunPacket, size_t stunPacketSize
                     pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
                     pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
                     pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
+        
+        // start = ((uint8_t*)pStunMsgHeader->pStunAttributes) - pStunPacket;
+        // for( i=start; i<stunPacketSize; i++ )
+        // {
+        //     printf( "0x%02x ", pStunPacket[i] );
+        // }
+        // printf( "\n" );
     }
 }

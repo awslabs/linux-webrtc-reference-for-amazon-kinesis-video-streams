@@ -119,6 +119,17 @@ typedef enum IceControllerIceServerType
     ICE_CONTROLLER_ICE_SERVER_TYPE_TURN,
 } IceControllerIceServerType_t;
 
+typedef struct IceControllerMetrics
+{
+    struct timeval gatheringCandidateStartTime;
+    struct timeval gatheringCandidateEndTime;
+    struct timeval allSrflxCandidateReadyTime;
+    struct timeval firstConnectivityRequestTime;
+    struct timeval sentNominationResponseTime;
+    uint32_t pendingSrflxCandidateNum;
+    uint32_t isFirstConnectivityRequest;
+} IceControllerMetrics_t;
+
 typedef struct IceControllerCandidate
 {
     char remoteClientId[ SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH ];
@@ -218,6 +229,8 @@ typedef struct IceControllerContext
 
     IceControllerIceServer_t iceServers[ SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT + 1 ]; /* Reserve 1 space for default STUN server. */
     size_t iceServersCount;
+
+    IceControllerMetrics_t metrics;
 
     TimerHandler_t connectivityCheckTimer;
 

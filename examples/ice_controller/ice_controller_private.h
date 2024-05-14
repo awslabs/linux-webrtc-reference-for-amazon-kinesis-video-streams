@@ -31,6 +31,7 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char *pUrl, StunAttributeAddre
 IceControllerResult_t IceControllerNet_SendPacket( IceControllerSocketContext_t *pSocketContext, IceIPAddress_t *pDestinationIpAddress, char *pBuffer, size_t length );
 const char *IceControllerNet_LogIpAddressInfo( IceIPAddress_t *pIceIpAddress, char *pIpBuffer, size_t ipBufferLength );
 void IceControllerNet_LogStunPacket( uint8_t *pStunPacket, size_t stunPacketSize );
+void IceController_PrintMetrics( IceControllerContext_t * pCtx );
 
 #ifdef __cplusplus
 }

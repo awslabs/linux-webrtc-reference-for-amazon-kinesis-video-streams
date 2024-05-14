@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <poll.h>
+#include <time.h>
 #include "logging.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
@@ -307,6 +308,12 @@ static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContex
     IceControllerSocketContext_t *pSocketContext;
     char ipFromBuffer[ INET_ADDRSTRLEN ];
     char ipToBuffer[ INET_ADDRSTRLEN ];
+
+    if( pCtx->metrics.isFirstConnectivityRequest == 1 )
+    {
+        pCtx->metrics.isFirstConnectivityRequest = 0;
+        gettimeofday( &pCtx->metrics.firstConnectivityRequestTime, NULL );
+    }
 
     pairCount = Ice_GetValidCandidatePairCount( &pRemoteInfo->iceAgent );
     if( pairCount <= 0 )
@@ -639,6 +646,27 @@ static IceControllerResult_t initializeIceServerList( IceControllerContext_t *pC
     return ret;
 }
 
+void IceController_PrintMetrics( IceControllerContext_t * pCtx )
+{
+    uint8_t i, j;
+    long long duration_ms;
+
+    /* Print each step duration */
+    LogDebug( ( "======================================== Ice Duration ========================================" ) );
+    duration_ms = (pCtx->metrics.gatheringCandidateEndTime.tv_sec - pCtx->metrics.gatheringCandidateStartTime.tv_sec) * 1000LL +
+                  (pCtx->metrics.gatheringCandidateEndTime.tv_usec - pCtx->metrics.gatheringCandidateStartTime.tv_usec) / 1000LL;
+    LogDebug( ( "Duration from Starting Gathering Candidates to All Host Candidates Ready: %lld ms", duration_ms ) );
+    duration_ms = (pCtx->metrics.allSrflxCandidateReadyTime.tv_sec - pCtx->metrics.gatheringCandidateStartTime.tv_sec) * 1000LL +
+                  (pCtx->metrics.allSrflxCandidateReadyTime.tv_usec - pCtx->metrics.gatheringCandidateStartTime.tv_usec) / 1000LL;
+    LogDebug( ( "Duration from Starting Gathering Candidates to All Server Candidates Ready: %lld ms", duration_ms ) );
+    duration_ms = (pCtx->metrics.sentNominationResponseTime.tv_sec - pCtx->metrics.firstConnectivityRequestTime.tv_sec) * 1000LL +
+                  (pCtx->metrics.sentNominationResponseTime.tv_usec - pCtx->metrics.firstConnectivityRequestTime.tv_usec) / 1000LL;
+    LogDebug( ( "Duration from Starting Connectivity Check to Sent Nomination Response: %lld ms", duration_ms ) );
+    duration_ms = (pCtx->metrics.sentNominationResponseTime.tv_sec - pCtx->metrics.gatheringCandidateStartTime.tv_sec) * 1000LL +
+                  (pCtx->metrics.sentNominationResponseTime.tv_usec - pCtx->metrics.gatheringCandidateStartTime.tv_usec) / 1000LL;
+    LogDebug( ( "Duration of entire Ice flow: %lld ms", duration_ms ) );
+}
+
 IceControllerResult_t IceController_Deinit( IceControllerContext_t *pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
@@ -684,6 +712,9 @@ IceControllerResult_t IceController_Init( IceControllerContext_t *pCtx, Signalin
         pCtx->localPassword[ ICE_CONTROLLER_PASSWORD_LENGTH ] = '\0';
 
         pCtx->pSignalingControllerContext = pSignalingControllerContext;
+
+        /* Initialize metrics. */
+        pCtx->metrics.isFirstConnectivityRequest = 1;
     }
 
     /* Initialize Ice server list. */
@@ -948,7 +979,9 @@ IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
+        gettimeofday( &pCtx->metrics.gatheringCandidateStartTime, NULL );
         ret = IceControllerNet_AddLocalCandidates( pCtx, pRemoteInfo );
+        gettimeofday( &pCtx->metrics.gatheringCandidateEndTime, NULL );
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
