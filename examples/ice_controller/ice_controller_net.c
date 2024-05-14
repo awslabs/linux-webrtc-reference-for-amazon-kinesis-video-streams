@@ -680,7 +680,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     int readBytes;
     struct sockaddr srcAddress;
     socklen_t srcAddressLength = sizeof( srcAddress );
-    char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
+    uint8_t * pTransactionIdBuffer;
     struct sockaddr_in* pIpv4Address;
     struct sockaddr_in6* pIpv6Address;
     IceIPAddress_t remoteAddress;
@@ -737,7 +737,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
         iceResult = Ice_HandleStunPacket( &pSocketContext->pRemoteInfo->iceAgent,
                                           receiveBuffer,
                                           ( uint32_t ) readBytes,
-                                          transactionIdBuffer,
+                                          &pTransactionIdBuffer,
                                           &pSentStunBuffer,
                                           &sentStunBufferLength,
                                           &pSocketContext->pLocalCandidate->ipAddress,
@@ -761,7 +761,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                                                   &pSentStunBuffer,
                                                   &sentStunBufferLength,
                                                   &pCandidatePair->pRemote->ipAddress,
-                                                  transactionIdBuffer ) != ICE_RESULT_OK )
+                                                  pTransactionIdBuffer ) != ICE_RESULT_OK )
                 {
                     LogWarn( ( "Unable to create STUN response for nomination" ) );
                 }
