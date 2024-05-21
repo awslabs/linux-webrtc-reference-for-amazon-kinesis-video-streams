@@ -66,6 +66,11 @@ static void onConnectivityCheckTimerExpire( void *pContext )
     }
 }
 
+static uint64_t IceController_CalculateRandom( void )
+{
+    return ( uint64_t )rand();
+}
+
 static uint32_t IceController_CalculateCrc32( uint32_t initialResult, uint8_t *pBuffer, uint32_t bufferLength )
 {
     uint32_t c = initialResult ^ 0xFFFFFFFF, i = 0;
@@ -961,6 +966,7 @@ IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t
                                             remoteUserName, remotePassword,
                                             combinedName,
                                             &pRemoteInfo->transactionIdStore,
+                                            IceController_CalculateRandom,
                                             IceController_CalculateCrc32,
                                             IceController_OpensslHmac );
             if( iceResult != ICE_RESULT_OK )

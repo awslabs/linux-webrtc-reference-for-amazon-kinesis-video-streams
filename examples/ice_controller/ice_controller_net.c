@@ -562,7 +562,7 @@ void IceControllerNet_AddSrflxaCndidate( IceControllerContext_t *pCtx, IceContro
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            iceResult = Ice_AddSrflxCandidate( *pLocalIpAddress, &pRemoteInfo->iceAgent, &pCandidate,
+            iceResult = Ice_AddSrflxCandidate( &pRemoteInfo->iceAgent, *pLocalIpAddress, &pCandidate,
                                                transactionIdBuffer, &pStunBuffer, &stunBufferLength );
             if( iceResult != ICE_RESULT_OK )
             {
@@ -620,7 +620,7 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            iceResult = Ice_AddHostCandidate( pCtx->localIpAddresses[i], &pRemoteInfo->iceAgent, &pCandidate );
+            iceResult = Ice_AddHostCandidate( &pRemoteInfo->iceAgent, pCtx->localIpAddresses[i], &pCandidate );
             if( iceResult != ICE_RESULT_OK )
             {
                 /* Free resource that already created. */
@@ -678,7 +678,7 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
 IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *pCtx, IceControllerSocketContext_t *pSocketContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    IceResult_t iceResult;
+    IceStunPacketHandleResult_t iceResult;
     int readBytes;
     struct sockaddr srcAddress;
     socklen_t srcAddressLength = sizeof( srcAddress );
@@ -803,8 +803,17 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
             case ICE_RESULT_CANDIDATE_PAIR_READY:
                 LogWarn( ( "ICE_RESULT_CANDIDATE_PAIR_READY" ) );
                 break;
-            case ICE_RESULT_OK:
+            case ICE_RESULT_STUN_DESERIALIZE_OK:
                 LogDebug( ( "Received packet but no following activity" ) );
+                break;
+            case ICE_RESULT_STUN_INTEGRITY_MISMATCH:
+                LogDebug( ( "Message Integrity check of the received packet failed" ) );
+                break;
+            case ICE_RESULT_STUN_FINGERPRINT_MISMATCH:
+                LogDebug( ( "FingerPrint check of the received packet failed" ) );
+                break;
+            case ICE_RESULT_STUN_INVALID_PACKET_TYPE:
+                LogDebug( ( "Invalid Type of Packet received" ) );
                 break;
             default:
                 LogWarn( ( "Unknown case: %d", iceResult ) );
