@@ -680,7 +680,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceStunPacketHandleResult_t iceResult;
     int readBytes;
-    struct sockaddr srcAddress;
+    struct sockaddr_storage srcAddress;
     socklen_t srcAddressLength = sizeof( srcAddress );
     uint8_t * pTransactionIdBuffer;
     struct sockaddr_in* pIpv4Address;
@@ -692,7 +692,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     uint8_t skipProcess = 0;
     char ipBuffer[ INET_ADDRSTRLEN ];
 
-    readBytes = recvfrom( pSocketContext->socketFd, receiveBuffer, RX_BUFFER_SIZE, 0, &srcAddress, &srcAddressLength );
+    readBytes = recvfrom( pSocketContext->socketFd, receiveBuffer, RX_BUFFER_SIZE, 0, (struct sockaddr*) &srcAddress, &srcAddressLength );
     if( readBytes < 0 )
     {
         LogError( ( "Fail to receive packets from socket ID: %d, errno: %s", pSocketContext->socketFd, strerror( errno ) ) );
@@ -706,7 +706,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     else
     {
         /* Received data, handle this STUN message. */
-        if( srcAddress.sa_family == AF_INET )
+        if( srcAddress.ss_family == AF_INET )
         {
             pIpv4Address = (struct sockaddr_in*) &srcAddress;
 
@@ -714,7 +714,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
             remoteAddress.ipAddress.port = ntohs( pIpv4Address->sin_port );
             memcpy( remoteAddress.ipAddress.address, &pIpv4Address->sin_addr, STUN_IPV4_ADDRESS_SIZE );
         }
-        else if( srcAddress.sa_family == AF_INET6 )
+        else if( srcAddress.ss_family == AF_INET6 )
         {
             pIpv6Address = (struct sockaddr_in6*) &srcAddress;
 
