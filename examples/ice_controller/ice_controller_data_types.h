@@ -39,6 +39,13 @@ extern "C" {
 
 #define ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS ( 50 )
 
+#define ICE_MAX_CANDIDATE_PAIR_COUNT                  ( 1024 )
+#define ICE_MAX_LOCAL_CANDIDATE_COUNT                 ( 100 )
+#define ICE_MAX_REMOTE_CANDIDATE_COUNT                ( 100 )
+
+#define ICE_MAX_CONFIG_USER_NAME_LEN                  ( 256 )
+#define ICE_MAX_CONFIG_CREDENTIAL_LEN                 ( 256 )
+
 #define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX "amazonaws.com"
 #define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX_CN "amazonaws.com.cn"
 #define AWS_DEFAULT_STUN_SERVER_URL "stun.kinesisvideo.%s.%s"
@@ -136,7 +143,7 @@ typedef struct IceControllerCandidate
     size_t remoteClientIdLength;
     IceSocketProtocol_t protocol;
     uint32_t priority;
-    IceIPAddress_t iceIpAddress;
+    IceEndpoint_t iceIpAddress;
     uint16_t port;
     IceCandidateType_t candidateType;
 } IceControllerCandidate_t;
@@ -161,7 +168,7 @@ typedef struct IceControllerSignalingRemoteInfo
     size_t socketsContextsCount;
 
     /* For ICE component. */
-    IceAgent_t iceAgent;
+    IceContext_t iceAgent;
     IceCandidate_t localCandidates[ ICE_MAX_LOCAL_CANDIDATE_COUNT ];
     IceCandidate_t remoteCandidates[ ICE_MAX_REMOTE_CANDIDATE_COUNT ];
     IceCandidatePair_t candidatePairs[ ICE_MAX_CANDIDATE_PAIR_COUNT ];
@@ -194,7 +201,7 @@ typedef struct IceControllerIceServer
     IceControllerIceServerType_t serverType; /* STUN or TURN */
     char url[ ICE_CONTROLLER_ICE_SERVER_URL_MAX_LENGTH ];
     size_t urlLength;
-    IceIPAddress_t ipAddress; //IP address
+    IceEndpoint_t ipAddress; //IP address
     char userName[ ICE_CONTROLLER_ICE_SERVER_USERNAME_MAX_LENGTH ]; //user name
     size_t userNameLength;
     char password[ ICE_CONTROLLER_ICE_SERVER_PASSWORD_MAX_LENGTH ]; //password
@@ -220,7 +227,7 @@ typedef struct IceControllerContext
     char localPassword[ ICE_CONTROLLER_PASSWORD_LENGTH + 1 ];
 
     IceControllerRemoteInfo_t remoteInfo[ AWS_MAX_VIEWER_NUM ];
-    IceIPAddress_t localIpAddresses[ ICE_MAX_LOCAL_CANDIDATE_COUNT ];
+    IceEndpoint_t localIpAddresses[ ICE_MAX_LOCAL_CANDIDATE_COUNT ];
     size_t localIpAddressesCount;
     size_t candidateFoundationCounter;
     struct pollfd fds[ AWS_MAX_VIEWER_NUM * ICE_MAX_LOCAL_CANDIDATE_COUNT + 1 ]; /* 1 for message queue, AWS_MAX_VIEWER_NUM * ICE_MAX_LOCAL_CANDIDATE_COUNT for all sockets listening local port. */
