@@ -66,12 +66,23 @@ static void onConnectivityCheckTimerExpire( void *pContext )
     }
 }
 
-static uint64_t IceController_CalculateRandom( void )
+static IceResult_t IceController_CalculateRandom( uint8_t * pOutputBuffer,
+                                                  size_t outputBufferLength )
 {
-    return ( uint64_t )rand();
+
+    size_t i;
+    for(i = 0; i < outputBufferLength; i++ )
+    {
+        pOutputBuffer[i] = ( uint8_t ) ( rand() % 256 );
+    }
+
+    return ICE_RESULT_OK;
 }
 
-static uint32_t IceController_CalculateCrc32( uint32_t initialResult, uint8_t *pBuffer, uint32_t bufferLength )
+static IceResult_t IceController_CalculateCrc32 ( uint32_t initialResult,
+                                                const uint8_t * pBuffer,
+                                                size_t bufferLength,
+                                                uint32_t * pCalculatedCrc32 )
 {
     uint32_t c = initialResult ^ 0xFFFFFFFF, i = 0;
 
@@ -85,16 +96,33 @@ static uint32_t IceController_CalculateCrc32( uint32_t initialResult, uint8_t *p
         c = gCrc32Table[ ( c ^ pBuffer[i] ) & 0xFF ] ^ ( c >> 8 );
     }
 
-    return c ^ 0xFFFFFFFF;
+    *pCalculatedCrc32 = ( c ^ 0xFFFFFFFF );
+    
+    return ICE_RESULT_OK;
 }
 
-static void IceController_OpensslHmac( uint8_t * password, uint32_t passwordLength, uint8_t * pBuffer, uint32_t bufferLength, uint8_t * output, uint32_t * pOutputLength )
+static IceResult_t IceController_OpensslHmac ( const uint8_t * pPassword,
+                                                size_t passwordLength,
+                                                const uint8_t * pBuffer,
+                                                size_t bufferLength,
+                                                uint8_t * pOutputBuffer,
+                                                size_t * pOutputBufferLength )
 {
-    if( HMAC( EVP_sha1(), password, passwordLength, pBuffer, bufferLength, output, pOutputLength ) == NULL )
+    IceResult_t ret = ICE_RESULT_OK;
+    unsigned int outbufLength = ( unsigned int )( *pOutputBufferLength );
+
+    if( HMAC( EVP_sha1(), pPassword, passwordLength, pBuffer, bufferLength, pOutputBuffer, &outbufLength ) == NULL )
     {
+        ret = ICE_RESULT_HMAC_ERROR;
         LogError( ( "Something wrong during HMAC" ) );
     }
+    else
+    {
+        *pOutputBufferLength = outbufLength;
+    }
+    return ret;
 }
+
 
 static IceControllerResult_t IceController_SendConnectivityCheckRequest( IceControllerContext_t *pCtx, IceControllerRemoteInfo_t *pRemoteInfo )
 {
@@ -249,15 +277,22 @@ static IceControllerResult_t handleAddRemoteCandidateRequest( IceControllerConte
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
-    IceControllerCandidate_t *pCandidate = (IceControllerCandidate_t *)&pRequestMessage->requestContent;
+    IceControllerCandidate_t *pCandidate = (IceControllerCandidate_t *)&pRequestMessage->requestContent.remoteCandidate;
     IceControllerRemoteInfo_t *pRemoteInfo;
-    IceRemoteCandidateInfo_t pOutCandidate;
+    IceRemoteCandidateInfo_t remoteCandidateInfo;
 
-    pOutCandidate.candidateType = pCandidate->candidateType;
-    pOutCandidate.pEndpoint = &( pCandidate->iceIpAddress );
-    pOutCandidate.priority = pCandidate->priority;
-    pOutCandidate.remoteProtocol = pCandidate->protocol;
+    remoteCandidateInfo.candidateType = pCandidate->candidateType;
+    remoteCandidateInfo.pEndpoint = &( pCandidate->iceIpAddress );
+    remoteCandidateInfo.priority = pCandidate->priority;
+    remoteCandidateInfo.remoteProtocol = pCandidate->protocol;
 
+    printf( "[ handleAddRemoteCandidateRequest ] Remote candidate Address : %x-%x-%x-%x --> Family : %d --> Port : %d\n",
+                                                                   remoteCandidateInfo.pEndpoint->transportAddress.address[0],
+                                                                   remoteCandidateInfo.pEndpoint->transportAddress.address[1],
+                                                                   remoteCandidateInfo.pEndpoint->transportAddress.address[2],
+                                                                   remoteCandidateInfo.pEndpoint->transportAddress.address[3],
+                                                                   remoteCandidateInfo.pEndpoint->transportAddress.family,
+                                                                   remoteCandidateInfo.pEndpoint->transportAddress.port );
     char ipBuffer[ INET_ADDRSTRLEN ];
 
     /* Find remote info index by mapping remote client ID. */
@@ -266,7 +301,7 @@ static IceControllerResult_t handleAddRemoteCandidateRequest( IceControllerConte
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         iceResult = Ice_AddRemoteCandidate( &pRemoteInfo->iceAgent,
-                                            &pOutCandidate );
+                                            &remoteCandidateInfo );
         if( iceResult != ICE_RESULT_OK )
         {
             LogError( ( "Fail to add remote candidate, result: %d", iceResult ) );
@@ -275,8 +310,8 @@ static IceControllerResult_t handleAddRemoteCandidateRequest( IceControllerConte
         else
         {
             LogDebug( ( "Received remote candidate with IP/port: %s/%d",
-                        IceControllerNet_LogIpAddressInfo( pOutCandidate.pEndpoint, ipBuffer, sizeof( ipBuffer ) ),
-                        pOutCandidate.pEndpoint->transportAddress.port ) );
+                        IceControllerNet_LogIpAddressInfo( remoteCandidateInfo.pEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                        remoteCandidateInfo.pEndpoint->transportAddress.port ) );
         }
     }
 
@@ -309,8 +344,8 @@ static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContex
     IceResult_t iceResult;
     uint32_t i;
     size_t pairCount;
-    uint8_t pStunBuffer;
-    size_t stunBufferLength = 0;
+    uint8_t stunBuffer[ 1024 ];
+    size_t stunBufferLength = 1024;
     char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
     IceControllerSocketContext_t *pSocketContext;
     char ipFromBuffer[ INET_ADDRSTRLEN ];
@@ -337,13 +372,14 @@ static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContex
 
             iceResult = Ice_CreateRequestForConnectivityCheck( &pRemoteInfo->iceAgent,
                                                                &pRemoteInfo->iceAgent.pCandidatePairs[i],
-                                                               &pStunBuffer,
+                                                               &stunBuffer[ 0 ],
                                                                &stunBufferLength);
 
             if( iceResult != ICE_RESULT_OK )
             {
                 /* Fail to create connectivity check for this round, ignore and continue next round. */
                 LogWarn( ( "Fail to create request for connectivity check, result: %d", iceResult ) );
+                exit(0);
                 continue;
             }
             else if( pRemoteInfo->iceAgent.pCandidatePairs[i].pRemoteCandidate == NULL )
@@ -369,9 +405,9 @@ static IceControllerResult_t handleConnectivityCheckRequest( IceControllerContex
                         pRemoteInfo->iceAgent.pCandidatePairs[i].pLocalCandidate->endpoint.transportAddress.port,
                         IceControllerNet_LogIpAddressInfo( &pRemoteInfo->iceAgent.pCandidatePairs[i].pRemoteCandidate->endpoint, ipToBuffer, sizeof( ipToBuffer ) ),
                         pRemoteInfo->iceAgent.pCandidatePairs[i].pRemoteCandidate->endpoint.transportAddress.port ) );
-            IceControllerNet_LogStunPacket( &pStunBuffer, stunBufferLength );
+            IceControllerNet_LogStunPacket( &stunBuffer[ 0 ], stunBufferLength );
 
-            ret = IceControllerNet_SendPacket( pSocketContext, &pRemoteInfo->iceAgent.pCandidatePairs[i].pRemoteCandidate->endpoint, &pStunBuffer, stunBufferLength );
+            ret = IceControllerNet_SendPacket( pSocketContext, &pRemoteInfo->iceAgent.pCandidatePairs[i].pRemoteCandidate->endpoint, &stunBuffer[ 0 ], stunBufferLength );
             if( ret != ICE_CONTROLLER_RESULT_OK )
             {
                 LogWarn( ( "Unable to send packet to remote address, result: %d", ret ) );
@@ -838,7 +874,9 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char *pDecode
                 ret = IceControllerNet_ConvertIpString( pCurr, tokenLength, &pCandidate->iceIpAddress );
                 break;
             case ICE_CONTROLLER_CANDIDATE_DESERIALIZER_STATE_PORT:
-                stringResult = StringUtils_ConvertStringToUl( pCurr, tokenLength, (uint32_t *) &pCandidate->port );
+                uint32_t localPort = 0;
+                stringResult = StringUtils_ConvertStringToUl( pCurr, tokenLength, (uint32_t *) &localPort );
+                pCandidate->port = ( uint16_t ) localPort;
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
                     LogWarn( ( "Invalid port %.*s",
@@ -902,10 +940,6 @@ IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
-    char remoteUserName[ ICE_MAX_CONFIG_USER_NAME_LEN + 1 ];
-    char remotePassword[ ICE_MAX_CONFIG_CREDENTIAL_LEN + 1 ];
-    // Reserve 1 space for NULL terminator, the other one is for ':' between remote username & local username
-    char combinedName[ ( ICE_MAX_CONFIG_USER_NAME_LEN << 1 ) + 2 ];
     IceControllerRemoteInfo_t *pRemoteInfo;
     IceInitInfo_t *pIceInitInfo;
     TimerControllerResult_t retTimer;
@@ -956,28 +990,33 @@ IceControllerResult_t IceController_SetRemoteDescription( IceControllerContext_t
         }
         else
         {
-            memcpy( remoteUserName, pRemoteUserName, remoteUserNameLength );
-            remoteUserName[ remoteUserNameLength ] = '\0';
-            memcpy( remotePassword, pRemotePassword, remotePasswordLength );
-            remotePassword[ remotePasswordLength ] = '\0';
-            snprintf( combinedName, sizeof( combinedName ), "%s:%s",
-                      remoteUserName, pCtx->localUserName );
-            
-            pRemoteInfo->transactionIdStore.pTransactionIdSlots = &pRemoteInfo->transactionIds[0][0];
-            pRemoteInfo->transactionIdStore.numTransactionIdSlots = ICE_MAX_CANDIDATE_PAIR_COUNT;
+            memcpy( pCtx->remoteUserName, pRemoteUserName, remoteUserNameLength );
+            pCtx->remoteUserName[ remoteUserNameLength ] = '\0';
+            memcpy( pCtx->remotePassword, pRemotePassword, remotePasswordLength );
+            pCtx->remotePassword[ remotePasswordLength ] = '\0';
+            snprintf( pCtx->combinedName, sizeof( pCtx->combinedName ), "%s:%s",
+                      pCtx->remoteUserName, pCtx->localUserName );
+
+            TransactionIdStore_Init( &pRemoteInfo->transactionIdStore, &pRemoteInfo->transactionIds[0], ICE_MAX_CANDIDATE_PAIR_COUNT );
 
             /* Creating the Ice Initialization Info. */
-            
+
             pIceInitInfo = malloc( sizeof( IceInitInfo_t ) );
+            memset( pIceInitInfo, 0, sizeof( IceInitInfo_t ) );
             pLocalCandidates = malloc( ICE_MAX_LOCAL_CANDIDATE_COUNT * sizeof( IceCandidate_t ) );
             pRemoteCandidates = malloc( ICE_MAX_REMOTE_CANDIDATE_COUNT * sizeof( IceCandidate_t ) );
             pCandidatePairs = malloc( ICE_MAX_CANDIDATE_PAIR_COUNT * sizeof( IceCandidatePair_t ) );
 
             pIceInitInfo->creds.pLocalUsername = pCtx->localUserName;
+            pIceInitInfo->creds.localUsernameLength = strlen( pCtx->localUserName );
             pIceInitInfo->creds.pLocalPassword = pCtx->localPassword;
-            pIceInitInfo->creds.pRemoteUsername = remoteUserName;
-            pIceInitInfo->creds.pRemotePassword = remotePassword;
-            pIceInitInfo->creds.pCombinedUsername = combinedName;
+            pIceInitInfo->creds.localPasswordLength = strlen( pCtx->localPassword );
+            pIceInitInfo->creds.pRemoteUsername = pCtx->remoteUserName;
+            pIceInitInfo->creds.remoteUsernameLength = strlen( pCtx->remoteUserName );
+            pIceInitInfo->creds.pRemotePassword = pCtx->remotePassword;
+            pIceInitInfo->creds.remotePasswordLength = strlen( pCtx->remotePassword );
+            pIceInitInfo->creds.pCombinedUsername = pCtx->combinedName;
+            pIceInitInfo->creds.combinedUsernameLength = strlen( pCtx->combinedName );
             pIceInitInfo->pLocalCandidatesArray = pLocalCandidates;
             pIceInitInfo->pRemoteCandidatesArray = pRemoteCandidates;
             pIceInitInfo->pCandidatePairsArray = pCandidatePairs;
