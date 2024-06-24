@@ -174,7 +174,7 @@ typedef struct IceControllerSignalingRemoteInfo
     IceCandidatePair_t candidatePairs[ ICE_MAX_CANDIDATE_PAIR_COUNT ];
     uint8_t stunBuffers[ ICE_MAX_CANDIDATE_PAIR_COUNT ][ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
     TransactionIdStore_t transactionIdStore;
-    uint8_t transactionIds[ ICE_MAX_CANDIDATE_PAIR_COUNT ][ STUN_HEADER_TRANSACTION_ID_LENGTH ];
+    TransactionIdSlot_t transactionIds[ ICE_MAX_CANDIDATE_PAIR_COUNT ];
 } IceControllerRemoteInfo_t;
 
 typedef enum IceControllerRequestType
@@ -225,6 +225,10 @@ typedef struct IceControllerContext
 
     char localUserName[ ICE_CONTROLLER_USER_NAME_LENGTH + 1 ];
     char localPassword[ ICE_CONTROLLER_PASSWORD_LENGTH + 1 ];
+    char remoteUserName[ ICE_MAX_CONFIG_USER_NAME_LEN + 1 ];
+    char remotePassword[ ICE_MAX_CONFIG_CREDENTIAL_LEN + 1 ];
+    // Reserve 1 space for NULL terminator, the other one is for ':' between remote username & local username
+    char combinedName[ ( ICE_MAX_CONFIG_USER_NAME_LEN << 1 ) + 2 ];
 
     IceControllerRemoteInfo_t remoteInfo[ AWS_MAX_VIEWER_NUM ];
     IceEndpoint_t localIpAddresses[ ICE_MAX_LOCAL_CANDIDATE_COUNT ];

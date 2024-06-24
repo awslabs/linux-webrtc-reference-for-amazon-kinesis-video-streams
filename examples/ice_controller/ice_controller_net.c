@@ -525,8 +525,8 @@ void IceControllerNet_AddSrflxCandidate( IceControllerContext_t *pCtx, IceContro
     uint32_t i;
     IceCandidate_t *pCandidate;
     IceControllerSocketContext_t *pSocketContext;
-    uint8_t *pStunBuffer;
-    size_t stunBufferLength;
+    uint8_t stunBuffer[ 1024 ];
+    size_t stunBufferLength = 1024;
     char transactionIdBuffer[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
     char ipBuffer[ INET_ADDRSTRLEN ];
 
@@ -564,7 +564,7 @@ void IceControllerNet_AddSrflxCandidate( IceControllerContext_t *pCtx, IceContro
         {
             iceResult =Ice_AddServerReflexiveCandidate( &pRemoteInfo->iceAgent, 
                                                         pLocalIpAddress, 
-                                                        pStunBuffer, &stunBufferLength );
+                                                        &stunBuffer[0], &stunBufferLength );
             if( iceResult != ICE_RESULT_OK )
             {
                 /* Free resource that already created. */
@@ -581,7 +581,7 @@ void IceControllerNet_AddSrflxCandidate( IceControllerContext_t *pCtx, IceContro
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            ret = IceControllerNet_SendPacket( pSocketContext, &pCtx->iceServers[ i ].ipAddress, pStunBuffer, stunBufferLength );
+            ret = IceControllerNet_SendPacket( pSocketContext, &pCtx->iceServers[ i ].ipAddress, &stunBuffer[ 0 ], stunBufferLength );
         }
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -696,8 +696,8 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
     struct sockaddr_in6* pIpv6Address;
     IceEndpoint_t remoteAddress;
     IceCandidatePair_t *pCandidatePair = NULL;
-    uint8_t *pSentStunBuffer;
-    size_t sentStunBufferLength;
+    uint8_t sentStunBuffer[ 1024 ];
+    size_t sentStunBufferLength = 1024;
     uint8_t skipProcess = 0;
     char ipBuffer[ INET_ADDRSTRLEN ];
 
@@ -774,7 +774,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                 if( Ice_CreateResponseForRequest( &pSocketContext->pRemoteInfo->iceAgent,
                                                   pCandidatePair,
                                                   pTransactionIdBuffer,
-                                                  pSentStunBuffer,
+                                                  &sentStunBuffer[ 0 ],
                                                   &sentStunBufferLength ) != ICE_RESULT_OK )
                 {
                     LogWarn( ( "Unable to create STUN response for nomination" ) );
@@ -782,9 +782,9 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                 else
                 {
                     LogDebug( ( "Sending STUN bind response back to remote" ) );
-                    IceControllerNet_LogStunPacket( pSentStunBuffer, sentStunBufferLength );
+                    IceControllerNet_LogStunPacket( &sentStunBuffer[ 0 ], sentStunBufferLength );
 
-                    if( IceControllerNet_SendPacket( pSocketContext, &pCandidatePair->pRemoteCandidate->endpoint, pSentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                    if( IceControllerNet_SendPacket( pSocketContext, &pCandidatePair->pRemoteCandidate->endpoint, &sentStunBuffer[ 0 ], sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
                     {
                         LogWarn( ( "Unable to send STUN response for nomination" ) );
                     }
@@ -807,6 +807,9 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
             case ICE_HANDLE_STUN_PACKET_RESULT_START_NOMINATION:
                 LogWarn( ( "ICE_HANDLE_STUN_PACKET_RESULT_START_NOMINATION" ) );
                 break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_VALID_CANDIDATE_PAIR:
+                LogDebug( ( "A valid candidate pair is found" ) );
+                break;
             case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_PAIR_READY:
                 LogWarn( ( "ICE_RESULT_CANDIDATE_PAIR_READY" ) );
                 break;
@@ -818,6 +821,12 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_INVALID_PACKET_TYPE:
                 LogDebug( ( "Invalid Type of Packet received" ) );
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_PAIR_NOT_FOUND:
+                LogDebug( ( "Error : Valid Candidate Pair is not found" ) );
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_NOT_FOUND:
+                LogDebug( ( "Error : Valid Server Reflexive Candidate is not found" ) );
                 break;
             default:
                 LogWarn( ( "Unknown case: %d", iceResult ) );
