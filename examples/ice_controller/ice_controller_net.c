@@ -72,7 +72,7 @@ static IceControllerResult_t createSocketConnection( int *pSocketFd, IceEndpoint
                          protocol == ICE_SOCKET_PROTOCOL_UDP? SOCK_DGRAM : SOCK_STREAM,
                          0 );
 
-    if( *pSocketFd == -1 ) 
+    if( *pSocketFd == -1 )
     {
         LogError( ( "socket() failed to create socket with errno: %s", strerror( errno ) ) );
         ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_CREATE;
@@ -365,7 +365,7 @@ static const char *convertStunMsgTypeToString( uint16_t stunMsgType )
     static uint8_t isFirst = 1;
     uint8_t isLittleEndian;
     uint16_t msgType;
-    
+
     if( isFirst )
     {
         isFirst = 0;
@@ -562,8 +562,8 @@ void IceControllerNet_AddSrflxCandidate( IceControllerContext_t *pCtx, IceContro
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            iceResult =Ice_AddServerReflexiveCandidate( &pRemoteInfo->iceAgent, 
-                                                        pLocalIpAddress, 
+            iceResult =Ice_AddServerReflexiveCandidate( &pRemoteInfo->iceAgent,
+                                                        pLocalIpAddress,
                                                         &stunBuffer[0], &stunBufferLength );
             if( iceResult != ICE_RESULT_OK )
             {
@@ -668,7 +668,7 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
             pSocketContext->candidateType = ICE_CANDIDATE_TYPE_HOST;
             pSocketContext->pRemoteInfo = pRemoteInfo;
             pRemoteInfo->socketsContextsCount++;
-            
+
             LogDebug( ( "Created host candidate with IP/port: %s/%d",
                         IceControllerNet_LogIpAddressInfo( &pCtx->localIpAddresses[i], ipBuffer, sizeof( ipBuffer ) ),
                         pCtx->localIpAddresses[i].transportAddress.port ) );
@@ -752,7 +752,7 @@ IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *p
                                           &remoteAddress,
                                           &pTransactionIdBuffer,
                                           &pCandidatePair );
-        
+
         switch( iceResult )
         {
             case ICE_HANDLE_STUN_PACKET_RESULT_UPDATED_SERVER_REFLEXIVE_CANDIDATE_ADDRESS:
@@ -891,7 +891,7 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char *pUrl, StunAttributeAddre
     return ret;
 }
 
-const char *IceControllerNet_LogIpAddressInfo( IceEndpoint_t *pIceIpAddress, char *pIpBuffer, size_t ipBufferLength )
+const char *IceControllerNet_LogIpAddressInfo( const IceEndpoint_t *pIceIpAddress, char *pIpBuffer, size_t ipBufferLength )
 {
     const char *ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
 
@@ -920,7 +920,7 @@ void IceControllerNet_LogStunPacket( uint8_t *pStunPacket, size_t stunPacketSize
                     pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
                     pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
                     pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
-        
+
         // start = ((uint8_t*)pStunMsgHeader->pStunAttributes) - pStunPacket;
         // for( i=start; i<stunPacketSize; i++ )
         // {

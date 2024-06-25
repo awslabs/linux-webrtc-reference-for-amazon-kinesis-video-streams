@@ -29,7 +29,7 @@ IceControllerResult_t IceControllerNet_AttachPolling( IceControllerContext_t *pC
 IceControllerResult_t IceControllerNet_HandleRxPacket( IceControllerContext_t *pCtx, IceControllerSocketContext_t *pSocketContext );
 IceControllerResult_t IceControllerNet_DnsLookUp( char *pUrl, StunAttributeAddress_t *pIpAddress );
 IceControllerResult_t IceControllerNet_SendPacket( IceControllerSocketContext_t *pSocketContext, IceEndpoint_t *pDestinationIpAddress, char *pBuffer, size_t length );
-const char *IceControllerNet_LogIpAddressInfo( IceEndpoint_t *pIceIpAddress, char *pIpBuffer, size_t ipBufferLength );
+const char *IceControllerNet_LogIpAddressInfo( const IceEndpoint_t *pIceIpAddress, char *pIpBuffer, size_t ipBufferLength );
 void IceControllerNet_LogStunPacket( uint8_t *pStunPacket, size_t stunPacketSize );
 void IceController_PrintMetrics( IceControllerContext_t * pCtx );
 
