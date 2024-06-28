@@ -106,7 +106,7 @@ static IceResult_t IceController_OpensslHmac ( const uint8_t * pPassword,
                                                 const uint8_t * pBuffer,
                                                 size_t bufferLength,
                                                 uint8_t * pOutputBuffer,
-                                                size_t * pOutputBufferLength )
+                                                uint16_t * pOutputBufferLength )
 {
     IceResult_t ret = ICE_RESULT_OK;
     unsigned int outbufLength = ( unsigned int )( *pOutputBufferLength );
