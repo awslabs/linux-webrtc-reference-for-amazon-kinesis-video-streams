@@ -3,11 +3,11 @@
 
 #define AWS_REGION "us-west-2"
 
-#define AWS_KVS_CHANNEL_NAME ""
+#define AWS_KVS_CHANNEL_NAME "mySignalingChannel"
 
-#define AWS_ACCESS_KEY_ID ""
+#define AWS_ACCESS_KEY_ID "AKIAIFKMWPZ6BMOCDAEQ"
 
-#define AWS_SECRET_ACCESS_KEY ""
+#define AWS_SECRET_ACCESS_KEY "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"
 
 #define AWS_KVS_AGENT_NAME "AWS-SDK-KVS"
 

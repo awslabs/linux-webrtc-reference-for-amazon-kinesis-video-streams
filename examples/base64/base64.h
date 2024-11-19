@@ -18,8 +18,14 @@ typedef enum Base64Result
     BASE64_RESULT_BUFFER_TOO_SMALL,
 } Base64Result_t;
 
-Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, char *pOutputData, size_t *pOutputDataLength );
-Base64Result_t base64Encode( const char *pInputData, size_t inputDataLength, char *pOutputData, size_t *pOutputDataLength );
+Base64Result_t Base64_Decode( const char * pInputData,
+                              size_t inputDataLength,
+                              char * pOutputData,
+                              size_t * pOutputDataLength );
+Base64Result_t Base64_Encode( const char * pInputData,
+                              size_t inputDataLength,
+                              char * pOutputData,
+                              size_t * pOutputDataLength );
 
 #ifdef __cplusplus
 }

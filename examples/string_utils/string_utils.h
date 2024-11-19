@@ -17,7 +17,16 @@ typedef enum StringUtilsResult
     STRING_UTILS_RESULT_NON_NUMBERIC_STRING,
 } StringUtilsResult_t;
 
-StringUtilsResult_t StringUtils_ConvertStringToUl( const char *pStr, size_t strLength, uint32_t *pOutUl );
+StringUtilsResult_t StringUtils_ConvertStringToUl( const char * pStr,
+                                                   size_t strLength,
+                                                   uint32_t * pOutUl );
+StringUtilsResult_t StringUtils_ConvertStringToHex( const char * pStr,
+                                                    size_t strLength,
+                                                    uint32_t * pOutUl );
+const char * StringUtils_StrStr( const char * pStr,
+                                 size_t strLength,
+                                 const char * pPattern,
+                                 size_t patternLength );
 
 #ifdef __cplusplus
 }

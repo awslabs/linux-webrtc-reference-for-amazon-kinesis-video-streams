@@ -1,0 +1,665 @@
+#include <stdlib.h>
+#include "logging.h"
+#include "peer_connection.h"
+#include "peer_connection_jitter_buffer.h"
+#include "h264_depacketizer.h"
+
+//#include "FreeRTOS.h"
+
+#define PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME ( 32 )
+#define PEER_CONNECTION_JITTER_BUFFER_SEQ_WRAPPER_THRESHOLD ( 10 )
+#define PEER_CONNECTION_JITTER_BUFFER_TIMESTAMP_WRAPPER_THRESHOLD_SEC ( 0.1 )
+#define PEER_CONNECTION_JITTER_BUFFER_WRAP( x, max ) ( ( x ) % max )
+#define PEER_CONNECTION_JITTER_BUFFER_INCREASE_WITH_WRAP( x, y, max ) ( PEER_CONNECTION_JITTER_BUFFER_WRAP( ( x ) + ( y ), max ) )
+#define PEER_CONNECTION_JITTER_BUFFER_DECREASE_WITH_WRAP( x, y, max ) ( PEER_CONNECTION_JITTER_BUFFER_WRAP( ( x ) - ( y ), max ) )
+
+static void DiscardPacket( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                           PeerConnectionJitterBufferPacket_t * pPacket );
+
+static void DiscardPackets( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                            uint16_t startSeq,
+                            uint16_t endSeq,
+                            uint32_t nextTimestamp )
+{
+    uint16_t i, index;
+    PeerConnectionJitterBufferPacket_t * pPacket;
+
+    if( pJitterBuffer != NULL )
+    {
+        /* Free from start sequence to end sequence number. */
+        for( i = startSeq; i != endSeq + 1; i++ )
+        {
+            index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
+            pPacket = &pJitterBuffer->rtpPackets[index];
+            DiscardPacket( pJitterBuffer, pPacket );
+        }
+
+        pJitterBuffer->oldestReceivedSequenceNumber = i;
+    }
+}
+
+static PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
+                                                     uint8_t * pIsStartPacket )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    H264Result_t resultH264;
+    uint32_t properties = 0;
+
+    if( ( pPacket == NULL ) ||
+        ( pIsStartPacket == NULL ) )
+    {
+        LogError( ( "Invalid input, pPacket: %p, pIsStartPacket: %p", pPacket, pIsStartPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        resultH264 = H264Depacketizer_GetPacketProperties( pPacket->pPacketBuffer, pPacket->packetBufferLength, &properties );
+        if( resultH264 != H264_RESULT_OK )
+        {
+            LogError( ( "Fail to get H264 packet properties, result: %d", resultH264 ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_PROPERTIES;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        *pIsStartPacket = 0U;
+        if( ( properties & H264_PACKET_PROPERTY_START_PACKET ) != 0 )
+        {
+            *pIsStartPacket = 1U;
+        }
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                             uint16_t rtpSeqStart,
+                                             uint16_t rtpSeqEnd,
+                                             uint8_t * pOutBuffer,
+                                             size_t * pOutBufferLength,
+                                             uint32_t * pRtpTimestamp )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    uint16_t i, index;
+    PeerConnectionJitterBufferPacket_t * pPacket;
+    H264Result_t resultH264;
+    H264DepacketizerContext_t h264DepacketizerContext;
+    H264Packet_t h264Packets[ PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME ];
+    H264Packet_t h264Packet;
+    Frame_t frame;
+    uint32_t rtpTimestamp;
+
+    if( ( pJitterBuffer == NULL ) ||
+        ( pOutBuffer == NULL ) ||
+        ( pOutBufferLength == NULL ) ||
+        ( pRtpTimestamp == NULL ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, pOutBuffer: %p, pOutBufferLength: %p, pRtpTimestamp: %p", pJitterBuffer, pOutBuffer, pOutBufferLength, pRtpTimestamp ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        resultH264 = H264Depacketizer_Init( &h264DepacketizerContext,
+                                            h264Packets,
+                                            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+        if( resultH264 != H264_RESULT_OK )
+        {
+            LogError( ( "Fail to initialize H264 depacketizer, result: %d", resultH264 ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_INIT;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        for( i = rtpSeqStart; i != rtpSeqEnd + 1; i++ )
+        {
+            index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
+            pPacket = &pJitterBuffer->rtpPackets[ index ];
+            h264Packet.pPacketData = pPacket->pPacketBuffer;
+            h264Packet.packetDataLength = pPacket->packetBufferLength;
+            rtpTimestamp = pPacket->rtpTimestamp;
+            LogDebug( ( "Adding packet seq: %u, length: %u, timestamp: %lu", i, h264Packet.packetDataLength, rtpTimestamp ) );
+
+            resultH264 = H264Depacketizer_AddPacket( &h264DepacketizerContext,
+                                                     &h264Packet );
+            if( resultH264 != H264_RESULT_OK )
+            {
+                LogError( ( "Fail to add H264 depacketizer packet, result: %d", resultH264 ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_ADD_PACKET;
+                break;
+            }
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        frame.pFrameData = pOutBuffer;
+        frame.frameDataLength = *pOutBufferLength;
+        resultH264 = H264Depacketizer_GetFrame( &h264DepacketizerContext,
+                                                &frame );
+        if( resultH264 != H264_RESULT_OK )
+        {
+            LogError( ( "Fail to get H264 depacketizer frame, result: %d", resultH264 ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
+        }
+
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        *pOutBufferLength = frame.frameDataLength;
+        *pRtpTimestamp = rtpTimestamp;
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                                         int32_t isClosing )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    uint16_t i, index, prev;
+    PeerConnectionJitterBufferPacket_t * pPacket;
+    uint8_t isFrameDataContinuous = 1U;
+    uint32_t currentTimestamp, poppingTimestamp = 0U;
+    uint8_t isStart;
+    uint32_t earliestBufferTimestamp = 0U;
+    int32_t firstTimestampIndex = -1, popingPacketStartIndex = -1, popingPacketEndIndex = -1;
+
+    if( pJitterBuffer == NULL )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p", pJitterBuffer ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else if( ( pJitterBuffer->onFrameReadyCallbackFunc == NULL ) ||
+             ( pJitterBuffer->onFrameDropCallbackFunc == NULL ) )
+    {
+        LogError( ( "Invalid input, onFrameReadyCallbackFunc: %p, onFrameDropCallbackFunc: %p",
+                    pJitterBuffer->onFrameReadyCallbackFunc,
+                    pJitterBuffer->onFrameDropCallbackFunc ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        earliestBufferTimestamp = pJitterBuffer->newestReceivedTimestamp - pJitterBuffer->tolerenceRtpTimeStamp;
+        /* Note that newest sequence is probably less than oldest sequence due to wrapping. */
+        prev = pJitterBuffer->oldestReceivedSequenceNumber;
+        for( i = pJitterBuffer->oldestReceivedSequenceNumber; i != pJitterBuffer->newestReceivedSequenceNumber + 1; i++ )
+        {
+            index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
+            pPacket = &pJitterBuffer->rtpPackets[ index ];
+            if( pPacket->isPushed == 0U )
+            {
+                isFrameDataContinuous = 0;
+            }
+            else if( earliestBufferTimestamp > pPacket->rtpTimestamp )
+            {
+                /* The packet is earilier than tolerence timestamp, pop it or discard it. */
+                currentTimestamp = pPacket->rtpTimestamp;
+                if( poppingTimestamp != currentTimestamp )
+                {
+                    /* Getting new frame, dropping old ones. Then reset variables. */
+                    if( firstTimestampIndex != -1 )
+                    {
+                        popingPacketEndIndex = prev;
+
+                        if( ( popingPacketStartIndex != -1 ) &&
+                            ( isFrameDataContinuous == 1 ) )
+                        {
+                            /* We now have an full frame ready between start index and end index. */
+                            ret = pJitterBuffer->onFrameReadyCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
+                                                                           popingPacketStartIndex,
+                                                                           popingPacketEndIndex );
+                            if( ret != PEER_CONNECTION_RESULT_OK )
+                            {
+                                LogError( ( "Terminating parsing jitter buffer by frame ready callback function, result: %d", ret ) );
+                                break;
+                            }
+                        }
+
+                        DiscardPackets( pJitterBuffer, firstTimestampIndex, prev, currentTimestamp );
+                    }
+
+                    firstTimestampIndex = i;
+                    popingPacketStartIndex = -1;
+                    popingPacketEndIndex = -1;
+                    isFrameDataContinuous = 1;
+                    poppingTimestamp = currentTimestamp;
+                }
+
+                if( pJitterBuffer->getPacketPropertyFunc && ( pJitterBuffer->getPacketPropertyFunc( pPacket, &isStart ) == PEER_CONNECTION_RESULT_OK ) )
+                {
+                    if( ( popingPacketStartIndex == -1 ) && isStart )
+                    {
+                        popingPacketStartIndex = i;
+                    }
+                }
+                else
+                {
+                    /* No get properties callback function or it returns failure. This packet is invalid, drop it. */
+                    isFrameDataContinuous = 0;
+                    LogInfo( ( "Fail to get property, dumping RTP payload, 0x%x 0x%x 0x%x 0x%x",
+                               pPacket->pPacketBuffer[0],
+                               pPacket->pPacketBuffer[1],
+                               pPacket->pPacketBuffer[2],
+                               pPacket->pPacketBuffer[3] ) );
+                    DiscardPackets( pJitterBuffer, ( uint16_t ) firstTimestampIndex, i, currentTimestamp );
+                    firstTimestampIndex = -1;
+                    poppingTimestamp = 0U;
+                    continue;
+                }
+            }
+            else
+            {
+                /* The following packets are still in tolerence timestamp, not necessary to parse them for now. */
+                break;
+            }
+
+            prev = i;
+        }
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t ShouldAcceptPacket( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                                  PeerConnectionJitterBufferPacket_t * pPacket )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    uint16_t earliestTolerenceRtpSeq = 0U, lastestTolerenceRtpSeq = 0U;
+    uint32_t rtpSeqOffset = pJitterBuffer->capacity / 2;
+
+    if( ( pJitterBuffer == NULL ) || ( pPacket == NULL ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, pPacket: %p", pJitterBuffer, pPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        earliestTolerenceRtpSeq = ( uint16_t )( ( pJitterBuffer->newestReceivedSequenceNumber - rtpSeqOffset ) & 0xFFFF );
+        lastestTolerenceRtpSeq = ( uint16_t )( ( pJitterBuffer->newestReceivedSequenceNumber + rtpSeqOffset ) & 0xFFFF );
+
+        if( lastestTolerenceRtpSeq >= earliestTolerenceRtpSeq )
+        {
+            /* The most common scenario, the tolerence range is between earliest and lastest, otherwise return false. */
+            if( ( pPacket->sequenceNumber < earliestTolerenceRtpSeq ) ||
+                ( pPacket->sequenceNumber > lastestTolerenceRtpSeq ) )
+            {
+                ret = PEER_CONNECTION_RESULT_PACKET_OUTDATED;
+                LogInfo( ( "Dropping packet with seq: %u because of out of tolerence seq range, earliest: %u, lastest: %u",
+                           pPacket->sequenceNumber,
+                           earliestTolerenceRtpSeq,
+                           lastestTolerenceRtpSeq ) );
+            }
+        }
+        else
+        {
+            /* In this case, the lastest tolerence sequence is wrapped. */
+            if( ( pPacket->sequenceNumber < earliestTolerenceRtpSeq ) &&
+                ( pPacket->sequenceNumber > lastestTolerenceRtpSeq ) )
+            {
+                ret = PEER_CONNECTION_RESULT_PACKET_OUTDATED;
+                LogInfo( ( "Dropping packet with seq: %u because of out of tolerence seq range, earliest seq: %u, lastest seq: %u",
+                           pPacket->sequenceNumber,
+                           earliestTolerenceRtpSeq,
+                           lastestTolerenceRtpSeq ) );
+            }
+        }
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t UpdateJitterBufferAddPacket( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                                           PeerConnectionJitterBufferPacket_t * pPacket )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( ( pJitterBuffer == NULL ) || ( pPacket == NULL ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, pPacket: %p", pJitterBuffer, pPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        /* Update newest sequence number. */
+        if( pPacket->sequenceNumber > pJitterBuffer->newestReceivedSequenceNumber )
+        {
+            /* The RTP sequence number in packet is just larger than newest one. */
+            pJitterBuffer->newestReceivedSequenceNumber = pPacket->sequenceNumber;
+        }
+        else if( ( ( pJitterBuffer->newestReceivedSequenceNumber + PEER_CONNECTION_JITTER_BUFFER_SEQ_WRAPPER_THRESHOLD ) & 0xFFFF ) <= pPacket->sequenceNumber )
+        {
+            /* Overflow is happening, we update the newest sequence number only if it's in the range of threshold. */
+            pJitterBuffer->newestReceivedSequenceNumber = pPacket->sequenceNumber;
+        }
+        else
+        {
+            /* Do nothing for non newest packets. */
+        }
+
+        /* Update oldest sequecen number. */
+        if( pPacket->sequenceNumber < pJitterBuffer->oldestReceivedSequenceNumber )
+        {
+            /* The RTP sequence number in packet is just older than oldest one. */
+            pJitterBuffer->oldestReceivedSequenceNumber = pPacket->sequenceNumber;
+        }
+        else if( ( ( pJitterBuffer->oldestReceivedSequenceNumber - PEER_CONNECTION_JITTER_BUFFER_SEQ_WRAPPER_THRESHOLD ) & 0xFFFF ) <= pPacket->sequenceNumber )
+        {
+            /* Overflow is happening, we update the newest sequence number only if it's in the range of threshold. */
+            pJitterBuffer->newestReceivedSequenceNumber = pPacket->sequenceNumber;
+        }
+        else
+        {
+            /* Do nothing for non newest packets. */
+        }
+
+        /* Update newest timestamp. */
+        if( pPacket->rtpTimestamp > pJitterBuffer->newestReceivedTimestamp )
+        {
+            /* The RTP timestamp in packet is just larger than newest one. */
+            pJitterBuffer->newestReceivedTimestamp = pPacket->rtpTimestamp;
+        }
+        else if( ( ( uint64_t )( pJitterBuffer->newestReceivedTimestamp + ( PEER_CONNECTION_JITTER_BUFFER_TIMESTAMP_WRAPPER_THRESHOLD_SEC * pJitterBuffer->clockRate ) ) & 0xFFFFFFFF ) <= pPacket->rtpTimestamp )
+        {
+            /* Overflow is happening, we update the newest timestamp only if it's in the range of threshold. */
+            pJitterBuffer->newestReceivedTimestamp = pPacket->sequenceNumber;
+        }
+        else
+        {
+            /* Do nothing for non newest packets. */
+        }
+    }
+
+    return ret;
+}
+
+static void DiscardPacket( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                           PeerConnectionJitterBufferPacket_t * pPacket )
+{
+    ( void ) pJitterBuffer;
+    if( pPacket && ( pPacket->pPacketBuffer != NULL ) )
+    {
+        free( pPacket->pPacketBuffer );
+        memset( pPacket, 0, sizeof( PeerConnectionJitterBufferPacket_t ) );
+    }
+}
+
+PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                                          OnJitterBufferFrameReadyCallback_t onFrameReadyCallbackFunc,
+                                                          void * pOnFrameReadyCallbackContext,
+                                                          OnJitterBufferFrameDropCallback_t onFrameDropCallbackFunc,
+                                                          void * pOnFrameDropCallbackContext,
+                                                          uint32_t tolerenceBufferSec,  // buffer time in seconds
+                                                          uint32_t codec,
+                                                          uint32_t clockRate )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( ( pJitterBuffer == NULL ) ||
+        ( codec == 0 ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, codec: %lu", pJitterBuffer, codec ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        memset( pJitterBuffer, 0, sizeof( PeerConnectionJitterBuffer_t ) );
+        pJitterBuffer->isStart = 0U;
+        pJitterBuffer->clockRate = clockRate;
+        pJitterBuffer->codec = codec;
+        pJitterBuffer->capacity = PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM;
+        pJitterBuffer->lastPopRtpTimestamp = 0U;
+        pJitterBuffer->lastPopSequenceNumber = 0xFFFF;
+        pJitterBuffer->lastPopTick = 0xFFFFFFFFFFFFFFFF;
+        pJitterBuffer->newestReceivedSequenceNumber = 0xFFFF;
+        pJitterBuffer->newestReceivedTimestamp = 0xFFFFFFFF;
+        pJitterBuffer->oldestReceivedSequenceNumber = 0U;
+        pJitterBuffer->newestReceivedSequenceNumber = 0xFFFF;
+        pJitterBuffer->newestReceivedTimestamp = 0xFFFFFFFF;
+        /* Converting tolerence buffer in seconds into RTP time stamp format. */
+        pJitterBuffer->tolerenceRtpTimeStamp = tolerenceBufferSec * ( clockRate );
+
+        pJitterBuffer->onFrameReadyCallbackFunc = onFrameReadyCallbackFunc;
+        pJitterBuffer->pOnFrameReadyCallbackContext = pOnFrameReadyCallbackContext;
+        pJitterBuffer->onFrameDropCallbackFunc = onFrameDropCallbackFunc;
+        pJitterBuffer->pOnFrameDropCallbackContext = pOnFrameDropCallbackContext;
+        LogInfo( ( "Creating jitter buffer with tolerence RTP timestamp: %lu", pJitterBuffer->tolerenceRtpTimeStamp ) );
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        LogInfo( ( "Setting jitter buffer with codec: 0x%lx.", codec ) );
+        /* Pick get property function based on codec. */
+        if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
+        {
+            pJitterBuffer->getPacketPropertyFunc = GetH264PacketProperty;
+            pJitterBuffer->fillFrameFunc = FillFrameH264;
+        }
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
+        {
+
+        }
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
+        {
+
+        }
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
+        {
+
+        }
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
+        {
+
+        }
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
+        {
+
+        }
+        else
+        {
+            /* TODO: Unknown, no matching codec. */
+            LogError( ( "Codec is not supported, codec bit map: 0x%x", ( int ) codec ) );
+            ret = PEER_CONNECTION_RESULT_UNKNOWN_TX_CODEC;
+        }
+
+    }
+
+    return ret;
+}
+
+void PeerConnectionJitterBuffer_Free( PeerConnectionJitterBuffer_t * pJitterBuffer )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( pJitterBuffer == NULL )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p",
+                    pJitterBuffer ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        ( void ) ParseFramesInJitterBuffer( pJitterBuffer, 1 );
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        DiscardPackets( pJitterBuffer, 0, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM - 1, 0U );
+    }
+}
+
+PeerConnectionResult_t PeerConnectionJitterBuffer_AllocateBuffer( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                                                  PeerConnectionJitterBufferPacket_t ** ppOutPacket,
+                                                                  size_t packetBufferSize,
+                                                                  uint16_t rtpSeq )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    int index = PEER_CONNECTION_JITTER_BUFFER_WRAP( rtpSeq, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
+
+    if( ( pJitterBuffer == NULL ) ||
+        ( ppOutPacket == NULL ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, ppOutPacket: %p", pJitterBuffer, ppOutPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else if( packetBufferSize == 0 )
+    {
+        LogError( ( "Invalid input, the input buffer length should be set correctly" ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        *ppOutPacket = &pJitterBuffer->rtpPackets[index];
+        if( ( *ppOutPacket )->pPacketBuffer != NULL )
+        {
+            /* Remove old information. */
+            DiscardPacket( pJitterBuffer, *ppOutPacket );
+        }
+
+        ( *ppOutPacket )->pPacketBuffer = ( uint8_t * )malloc( packetBufferSize );
+        ( *ppOutPacket )->packetBufferLength = packetBufferSize;
+    }
+
+    return ret;
+}
+
+PeerConnectionResult_t PeerConnectionJitterBuffer_GetPacket( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                                             uint16_t rtpSeq,
+                                                             PeerConnectionJitterBufferPacket_t ** ppOutPacket )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    PeerConnectionJitterBufferPacket_t * pPacket = NULL;
+    int index = PEER_CONNECTION_JITTER_BUFFER_WRAP( rtpSeq, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
+
+    if( ( pJitterBuffer == NULL ) ||
+        ( ppOutPacket == NULL ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, ppOutPacket: %p", pJitterBuffer, ppOutPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pPacket = &pJitterBuffer->rtpPackets[index];
+
+        if( pPacket->sequenceNumber == rtpSeq )
+        {
+            *ppOutPacket = pPacket;
+        }
+        else
+        {
+            LogWarn( ( "No available packets found, target seq: %u", rtpSeq ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_JITTER_BUFFER_SEQ_NOT_FOUND;
+        }
+    }
+
+    return ret;
+}
+
+PeerConnectionResult_t PeerConnectionJitterBuffer_Push( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                                        PeerConnectionJitterBufferPacket_t * pPacket )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( ( pJitterBuffer == NULL ) ||
+        ( pPacket == NULL ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, pPacket: %p", pJitterBuffer, pPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( pJitterBuffer->isStart == 0U )
+        {
+            pJitterBuffer->isStart = 1U;
+            pJitterBuffer->newestReceivedSequenceNumber = pPacket->sequenceNumber;
+            pJitterBuffer->newestReceivedTimestamp = pPacket->rtpTimestamp;
+            pJitterBuffer->oldestReceivedSequenceNumber = pPacket->sequenceNumber;
+        }
+
+        ret = ShouldAcceptPacket( pJitterBuffer, pPacket );
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pPacket->isPushed = 1U;
+
+        /* Update variables in jitter buffer. */
+        ret = UpdateJitterBufferAddPacket( pJitterBuffer, pPacket );
+    }
+
+    if( ret != PEER_CONNECTION_RESULT_OK )
+    {
+        /* Remove this packet if any error happens. */
+        if( pPacket && ( pPacket->pPacketBuffer != NULL ) )
+        {
+            free( pPacket->pPacketBuffer );
+            memset( pPacket, 0, sizeof( PeerConnectionJitterBufferPacket_t ) );
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        /* Parse the jitter buffer to check if any frames are ready for decoding or if any packets need to be dropped. */
+        ret = ParseFramesInJitterBuffer( pJitterBuffer, 0 );
+    }
+
+    return ret;
+}
+
+PeerConnectionResult_t PeerConnectionJitterBuffer_FillFrame( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                                             uint16_t rtpSeqStart,
+                                                             uint16_t rtpSeqEnd,
+                                                             uint8_t * pOutBuffer,
+                                                             size_t * pOutBufferLength,
+                                                             uint32_t * pRtpTimestamp )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( ( pJitterBuffer == NULL ) ||
+        ( pOutBuffer == NULL ) ||
+        ( pOutBufferLength == NULL ) ||
+        ( pRtpTimestamp == NULL ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, pOutBuffer: %p, pOutBufferLength: %p, pRtpTimestamp: %p", pJitterBuffer, pOutBuffer, pOutBufferLength, pRtpTimestamp ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( pJitterBuffer->fillFrameFunc )
+        {
+            ret = pJitterBuffer->fillFrameFunc( pJitterBuffer,
+                                                rtpSeqStart,
+                                                rtpSeqEnd,
+                                                pOutBuffer,
+                                                pOutBufferLength,
+                                                pRtpTimestamp );
+        }
+        else
+        {
+            LogWarn( ( "No fill frame function pointer for this jitter buffer, codec: 0x%lx", pJitterBuffer->codec ) );
+        }
+    }
+
+    return ret;
+}

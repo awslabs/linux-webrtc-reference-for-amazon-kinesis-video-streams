@@ -9,6 +9,9 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+
+include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
+include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtp/rtpFilePaths.cmake)
 file(
   GLOB
   WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES
@@ -33,14 +36,76 @@ file(
   "examples/logging/*.c"
   "examples/message_queue/linux/*.c"
   "examples/timer_controller/*.c"
-  "examples/string_utils/*.c" )
+  "examples/string_utils/*.c"
+  "examples/peer_connection/*.c"
+  "examples/network_transport/*.c"
+  "examples/network_transport/tcp_sockets_wrapper/ports/posix/*.c"
+  "examples/network_transport/udp_sockets_wrapper/ports/posix/*.c"
+  "examples/app_media_source/*.c"
+  "examples/metric/*.c"
+  "examples/base64/*.c"
+  "examples/base64/mbedtls/*.c" )
 
 set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
      "examples/base64/"
      "examples/logging/"
      "examples/message_queue/linux/"
      "examples/timer_controller/"
-     "examples/string_utils" )
+     "examples/string_utils"
+     "examples/peer_connection"
+     "examples/network_transport"
+     "examples/network_transport/tcp_sockets_wrapper/include"
+     "examples/network_transport/udp_sockets_wrapper/include"
+     "examples/app_media_source"
+     "examples/metric"
+     "examples/libsrtp"
+     "examples/logging"
+     "examples/base64" )
+
+file(
+  GLOB
+  WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES
+  "libraries/crypto/mbedtls/library/*.c" )
+
+set( WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS
+     "libraries/crypto/mbedtls/include" )
+
+file(
+  GLOB
+  WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES
+  "libraries/protocols/coreHTTP/source/*.c"
+  "libraries/protocols/coreHTTP/source/dependency/3rdparty/llhttp/src/*.c" )
+
+set( WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS
+     "libraries/protocols/coreHTTP/source/include"
+     "libraries/protocols/coreHTTP/source/interface"
+     "libraries/protocols/coreHTTP/source/dependency/3rdparty/llhttp/include" )
+
+file(
+  GLOB
+  WEBRTC_APPLICATION_LIBSRTP_GLOB_SOURCE_FILES
+  "libraries/protocols/libsrtp/srtp/*.c"
+  "libraries/protocols/libsrtp/crypto/kernel/*.c"
+  "libraries/protocols/libsrtp/crypto/math/*.c"
+  "libraries/protocols/libsrtp/crypto/replay/*.c" )
+
+set( WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES
+     ${WEBRTC_APPLICATION_LIBSRTP_GLOB_SOURCE_FILES}
+     "libraries/protocols/libsrtp/crypto/cipher/aes.c"
+     "libraries/protocols/libsrtp/crypto/cipher/aes_gcm_mbedtls.c"
+     "libraries/protocols/libsrtp/crypto/cipher/aes_icm_mbedtls.c"
+     "libraries/protocols/libsrtp/crypto/cipher/cipher.c"
+     "libraries/protocols/libsrtp/crypto/cipher/cipher_test_cases.c"
+     "libraries/protocols/libsrtp/crypto/cipher/null_cipher.c"
+     "libraries/protocols/libsrtp/crypto/hash/auth_test_cases.c"
+     "libraries/protocols/libsrtp/crypto/hash/auth.c"
+     "libraries/protocols/libsrtp/crypto/hash/hmac_mbedtls.c"
+     "libraries/protocols/libsrtp/crypto/hash/null_auth.c"
+     "libraries/protocols/libsrtp/crypto/hash/sha1.c" )
+
+set( WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS
+     "libraries/protocols/libsrtp/include"
+     "libraries/protocols/libsrtp/crypto/include" )
 
 file(
   GLOB
@@ -73,7 +138,12 @@ add_executable(
     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
     ${WEBRTC_APPLICATION_UTILS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES}
-    ${WEBRTC_APPLICATION_ICE_CONTROLLER_SOURCE_FILES} )
+    ${WEBRTC_APPLICATION_ICE_CONTROLLER_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES}
+    ${RTCP_SOURCES}
+    ${RTP_SOURCES} )
 
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
@@ -81,7 +151,12 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS}
-                            ${WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS} )
+                            ${WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS}
+                            ${RTCP_INCLUDE_PUBLIC_DIRS}
+                            ${RTP_INCLUDE_PUBLIC_DIRS} )
 
 # Include dependencies
 ## Include sigV4
@@ -111,7 +186,12 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/signaling.cmake )
 
 ## Set signaling include directories
-target_compile_definitions( WebRTCLinuxApplicationMaster PUBLIC SIGNALING_DO_NOT_USE_CUSTOM_CONFIG )
+target_compile_definitions( WebRTCLinuxApplicationMaster
+                            PUBLIC
+                            SIGNALING_DO_NOT_USE_CUSTOM_CONFIG
+                            MBEDTLS_CONFIG_FILE="mbedtls_custom_config.h"
+                            HTTP_DO_NOT_USE_CUSTOM_CONFIG
+                            HAVE_CONFIG_H )
 message(STATUS "including signaling directories: ${SIGNALING_INCLUDE_PUBLIC_DIRS}")
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${SIGNALING_INCLUDE_PUBLIC_DIRS} )

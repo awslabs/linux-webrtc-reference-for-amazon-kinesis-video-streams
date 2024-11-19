@@ -133,6 +133,32 @@ MessageQueueResult_t MessageQueue_IsEmpty( MessageQueueHandler_t *pMessageQueueH
     return ret;
 }
 
+MessageQueueResult_t MessageQueue_IsFull( MessageQueueHandler_t *pMessageQueueHandler )
+{
+    MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
+    struct mq_attr attr;
+
+    if( mq_getattr( pMessageQueueHandler->messageQueue, &attr) == -1 )
+    {
+        LogError( ( "mq_getattr returns failed" ) );
+        ret = MESSAGE_QUEUE_RESULT_MQ_GETATTR_FAILED;
+    }
+
+    if( ret == MESSAGE_QUEUE_RESULT_OK )
+    {
+        if( attr.mq_curmsgs == attr.mq_maxmsg )
+        {
+            ret = MESSAGE_QUEUE_RESULT_MQ_IS_FULL;
+        }
+        else
+        {
+            ret = MESSAGE_QUEUE_RESULT_MQ_IS_NOT_FULL;
+        }
+    }
+
+    return ret;
+}
+
 MessageQueueResult_t MessageQueue_AttachPoll( MessageQueueHandler_t *pMessageQueueHandler, struct pollfd *pPollFd, uint32_t PollEvents )
 {
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
