@@ -35,6 +35,7 @@ TimerControllerResult_t TimerController_Create( TimerHandler_t *pTimerHandler, T
         pTimerHandler->pUserContext = pUserContext;
 
         // Set up the signal handler
+        memset( &sigEvent, 0, sizeof( sigEvent ) );
         sigEvent.sigev_notify = SIGEV_THREAD;
         sigEvent.sigev_notify_function = &generalTimerCallback;
         sigEvent.sigev_value.sival_ptr = pTimerHandler;

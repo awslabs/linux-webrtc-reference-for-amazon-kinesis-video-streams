@@ -3,6 +3,7 @@
 #include "peer_connection.h"
 #include "peer_connection_jitter_buffer.h"
 #include "h264_depacketizer.h"
+#include "opus_depacketizer.h"
 
 //#include "FreeRTOS.h"
 
@@ -66,6 +67,43 @@ static PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferP
     {
         *pIsStartPacket = 0U;
         if( ( properties & H264_PACKET_PROPERTY_START_PACKET ) != 0 )
+        {
+            *pIsStartPacket = 1U;
+        }
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t GetOpusPacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
+                                                     uint8_t * pIsStartPacket )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    OpusResult_t resultOpus;
+    uint32_t properties = 0;
+
+    if( ( pPacket == NULL ) ||
+        ( pIsStartPacket == NULL ) )
+    {
+        LogError( ( "Invalid input, pPacket: %p, pIsStartPacket: %p", pPacket, pIsStartPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        resultOpus = OpusDepacketizer_GetPacketProperties( pPacket->pPacketBuffer, pPacket->packetBufferLength, &properties );
+
+        if( resultOpus != OPUS_RESULT_OK )
+        {
+            LogError( ( "Fail to get OPUS packet properties, result: %d", resultOpus ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_PROPERTIES;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        *pIsStartPacket = 0U;
+        if( ( properties & OPUS_PACKET_PROPERTY_START_PACKET ) != 0 )
         {
             *pIsStartPacket = 1U;
         }
@@ -143,6 +181,89 @@ static PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJit
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to get H264 depacketizer frame, result: %d", resultH264 ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
+        }
+
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        *pOutBufferLength = frame.frameDataLength;
+        *pRtpTimestamp = rtpTimestamp;
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuffer,
+                                             uint16_t rtpSeqStart,
+                                             uint16_t rtpSeqEnd,
+                                             uint8_t * pOutBuffer,
+                                             size_t * pOutBufferLength,
+                                             uint32_t * pRtpTimestamp )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    uint16_t i, index;
+    PeerConnectionJitterBufferPacket_t * pPacket;
+    OpusResult_t resultOpus;
+    OpusDepacketizerContext_t opusDepacketizerContext;
+    OpusPacket_t opusPackets[ PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME ];
+    OpusPacket_t opusPacket;
+    Frame_t frame;
+    uint32_t rtpTimestamp;
+
+    if( ( pJitterBuffer == NULL ) ||
+        ( pOutBuffer == NULL ) ||
+        ( pOutBufferLength == NULL ) ||
+        ( pRtpTimestamp == NULL ) )
+    {
+        LogError( ( "Invalid input, pJitterBuffer: %p, pOutBuffer: %p, pOutBufferLength: %p, pRtpTimestamp: %p", pJitterBuffer, pOutBuffer, pOutBufferLength, pRtpTimestamp ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        resultOpus = OpusDepacketizer_Init( &opusDepacketizerContext,
+                                            opusPackets,
+                                            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+        if( resultOpus != OPUS_RESULT_OK )
+        {
+            LogError( ( "Fail to initialize OPUS depacketizer, result: %d", resultOpus ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_INIT;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        for( i = rtpSeqStart; i != rtpSeqEnd + 1; i++ )
+        {
+            index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
+            pPacket = &pJitterBuffer->rtpPackets[ index ];
+            opusPacket.pPacketData = pPacket->pPacketBuffer;
+            opusPacket.packetDataLength = pPacket->packetBufferLength;
+            rtpTimestamp = pPacket->rtpTimestamp;
+            LogDebug( ( "Adding packet seq: %u, length: %u, timestamp: %lu", i, opusPacket.packetDataLength, rtpTimestamp ) );
+
+            resultOpus = OpusDepacketizer_AddPacket( &opusDepacketizerContext,
+                                                     &opusPacket );
+            if( resultOpus != OPUS_RESULT_OK )
+            {
+                LogError( ( "Fail to add OPUS depacketizer packet, result: %d", resultOpus ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_ADD_PACKET;
+                break;
+            }
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        frame.pFrameData = pOutBuffer;
+        frame.frameDataLength = *pOutBufferLength;
+        resultOpus = OpusDepacketizer_GetFrame( &opusDepacketizerContext,
+                                                &frame );
+        if( resultOpus != OPUS_RESULT_OK )
+        {
+            LogError( ( "Fail to get OPUS depacketizer frame, result: %d", resultOpus ) );
             ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
         }
 
@@ -449,7 +570,8 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
         {
-
+            pJitterBuffer->getPacketPropertyFunc = GetOpusPacketProperty;
+            pJitterBuffer->fillFrameFunc = FillFrameOpus;
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {

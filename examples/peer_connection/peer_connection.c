@@ -14,7 +14,7 @@
 #define PEER_CONNECTION_SESSION_RX_TASK_NAME "PcRxTsk" // For Ice controller to monitor socket Rx path
 #define PEER_CONNECTION_MESSAGE_QUEUE_NAME "/PcSessionMq"
 
-#define PEER_CONNECTION_MAX_QUEUE_MSG_NUM ( 30 )
+#define PEER_CONNECTION_MAX_QUEUE_MSG_NUM ( 10 )
 
 PeerConnectionContext_t peerConnectionContext = { 0 };
 
@@ -1191,7 +1191,7 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
         {
-
+            ret = PeerConnectionSrtp_WriteOpusFrame( pSession, pTransceiver, pFrame );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {

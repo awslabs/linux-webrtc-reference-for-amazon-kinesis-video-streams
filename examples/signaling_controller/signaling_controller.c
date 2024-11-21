@@ -553,6 +553,9 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
     HttpResponse_t response;
     SignalingChannelEndpoints_t endpoints;
 
+    // Prepare AWS region
+    awsRegion.pAwsRegion = pCtx->credential.pRegion;
+    awsRegion.awsRegionLength = pCtx->credential.regionLength;
     // Prepare URL buffer
     signalRequest.pUrl = pCtx->httpUrlBuffer;
     signalRequest.urlLength = SIGNALING_CONTROLLER_MAX_HTTP_URI_LENGTH;
