@@ -14,7 +14,7 @@
 #define DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE ( 4 * 1024 * 1024 )
 
 // For opus, the bitrate could be between 6 Kbps to 510 Kbps
-#define DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE ( 510 * 1024 )
+#define DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE ( 1000 * 1024 )
 
 #define DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID "myKvsVideoStream"
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
@@ -27,6 +27,14 @@
 #define NUMBER_OF_H264_FRAME_SAMPLE_FILES   1500
 #define NUMBER_OF_OPUS_FRAME_SAMPLE_FILES   618
 #define MAX_PATH_LEN                        255
+
+#define SAMPLE_AUDIO_FRAME_DURATION_IN_US               ( 20 * 1000 )
+#define SAMPLE_AUDIO_FRAME_DURATION_IN_HUNDRED_OF_NANOS ( SAMPLE_AUDIO_FRAME_DURATION_IN_US * 10 )
+
+#define SAMPLE_FPS_VALUE                                25
+#define SAMPLE_VIDEO_FRAME_DURATION_IN_US               ( ( 1000 * 1000 ) / 25 )
+#define SAMPLE_VIDEO_FRAME_DURATION_IN_HUNDRED_OF_NANOS ( SAMPLE_VIDEO_FRAME_DURATION_IN_US * 10 )
+
 
 static void * VideoTx_Task( void * pParameter );
 static void * AudioTx_Task( void * pParameter );
@@ -46,6 +54,8 @@ static void * VideoTx_Task( void * pParameter )
     }
     else
     {
+        frame.timestampUs = 0;
+
         while( 1 )
         {
         #ifndef ENABLE_STREAMING_LOOPBACK
@@ -67,7 +77,7 @@ static void * VideoTx_Task( void * pParameter )
 
                     frame.pData = ( uint8_t * ) malloc( frameLength );
                     frame.size = frameLength;
-                    frame.timestampUs = time( NULL );
+                    frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_HUNDRED_OF_NANOS;
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
 
                     fseek( fp, 0, SEEK_SET );
@@ -75,7 +85,7 @@ static void * VideoTx_Task( void * pParameter )
 
                     fclose( fp );
 
-                    LogInfo( ( "Sending video frame of length %lu.", frameLength ) );
+                    LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
                     if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
                     {
                         ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
@@ -85,7 +95,7 @@ static void * VideoTx_Task( void * pParameter )
                 }
             }
         #endif
-            usleep( 200 * 1000 );
+            usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
     }
 }
@@ -105,12 +115,14 @@ static void * AudioTx_Task( void * pParameter )
     }
     else
     {
+        frame.timestampUs = 0;
+
         while( 1 )
         {
         #ifndef ENABLE_STREAMING_LOOPBACK
             if( pAudioContext->pSourcesContext->isPortStarted == 1 )
             {
-                fileIndex = fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
+                fileIndex = fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
                 snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", fileIndex );
 
                 fp = fopen( filePath, "rb" );
@@ -126,7 +138,7 @@ static void * AudioTx_Task( void * pParameter )
 
                     frame.pData = ( uint8_t * ) malloc( frameLength );
                     frame.size = frameLength;
-                    frame.timestampUs = time( NULL );
+                    frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_HUNDRED_OF_NANOS;
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
 
                     fseek( fp, 0, SEEK_SET );
@@ -134,7 +146,7 @@ static void * AudioTx_Task( void * pParameter )
 
                     fclose( fp );
 
-                    LogInfo( ( "Sending audio frame of length %lu.", frameLength ) );
+                    LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
                     if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
                     {
                         ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
@@ -144,7 +156,7 @@ static void * AudioTx_Task( void * pParameter )
                 }
             }
         #endif
-            usleep( 200 * 1000 );
+            usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
     }
 }
