@@ -214,7 +214,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        /* TODO: Skip IPv6 remote candidiate for now. */
+        /* TODO: Skip IPv6 remote candidate for now. */
         if( pRemoteCandidate->pEndpoint->transportAddress.family != STUN_ADDRESS_IPv4 )
         {
             LogInfo( ( "Dropping IPv6 remote candidate: %s/%u",
@@ -228,7 +228,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        /* TODO: Skip TCP remote candidiate for now. */
+        /* TODO: Skip TCP remote candidate for now. */
         if( pRemoteCandidate->remoteProtocol != ICE_SOCKET_PROTOCOL_UDP )
         {
             LogInfo( ( "Dropping non UDP remote candidate: %s/%u, protocol: %d",

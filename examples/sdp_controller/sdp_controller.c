@@ -1119,8 +1119,7 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
             }
             else
             {
-                written = snprintf( pCurBuffer, remainSize, "%lu %.*s",
-                                    payload,
+                written = snprintf( pCurBuffer, remainSize, "%.*s",
                                     ( int ) pSourceAttribute->attributeValueLength, pSourceAttribute->pAttributeValue );
             }
 
@@ -1427,8 +1426,7 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
             }
             else
             {
-                written = snprintf( pCurBuffer, remainSize, "%lu %.*s",
-                                    payload,
+                written = snprintf( pCurBuffer, remainSize, "%.*s",
                                     ( int ) pSourceAttribute->attributeValueLength, pSourceAttribute->pAttributeValue );
             }
 
