@@ -1,6 +1,8 @@
 #include "logging.h"
 #include "metric.h"
-//#include "networking_utils.h"
+
+#include <time.h>
+#include <unistd.h>
 
 #define METRIC_PRINT_INTERVAL_MS ( 10000 )
 
@@ -62,7 +64,14 @@ static const char * ConvertEventToString( MetricEvent_t event )
 static uint64_t CalculateEventDurationMs( uint64_t startTimeUs,
                                           uint64_t endTimeUs )
 {
-    return ( endTimeUs - startTimeUs ) / 1000;
+    return ( endTimeUs - startTimeUs ) / ( 1000 * 1000 );
+}
+
+static uint64_t GetTimestampInNs( void )
+{
+    struct timespec nowTime;
+    clock_gettime( CLOCK_REALTIME, &nowTime );
+    return ( uint64_t ) nowTime.tv_sec * 1000 * 1000 * 1000 + ( uint64_t ) nowTime.tv_nsec;
 }
 
 static void * Metric_Task( void * pParameter )
@@ -109,14 +118,14 @@ void Metric_Init( void )
 void Metric_StartEvent( MetricEvent_t event )
 {
     if( ( context.isInit == 1U ) && ( event < METRIC_EVENT_MAX ) &&
-        ( pthread_mutex_lock( &( context.mutex ) == 0 ) ) )
+        ( pthread_mutex_lock( &( context.mutex ) ) == 0 ) )
     {
         MetricEventRecord_t * pEventRecord = &context.eventRecords[ event ];
 
         if( pEventRecord->state == METRIC_EVENT_STATE_NONE )
         {
             pEventRecord->state = METRIC_EVENT_STATE_RECORDING;
-            pEventRecord->startTimeUs = time( NULL ); //NetworkingUtils_GetCurrentTimeUs( NULL );
+            pEventRecord->startTimeUs = GetTimestampInNs();
         }
 
         pthread_mutex_unlock( &( context.mutex ) );
@@ -133,7 +142,7 @@ void Metric_EndEvent( MetricEvent_t event )
         if( pEventRecord->state == METRIC_EVENT_STATE_RECORDING )
         {
             pEventRecord->state = METRIC_EVENT_STATE_RECORDED;
-            pEventRecord->endTimeUs = time( NULL ); //NetworkingUtils_GetCurrentTimeUs( NULL );
+            pEventRecord->endTimeUs = GetTimestampInNs();
         }
 
         pthread_mutex_unlock( &( context.mutex ) );
@@ -156,7 +165,7 @@ void Metric_PrintMetrics( void )
 
             if( pEventRecord->state == METRIC_EVENT_STATE_RECORDED )
             {
-                LogInfo( ( "Duration of %s: %llu ms",
+                LogInfo( ( "Duration of %s: %lu ms",
                            ConvertEventToString( ( MetricEvent_t )i ),
                            CalculateEventDurationMs( pEventRecord->startTimeUs, pEventRecord->endTimeUs ) ) );
             }

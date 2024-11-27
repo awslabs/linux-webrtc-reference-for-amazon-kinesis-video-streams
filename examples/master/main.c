@@ -1097,8 +1097,8 @@ int main()
         /* Set the signal handler to release resource correctly. */
         signal( SIGINT, terminateHandler );
 
-        // /* Initialize Ice controller. */
-        // ret = initializeIceController( &demoContext );
+        /* Initialize metrics. */
+        Metric_Init();
     }
 
     if( ret == 0 )
