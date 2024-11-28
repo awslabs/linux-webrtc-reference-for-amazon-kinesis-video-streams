@@ -96,7 +96,7 @@ int32_t lwsHttpCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason
 
     ( void ) pUser;
 
-    LogInfo( ( "HTTP callback with reason %d ", reason ) );
+    LogVerbose( ( "HTTP callback with reason %d ", reason ) );
 
     switch (reason) {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:

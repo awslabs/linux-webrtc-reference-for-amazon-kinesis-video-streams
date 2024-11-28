@@ -10,6 +10,10 @@
 #include "peer_connection_rolling_buffer.h"
 #include "metric.h"
 
+#include "peer_connection_h264_helper.h"
+#include "peer_connection_opus_helper.h"
+#include "peer_connection_g711_helper.h"
+
 #define PEER_CONNECTION_SESSION_TASK_NAME "PcSessionTsk"
 #define PEER_CONNECTION_SESSION_RX_TASK_NAME "PcRxTsk" // For Ice controller to monitor socket Rx path
 #define PEER_CONNECTION_MESSAGE_QUEUE_NAME "/PcSessionMq"
@@ -275,6 +279,10 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
     PeerConnectionIceLocalCandidate_t * pLocalCandidateReadyMsg = NULL;
     IceControllerPeerToPeerConnectionFoundMsg_t * pPeerToPeerConnectionFoundMsg = NULL;
+    char localIpAddr[ INET_ADDRSTRLEN ];
+    const char * pLocalIpPos;
+    char remoteIpAddr[ INET_ADDRSTRLEN ];
+    const char * pRemoteIpPos;
 
     if( ( pCustomContext == NULL ) )
     {
@@ -315,6 +323,20 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 break;
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
                 pPeerToPeerConnectionFoundMsg = &pEventMsg->iceControllerCallbackContent.peerTopeerConnectionFoundMsg;
+                pLocalIpPos = inet_ntop( AF_INET,
+                                        pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.address,
+                                        localIpAddr,
+                                        INET_ADDRSTRLEN );
+                pRemoteIpPos = inet_ntop( AF_INET,
+                                        pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.address,
+                                        remoteIpAddr,
+                                        INET_ADDRSTRLEN );
+                LogInfo( ( "Found P2P connection between source %s:%d with remote %s:%d",
+                            pLocalIpPos? pLocalIpPos:"UNKNOWN",
+                            pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.port,
+                            pRemoteIpPos? pRemoteIpPos:"UNKNOWN",
+                            pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.port) );
+
                 ret = OnIceEventPeerToPeerConnectionFound( pSession, pPeerToPeerConnectionFoundMsg->socketFd, pPeerToPeerConnectionFoundMsg->pRemoteCandidate );
                 break;
             default:

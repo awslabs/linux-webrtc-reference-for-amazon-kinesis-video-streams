@@ -713,8 +713,21 @@ const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoi
 #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
 
 #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-extern uint16_t ReadUint16Swap( const uint8_t * pSrc );
-extern uint16_t ReadUint16NoSwap( const uint8_t * pSrc );
+
+#define SWAP_BYTES_16( value )          \
+    ( ( ( ( value ) >> 8 ) & 0xFF ) |   \
+      ( ( ( value ) & 0xFF ) << 8 ) )
+
+static uint16_t ReadUint16Swap( const uint8_t * pSrc )
+{
+    return SWAP_BYTES_16( *( ( uint16_t * )( pSrc ) ) );
+}
+
+static uint16_t ReadUint16NoSwap( const uint8_t * pSrc )
+{
+    return *( ( uint16_t * )( pSrc ) );
+}
+
 static const char * convertStunMsgTypeToString( uint16_t stunMsgType )
 {
     const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;

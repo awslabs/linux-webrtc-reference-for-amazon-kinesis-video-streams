@@ -531,7 +531,7 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
     size_t index;
     NetworkingLibwebsocketBufferInfo_t *pRingBufferInfo;
 
-    LogInfo( ( "Websocket callback with reason %d", reason ) );
+    LogVerbose( ( "Websocket callback with reason %d", reason ) );
     
     switch (reason)
     {
