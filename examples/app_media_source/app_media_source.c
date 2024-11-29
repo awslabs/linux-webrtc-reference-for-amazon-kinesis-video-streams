@@ -29,11 +29,9 @@
 #define MAX_PATH_LEN                        255
 
 #define SAMPLE_AUDIO_FRAME_DURATION_IN_US               ( 20 * 1000 )
-#define SAMPLE_AUDIO_FRAME_DURATION_IN_HUNDRED_OF_NANOS ( SAMPLE_AUDIO_FRAME_DURATION_IN_US * 10 )
 
 #define SAMPLE_FPS_VALUE                                25
-#define SAMPLE_VIDEO_FRAME_DURATION_IN_US               ( ( 1000 * 1000 ) / 25 )
-#define SAMPLE_VIDEO_FRAME_DURATION_IN_HUNDRED_OF_NANOS ( SAMPLE_VIDEO_FRAME_DURATION_IN_US * 10 )
+#define SAMPLE_VIDEO_FRAME_DURATION_IN_US               ( ( 1000 * 1000 ) / SAMPLE_FPS_VALUE )
 
 
 static void * VideoTx_Task( void * pParameter );
@@ -47,6 +45,7 @@ static void * VideoTx_Task( void * pParameter )
     char filePath[ MAX_PATH_LEN + 1 ];
     FILE* fp = NULL;
     size_t frameLength, fileIndex = 0;
+    size_t allocatedBufferLength = 0;
 
     if( pVideoContext == NULL )
     {
@@ -75,9 +74,17 @@ static void * VideoTx_Task( void * pParameter )
                     fseek( fp, 0, SEEK_END );
                     frameLength = ftell( fp );
 
-                    frame.pData = ( uint8_t * ) malloc( frameLength );
+                    if( frameLength > allocatedBufferLength )
+                    {
+                        if( allocatedBufferLength != 0 )
+                        {
+                            free( frame.pData );
+                        }
+                        frame.pData = ( uint8_t * ) malloc( frameLength );
+                        allocatedBufferLength = frameLength;
+                    }
                     frame.size = frameLength;
-                    frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_HUNDRED_OF_NANOS;
+                    frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
 
                     fseek( fp, 0, SEEK_SET );
@@ -90,8 +97,6 @@ static void * VideoTx_Task( void * pParameter )
                     {
                         ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
                     }
-
-                    free( frame.pData );
                 }
             }
         #endif
@@ -108,6 +113,7 @@ static void * AudioTx_Task( void * pParameter )
     char filePath[ MAX_PATH_LEN + 1 ];
     FILE* fp = NULL;
     size_t frameLength, fileIndex = 0;
+    size_t allocatedBufferLength = 0;
 
     if( pAudioContext == NULL )
     {
@@ -136,9 +142,17 @@ static void * AudioTx_Task( void * pParameter )
                     fseek( fp, 0, SEEK_END );
                     frameLength = ftell( fp );
 
-                    frame.pData = ( uint8_t * ) malloc( frameLength );
+                    if( frameLength > allocatedBufferLength )
+                    {
+                        if( allocatedBufferLength != 0 )
+                        {
+                            free( frame.pData );
+                        }
+                        frame.pData = ( uint8_t * ) malloc( frameLength );
+                        allocatedBufferLength = frameLength;
+                    }
                     frame.size = frameLength;
-                    frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_HUNDRED_OF_NANOS;
+                    frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
 
                     fseek( fp, 0, SEEK_SET );
@@ -151,8 +165,6 @@ static void * AudioTx_Task( void * pParameter )
                     {
                         ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
                     }
-
-                    free( frame.pData );
                 }
             }
         #endif
