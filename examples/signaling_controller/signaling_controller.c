@@ -44,6 +44,13 @@ static WebsocketResult_t handleWssMessage( char * pMessage,
     SignalingControllerContext_t * pCtx = ( SignalingControllerContext_t * ) pUserContext;
     SignalingControllerReceiveEvent_t receiveEvent;
     Base64Result_t retBase64;
+    bool needCallback = true;
+    MessageQueueResult_t retMessageQueue;
+    SignalingControllerEventMessage_t eventMessage = {
+        .event = SIGNALING_CONTROLLER_EVENT_RECONNECT_WSS,
+        .onCompleteCallback = NULL,
+        .pOnCompleteCallbackContext = NULL,
+    };
 
     if( ( pMessage == NULL ) || ( messageLength == 0 ) )
     {
@@ -75,6 +82,48 @@ static WebsocketResult_t handleWssMessage( char * pMessage,
 
     if( ret == WEBSOCKET_RESULT_OK )
     {
+        switch( wssRecvMessage.messageType )
+        {
+            case SIGNALING_TYPE_MESSAGE_GO_AWAY:
+
+                retMessageQueue = MessageQueue_Send( &pCtx->sendMessageQueue, &eventMessage, sizeof( SignalingControllerEventMessage_t ) );
+
+                needCallback = false;
+
+                if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+                {
+                    ret = WEBSOCKET_RESULT_FAIL;
+                }
+
+                if( ret == WEBSOCKET_RESULT_OK )
+                {
+                    /* Wake the running thread up to handle event. */
+                    ( void ) Websocket_Signal();
+                }
+                break;
+
+            case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
+
+                if( strcmp(wssRecvMessage.statusResponse.pStatusCode,"200")!= 0 )
+                {
+                    LogWarn(( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s",
+                            wssRecvMessage.statusResponse.pCorrelationId,
+                            wssRecvMessage.statusResponse.pErrorType,
+                            wssRecvMessage.statusResponse.pStatusCode,
+                            wssRecvMessage.statusResponse.pDescription));
+                }
+                else
+                {
+
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    if( ret == WEBSOCKET_RESULT_OK )
+    {
         memset( &receiveEvent, 0, sizeof( SignalingControllerReceiveEvent_t ) );
         receiveEvent.pRemoteClientId = wssRecvMessage.pSenderClientId;
         receiveEvent.remoteClientIdLength = wssRecvMessage.senderClientIdLength;
@@ -84,7 +133,7 @@ static WebsocketResult_t handleWssMessage( char * pMessage,
         receiveEvent.pDecodeMessage = pCtx->base64Buffer;
         receiveEvent.decodeMessageLength = pCtx->base64BufferLength;
 
-        if( pCtx->receiveMessageCallback != NULL )
+        if( (needCallback == true ) && ( pCtx->receiveMessageCallback != NULL ) )
         {
             pCtx->receiveMessageCallback( &receiveEvent, pCtx->pReceiveMessageCallbackContext );
         }
@@ -848,6 +897,28 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t * p
                 }
             }
             break;
+        case SIGNALING_CONTROLLER_EVENT_RECONNECT_WSS:
+
+            /* Disconnect the Web-Socket Server. */
+            websocketRet = Websocket_Disconnect();
+
+            if( websocketRet == WEBSOCKET_RESULT_OK )
+            {
+                LogInfo( ( "Disconnected Websocket Server. " ) );
+
+                /* Change the State to Describe state and attempt Re-connection. */
+                ret = SignalingController_ConnectServers(pCtx);
+            }
+            if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+            {
+                LogInfo( ( "Reconnection Un-Successful. %d ",ret ) );
+                websocketRet = NETWORKING_LIBWEBSOCKETS_RESULT_FAIL_CONNECT;
+            }
+            if(ret == SIGNALING_CONTROLLER_RESULT_OK)
+            {
+                LogInfo( ( "Reconnection Successful. " ) );
+            }
+            break;
         default:
             /* Ignore unknown event. */
             LogWarn( ( "Received unknown event %d", pEventMsg->event ) );
@@ -950,6 +1021,51 @@ void SignalingController_Deinit( SignalingControllerContext_t * pCtx )
     }
 }
 
+SignalingControllerResult_t SignalingController_IceServerReconnection(SignalingControllerContext_t *pCtx)
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    WebsocketResult_t retWebsocket = WEBSOCKET_RESULT_OK;
+
+    if (pCtx == NULL)
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if (ret == SIGNALING_CONTROLLER_RESULT_OK)
+    {
+        /* Disconnect the Web-Socket Server. */
+        retWebsocket = Websocket_Disconnect();
+    }
+    else
+    {
+        LogWarn((" Web-Socket Disconnect Unsuccessful. "));
+    }
+
+    if (retWebsocket == WEBSOCKET_RESULT_OK)
+    {
+        LogDebug(("Disconnected Websocket Server."));
+
+        /* Change the State to Describe state and attempt Re-connection. */
+        ret = getIceServerList(pCtx);
+    }
+    else
+    {
+        LogWarn((" Fetching ICE Server List Unsuccessful. "));
+    }
+
+    if (ret == SIGNALING_CONTROLLER_RESULT_OK)
+    {
+        /* Reconnect to the websocket secure endpoint. */
+        ret = connectWssEndpoint(pCtx);
+    }
+    else
+    {
+        LogWarn((" Reconnection WSS Endpoint Unsuccessful. "));
+    }
+
+    return ret;
+}
+
 SignalingControllerResult_t SignalingController_ConnectServers( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
@@ -1027,7 +1143,7 @@ SignalingControllerResult_t SignalingController_ProcessLoop( SignalingController
         }
 
         messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );
-        if( messageQueueRet == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
+        while( messageQueueRet == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
         {
             /* Handle event. */
             eventMsgLength = sizeof( SignalingControllerEventMessage_t );
@@ -1038,6 +1154,8 @@ SignalingControllerResult_t SignalingController_ProcessLoop( SignalingController
                 LogDebug( ( "EventMsg: event: %d, pOnCompleteCallbackContext: %p", eventMsg.event, eventMsg.pOnCompleteCallbackContext ) );
                 ret = handleEvent( pCtx, &eventMsg );
             }
+
+            messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );
         }
     }
 

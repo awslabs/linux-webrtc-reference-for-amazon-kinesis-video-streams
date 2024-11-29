@@ -37,6 +37,11 @@ extern "C" {
 #define SIGNALING_CONTROLLER_AWS_MAX_ARN_LENGTH ( 1024 )
 #define SIGNALING_CONTROLLER_AWS_MAX_CHANNEL_NAME_LENGTH ( 256 )
 
+/**
+ * Default connect sync API timeout
+ */
+#define SIGNALING_CONNECT_STATE_TIMEOUT_SEC ( 15 )
+
 typedef enum SignalingControllerEventStatus
 {
     SIGNALING_CONTROLLER_EVENT_STATUS_NONE = 0,
@@ -168,6 +173,7 @@ typedef enum SignalingControllerEvent
 {
     SIGNALING_CONTROLLER_EVENT_NONE = 0,
     SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
+    SIGNALING_CONTROLLER_EVENT_RECONNECT_WSS,
 } SignalingControllerEvent_t;
 
 typedef struct SignalingControllerEventMessage

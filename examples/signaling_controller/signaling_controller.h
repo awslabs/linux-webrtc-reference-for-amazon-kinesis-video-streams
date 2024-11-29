@@ -14,6 +14,7 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
                                                       SignalingControllerReceiveMessageCallback receiveMessageCallback,
                                                       void * pReceiveMessageCallbackContext );
 void SignalingController_Deinit( SignalingControllerContext_t * pCtx );
+SignalingControllerResult_t SignalingController_IceServerReconnection( SignalingControllerContext_t * pCtx );
 SignalingControllerResult_t SignalingController_ConnectServers( SignalingControllerContext_t * pCtx );
 SignalingControllerResult_t SignalingController_ProcessLoop( SignalingControllerContext_t * pCtx );
 SignalingControllerResult_t SignalingController_SendMessage( SignalingControllerContext_t * pCtx,
