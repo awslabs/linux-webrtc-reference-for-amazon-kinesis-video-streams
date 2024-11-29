@@ -7,6 +7,11 @@
 #include "base64.h"
 #include "metric.h"
 #include "core_json.h"
+#include "networking_utils.h"
+
+#ifndef MIN
+#define MIN( a,b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+#endif
 
 #if ( defined( SIGNALING_CONTROLLER_USING_LIBWEBSOCKETS ) && SIGNALING_CONTROLLER_USING_LIBWEBSOCKETS )
     #include "libwebsockets.h"
@@ -353,7 +358,10 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
                                                            size_t iceServerListNum )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
-    uint8_t i, j;
+    uint64_t iceServerConfigTimeSec;
+    uint64_t minTTL = UINT64_MAX;
+    uint8_t i;
+    uint8_t j;
 
     if( ( pCtx == NULL ) || ( pIceServerList == NULL ) )
     {
@@ -391,6 +399,8 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
             pCtx->iceServerConfigs[i].passwordLength = pIceServerList[i].passwordLength;
             pCtx->iceServerConfigs[i].ttlSeconds = pIceServerList[i].messageTtlSeconds;
 
+            minTTL = MIN( minTTL, pCtx->iceServerConfigs[i].ttlSeconds );
+
             for( j = 0; j < pIceServerList[i].urisNum; j++ )
             {
                 if( j >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_URIS_COUNT )
@@ -425,7 +435,17 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
+        /* Update context with latest ICE server configuration, including server count and expiration. */
         pCtx->iceServerConfigsCount = i;
+
+        iceServerConfigTimeSec = NetworkingUtils_GetCurrentTimeSec( NULL );
+
+        if( minTTL < ICE_CONFIGURATION_REFRESH_GRACE_PERIOD_SEC )
+        {
+            LogWarn( ( "Minimum TTL is less than Refresh Grace Period." ) );
+        }
+
+        pCtx->iceServerConfigExpirationSec = iceServerConfigTimeSec + ( minTTL - ICE_CONFIGURATION_REFRESH_GRACE_PERIOD_SEC );
     }
 
     return ret;
@@ -953,6 +973,8 @@ void SignalingController_Deinit( SignalingControllerContext_t * pCtx )
 SignalingControllerResult_t SignalingController_ConnectServers( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    SignalingControllerIceServerConfig_t * pIceServerConfigs;
+    size_t iceServerConfigsCount;
 
     /* Check input parameters. */
     if( pCtx == NULL )
@@ -985,9 +1007,7 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
     /* Query ICE server list with HTTPS endpoint. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
-        ret = getIceServerList( pCtx );
-        Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
+        ret = SignalingController_QueryIceServerConfigs( pCtx, &pIceServerConfigs, &iceServerConfigsCount );
     }
 
     /* Connect websocket secure endpoint. */
@@ -1078,6 +1098,7 @@ SignalingControllerResult_t SignalingController_QueryIceServerConfigs( Signaling
                                                                        size_t * pIceServerConfigsCount )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    uint64_t currentTimeSec;
 
     if( ( pCtx == NULL ) || ( ppIceServerConfigs == NULL ) || ( pIceServerConfigsCount == NULL ) )
     {
@@ -1086,7 +1107,16 @@ SignalingControllerResult_t SignalingController_QueryIceServerConfigs( Signaling
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        /* TODO: check if ICE server configs expire. */
+        currentTimeSec = NetworkingUtils_GetCurrentTimeSec( NULL );
+
+        if( ( pCtx->iceServerConfigsCount == 0 ) || ( pCtx->iceServerConfigExpirationSec < currentTimeSec ) )
+        {
+            LogInfo( ( "Ice server configs expired, Starting Refresing Configs." ) );
+
+            Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
+            ret = getIceServerList( pCtx );
+            Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
+        }
         *ppIceServerConfigs = pCtx->iceServerConfigs;
         *pIceServerConfigsCount = pCtx->iceServerConfigsCount;
     }

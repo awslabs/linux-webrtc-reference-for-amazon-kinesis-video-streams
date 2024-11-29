@@ -37,6 +37,9 @@ extern "C" {
 #define SIGNALING_CONTROLLER_AWS_MAX_ARN_LENGTH ( 1024 )
 #define SIGNALING_CONTROLLER_AWS_MAX_CHANNEL_NAME_LENGTH ( 256 )
 
+// Grace period for refreshing the ICE configuration
+#define ICE_CONFIGURATION_REFRESH_GRACE_PERIOD_SEC ( 30 )
+
 typedef enum SignalingControllerEventStatus
 {
     SIGNALING_CONTROLLER_EVENT_STATUS_NONE = 0,
@@ -184,6 +187,7 @@ typedef struct SignalingControllerContext
 
     SignalingControllerChannelInfo_t channelInfo;
 
+    uint64_t iceServerConfigExpirationSec;
     uint8_t iceServerConfigsCount;
     SignalingControllerIceServerConfig_t iceServerConfigs[SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT];
 
