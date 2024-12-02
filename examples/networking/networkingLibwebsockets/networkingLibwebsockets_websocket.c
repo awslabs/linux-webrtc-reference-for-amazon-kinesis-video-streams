@@ -327,7 +327,7 @@ static NetworkingLibwebsocketsResult_t generateQueryParameters( char *pQueryStar
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        if( queryLength < strlen( NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME ) || 
+        if( queryLength < strlen( NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME ) ||
             strncmp( pQueryStart, NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME, strlen( NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME ) ) != 0 )
         {
             /* No channel ARN exist. */
@@ -393,7 +393,7 @@ static NetworkingLibwebsocketsResult_t generateQueryParameters( char *pQueryStar
     {
         ret = writeUriEncodedSignedHeaders( &pCurrentWrite, &remainLength );
     }
-    
+
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         *pOutputLength = *pOutputLength - remainLength;
@@ -411,7 +411,7 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
     char *pPath, *pQueryStart, *pUrlEnd;
     size_t pathLength, queryLength, remainLength;
     size_t queryParamsStringLength;
-    
+
     /* Find the path for request. */
     ret = getPathFromUrl( pWebsocketServerInfo->pUrl, pWebsocketServerInfo->urlLength, &pPath, &pathLength );
 
@@ -532,7 +532,7 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
     NetworkingLibwebsocketBufferInfo_t *pRingBufferInfo;
 
     LogVerbose( ( "Websocket callback with reason %d", reason ) );
-    
+
     switch (reason)
     {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
@@ -602,7 +602,7 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
 
         case LWS_CALLBACK_CLIENT_WRITEABLE:
             websocketRet = getRingBufferCurrentIndex( &networkingLibwebsocketContext.websocketTxRingBuffer, &index );
-            
+
             /* If the ring buffer is empty, it returns NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_EMPTY instead of NETWORKING_LIBWEBSOCKETS_RESULT_OK. */
             if( websocketRet == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
             {
@@ -676,6 +676,17 @@ WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
     return ret;
 }
 
+WebsocketResult_t Websocket_Disconnect( void )
+{
+    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+
+    lws_set_timeout( networkingLibwebsocketContext.pLws[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ],
+                     PENDING_TIMEOUT_CLOSE_SEND,
+                     LWS_TO_KILL_SYNC );
+
+    return ret;
+}
+
 WebsocketResult_t Websocket_Init( void * pCredential, WebsocketMessageCallback_t rxCallback, void *pRxCallbackContext )
 {
     WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
@@ -730,7 +741,7 @@ WebsocketResult_t Websocket_Send( char *pMessage, size_t messageLength )
 WebsocketResult_t Websocket_Recv()
 {
     WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    
+
     ret = performLwsRecv();
 
     return ret;

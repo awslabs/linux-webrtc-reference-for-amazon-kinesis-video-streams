@@ -142,7 +142,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
  *
  * @param[in] pNetworkContext Network context.
  */
-void TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext );
+TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext );
 
 /**
  * @brief Receives data from an established TLS connection.

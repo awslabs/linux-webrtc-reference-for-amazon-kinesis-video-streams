@@ -740,10 +740,11 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
 }
 /*-----------------------------------------------------------*/
 
-void TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext )
+TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     int32_t tlsStatus = 0;
+    TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
 
     if( ( pNetworkContext != NULL ) && ( pNetworkContext->pParams != NULL ) )
     {
@@ -766,6 +767,7 @@ void TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext )
                             pNetworkContext,
                             mbedtlsHighLevelCodeOrDefault( tlsStatus ),
                             mbedtlsLowLevelCodeOrDefault( tlsStatus ) ) );
+                returnStatus = TLS_TRANSPORT_INTERNAL_ERROR;
             }
         }
         else
@@ -783,6 +785,14 @@ void TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext )
         /* Free mbed TLS contexts. */
         sslContextFree( &( pTlsTransportParams->sslContext ) );
     }
+    else
+    {
+        LogError( ( "Invalid input parameter(s): Arguments cannot be NULL. pNetworkContext=%p.",
+                    pNetworkContext ) );
+        returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
+    }
+
+    return returnStatus;
 }
 /*-----------------------------------------------------------*/
 

@@ -61,6 +61,8 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
                                                                      uint8_t allowCreate );
 static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
                                    const SignalingControllerReceiveEvent_t * pEvent );
+static void HandleIceServerReconnect( DemoContext_t * pDemoContext,
+                                      const SignalingControllerReceiveEvent_t * pEvent );
 static void HandleLocalCandidateReady( void * pCustomContext,
                                        PeerConnectionIceLocalCandidate_t * pIceLocalCandidate );
 static void HandleSdpOffer( DemoContext_t * pDemoContext,
@@ -870,6 +872,31 @@ static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
     }
 }
 
+static void HandleIceServerReconnect( DemoContext_t * pDemoContext,
+                                      const SignalingControllerReceiveEvent_t * pEvent )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    uint64_t initTimeSec = time( NULL );
+    uint64_t currTimeSec = initTimeSec;
+
+    while( currTimeSec < initTimeSec + SIGNALING_CONNECT_STATE_TIMEOUT_SEC )
+    {
+        ret = SignalingController_IceServerReconnection( &demoContext.signalingControllerContext );
+
+        if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            LogInfo( ( "Ice-Server Reconnection Successful." ) );
+            break;
+        }
+        else
+        {
+            LogError( ( "Unable to Reconnect Ice Server." ) );
+
+            currTimeSec = time( NULL );
+        }
+    }
+}
+
 static const char * GetCandidateTypeString( IceCandidateType_t candidateType )
 {
     const char * ret;
@@ -1033,9 +1060,8 @@ static int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t * pEven
         case SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE:
             HandleRemoteCandidate( &demoContext, pEvent );
             break;
-        case SIGNALING_TYPE_MESSAGE_GO_AWAY:
-            break;
         case SIGNALING_TYPE_MESSAGE_RECONNECT_ICE_SERVER:
+            HandleIceServerReconnect( &demoContext, pEvent );
             break;
         case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
             break;

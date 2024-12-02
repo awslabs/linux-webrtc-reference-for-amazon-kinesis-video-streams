@@ -37,7 +37,14 @@ extern "C" {
 #define SIGNALING_CONTROLLER_AWS_MAX_ARN_LENGTH ( 1024 )
 #define SIGNALING_CONTROLLER_AWS_MAX_CHANNEL_NAME_LENGTH ( 256 )
 
-// Grace period for refreshing the ICE configuration
+/**
+ * Default connect sync API timeout
+ */
+#define SIGNALING_CONNECT_STATE_TIMEOUT_SEC ( 15 )
+
+/**
+ * Grace period for refreshing the ICE configuration
+ */
 #define ICE_CONFIGURATION_REFRESH_GRACE_PERIOD_SEC ( 30 )
 
 typedef enum SignalingControllerEventStatus
@@ -171,6 +178,7 @@ typedef enum SignalingControllerEvent
 {
     SIGNALING_CONTROLLER_EVENT_NONE = 0,
     SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
+    SIGNALING_CONTROLLER_EVENT_RECONNECT_WSS,
 } SignalingControllerEvent_t;
 
 typedef struct SignalingControllerEventMessage
