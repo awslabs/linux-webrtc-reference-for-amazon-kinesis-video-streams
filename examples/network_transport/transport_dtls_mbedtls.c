@@ -1229,7 +1229,7 @@ int32_t createCertificateAndKey( int32_t certificateBits,
                                                                              GENERATED_CERTIFICATE_MAX_SIZE,
                                                                              mbedtls_ctr_drbg_random,
                                                                              pCtrDrbg );
-                                            LogDebug( ( "mbedtls_x509write_crt_der, len: %li", len ) );
+                                            LogDebug( ( "mbedtls_x509write_crt_der, len: %d", len ) );
                                             if( len <= 0 )
                                             {
                                                 retStatus = STATUS_CERTIFICATE_GENERATION_FAILED;

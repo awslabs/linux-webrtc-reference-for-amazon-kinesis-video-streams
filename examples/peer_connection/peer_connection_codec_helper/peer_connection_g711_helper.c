@@ -85,7 +85,7 @@ PeerConnectionResult_t FillFrameG711( PeerConnectionJitterBuffer_t * pJitterBuff
             g711Packet.pPacketData = pPacket->pPacketBuffer;
             g711Packet.packetDataLength = pPacket->packetBufferLength;
             rtpTimestamp = pPacket->rtpTimestamp;
-            LogDebug( ( "Adding packet seq: %u, length: %u, timestamp: %lu", i, g711Packet.packetDataLength, rtpTimestamp ) );
+            LogDebug( ( "Adding packet seq: %u, length: %lu, timestamp: %u", i, g711Packet.packetDataLength, rtpTimestamp ) );
 
             resultG711 = G711Depacketizer_AddPacket( &g711DepacketizerContext,
                                                      &g711Packet );

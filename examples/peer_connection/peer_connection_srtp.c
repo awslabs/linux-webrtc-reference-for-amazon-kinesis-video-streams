@@ -86,7 +86,7 @@ static PeerConnectionResult_t OnJitterBufferFrameReady( void * pCustomContext,
                                                              pSrtpReceiver->frameBuffer,
                                                              &frameBufferLength,
                                                              &rtpTimestamp );
-        LogDebug( ( "Fill frame with result: %d, length: %u, start seq: %u, end seq: %u",
+        LogDebug( ( "Fill frame with result: %d, length: %lu, start seq: %u, end seq: %u",
                     retFillFrame,
                     frameBufferLength,
                     startSequence,
@@ -250,7 +250,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         }
         else
         {
-            LogDebug( ( "Found target buffer, pRollingBufferPacket: %p, packetBufferLength: %u, pPacketBuffer: %p",
+            LogDebug( ( "Found target buffer, pRollingBufferPacket: %p, packetBufferLength: %lu, pPacketBuffer: %p",
                         pRollingBufferPacket,
                         pRollingBufferPacket->packetBufferLength,
                         pRollingBufferPacket->pPacketBuffer ) );
@@ -303,7 +303,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         }
         else
         {
-            LogDebug( ( "Re-send RTP successfully, RTP seq: %u, SSRC: 0x%lx", rtpSeq, ssrc ) );
+            LogDebug( ( "Re-send RTP successfully, RTP seq: %u, SSRC: 0x%x", rtpSeq, ssrc ) );
         }
     }
 
@@ -593,7 +593,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSessio
         }
         else
         {
-            LogVerbose( ( "Decrypt SRTP packet successfully, decrypted length: %u", rtpBufferLength ) );
+            LogVerbose( ( "Decrypt SRTP packet successfully, decrypted length: %lu", rtpBufferLength ) );
         }
     }
 
@@ -687,7 +687,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
         }
         else
         {
-            LogVerbose( ( "Decrypt SRTCP packet successfully, decrypted length: %u", rtcpBufferLength ) );
+            LogVerbose( ( "Decrypt SRTCP packet successfully, decrypted length: %lu", rtcpBufferLength ) );
         }
     }
 

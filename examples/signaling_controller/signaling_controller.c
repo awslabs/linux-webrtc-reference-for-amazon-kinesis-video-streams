@@ -861,7 +861,7 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t * p
             pEventContentSend = &pEventMsg->eventContent;
             callbackEventStatus = SIGNALING_CONTROLLER_EVENT_STATUS_SENT_FAIL;
 
-            LogDebug( ( "Sending WSS message(%u): %.*s",
+            LogDebug( ( "Sending WSS message(%lu): %.*s",
                         pEventContentSend->decodeMessageLength,
                         ( int ) pEventContentSend->decodeMessageLength, pEventContentSend->pDecodeMessage ) );
 
@@ -900,7 +900,7 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t * p
 
             if( ret == SIGNALING_CONTROLLER_RESULT_OK )
             {
-                LogVerbose( ( "Constructed WSS message length: %u, message: \n%.*s", pCtx->constructedSignalingBufferLength,
+                LogVerbose( ( "Constructed WSS message length: %lu, message: \n%.*s", pCtx->constructedSignalingBufferLength,
                               ( int ) pCtx->constructedSignalingBufferLength, pCtx->constructedSignalingBuffer ) );
 
                 /* Finally, sent it to websocket layer. */

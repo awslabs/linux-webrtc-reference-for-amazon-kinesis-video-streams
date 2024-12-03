@@ -513,7 +513,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        LogVerbose( ( "Receiving %d bytes from IP/port: %s/%d", receiveBufferLength,
+        LogVerbose( ( "Receiving %lu bytes from IP/port: %s/%d", receiveBufferLength,
                       IceControllerNet_LogIpAddressInfo( pRemoteIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
                       pRemoteIceEndpoint->transportAddress.port ) );
         IceControllerNet_LogStunPacket( pReceiveBuffer, receiveBufferLength );

@@ -778,7 +778,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                         {
                             TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
                             codecPayloads[ TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
-                            LogDebug( ( "Found H264 codec: %lu", codecPayloads[ TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ] ) );
+                            LogDebug( ( "Found H264 codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ] ) );
                             highestH264Score = h264Score;
                         }
                     }
@@ -798,7 +798,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     {
                         TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT );
                         codecPayloads[ TRANSCEIVER_RTC_CODEC_VP8_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
-                        LogDebug( ( "Found VP8 codec: %lu", codecPayloads[ TRANSCEIVER_RTC_CODEC_VP8_BIT ] ) );
+                        LogDebug( ( "Found VP8 codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_VP8_BIT ] ) );
                     }
                 }
                 else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH ) &&
@@ -816,7 +816,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     {
                         TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT );
                         codecPayloads[ TRANSCEIVER_RTC_CODEC_H265_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
-                        LogDebug( ( "Found H265 codec: %lu", codecPayloads[ TRANSCEIVER_RTC_CODEC_H265_BIT ] ) );
+                        LogDebug( ( "Found H265 codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_H265_BIT ] ) );
                     }
                 }
                 else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH ) &&
@@ -834,7 +834,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     {
                         TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT );
                         codecPayloads[ TRANSCEIVER_RTC_CODEC_OPUS_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
-                        LogDebug( ( "Found OPUS codec: %lu", codecPayloads[ TRANSCEIVER_RTC_CODEC_OPUS_BIT ] ) );
+                        LogDebug( ( "Found OPUS codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_OPUS_BIT ] ) );
                     }
                 }
                 else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH ) &&
@@ -852,7 +852,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     {
                         TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT );
                         codecPayloads[ TRANSCEIVER_RTC_CODEC_MULAW_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
-                        LogDebug( ( "Found MULAW codec: %lu", codecPayloads[ TRANSCEIVER_RTC_CODEC_MULAW_BIT ] ) );
+                        LogDebug( ( "Found MULAW codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_MULAW_BIT ] ) );
                     }
                 }
                 else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH ) &&
@@ -870,7 +870,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     {
                         TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT );
                         codecPayloads[ TRANSCEIVER_RTC_CODEC_ALAW_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
-                        LogDebug( ( "Found ALAW codec: %lu", codecPayloads[ TRANSCEIVER_RTC_CODEC_ALAW_BIT ] ) );
+                        LogDebug( ( "Found ALAW codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_ALAW_BIT ] ) );
                     }
                 }
                 else
@@ -1005,7 +1005,7 @@ static PeerConnectionResult_t GetPayloadTypesFromMedia( SdpControllerMediaDescri
         *pCodecBitMap |= CollectAttributesCodec( pMediaDescription->attributes,
                                                  pMediaDescription->mediaAttributesCount,
                                                  codecPayloads );
-        LogDebug( ( "Scanned codec from remote media description, *pCodecBitMap: 0x%lx", *pCodecBitMap ) );
+        LogDebug( ( "Scanned codec from remote media description, *pCodecBitMap: 0x%x", *pCodecBitMap ) );
     }
 
     return ret;
@@ -1071,7 +1071,7 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        LogDebug( ( "Total transceiverCount: %lu", pSession->transceiverCount ) );
+        LogDebug( ( "Total transceiverCount: %u", pSession->transceiverCount ) );
         for( currentTransceiverIdx = 0; currentTransceiverIdx < pSession->transceiverCount; currentTransceiverIdx++ )
         {
             LogDebug( ( "currentTransceiverIdx: %d", currentTransceiverIdx ) );
@@ -1079,7 +1079,7 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 ( pSession->pTransceivers[currentTransceiverIdx]->trackKind != trackKind ) ||
                 ( ( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap ) == 0 ) )
             {
-                LogDebug( ( "Skip transceiver index: %d, isTransceiverCodecSet[%d]: %d, pTransceivers[%d].trackKind: %d, pTransceivers[%d].codecBitMap: %lx",
+                LogDebug( ( "Skip transceiver index: %d, isTransceiverCodecSet[%d]: %d, pTransceivers[%d].trackKind: %d, pTransceivers[%d].codecBitMap: %x",
                             currentTransceiverIdx,
                             currentTransceiverIdx, isTransceiverCodecSet[currentTransceiverIdx],
                             currentTransceiverIdx, pSession->pTransceivers[currentTransceiverIdx]->trackKind,
@@ -1191,7 +1191,7 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
 
         if( *pIsTargetCodecPayloadSet == 1 )
         {
-            LogDebug( ( "Set payload type successfully, idx: %d, payload: 0x%lx, RTX payload: 0x%lx", currentTransceiverIdx, *pTargetCodecPayload, *pTargetCodecRtxPayload ) );
+            LogDebug( ( "Set payload type successfully, idx: %d, payload: 0x%x, RTX payload: 0x%x", currentTransceiverIdx, *pTargetCodecPayload, *pTargetCodecRtxPayload ) );
         }
         else
         {

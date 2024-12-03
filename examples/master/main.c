@@ -588,7 +588,7 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
     if( ( pRet != NULL ) && ( pRet->isInUse == 0 ) )
     {
         /* Initialize Peer Connection. */
-        LogDebug( ( "Initialize peer connection on idx: %d for client ID(%u): %.*s",
+        LogDebug( ( "Initialize peer connection on idx: %d for client ID(%lu): %.*s",
                     i,
                     remoteClientIdLength,
                     ( int ) remoteClientIdLength,
@@ -626,7 +626,7 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
     ( void ) pCustomContext;
     if( pFrame != NULL )
     {
-        LogDebug( ( "Received video frame with length: %u", pFrame->dataLength ) );
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
     }
     #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
@@ -656,7 +656,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
     ( void ) pCustomContext;
     if( pFrame != NULL )
     {
-        LogDebug( ( "Received audio frame with length: %u", pFrame->dataLength ) );
+        LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
     }
     #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
@@ -1045,7 +1045,7 @@ static int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t * pEven
     LogDebug( ( "Message Type: %x", pEvent->messageType ) );
     LogDebug( ( "Sender ID: %.*s", ( int ) pEvent->remoteClientIdLength, pEvent->pRemoteClientId ) );
     LogDebug( ( "Correlation ID: %.*s", ( int ) pEvent->correlationIdLength, pEvent->pCorrelationId ) );
-    LogDebug( ( "Message Length: %u, Message:", pEvent->decodeMessageLength ) );
+    LogDebug( ( "Message Length: %lu, Message:", pEvent->decodeMessageLength ) );
     LogDebug( ( "%.*s", ( int ) pEvent->decodeMessageLength, pEvent->pDecodeMessage ) );
 
     switch( pEvent->messageType )

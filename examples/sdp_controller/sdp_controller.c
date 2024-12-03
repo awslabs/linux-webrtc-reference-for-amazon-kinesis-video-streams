@@ -306,7 +306,7 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
                 }
                 else
                 {
-                    LogDebug( ( "Found TWCC, ID: %lu", pOffer->quickAccess.twccExtId ) );
+                    LogDebug( ( "Found TWCC, ID: %u", pOffer->quickAccess.twccExtId ) );
                 }
             }
         }

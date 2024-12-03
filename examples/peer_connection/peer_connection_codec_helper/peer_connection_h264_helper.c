@@ -85,7 +85,7 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
             h264Packet.pPacketData = pPacket->pPacketBuffer;
             h264Packet.packetDataLength = pPacket->packetBufferLength;
             rtpTimestamp = pPacket->rtpTimestamp;
-            LogDebug( ( "Adding packet seq: %u, length: %u, timestamp: %lu", i, h264Packet.packetDataLength, rtpTimestamp ) );
+            LogDebug( ( "Adding packet seq: %u, length: %lu, timestamp: %u", i, h264Packet.packetDataLength, rtpTimestamp ) );
 
             resultH264 = H264Depacketizer_AddPacket( &h264DepacketizerContext,
                                                      &h264Packet );

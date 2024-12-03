@@ -86,7 +86,7 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
             opusPacket.pPacketData = pPacket->pPacketBuffer;
             opusPacket.packetDataLength = pPacket->packetBufferLength;
             rtpTimestamp = pPacket->rtpTimestamp;
-            LogDebug( ( "Adding packet seq: %u, length: %u, timestamp: %lu", i, opusPacket.packetDataLength, rtpTimestamp ) );
+            LogDebug( ( "Adding packet seq: %u, length: %lu, timestamp: %u", i, opusPacket.packetDataLength, rtpTimestamp ) );
 
             resultOpus = OpusDepacketizer_AddPacket( &opusDepacketizerContext,
                                                      &opusPacket );
