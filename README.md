@@ -1,5 +1,11 @@
 # FreeRTOS-WebRTC-Application
 
+## Submodule Update
+```
+
+git submodule update --init --recursive
+```
+
 ## compile commands
 ```
 cmake -S . -B build

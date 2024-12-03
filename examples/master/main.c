@@ -49,7 +49,6 @@ DemoContext_t demoContext;
 
 static int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t * pEvent,
                                        void * pUserContext );
-static int initializeApplication( DemoContext_t * pDemoContext );
 static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
                                                 DemoPeerConnectionSession_t * pSession,
                                                 const char * pRemoteClientId,
