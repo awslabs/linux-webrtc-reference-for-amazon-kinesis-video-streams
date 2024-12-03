@@ -33,8 +33,8 @@
 
 #define DEMO_ICE_CANDIDATE_JSON_TEMPLATE "{\"candidate\":\"%.*s\",\"sdpMid\":\"0\",\"sdpMLineIndex\":0}"
 #define DEMO_ICE_CANDIDATE_JSON_MAX_LENGTH ( 1024 )
-#define DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE "candidate:%u 1 udp %lu %d.%d.%d.%d %d typ %s raddr 0.0.0.0 rport 0 generation 0 network-cost 999"
-#define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE "candidate:%u 1 udp %lu %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X "\
+#define DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE "candidate:%lu 1 udp %u %d.%d.%d.%d %d typ %s raddr 0.0.0.0 rport 0 generation 0 network-cost 999"
+#define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X "\
     "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
 
 
@@ -214,7 +214,7 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
         {
             if( pNext - pCurr >= ICE_CONTROLLER_ICE_SERVER_URL_MAX_LENGTH )
             {
-                LogWarn( ( "URL buffer is not enough to store Ice URL, length: %d, URI: %.*s",
+                LogWarn( ( "URL buffer is not enough to store Ice URL, length: %ld, URI: %.*s",
                            pNext - pCurr,
                            ( int ) uriLength, pUri ) );
                 ret = -1;
@@ -324,7 +324,7 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
     else if( *pOutputIceServersCount < 1 )
     {
         /* At least one space for default STUN server. */
-        LogError( ( "Invalid input, buffer size(%u) is insufficient",
+        LogError( ( "Invalid input, buffer size(%lu) is insufficient",
                     *pOutputIceServersCount ) );
         skipProcess = -1;
     }
@@ -397,17 +397,17 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
         {
             if( pIceServerConfigs[ i ].userNameLength > ICE_CONTROLLER_ICE_SERVER_USERNAME_MAX_LENGTH )
             {
-                LogError( ( "The length of Ice server's username is too long to store, length: %u", pIceServerConfigs[ i ].userNameLength ) );
+                LogError( ( "The length of Ice server's username is too long to store, length: %lu", pIceServerConfigs[ i ].userNameLength ) );
                 continue;
             }
             else if( pIceServerConfigs[ i ].passwordLength > ICE_CONTROLLER_ICE_SERVER_PASSWORD_MAX_LENGTH )
             {
-                LogError( ( "The length of Ice server's password is too long to store, length: %u", pIceServerConfigs[ i ].passwordLength ) );
+                LogError( ( "The length of Ice server's password is too long to store, length: %lu", pIceServerConfigs[ i ].passwordLength ) );
                 continue;
             }
             else if( currentIceServerIndex >= *pOutputIceServersCount )
             {
-                LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %u, buffer size: %u",
+                LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %lu, buffer size: %lu",
                            currentIceServerIndex,
                            *pOutputIceServersCount ) );
                 break;
@@ -440,7 +440,7 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
 
                 if( currentIceServerIndex >= *pOutputIceServersCount )
                 {
-                    LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %u, buffer size: %u",
+                    LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %lu, buffer size: %lu",
                                currentIceServerIndex,
                                *pOutputIceServersCount ) );
                     break;
@@ -469,7 +469,7 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
 
     if( remoteClientIdLength > SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH )
     {
-        LogWarn( ( "The remote client ID length(%u) is too long to store.", remoteClientIdLength ) );
+        LogWarn( ( "The remote client ID length(%lu) is too long to store.", remoteClientIdLength ) );
         ret = -1;
     }
 
@@ -698,7 +698,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                                                    &sdpOfferMessageLength );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to parse SDP offer content, result: %d, event message(%u): %.*s.",
+            LogError( ( "Fail to parse SDP offer content, result: %d, event message(%lu): %.*s.",
                         signalingControllerReturn,
                         pEvent->decodeMessageLength,
                         ( int ) pEvent->decodeMessageLength,
@@ -718,7 +718,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                                                       &formalSdpMessageLength );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to deserialize SDP offer newline, result: %d, event message(%u): %.*s.",
+            LogError( ( "Fail to deserialize SDP offer newline, result: %d, event message(%lu): %.*s.",
                         signalingControllerReturn,
                         pEvent->decodeMessageLength,
                         ( int ) pEvent->decodeMessageLength,
@@ -732,7 +732,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
         pPcSession = GetCreatePeerConnectionSession( pDemoContext, pEvent->pRemoteClientId, pEvent->remoteClientIdLength, 1U );
         if( pPcSession == NULL )
         {
-            LogWarn( ( "No available peer connection session for remote client ID(%u): %.*s",
+            LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
                        pEvent->remoteClientIdLength,
                        ( int ) pEvent->remoteClientIdLength,
                        pEvent->pRemoteClientId ) );
@@ -815,7 +815,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                                                     &sdpAnswerMessageLength );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to deserialize SDP offer newline, result: %d, constructed buffer(%u): %.*s",
+            LogError( ( "Fail to deserialize SDP offer newline, result: %d, constructed buffer(%lu): %.*s",
                         signalingControllerReturn,
                         pDemoContext->sdpConstructedBufferLength,
                         ( int ) pDemoContext->sdpConstructedBufferLength,
@@ -853,7 +853,7 @@ static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
     pPcSession = GetCreatePeerConnectionSession( pDemoContext, pEvent->pRemoteClientId, pEvent->remoteClientIdLength, 1U );
     if( pPcSession == NULL )
     {
-        LogWarn( ( "No available peer connection session for remote client ID(%u): %.*s",
+        LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
                    pEvent->remoteClientIdLength,
                    ( int ) pEvent->remoteClientIdLength,
                    pEvent->pRemoteClientId ) );

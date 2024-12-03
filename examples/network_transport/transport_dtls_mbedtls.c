@@ -42,6 +42,7 @@
 #include "mbedtls/sha256.h"
 #include "mbedtls/ssl.h"
 #include "mbedtls/version.h"
+#include "mbedtls/debug.h"
 
 #ifdef MBEDTLS_PSA_CRYPTO_C
 /* MbedTLS PSA Includes */
@@ -460,7 +461,7 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
 
         if( mbedtlsError != PSA_SUCCESS )
         {
-            LogError( ( "Failed to initialize PSA Crypto implementation: %s", ( int )mbedtlsError ) );
+            LogError( ( "Failed to initialize PSA Crypto implementation: %d", ( int )mbedtlsError ) );
             returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
         }
     }
@@ -554,7 +555,7 @@ DTLS_Connect( DtlsNetworkContext_t * pNetworkContext,
 
         if( socketStatus != 0 )
         {
-            LogError( ( "Failed to connect to %s with error %ld.", pHostName, socketStatus ) );
+            LogError( ( "Failed to connect to %s with error %d.", pHostName, socketStatus ) );
             returnStatus = DTLS_TRANSPORT_CONNECT_FAILURE;
         }
     }
@@ -846,7 +847,7 @@ int32_t dtlsCreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
 
     if( bufLen < 3 * size )
     {
-        LogError( ( "buffer to store fingerprint too small buffer: %i size: %li", bufLen, size ) );
+        LogError( ( "buffer to store fingerprint too small buffer: %lu size: %d", bufLen, size ) );
         retStatus = -1;
     }
     else
@@ -906,7 +907,7 @@ int32_t dtlsSessionVerifyRemoteCertificateFingerprint( DtlsSSLContext_t * pSslCo
 
     if( ( pSslContext == NULL ) || ( pExpectedFingerprint == NULL ) || ( CERTIFICATE_FINGERPRINT_LENGTH < fingerprintMaxLen ) )
     {
-        LogError( ( "invalid input, pSslContext || pExpectedFingerprint == NULL || CERTIFICATE_FINGERPRINT_LENGTH < fingerprintMaxLen(%u)", fingerprintMaxLen ) );
+        LogError( ( "invalid input, pSslContext || pExpectedFingerprint == NULL || CERTIFICATE_FINGERPRINT_LENGTH < fingerprintMaxLen(%lu)", fingerprintMaxLen ) );
         retStatus = -1;
     }
     else

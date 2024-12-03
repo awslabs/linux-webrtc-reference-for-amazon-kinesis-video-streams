@@ -600,7 +600,7 @@ static TlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyConte
 
         if( mbedtlsError != PSA_SUCCESS )
         {
-            LogError( ( "Failed to initialize PSA Crypto implementation: %s", ( int ) mbedtlsError ) );
+            LogError( ( "Failed to initialize PSA Crypto implementation: %d", ( int ) mbedtlsError ) );
             returnStatus = TLS_TRANSPORT_INTERNAL_ERROR;
         }
     }
@@ -683,7 +683,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
 
         if( socketStatus != 0 )
         {
-            LogError( ( "Failed to connect to %s with error %ld.",
+            LogError( ( "Failed to connect to %s with error %d.",
                         pHostName,
                         socketStatus ) );
             returnStatus = TLS_TRANSPORT_CONNECT_FAILURE;

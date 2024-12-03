@@ -187,7 +187,7 @@ static IceControllerResult_t parseIceCandidate( const char * pDecodeMessage,
 
     if( ( ret == ICE_CONTROLLER_RESULT_OK ) && ( isCandidateFound == 0 ) )
     {
-        LogError( ( "Fail to find candidate in JSON message(%u): %.*s",
+        LogError( ( "Fail to find candidate in JSON message(%lu): %.*s",
                     decodeMessageLength,
                     ( int ) decodeMessageLength,
                     pDecodeMessage ) );

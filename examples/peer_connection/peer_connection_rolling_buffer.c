@@ -19,7 +19,7 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
         ( rollingbufferDurationSec == 0 ) ||
         ( maxSizePerPacket == 0 ) )
     {
-        LogError( ( "Invalid input, pRollingBuffer: %p, rollingbufferBitRate: %lu, pFrame: %lu, maxSizePerPacket: %u",
+        LogError( ( "Invalid input, pRollingBuffer: %p, rollingbufferBitRate: %u, pFrame: %u, maxSizePerPacket: %lu",
                     pRollingBuffer,
                     rollingbufferBitRate,
                     rollingbufferDurationSec,
@@ -34,7 +34,7 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
         pRtpPacketInfoArray = ( RtpPacketInfo_t * )malloc( pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ) );
         if( pRtpPacketInfoArray == NULL )
         {
-            LogError( ( "No memory available for allocating RTP packet info array with total size %u, capacity: %u, sizeof( RtpPacketInfo_t ): %u",
+            LogError( ( "No memory available for allocating RTP packet info array with total size %lu, capacity: %lu, sizeof( RtpPacketInfo_t ): %lu",
                         pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ),
                         pRollingBuffer->capacity,
                         sizeof( RtpPacketInfo_t ) ) );
@@ -42,7 +42,7 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
         }
         else
         {
-            LogInfo( ( "Allocated RTP packet info array with total size %u, capacity: %u, sizeof( RtpPacketInfo_t ): %u",
+            LogInfo( ( "Allocated RTP packet info array with total size %lu, capacity: %lu, sizeof( RtpPacketInfo_t ): %lu",
                        pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ),
                        pRollingBuffer->capacity,
                        sizeof( RtpPacketInfo_t ) ) );

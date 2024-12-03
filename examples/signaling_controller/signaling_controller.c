@@ -379,7 +379,7 @@ static void printMetrics( SignalingControllerContext_t * pCtx )
     LogInfo( ( "======================================== Channel Info ========================================" ) );
     LogInfo( ( "Signaling Channel Name: %s", pCtx->channelInfo.signalingChannelName ) );
     LogInfo( ( "Signaling Channel ARN: %s", pCtx->channelInfo.signalingChannelARN ) );
-    LogInfo( ( "Signaling Channel TTL (seconds): %lu", pCtx->channelInfo.signalingChannelTtlSeconds ) );
+    LogInfo( ( "Signaling Channel TTL (seconds): %u", pCtx->channelInfo.signalingChannelTtlSeconds ) );
     LogInfo( ( "======================================== Endpoints Info ========================================" ) );
     LogInfo( ( "HTTPS Endpoint: %s", pCtx->channelInfo.endpointHttps ) );
     LogInfo( ( "WSS Endpoint: %s", pCtx->channelInfo.endpointWebsocketSecure ) );
@@ -391,7 +391,7 @@ static void printMetrics( SignalingControllerContext_t * pCtx )
     for( i = 0; i < pCtx->iceServerConfigsCount; i++ )
     {
         LogInfo( ( "======================================== Ice Server[%u] ========================================", i ) );
-        LogInfo( ( "    TTL (secodns): %lu", pCtx->iceServerConfigs[i].ttlSeconds ) );
+        LogInfo( ( "    TTL (secodns): %u", pCtx->iceServerConfigs[i].ttlSeconds ) );
         LogInfo( ( "    User Name: %s", pCtx->iceServerConfigs[i].userName ) );
         LogInfo( ( "    Password: %s", pCtx->iceServerConfigs[i].password ) );
         LogInfo( ( "    URI Count: %u", pCtx->iceServerConfigs[i].uriCount ) );
@@ -427,13 +427,13 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
             }
             else if( pIceServerList[i].userNameLength >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_USER_NAME_LENGTH )
             {
-                LogError( ( "The length of user name of ice server is too long to store, length=%d", pIceServerList[i].userNameLength ) );
+                LogError( ( "The length of user name of ice server is too long to store, length=%lu", pIceServerList[i].userNameLength ) );
                 ret = SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_USERNAME;
                 break;
             }
             else if( pIceServerList[i].passwordLength >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_PASSWORD_LENGTH )
             {
-                LogError( ( "The length of password of ice server is too long to store, length=%d", pIceServerList[i].passwordLength ) );
+                LogError( ( "The length of password of ice server is too long to store, length=%lu", pIceServerList[i].passwordLength ) );
                 ret = SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_PASSWORD;
                 break;
             }
@@ -458,7 +458,7 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
                 }
                 else if( pIceServerList[i].urisLength[j] >= SIGNALING_CONTROLLER_ICE_SERVER_MAX_URI_LENGTH )
                 {
-                    LogError( ( "The length of URI of ice server is too long to store, length=%d", pIceServerList[i].urisLength[j] ) );
+                    LogError( ( "The length of URI of ice server is too long to store, length=%lu", pIceServerList[i].urisLength[j] ) );
                     ret = SIGNALING_CONTROLLER_RESULT_INVALID_ICE_SERVER_URI;
                     break;
                 }
@@ -555,7 +555,7 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
 
         if( retSignal != SIGNALING_RESULT_OK )
         {
-            LogError( ( "Fail to parse describe signaling channel response, return=0x%x, response(%u): %.*s", retSignal, response.bufferLength,
+            LogError( ( "Fail to parse describe signaling channel response, return=0x%x, response(%lu): %.*s", retSignal, response.bufferLength,
                         ( int ) response.bufferLength, response.pBuffer ) );
             ret = SIGNALING_CONTROLLER_RESULT_PARSE_DESCRIBE_SIGNALING_CHANNEL_FAIL;
         }
@@ -592,7 +592,7 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
         if( channelInfo.channelName.channelNameLength > SIGNALING_CONTROLLER_AWS_MAX_CHANNEL_NAME_LENGTH )
         {
             /* Return channel name is longer than expectation. Drop it. */
-            LogError( ( "The channel name is too long to store, length=%d.", channelInfo.channelName.channelNameLength ) );
+            LogError( ( "The channel name is too long to store, length=%lu.", channelInfo.channelName.channelNameLength ) );
             ret = SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_NAME;
         }
         else
@@ -706,7 +706,7 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
     {
         if( endpoints.webrtcEndpoint.endpointLength > SIGNALING_CONTROLLER_AWS_MAX_ARN_LENGTH )
         {
-            LogError( ( "Length of webRTC endpoint name is too long to store, length=%d", endpoints.webrtcEndpoint.endpointLength ) );
+            LogError( ( "Length of webRTC endpoint name is too long to store, length=%lu", endpoints.webrtcEndpoint.endpointLength ) );
             ret = SIGNALING_CONTROLLER_RESULT_INVALID_WEBRTC_ENDPOINT;
         }
         else
@@ -1269,7 +1269,7 @@ SignalingControllerResult_t SignalingController_GetSdpContentFromEventMsg( const
 
         if( jsonResult != JSONSuccess )
         {
-            LogWarn( ( "Input message is not valid JSON message, result: %d, message(%d): %.*s",
+            LogWarn( ( "Input message is not valid JSON message, result: %d, message(%lu): %.*s",
                        jsonResult,
                        eventMessageLength,
                        ( int ) eventMessageLength,
@@ -1313,7 +1313,7 @@ SignalingControllerResult_t SignalingController_GetSdpContentFromEventMsg( const
 
     if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && !isContentFound )
     {
-        LogWarn( ( "No target content found in event message, result: %d, SDP target type \"%s\", message(%d): %.*s",
+        LogWarn( ( "No target content found in event message, result: %d, SDP target type \"%s\", message(%lu): %.*s",
                    jsonResult,
                    pTargetTypeValue,
                    eventMessageLength,
@@ -1359,7 +1359,7 @@ SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( co
 
             if( *pFormalSdpMessageLength < outputLength + lineLength + 2 )
             {
-                LogWarn( ( "Buffer space is not enough to store formal SDP message, buffer size: %u, SDP message(%u): %.*s",
+                LogWarn( ( "Buffer space is not enough to store formal SDP message, buffer size: %lu, SDP message(%lu): %.*s",
                            *pFormalSdpMessageLength,
                            sdpMessageLength,
                            ( int ) sdpMessageLength,
@@ -1425,7 +1425,7 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
 
             if( *pEventSdpMessageLength < outputLength + lineLength + 4 )
             {
-                LogError( ( "The output buffer length(%u) is too small to store serialized %u bytes message.",
+                LogError( ( "The output buffer length(%lu) is too small to store serialized %lu bytes message.",
                             *pEventSdpMessageLength,
                             sdpMessageLength ) );
                 ret = SIGNALING_CONTROLLER_RESULT_SDP_BUFFER_TOO_SMALL;

@@ -41,6 +41,7 @@
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 /* #undef HAVE_ARPA_INET_H */
+#define HAVE_ARPA_INET_H 1
 
 /* Define to 1 if you have the <byteswap.h> header file. */
 /* #undef HAVE_BYTESWAP_H */
@@ -53,6 +54,7 @@
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
 /* #undef HAVE_NETINET_IN_H */
+#define HAVE_NETINET_IN_H 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -125,6 +127,7 @@
 #define debug_print2( mod, format, arg1, arg2 )
 
 // /* Provide htons, htonl, ntohs and ntohl - these are needed by libsrtp. */
+
 // #include <lwip/def.h>
 // #define htons( x ) lwip_htons( x )
 // #define ntohs( x ) lwip_ntohs( x )

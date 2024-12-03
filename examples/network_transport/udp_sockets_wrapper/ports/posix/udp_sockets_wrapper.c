@@ -35,6 +35,7 @@
 /* Standard includes. */
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
 /* FreeRTOS includes. */
 //#include "FreeRTOS.h"
@@ -44,6 +45,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>
+#include <unistd.h>
 
 /* UDP Sockets Wrapper include.*/
 #include "udp_sockets_wrapper.h"

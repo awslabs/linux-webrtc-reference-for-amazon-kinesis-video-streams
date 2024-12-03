@@ -22,8 +22,8 @@
 
 PeerConnectionContext_t peerConnectionContext = { 0 };
 
-extern void IceControllerSocketListener_Task( void * pParameter );
-static void PeerConnection_SessionTask( void * pParameter );
+extern void * IceControllerSocketListener_Task( void * pParameter );
+static void * PeerConnection_SessionTask( void * pParameter );
 static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession );
 static void HandleRequest( PeerConnectionSession_t * pSession,
                            MessageQueueHandler_t * pRequestQueue );
@@ -35,7 +35,7 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
                                      int socketFd,
                                      IceCandidate_t * pRemoteCandidate );
 
-static void PeerConnection_SessionTask( void * pParameter )
+static void * PeerConnection_SessionTask( void * pParameter )
 {
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pParameter;
 
@@ -373,7 +373,7 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
         retUdpTransport = UDP_Sockets_CreateAndAssign( &pDtlsSession->xNetworkContext.pParams->udpSocket, socketFd );
         if( retUdpTransport != UDP_SOCKETS_ERRNO_NONE )
         {
-            LogError( ( "Fail to create UDP socket descriptor, ret: %ld", retUdpTransport ) );
+            LogError( ( "Fail to create UDP socket descriptor, ret: %d", retUdpTransport ) );
             ret = -21;
         }
     }
@@ -719,7 +719,7 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
     int i;
     const Transceiver_t * pTransceiver = NULL;
 
-    LogInfo( ( "Setting default payload types for session, transceiverCount: %lu",
+    LogInfo( ( "Setting default payload types for session, transceiverCount: %u",
                pSession->transceiverCount ) );
     for( i = 0; i < pSession->transceiverCount && ret == PEER_CONNECTION_RESULT_OK; i++ )
     {
@@ -727,7 +727,7 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
 
         if( pTransceiver == NULL )
         {
-            LogError( ( "This is not expected, keep this condition here to avoid NULL accessing, transceiverCount: %lu, current index: %d",
+            LogError( ( "This is not expected, keep this condition here to avoid NULL accessing, transceiverCount: %u, current index: %d",
                         pSession->transceiverCount,
                         i ) );
             ret = PEER_CONNECTION_RESULT_UNKNOWN_TRANSCEIVER;
@@ -900,7 +900,7 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     else if( ( pBufferSessionDescription->pSdpBuffer == NULL ) ||
              ( pBufferSessionDescription->sdpBufferLength > PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH ) )
     {
-        LogError( ( "Invalid input, pBufferSessionDescription->pSdpBuffer: %p, pBufferSessionDescription->sdpBufferLength: %u",
+        LogError( ( "Invalid input, pBufferSessionDescription->pSdpBuffer: %p, pBufferSessionDescription->sdpBufferLength: %lu",
                     pBufferSessionDescription->pSdpBuffer, pBufferSessionDescription->sdpBufferLength ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
@@ -934,13 +934,13 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
         if( ( pTargetRemoteSdp->sdpDescription.quickAccess.pIceUfrag == NULL ) ||
             ( pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength + PEER_CONNECTION_USER_NAME_LENGTH > ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) ) )
         {
-            LogWarn( ( "Remote user name is too long to store, length: %u", pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength ) );
+            LogWarn( ( "Remote user name is too long to store, length: %lu", pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength ) );
             ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_USERNAME;
         }
         else if( ( pTargetRemoteSdp->sdpDescription.quickAccess.pIceUfrag == NULL ) ||
                  ( pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength > PEER_CONNECTION_PASSWORD_LENGTH ) )
         {
-            LogWarn( ( "Remote user password is too long to store, length: %u", pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength ) );
+            LogWarn( ( "Remote user password is too long to store, length: %lu", pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength ) );
             ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_PASSWORD;
         }
         else
@@ -1014,7 +1014,7 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     {
         if( pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidate != NULL )
         {
-            LogInfo( ( "Add remote candidate in SDP offer/answer(%u): %.*s",
+            LogInfo( ( "Add remote candidate in SDP offer/answer(%lu): %.*s",
                        pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLength,
                        ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLength,
                        pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidate ) );
@@ -1158,7 +1158,7 @@ PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSess
 
         if( i == pSession->transceiverCount )
         {
-            LogWarn( ( "No transceiver for SSRC: %lu", ssrc ) );
+            LogWarn( ( "No transceiver for SSRC: %u", ssrc ) );
             ret = PEER_CONNECTION_RESULT_UNKNOWN_SSRC;
         }
     }

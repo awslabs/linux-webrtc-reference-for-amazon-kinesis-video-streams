@@ -5,6 +5,7 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <netdb.h>
+#include <unistd.h>
 
 #include "logging.h"
 #include "ice_controller.h"
@@ -446,7 +447,7 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
                         {
                             /* Free resource that already created. */
                             IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                            LogError( ( "Fail to send local candidate, ret: %ld.", retLocalCandidateReady ) );
+                            LogError( ( "Fail to send local candidate, ret: %d.", retLocalCandidateReady ) );
                             ret = ICE_CONTROLLER_RESULT_CANDIDATE_SEND_FAIL;
                         }
                     }
@@ -549,7 +550,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     else
                     {
                         /* Free resource that already created. */
-                        LogWarn( ( "Fail to send server reflexive candidate to remote peer, ret: %ld.", retLocalCandidateReady ) );
+                        LogWarn( ( "Fail to send server reflexive candidate to remote peer, ret: %d.", retLocalCandidateReady ) );
                     }
                 }
 

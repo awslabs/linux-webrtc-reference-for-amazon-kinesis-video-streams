@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 //#include "FreeRTOS.h"
 //#include "task.h"
@@ -44,7 +45,8 @@ static void * VideoTx_Task( void * pParameter )
     webrtc_frame_t frame;
     char filePath[ MAX_PATH_LEN + 1 ];
     FILE* fp = NULL;
-    size_t frameLength, fileIndex = 0;
+    int32_t fileIndex = 0;
+    size_t frameLength;
     size_t allocatedBufferLength = 0;
 
     if( pVideoContext == NULL )
@@ -112,7 +114,8 @@ static void * AudioTx_Task( void * pParameter )
     webrtc_frame_t frame;
     char filePath[ MAX_PATH_LEN + 1 ];
     FILE* fp = NULL;
-    size_t frameLength, fileIndex = 0;
+    int32_t fileIndex = 0;
+    size_t frameLength;
     size_t allocatedBufferLength = 0;
 
     if( pAudioContext == NULL )

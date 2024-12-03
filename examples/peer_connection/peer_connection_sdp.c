@@ -716,7 +716,7 @@ static uint32_t CalculateH264ScoreByFmtp( SdpControllerAttributes_t * pTargetFmt
         stringResult = StringUtils_ConvertStringToHex( pProfileLevelIdStart, remainLength, &profileLevelId );
         if( stringResult != STRING_UTILS_RESULT_OK )
         {
-            LogWarn( ( "Fail to convert string(%d): %.*s to hex.",
+            LogWarn( ( "Fail to convert string(%lu): %.*s to hex.",
                        remainLength,
                        ( int ) remainLength, pProfileLevelIdStart ) );
             break;
@@ -769,7 +769,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                         stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH, &aptPayload );
                         if( stringResult != STRING_UTILS_RESULT_OK )
                         {
-                            LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                            LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                        stringResult,
                                        ( int ) pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH, pAttributes[i].pAttributeValue,
                                        aptPayload ) );
@@ -789,7 +789,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH, &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
-                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                    stringResult,
                                    ( int ) pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH, pAttributes[i].pAttributeValue,
                                    aptPayload ) );
@@ -807,7 +807,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH, &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
-                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                    stringResult,
                                    ( int ) pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH, pAttributes[i].pAttributeValue,
                                    aptPayload ) );
@@ -825,7 +825,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH, &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
-                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                    stringResult,
                                    ( int ) pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH, pAttributes[i].pAttributeValue,
                                    aptPayload ) );
@@ -843,7 +843,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH, &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
-                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                    stringResult,
                                    ( int ) pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH, pAttributes[i].pAttributeValue,
                                    aptPayload ) );
@@ -861,7 +861,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH, &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
-                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                        LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                    stringResult,
                                    ( int ) pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH, pAttributes[i].pAttributeValue,
                                    aptPayload ) );
@@ -894,7 +894,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                                                               pAttributes[i].attributeValueLength, &rtxPayload );
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
-                    LogWarn( ( "StringUtils_ConvertStringToUl RTX payload fail, result %d, converting %.*s to %lu",
+                    LogWarn( ( "StringUtils_ConvertStringToUl RTX payload fail, result %d, converting %.*s to %u",
                                stringResult,
                                ( int ) pAttributes[i].attributeValueLength, pAttributes[i].pAttributeValue,
                                rtxPayload ) );
@@ -907,7 +907,7 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                                                               stringLength, &aptPayload );
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
-                    LogWarn( ( "StringUtils_ConvertStringToUl APT payload fail, result %d, converting %.*s to %lu",
+                    LogWarn( ( "StringUtils_ConvertStringToUl APT payload fail, result %d, converting %.*s to %u",
                                stringResult,
                                ( int ) pAttributes[i].attributeValueLength, pAttributes[i].pAttributeValue,
                                aptPayload ) );
@@ -1195,7 +1195,7 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
         }
         else
         {
-            LogWarn( ( "Unable to set payload type, mediaCodecBitMap: 0x%lx", *pCodecBitMap ) );
+            LogWarn( ( "Unable to set payload type, mediaCodecBitMap: 0x%x", *pCodecBitMap ) );
         }
     }
 
@@ -1360,7 +1360,7 @@ static void SetReceiverSsrc( PeerConnectionBufferSessionDescription_t * pBufferS
             if( pBufferSessionDescription->sdpDescription.mediaDescriptions[i].mediaNameLength > 0 )
             {
                 LogWarn( ( "The media name is not known source, media name: %.*s",
-                           pBufferSessionDescription->sdpDescription.mediaDescriptions[i].mediaNameLength,
+                           ( int ) pBufferSessionDescription->sdpDescription.mediaDescriptions[i].mediaNameLength,
                            pBufferSessionDescription->sdpDescription.mediaDescriptions[i].pMediaName ) );
             }
             else
@@ -1399,7 +1399,7 @@ static void SetReceiverSsrc( PeerConnectionBufferSessionDescription_t * pBufferS
                                                               pMediaSsrc );
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
-                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                 stringResult,
                                 ( int ) pMediaDescription->attributes[j].attributeValueLength, pMediaDescription->attributes[j].pAttributeValue,
                                 *pMediaSsrc ) );

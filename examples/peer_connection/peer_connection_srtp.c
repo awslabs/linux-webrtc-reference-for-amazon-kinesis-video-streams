@@ -298,7 +298,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
                                                               srtpPacketLength );
         if( resultIceController != ICE_CONTROLLER_RESULT_OK )
         {
-            LogWarn( ( "Fail to re-send RTP packet, ret: %d, seq: %u, SSRC: 0x%lx", resultIceController, rtpSeq, ssrc ) );
+            LogWarn( ( "Fail to re-send RTP packet, ret: %d, seq: %u, SSRC: 0x%x", resultIceController, rtpSeq, ssrc ) );
             ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_RESEND_RTP_PACKET;
         }
         else
@@ -623,7 +623,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSessio
         }
         else
         {
-            LogWarn( ( "Received unknown SSRC: %lu RTP packet.", rtpPacket.header.ssrc ) );
+            LogWarn( ( "Received unknown SSRC: %u RTP packet.", rtpPacket.header.ssrc ) );
             ret = PEER_CONNECTION_RESULT_FAIL_RTP_RX_NO_MATCHING_SSRC;
         }
     }

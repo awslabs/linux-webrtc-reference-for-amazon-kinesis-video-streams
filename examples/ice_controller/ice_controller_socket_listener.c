@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <unistd.h>
 #include "logging.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
@@ -189,7 +190,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                     retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, &peerToPeerConnectionFoundContent );
                     if( retPeerToPeerConnectionFound != 0 )
                     {
-                        LogError( ( "Fail to handle peer to peer connection found event, ret: %ld", retPeerToPeerConnectionFound ) );
+                        LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
                     }
                 }
                 else
@@ -367,7 +368,7 @@ IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t *
     return ret;
 }
 
-void IceControllerSocketListener_Task( void * pParameter )
+void * IceControllerSocketListener_Task( void * pParameter )
 {
     IceControllerContext_t * pCtx = ( IceControllerContext_t * ) pParameter;
 

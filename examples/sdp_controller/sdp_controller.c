@@ -298,7 +298,7 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
                 stringResult = StringUtils_ConvertStringToUl( pAttribute->pAttributeValue, length, &pOffer->quickAccess.twccExtId );
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
-                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                 stringResult,
                                 ( int ) length, pAttribute->pAttributeValue,
                                 pOffer->quickAccess.twccExtId ) );
@@ -477,8 +477,8 @@ static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t * pCtx,
         {
             LogError( ( "Serialize SDP attribute failure, result: %x, attribute name: %.*s, value: %.*s",
                         sdpResult,
-                        ( attribute.attributeNameLength ), attribute.pAttributeName,
-                        ( attribute.attributeValueLength ), attribute.pAttributeValue ) );
+                        ( int ) attribute.attributeNameLength, attribute.pAttributeName,
+                        ( int ) attribute.attributeValueLength, attribute.pAttributeValue ) );
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SERIALIZER_ADD;
         }
     }
@@ -676,7 +676,7 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%lu cname:%.*s",
+        written = snprintf( pCurBuffer, remainSize, "%u cname:%.*s",
                             pTransceiver->ssrc,
                             ( int ) cnameLength, pCname );
         if( written < 0 )
@@ -707,7 +707,7 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%lu msid:%.*s %.*s",
+        written = snprintf( pCurBuffer, remainSize, "%u msid:%.*s %.*s",
                             pTransceiver->ssrc,
                             ( int ) pTransceiver->streamIdLength, pTransceiver->streamId,
                             ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
@@ -739,7 +739,7 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%lu mslabel:%.*s",
+        written = snprintf( pCurBuffer, remainSize, "%u mslabel:%.*s",
                             pTransceiver->ssrc,
                             ( int ) pTransceiver->streamIdLength, pTransceiver->streamId );
         if( written < 0 )
@@ -770,7 +770,7 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%lu label:%.*s",
+        written = snprintf( pCurBuffer, remainSize, "%u label:%.*s",
                             pTransceiver->ssrc,
                             ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
         if( written < 0 )
@@ -837,7 +837,7 @@ static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%lu %s",
+        written = snprintf( pCurBuffer, remainSize, "%u %s",
                             payload,
                             SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB );
         if( written < 0 )
@@ -868,7 +868,7 @@ static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%lu %s",
+        written = snprintf( pCurBuffer, remainSize, "%u %s",
                             payload,
                             SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC );
         if( written < 0 )
@@ -926,7 +926,7 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
     pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP;
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
-    written = snprintf( pCurBuffer, remainSize, "%lu %s",
+    written = snprintf( pCurBuffer, remainSize, "%u %s",
                         payload,
                         SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264 );
     if( written < 0 )
@@ -956,7 +956,7 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%lu %s",
+        written = snprintf( pCurBuffer, remainSize, "%u %s",
                             payload,
                             SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H264 );
         if( written < 0 )
@@ -1002,7 +1002,7 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
 
             if( isOffer )
             {
-                written = snprintf( pCurBuffer, remainSize, "%lu %s",
+                written = snprintf( pCurBuffer, remainSize, "%u %s",
                                     payload,
                                     SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION );
             }
@@ -1068,7 +1068,7 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
     pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP;
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
-    written = snprintf( pCurBuffer, remainSize, "%lu %s",
+    written = snprintf( pCurBuffer, remainSize, "%u %s",
                         payload,
                         SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS );
     if( written < 0 )
@@ -1113,7 +1113,7 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
 
             if( isOffer )
             {
-                written = snprintf( pCurBuffer, remainSize, "%lu %s",
+                written = snprintf( pCurBuffer, remainSize, "%u %s",
                                     payload,
                                     SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS );
             }
@@ -1177,7 +1177,7 @@ static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescr
     pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP;
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
-    written = snprintf( pCurBuffer, remainSize, "%lu %s",
+    written = snprintf( pCurBuffer, remainSize, "%u %s",
                         payload,
                         SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8 );
     if( written < 0 )
@@ -1232,7 +1232,7 @@ static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDes
     pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP;
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
-    written = snprintf( pCurBuffer, remainSize, "%lu %s",
+    written = snprintf( pCurBuffer, remainSize, "%u %s",
                         payload,
                         SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW );
     if( written < 0 )
@@ -1287,7 +1287,7 @@ static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDesc
     pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP;
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
-    written = snprintf( pCurBuffer, remainSize, "%lu %s",
+    written = snprintf( pCurBuffer, remainSize, "%u %s",
                         payload,
                         SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW );
     if( written < 0 )
@@ -1344,7 +1344,7 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
     pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP;
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
-    written = snprintf( pCurBuffer, remainSize, "%lu %s",
+    written = snprintf( pCurBuffer, remainSize, "%u %s",
                         payload,
                         SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265 );
     if( written < 0 )
@@ -1374,7 +1374,7 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%lu %s",
+        written = snprintf( pCurBuffer, remainSize, "%u %s",
                             payload,
                             SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H265 );
         if( written < 0 )
@@ -1420,7 +1420,7 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
 
             if( isOffer )
             {
-                written = snprintf( pCurBuffer, remainSize, "%lu %s",
+                written = snprintf( pCurBuffer, remainSize, "%u %s",
                                     payload,
                                     SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265 );
             }
@@ -1570,7 +1570,7 @@ static const SdpControllerAttributes_t * FindFmtpBasedOnCodec( const SdpControll
     }
     else
     {
-        written = snprintf( codecString, TRANSCEIVER_CODEC_STRING_MAX_LENGTH + 1, "%lu", codec );
+        written = snprintf( codecString, TRANSCEIVER_CODEC_STRING_MAX_LENGTH + 1, "%u", codec );
         if( written < 0 )
         {
             LogError( ( "snprintf return unexpected value %d", written ) );
@@ -2085,7 +2085,7 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferC
                 stringResult = StringUtils_ConvertStringToUl( pValue, valueLength, &pOffer->version );
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
-                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
                                 stringResult,
                                 ( int ) valueLength, pValue,
                                 pOffer->version ) );
@@ -2301,11 +2301,11 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         /* We support only one payload type, so only one payload type printed in media name. */
         if( populateConfiguration.pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
         {
-            written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %lu", populateConfiguration.payloadType );
+            written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
         }
         else
         {
-            written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %lu", populateConfiguration.payloadType );
+            written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
         }
 
         if( written < 0 )
@@ -2492,7 +2492,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         }
         else
         {
-            written = snprintf( pCurBuffer, remainSize, "%lu",
+            written = snprintf( pCurBuffer, remainSize, "%u",
                                 currentMediaIdx );
 
             if( written < 0 )
