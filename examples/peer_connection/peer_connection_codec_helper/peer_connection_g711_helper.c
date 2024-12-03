@@ -253,7 +253,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
 
             pRollingBufferPacket->rtpPacket.header.csrcCount = 0;
             pRollingBufferPacket->rtpPacket.header.pCsrc = NULL;
-            pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE, pFrame->presentationUs );
+            pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_PCM_CLOCKRATE, pFrame->presentationUs );
 
             if( pSession->rtpConfig.twccId > 0 )
             {
