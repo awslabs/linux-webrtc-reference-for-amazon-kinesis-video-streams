@@ -1,5 +1,15 @@
 # FreeRTOS-WebRTC-Application
 
+## Submodule Update
+```
+git submodule update --init --recursive
+```
+## Setup
+1. Copy `examples/master/demo_config_template.h` and rename it to `examples/master/demo_config.h` and set the following:
+   * Set `AWS_KVS_CHANNEL_NAME` to your signaling channel name.
+   * Set `AWS_ACCESS_KEY_ID` to your access key.
+   * Set `AWS_SECRET_ACCESS_KEY` to your secret access key.
+
 ## compile commands
 ```
 cmake -S . -B build
