@@ -90,7 +90,7 @@ static void * VideoTx_Task( void * pParameter )
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
 
                     fseek( fp, 0, SEEK_SET );
-                    if( fread( frame.pData, frameLength, 1, fp ) == frameLength )
+                    if( fread( frame.pData, frameLength, 1, fp ) == 1 )
                     {
                         LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
                         if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
@@ -164,7 +164,7 @@ static void * AudioTx_Task( void * pParameter )
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
 
                     fseek( fp, 0, SEEK_SET );
-                    if( fread( frame.pData, frameLength, 1, fp ) == frameLength )
+                    if( fread( frame.pData, frameLength, 1, fp ) == 1 )
                     {
                         LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
                         if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
