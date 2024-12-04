@@ -90,15 +90,20 @@ static void * VideoTx_Task( void * pParameter )
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
 
                     fseek( fp, 0, SEEK_SET );
-                    fread( frame.pData, frameLength, 1, fp );
+                    if( fread( frame.pData, frameLength, 1, fp ) == frameLength )
+                    {
+                        LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
+                        if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
+                        {
+                            ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
+                        }
+                    }
+                    else
+                    {
+                        LogError( ( "VideoTx_Task: fread failed!" ) );
+                    }
 
                     fclose( fp );
-
-                    LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
-                    if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
-                    {
-                        ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
-                    }
                 }
             }
         #endif
@@ -159,15 +164,20 @@ static void * AudioTx_Task( void * pParameter )
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
 
                     fseek( fp, 0, SEEK_SET );
-                    fread( frame.pData, frameLength, 1, fp );
+                    if( fread( frame.pData, frameLength, 1, fp ) == frameLength )
+                    {
+                        LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
+                        if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
+                        {
+                            ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
+                        }
+                    }
+                    else
+                    {
+                        LogError( ( "AudioTx_Task: fread failed!" ) );
+                    }
 
                     fclose( fp );
-
-                    LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
-                    if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
-                    {
-                        ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
-                    }
                 }
             }
         #endif

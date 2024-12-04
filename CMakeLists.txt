@@ -81,6 +81,8 @@ file(
 set( WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS
      "libraries/crypto/mbedtls/include" )
 
+set_source_files_properties("libraries/crypto/mbedtls/library/ssl_tls.c" PROPERTIES COMPILE_FLAGS -Wno-stringop-overflow)
+
 file(
   GLOB
   WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES
