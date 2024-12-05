@@ -265,7 +265,7 @@ typedef struct PeerConnectionContext PeerConnectionContext_t;
 
 typedef struct PeerConnectionSession
 {
-    PeerConnectionSessionState_t state;
+    volatile PeerConnectionSessionState_t state;
 
     pthread_t pTaskHandler;
 
