@@ -93,6 +93,7 @@ typedef struct Transceiver
     char trackId[ TRANSCEIVER_TRACK_ID_MAX_LENGTH ];
     size_t trackIdLength;
     uint32_t ssrc;
+    uint32_t rtxSsrc;
 
     OnPcEventCallback_t onPcEventCallbackFunc;
     void * pOnPcEventCustomContext;

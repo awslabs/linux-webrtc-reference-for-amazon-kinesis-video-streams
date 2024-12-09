@@ -37,6 +37,8 @@
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT_LENGTH ( 11 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC "ssrc"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP "ssrc-group"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP_LENGTH ( 10 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID "mid"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID_LENGTH ( 3 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV "sendrecv"
@@ -55,6 +57,8 @@
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH ( 6 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264 "H264/90000"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264_LENGTH ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264 "rtx/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264_LENGTH ( 9 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS "opus/48000/2"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS_LENGTH ( 12 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8 "VP8/90000"
@@ -67,10 +71,8 @@
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265_LENGTH ( 10 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB "rtcp-fb"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H264 "nack pli"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H264_LENGTH ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H265 SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H264
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H265_LENGTH SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H264_LENGTH
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE "nack"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE_LENGTH ( 4 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB "goog-remb"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB_LENGTH ( 9 )
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP "fmtp"
@@ -171,7 +173,8 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
                                                       SdpControllerMediaDescription_t * pLocalMediaDescription,
                                                       const Transceiver_t * pTransceiver,
                                                       const char * pCname,
-                                                      size_t cnameLength );
+                                                      size_t cnameLength,
+                                                      uint32_t containRtx );
 static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
                                              uint16_t twccExtId,
                                              char ** ppBuffer,
@@ -180,43 +183,47 @@ static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
 static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                                                                          const Transceiver_t * pTransceiver,
                                                                                                          uint32_t payload,
+                                                                                                         uint32_t rtxPayload,
                                                                                                          char ** ppBuffer,
                                                                                                          size_t * pBufferLength,
                                                                                                          SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                           const Transceiver_t * pTransceiver,
                                                           uint32_t payload,
+                                                          uint32_t rtxPayload,
                                                           char ** ppBuffer,
                                                           size_t * pBufferLength,
                                                           SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                          const Transceiver_t * pTransceiver,
                                                          uint32_t payload,
+                                                         uint32_t rtxPayload,
                                                          char ** ppBuffer,
                                                          size_t * pBufferLength,
                                                          SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                            const Transceiver_t * pTransceiver,
                                                            uint32_t payload,
+                                                           uint32_t rtxPayload,
                                                            char ** ppBuffer,
                                                            size_t * pBufferLength,
                                                            SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                           const Transceiver_t * pTransceiver,
                                                           uint32_t payload,
+                                                          uint32_t rtxPayload,
                                                           char ** ppBuffer,
                                                           size_t * pBufferLength,
                                                           SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                           const Transceiver_t * pTransceiver,
                                                           uint32_t payload,
+                                                          uint32_t rtxPayload,
                                                           char ** ppBuffer,
                                                           size_t * pBufferLength,
                                                           SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-                                                      const Transceiver_t * pTransceiver,
-                                                      uint32_t payload,
-                                                      uint16_t twccExtId,
+                                                      SdpControllerPopulateMediaConfiguration_t populateConfiguration,
                                                       char ** ppBuffer,
                                                       size_t * pBufferLength,
                                                       SdpControllerMediaDescription_t * pLocalMediaDescription );
@@ -640,7 +647,8 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
                                                       SdpControllerMediaDescription_t * pLocalMediaDescription,
                                                       const Transceiver_t * pTransceiver,
                                                       const char * pCname,
-                                                      size_t cnameLength )
+                                                      size_t cnameLength,
+                                                      uint32_t containRtx )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpControllerAttributes_t * pTargetAttribute = NULL;
@@ -663,15 +671,17 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
                     pCname ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
-
-    /* CNAME */
-    if( ret == SDP_CONTROLLER_RESULT_OK )
+    else
     {
         /* Initialize current buffer pointer/size and the pointer to the attribute count. */
         pCurBuffer = *ppBuffer;
         remainSize = *pBufferLength;
         pTargetAttributeCount = &pLocalMediaDescription->mediaAttributesCount;
+    }
 
+    /* CNAME */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
         pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
@@ -794,6 +804,131 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         }
     }
 
+    /* For RTX: cname */
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( containRtx != 0 ) )
+    {
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
+
+        written = snprintf( pCurBuffer, remainSize, "%u cname:%.*s",
+                            pTransceiver->rtxSsrc,
+                            ( int ) cnameLength, pCname );
+        if( written < 0 )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+            LogError( ( "snprintf return unexpected value %d", written ) );
+        }
+        else if( written == remainSize )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+            LogError( ( "buffer has no space for RTX SSRC CNAME" ) );
+        }
+        else
+        {
+            pTargetAttribute->pAttributeValue = pCurBuffer;
+            pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+            *pTargetAttributeCount += 1;
+
+            pCurBuffer += written;
+            remainSize -= written;
+        }
+    }
+
+    /* For RTX: msid */
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( containRtx != 0 ) )
+    {
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
+
+        written = snprintf( pCurBuffer, remainSize, "%u msid:%.*s %.*sRTX",
+                            pTransceiver->rtxSsrc,
+                            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId,
+                            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
+        if( written < 0 )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+            LogError( ( "snprintf return unexpected value %d", written ) );
+        }
+        else if( written == remainSize )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+            LogError( ( "buffer has no space for RTX SSRC msid" ) );
+        }
+        else
+        {
+            pTargetAttribute->pAttributeValue = pCurBuffer;
+            pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+            *pTargetAttributeCount += 1;
+
+            pCurBuffer += written;
+            remainSize -= written;
+        }
+    }
+
+    /* For RTX: mslabel */
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( containRtx != 0 ) )
+    {
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
+
+        written = snprintf( pCurBuffer, remainSize, "%u mslabel:%.*sRTX",
+                            pTransceiver->rtxSsrc,
+                            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId );
+        if( written < 0 )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+            LogError( ( "snprintf return unexpected value %d", written ) );
+        }
+        else if( written == remainSize )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+            LogError( ( "buffer has no space for RTX SSRC mslabel" ) );
+        }
+        else
+        {
+            pTargetAttribute->pAttributeValue = pCurBuffer;
+            pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+            *pTargetAttributeCount += 1;
+
+            pCurBuffer += written;
+            remainSize -= written;
+        }
+    }
+
+    /* For RTX: label */
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( containRtx != 0 ) )
+    {
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
+
+        written = snprintf( pCurBuffer, remainSize, "%u label:%.*sRTX",
+                            pTransceiver->rtxSsrc,
+                            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
+        if( written < 0 )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+            LogError( ( "snprintf return unexpected value %d", written ) );
+        }
+        else if( written == remainSize )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+            LogError( ( "buffer has no space for RTX SSRC label" ) );
+        }
+        else
+        {
+            pTargetAttribute->pAttributeValue = pCurBuffer;
+            pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+            *pTargetAttributeCount += 1;
+
+            pCurBuffer += written;
+            remainSize -= written;
+        }
+    }
+
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         *ppBuffer = pCurBuffer;
@@ -904,6 +1039,7 @@ static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
 static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                                                                          const Transceiver_t * pTransceiver,
                                                                                                          uint32_t payload,
+                                                                                                         uint32_t rtxPayload,
                                                                                                          char ** ppBuffer,
                                                                                                          size_t * pBufferLength,
                                                                                                          SdpControllerMediaDescription_t * pLocalMediaDescription )
@@ -921,7 +1057,7 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
     pCurBuffer = *ppBuffer;
     remainSize = *pBufferLength;
 
-    /* rtpmap */
+    /* rtpmap for payload */
     pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
     pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP;
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
@@ -949,7 +1085,7 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
         remainSize -= written;
     }
 
-    /* rtcp-fb: ${codec} nack pli */
+    /* rtcp-fb: ${codec} nack */
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
@@ -958,7 +1094,7 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
                             payload,
-                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H264 );
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1034,6 +1170,75 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
         }
     }
 
+    /* RTX rtpmap */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        if( rtxPayload != 0 )
+        {
+            pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+            pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP;
+            pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
+
+            written = snprintf( pCurBuffer, remainSize, "%u %s",
+                                rtxPayload,
+                                SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264 );
+            if( written < 0 )
+            {
+                ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+                LogError( ( "snprintf return unexpected value %d", written ) );
+            }
+            else if( written == remainSize )
+            {
+                ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+                LogError( ( "buffer has no space for rtpmap H264 RTX value" ) );
+            }
+            else
+            {
+                pTargetAttribute->pAttributeValue = pCurBuffer;
+                pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+                *pTargetAttributeCount += 1;
+
+                pCurBuffer += written;
+                remainSize -= written;
+            }
+        }
+    }
+
+    /* RTX fmtp */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        if( rtxPayload != 0 )
+        {
+            pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+            pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP;
+            pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH;
+
+            written = snprintf( pCurBuffer, remainSize, "%u apt=%u",
+                                rtxPayload,
+                                payload );
+
+            if( written < 0 )
+            {
+                ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+                LogError( ( "snprintf return unexpected value %d", written ) );
+            }
+            else if( written == remainSize )
+            {
+                ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+                LogError( ( "buffer has no space for RTX fmtp" ) );
+            }
+            else
+            {
+                pTargetAttribute->pAttributeValue = pCurBuffer;
+                pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+                *pTargetAttributeCount += 1;
+
+                pCurBuffer += written;
+                remainSize -= written;
+            }
+        }
+    }
+
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         *ppBuffer = pCurBuffer;
@@ -1046,6 +1251,7 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
 static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                           const Transceiver_t * pTransceiver,
                                                           uint32_t payload,
+                                                          uint32_t rtxPayload,
                                                           char ** ppBuffer,
                                                           size_t * pBufferLength,
                                                           SdpControllerMediaDescription_t * pLocalMediaDescription )
@@ -1089,6 +1295,15 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
 
         pCurBuffer += written;
         remainSize -= written;
+    }
+
+    /* rtpmap for RTX */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        if( rtxPayload != 0 )
+        {
+            LogWarn( ( "Ignore RTX for OPUS, RTX payload: %u.", rtxPayload ) );
+        }
     }
 
     /* fmtp */
@@ -1145,6 +1360,37 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
         }
     }
 
+    /* rtcp-fb: ${codec} nack */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
+
+        written = snprintf( pCurBuffer, remainSize, "%u %s",
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
+        if( written < 0 )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+            LogError( ( "snprintf return unexpected value %d", written ) );
+        }
+        else if( written == remainSize )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+            LogError( ( "buffer has no space for rtcp-fb H264 value" ) );
+        }
+        else
+        {
+            pTargetAttribute->pAttributeValue = pCurBuffer;
+            pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+            *pTargetAttributeCount += 1;
+
+            pCurBuffer += written;
+            remainSize -= written;
+        }
+    }
+
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         *ppBuffer = pCurBuffer;
@@ -1157,6 +1403,7 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
 static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                          const Transceiver_t * pTransceiver,
                                                          uint32_t payload,
+                                                         uint32_t rtxPayload,
                                                          char ** ppBuffer,
                                                          size_t * pBufferLength,
                                                          SdpControllerMediaDescription_t * pLocalMediaDescription )
@@ -1200,6 +1447,15 @@ static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescr
         remainSize -= written;
     }
 
+    /* rtpmap for RTX */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        if( rtxPayload != 0 )
+        {
+            LogWarn( ( "Ignore RTX for VP8, RTX payload: %u.", rtxPayload ) );
+        }
+    }
+
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         *ppBuffer = pCurBuffer;
@@ -1212,6 +1468,7 @@ static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescr
 static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                            const Transceiver_t * pTransceiver,
                                                            uint32_t payload,
+                                                           uint32_t rtxPayload,
                                                            char ** ppBuffer,
                                                            size_t * pBufferLength,
                                                            SdpControllerMediaDescription_t * pLocalMediaDescription )
@@ -1255,6 +1512,46 @@ static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDes
         remainSize -= written;
     }
 
+    /* rtpmap for RTX */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        if( rtxPayload != 0 )
+        {
+            LogWarn( ( "Ignore RTX for MULAW, RTX payload: %u.", rtxPayload ) );
+        }
+    }
+
+    /* rtcp-fb: ${codec} nack */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
+
+        written = snprintf( pCurBuffer, remainSize, "%u %s",
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
+        if( written < 0 )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+            LogError( ( "snprintf return unexpected value %d", written ) );
+        }
+        else if( written == remainSize )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+            LogError( ( "buffer has no space for rtcp-fb H264 value" ) );
+        }
+        else
+        {
+            pTargetAttribute->pAttributeValue = pCurBuffer;
+            pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+            *pTargetAttributeCount += 1;
+
+            pCurBuffer += written;
+            remainSize -= written;
+        }
+    }
+
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         *ppBuffer = pCurBuffer;
@@ -1267,6 +1564,7 @@ static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDes
 static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                           const Transceiver_t * pTransceiver,
                                                           uint32_t payload,
+                                                          uint32_t rtxPayload,
                                                           char ** ppBuffer,
                                                           size_t * pBufferLength,
                                                           SdpControllerMediaDescription_t * pLocalMediaDescription )
@@ -1310,6 +1608,46 @@ static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDesc
         remainSize -= written;
     }
 
+    /* rtpmap for RTX */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        if( rtxPayload != 0 )
+        {
+            LogWarn( ( "Ignore RTX for ALAW, RTX payload: %u.", rtxPayload ) );
+        }
+    }
+
+    /* rtcp-fb: ${codec} nack */
+    if( ret == SDP_CONTROLLER_RESULT_OK )
+    {
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
+
+        written = snprintf( pCurBuffer, remainSize, "%u %s",
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
+        if( written < 0 )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+            LogError( ( "snprintf return unexpected value %d", written ) );
+        }
+        else if( written == remainSize )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+            LogError( ( "buffer has no space for rtcp-fb H264 value" ) );
+        }
+        else
+        {
+            pTargetAttribute->pAttributeValue = pCurBuffer;
+            pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+            *pTargetAttributeCount += 1;
+
+            pCurBuffer += written;
+            remainSize -= written;
+        }
+    }
+
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         *ppBuffer = pCurBuffer;
@@ -1322,6 +1660,7 @@ static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDesc
 static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDescription_t * pRemoteMediaDescription,
                                                           const Transceiver_t * pTransceiver,
                                                           uint32_t payload,
+                                                          uint32_t rtxPayload,
                                                           char ** ppBuffer,
                                                           size_t * pBufferLength,
                                                           SdpControllerMediaDescription_t * pLocalMediaDescription )
@@ -1376,7 +1715,7 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
                             payload,
-                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_H265 );
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1462,14 +1801,15 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
 }
 
 static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-                                                      const Transceiver_t * pTransceiver,
-                                                      uint32_t payload,
-                                                      uint16_t twccExtId,
+                                                      SdpControllerPopulateMediaConfiguration_t populateConfiguration,
                                                       char ** ppBuffer,
                                                       size_t * pBufferLength,
                                                       SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
+    const Transceiver_t * pTransceiver = populateConfiguration.pTransceiver;
+    uint32_t payload = populateConfiguration.payloadType;
+    uint32_t rtxPayload = populateConfiguration.rtxPayloadType;
 
     if( ( ppBuffer == NULL ) ||
         ( pBufferLength == NULL ) ||
@@ -1488,27 +1828,27 @@ static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescript
     {
         if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
         {
-            ret = PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( pRemoteMediaDescription, pTransceiver, payload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
         {
-            ret = PopulateCodecAttributesOpus( pRemoteMediaDescription, pTransceiver, payload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesOpus( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {
-            ret = PopulateCodecAttributesVp8( pRemoteMediaDescription, pTransceiver, payload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesVp8( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
         {
-            ret = PopulateCodecAttributesMulaw( pRemoteMediaDescription, pTransceiver, payload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesMulaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
         {
-            ret = PopulateCodecAttributesAlaw( pRemoteMediaDescription, pTransceiver, payload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesAlaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
-            ret = PopulateCodecAttributesH265( pRemoteMediaDescription, pTransceiver, payload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesH265( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else
         {
@@ -1522,7 +1862,7 @@ static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescript
      * rtcp-fb: ${codec} transport-cc */
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        ret = PopulateRtcpFb( payload, twccExtId, ppBuffer, pBufferLength, pLocalMediaDescription );
+        ret = PopulateRtcpFb( payload, populateConfiguration.twccExtId, ppBuffer, pBufferLength, pLocalMediaDescription );
     }
 
     return ret;
@@ -2301,11 +2641,25 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         /* We support only one payload type, so only one payload type printed in media name. */
         if( populateConfiguration.pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
         {
-            written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+            if( populateConfiguration.rtxPayloadType == 0 )
+            {
+                written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+            }
+            else
+            {
+                written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+            }
         }
         else
         {
-            written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+            if( populateConfiguration.rtxPayloadType == 0 )
+            {
+                written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+            }
+            else
+            {
+                written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+            }
         }
 
         if( written < 0 )
@@ -2348,9 +2702,18 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID;
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID_LENGTH;
 
-        written = snprintf( pCurBuffer, remainSize, "%.*s %.*s",
-                            ( int ) populateConfiguration.pTransceiver->streamIdLength, populateConfiguration.pTransceiver->streamId,
-                            ( int ) populateConfiguration.pTransceiver->trackIdLength, populateConfiguration.pTransceiver->trackId );
+        if( populateConfiguration.rtxPayloadType == 0 )
+        {
+            written = snprintf( pCurBuffer, remainSize, "%.*s %.*s",
+                                ( int ) populateConfiguration.pTransceiver->streamIdLength, populateConfiguration.pTransceiver->streamId,
+                                ( int ) populateConfiguration.pTransceiver->trackIdLength, populateConfiguration.pTransceiver->trackId );
+        }
+        else
+        {
+            written = snprintf( pCurBuffer, remainSize, "%.*s %.*sRTX",
+                                ( int ) populateConfiguration.pTransceiver->streamIdLength, populateConfiguration.pTransceiver->streamId,
+                                ( int ) populateConfiguration.pTransceiver->trackIdLength, populateConfiguration.pTransceiver->trackId );
+        }
 
         if( written < 0 )
         {
@@ -2373,10 +2736,43 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         }
     }
 
+    /* For RTX: ssrc-group */
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( populateConfiguration.rtxPayloadType != 0 ) )
+    {
+        /* msid */
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP_LENGTH;
+
+        written = snprintf( pCurBuffer, remainSize, "FID %u %u",
+                            populateConfiguration.pTransceiver->ssrc,
+                            populateConfiguration.pTransceiver->rtxSsrc );
+
+        if( written < 0 )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
+            LogError( ( "snprintf return unexpected value %d", written ) );
+        }
+        else if( written == remainSize )
+        {
+            ret = SDP_CONTROLLER_RESULT_SDP_POPULATE_BUFFER_TOO_SMALL;
+            LogError( ( "buffer has no space for RTX ssrc-group" ) );
+        }
+        else
+        {
+            pTargetAttribute->pAttributeValue = pCurBuffer;
+            pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+            *pTargetAttributeCount += 1;
+
+            pCurBuffer += written;
+            remainSize -= written;
+        }
+    }
+
     /* ssrc */
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        ret = PopulateTransceiverSsrc( &pCurBuffer, &remainSize, pLocalMediaDescription, populateConfiguration.pTransceiver, populateConfiguration.pCname, populateConfiguration.cnameLength );
+        ret = PopulateTransceiverSsrc( &pCurBuffer, &remainSize, pLocalMediaDescription, populateConfiguration.pTransceiver, populateConfiguration.pCname, populateConfiguration.cnameLength, populateConfiguration.rtxPayloadType == 0 ? 0 : 1 );
     }
 
     /* rtcp, ice-ufrag, ice-pwd */
@@ -2619,9 +3015,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         ret = PopulateCodecAttributes( pRemoteMediaDescription,
-                                       populateConfiguration.pTransceiver,
-                                       populateConfiguration.payloadType,
-                                       populateConfiguration.twccExtId,
+                                       populateConfiguration,
                                        &pCurBuffer,
                                        &remainSize,
                                        pLocalMediaDescription );
