@@ -80,7 +80,7 @@ const char * StringUtils_StrStr( const char * pStr,
     }
     else if( pStr && pPattern )
     {
-        for( i = 0; i < strLength - patternLength; i++ )
+        for( i = 0; i <= strLength - patternLength; i++ )
         {
             pCurrentStr = &pStr[i];
             pCurrentPattern = pPattern;

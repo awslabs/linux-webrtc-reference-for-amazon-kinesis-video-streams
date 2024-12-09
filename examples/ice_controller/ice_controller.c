@@ -57,7 +57,9 @@ static void onConnectivityCheckTimerExpire( void * pContext )
 
     if( pCtx->onIceEventCallbackFunc )
     {
-        pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext, ICE_CONTROLLER_CB_EVENT_CONNECTIVITY_CHECK_TIMEOUT, NULL );
+        pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                      ICE_CONTROLLER_CB_EVENT_CONNECTIVITY_CHECK_TIMEOUT,
+                                      NULL );
     }
 }
 
@@ -458,7 +460,8 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         /* Mutex can only be created in executing scheduler. */
-        if( pthread_mutex_init( &( pCtx->socketMutex ), NULL ) != 0 )
+        if( pthread_mutex_init( &( pCtx->socketMutex ),
+                                NULL ) != 0 )
         {
             LogError( ( "Fail to create mutex for Ice controller." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_CREATE;
@@ -468,7 +471,9 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
     /* Initialize socket listener task. */
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        ret = IceControllerSocketListener_Init( pCtx, onRecvRtpRtcpPacketCallbackFunc, pOnRecvRtpRtcpPacketCallbackContext );
+        ret = IceControllerSocketListener_Init( pCtx,
+                                                onRecvRtpRtcpPacketCallbackFunc,
+                                                pOnRecvRtpRtcpPacketCallbackContext );
     }
 
     return ret;
@@ -519,11 +524,19 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecod
 
     /* deserialize candidate string into structure. */
     while( ret == ICE_CONTROLLER_RESULT_OK &&
-           ( pNext = memchr( pCurr,
-                             ' ',
-                             pTail - pCurr ) ) != NULL &&
+           pCurr < pTail &&
            deserializerState <= ICE_CONTROLLER_CANDIDATE_DESERIALIZER_STATE_MAX )
     {
+        pNext = memchr( pCurr,
+                        ' ',
+                        pTail - pCurr );
+
+        if( pNext == NULL )
+        {
+            // If no space is found, set pNext to the end of the string
+            pNext = pTail;
+        }
+
         tokenLength = pNext - pCurr;
 
         switch( deserializerState )
@@ -820,7 +833,9 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
                 break;
             }
 
-            memcpy( &pCtx->iceServers[ pCtx->iceServersCount ], &pIceServers[i], sizeof( IceControllerIceServer_t ) );
+            memcpy( &pCtx->iceServers[ pCtx->iceServersCount ],
+                    &pIceServers[i],
+                    sizeof( IceControllerIceServer_t ) );
             dnsResult = IceControllerNet_DnsLookUp( pCtx->iceServers[ pCtx->iceServersCount ].url,
                                                     &pCtx->iceServers[ pCtx->iceServersCount ].iceEndpoint.transportAddress );
             if( dnsResult == ICE_CONTROLLER_RESULT_OK )
