@@ -359,7 +359,8 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             IceControllerNet_LogStunPacket( stunBuffer,
                                             stunBufferLength );
 
-            ret = IceControllerNet_SendPacket( pSocketContext,
+            ret = IceControllerNet_SendPacket( pCtx,
+                                               pSocketContext,
                                                &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint,
                                                stunBuffer,
                                                stunBufferLength );
@@ -786,7 +787,8 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        ret = IceControllerNet_SendPacket( pCtx->pNominatedSocketContext,
+        ret = IceControllerNet_SendPacket( pCtx,
+                                           pCtx->pNominatedSocketContext,
                                            &pCtx->pNominatedSocketContext->pRemoteCandidate->endpoint,
                                            pBuffer,
                                            bufferLength );

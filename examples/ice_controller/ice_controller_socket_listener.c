@@ -27,25 +27,19 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
 
     if( skipProcess == 0 )
     {
-        if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
+        LogDebug( ( "Closing sockets other than: %d", pChosenSocketContext->socketFd ) );
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
-            LogDebug( ( "Closing sockets other than: %d", pChosenSocketContext->socketFd ) );
-            for( i = 0; i < pCtx->socketsContextsCount; i++ )
+            if( pCtx->socketsContexts[i].socketFd != pChosenSocketContext->socketFd )
             {
-                if( pCtx->socketsContexts[i].socketFd != pChosenSocketContext->socketFd )
-                {
-                    /* Release all unused socket contexts. */
-                    LogDebug( ( "Closing socket: %d", pCtx->socketsContexts[i].socketFd ) );
-                    IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
-                }
+                /* Release all unused socket contexts. */
+                LogDebug( ( "Closing socket: %d", pCtx->socketsContexts[i].socketFd ) );
+                IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
             }
-
-            /* Found DTLS socket context, update the state. */
-            pChosenSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE;
-
-            /* We have finished accessing the shared resource.  Release the mutex. */
-            pthread_mutex_unlock( &( pCtx->socketMutex ) );
         }
+
+        /* Found DTLS socket context, update the state. */
+        pChosenSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE;
     }
 }
 
@@ -290,7 +284,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < fdsCount; i++ )
         {
-            if( FD_ISSET( fds[i], &rfds ) )
+            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
             {
                 LogVerbose( ( "Detect packets on fd %d, idx: %d", fds[i], i ) );
 
