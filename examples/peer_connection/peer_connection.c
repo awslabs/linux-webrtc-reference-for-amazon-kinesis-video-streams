@@ -39,12 +39,12 @@ static void * PeerConnection_SessionTask( void * pParameter )
 {
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pParameter;
 
-    for( ; pSession->state < PEER_CONNECTION_SESSION_STATE_START ; )
+    for( ; pSession->state < PEER_CONNECTION_SESSION_STATE_START; )
     {
         //vTaskDelay( pdMS_TO_TICKS( 50 ) );
     }
 
-    LogInfo( ("Start peer connection session task.") );
+    LogInfo( ( "Start peer connection session task." ) );
 
     SessionProcessEndlessLoop( pSession );
 
@@ -324,18 +324,18 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
                 pPeerToPeerConnectionFoundMsg = &pEventMsg->iceControllerCallbackContent.peerTopeerConnectionFoundMsg;
                 pLocalIpPos = inet_ntop( AF_INET,
-                                        pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.address,
-                                        localIpAddr,
-                                        INET_ADDRSTRLEN );
+                                         pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.address,
+                                         localIpAddr,
+                                         INET_ADDRSTRLEN );
                 pRemoteIpPos = inet_ntop( AF_INET,
-                                        pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.address,
-                                        remoteIpAddr,
-                                        INET_ADDRSTRLEN );
+                                          pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.address,
+                                          remoteIpAddr,
+                                          INET_ADDRSTRLEN );
                 LogInfo( ( "Found P2P connection between source %s:%d with remote %s:%d",
-                            pLocalIpPos? pLocalIpPos:"UNKNOWN",
-                            pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.port,
-                            pRemoteIpPos? pRemoteIpPos:"UNKNOWN",
-                            pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.port) );
+                           pLocalIpPos ? pLocalIpPos : "UNKNOWN",
+                           pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.port,
+                           pRemoteIpPos ? pRemoteIpPos : "UNKNOWN",
+                           pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.port ) );
 
                 ret = OnIceEventPeerToPeerConnectionFound( pSession, pPeerToPeerConnectionFoundMsg->socketFd, pPeerToPeerConnectionFoundMsg->pRemoteCandidate );
                 break;
@@ -618,6 +618,7 @@ static PeerConnectionResult_t AllocateTransceiver( PeerConnectionSession_t * pSe
         {
             pSession->pTransceivers[ pSession->transceiverCount++ ] = pTransceiver;
             pTransceiver->ssrc = ( uint32_t ) rand();
+            pTransceiver->rtxSsrc = ( uint32_t ) rand();
         }
         else
         {
@@ -1221,11 +1222,11 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
         {
-            ret = PeerConnectionSrtp_WriteG711Frame (pSession, pTransceiver, pFrame);
+            ret = PeerConnectionSrtp_WriteG711Frame( pSession, pTransceiver, pFrame );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
         {
-            ret = PeerConnectionSrtp_WriteG711Frame (pSession, pTransceiver, pFrame);
+            ret = PeerConnectionSrtp_WriteG711Frame( pSession, pTransceiver, pFrame );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {

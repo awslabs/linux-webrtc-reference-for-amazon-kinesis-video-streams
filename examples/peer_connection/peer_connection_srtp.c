@@ -209,9 +209,11 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
             if( ( pSession->rtpConfig.videoCodecRtxPayload != 0 ) &&
                 ( pSession->rtpConfig.videoCodecRtxPayload != pSession->rtpConfig.videoCodecPayload ) )
             {
+                /* Use RTX payload type, sequence number and ssrc for re-transmission. */
                 bufferAfterEncrypt = 0;
                 payloadType = pSession->rtpConfig.videoCodecRtxPayload;
                 pRtpSeq = &pSession->rtpConfig.videoRtxSequenceNumber;
+                ssrc = pTransceiver->rtxSsrc;
             }
         }
         else
@@ -221,9 +223,11 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
             if( ( pSession->rtpConfig.audioCodecRtxPayload != 0 ) &&
                 ( pSession->rtpConfig.audioCodecRtxPayload != pSession->rtpConfig.audioCodecPayload ) )
             {
+                /* Use RTX payload type, sequence number and ssrc for re-transmission. */
                 bufferAfterEncrypt = 0;
                 payloadType = pSession->rtpConfig.audioCodecRtxPayload;
                 pRtpSeq = &pSession->rtpConfig.audioRtxSequenceNumber;
+                ssrc = pTransceiver->rtxSsrc;
             }
         }
 
@@ -706,6 +710,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        LogDebug( ( "Receiving RTCP type: %d", rtcpPacket.header.packetType ) );
         switch( rtcpPacket.header.packetType )
         {
             case RTCP_PACKET_FIR:
