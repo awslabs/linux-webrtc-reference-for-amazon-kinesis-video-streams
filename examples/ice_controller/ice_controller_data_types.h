@@ -177,7 +177,6 @@ typedef struct IceControllerCandidate
 typedef struct IceControllerSocketContext
 {
     IceControllerSocketContextState_t state;
-    IceCandidateType_t candidateType; /* server socket of host/srflx/relay candidate or client socket connecting with remote. */
     IceCandidate_t * pLocalCandidate;
     IceCandidate_t * pRemoteCandidate;
     int socketFd;
@@ -207,7 +206,7 @@ typedef struct IceControllerStunMsgHeader
 
 typedef struct IceControllerSocketListenerContext
 {
-    uint8_t executeSocketListener;
+    volatile uint8_t executeSocketListener;
     OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc;
     void * pOnRecvRtpRtcpPacketCallbackCustomContext;
 } IceControllerSocketListenerContext_t;
