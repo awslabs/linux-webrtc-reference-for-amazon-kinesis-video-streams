@@ -1,0 +1,36 @@
+[submodule "libraries/networking/libwebsockets"]
+	path = libraries/networking/libwebsockets
+	url = https://github.com/warmcat/libwebsockets
+[submodule "libraries/components/amazon-kinesis-video-streams-signaling"]
+	path = libraries/components/amazon-kinesis-video-streams-signaling
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-signaling.git
+[submodule "libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk"]
+	path = libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk
+	url = https://github.com/aws/SigV4-for-AWS-IoT-embedded-sdk
+[submodule "libraries/components/amazon-kinesis-video-streams-sdp"]
+	path = libraries/components/amazon-kinesis-video-streams-sdp
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-sdp/
+[submodule "libraries/json/coreJSON"]
+	path = libraries/json/coreJSON
+	url = https://github.com/FreeRTOS/coreJSON
+[submodule "libraries/components/amazon-kinesis-video-streams-ice"]
+	path = libraries/components/amazon-kinesis-video-streams-ice
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-ice.git
+[submodule "libraries/components/amazon-kinesis-video-streams-stun"]
+	path = libraries/components/amazon-kinesis-video-streams-stun
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-stun
+[submodule "libraries/crypto/mbedtls"]
+	path = libraries/crypto/mbedtls
+	url = https://github.com/Mbed-TLS/mbedtls.git
+[submodule "libraries/protocols/coreHTTP"]
+	path = libraries/protocols/coreHTTP
+	url = https://github.com/FreeRTOS/coreHTTP.git
+[submodule "libraries/protocols/libsrtp"]
+	path = libraries/protocols/libsrtp
+	url = https://github.com/cisco/libsrtp.git
+[submodule "libraries/components/amazon-kinesis-video-streams-rtcp"]
+	path = libraries/components/amazon-kinesis-video-streams-rtcp
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-rtcp.git
+[submodule "libraries/components/amazon-kinesis-video-streams-rtp"]
+	path = libraries/components/amazon-kinesis-video-streams-rtp
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-rtp.git
