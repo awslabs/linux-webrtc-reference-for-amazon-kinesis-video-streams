@@ -1089,7 +1089,6 @@ int main()
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerCredential_t signalingControllerCred;
-    pthread_t threadIceController;
 
     srand( time( NULL ) );
 
@@ -1097,17 +1096,17 @@ int main()
 
     memset( &demoContext, 0, sizeof( DemoContext_t ) );
 
-    memset( &signalingControllerCred, 0, sizeof(SignalingControllerCredential_t) );
+    memset( &signalingControllerCred, 0, sizeof( SignalingControllerCredential_t ) );
     signalingControllerCred.pRegion = AWS_REGION;
     signalingControllerCred.regionLength = strlen( AWS_REGION );
     signalingControllerCred.pChannelName = AWS_KVS_CHANNEL_NAME;
     signalingControllerCred.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
     signalingControllerCred.pUserAgentName = AWS_KVS_AGENT_NAME;
-    signalingControllerCred.userAgentNameLength = strlen(AWS_KVS_AGENT_NAME);
+    signalingControllerCred.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
     signalingControllerCred.pAccessKeyId = AWS_ACCESS_KEY_ID;
-    signalingControllerCred.accessKeyIdLength = strlen(AWS_ACCESS_KEY_ID);
+    signalingControllerCred.accessKeyIdLength = strlen( AWS_ACCESS_KEY_ID );
     signalingControllerCred.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-    signalingControllerCred.secretAccessKeyLength = strlen(AWS_SECRET_ACCESS_KEY);
+    signalingControllerCred.secretAccessKeyLength = strlen( AWS_SECRET_ACCESS_KEY );
     signalingControllerCred.pCaCertPath = AWS_CA_CERT_PATH;
 
     signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &signalingControllerCred, handleSignalingMessage, NULL );
@@ -1140,11 +1139,6 @@ int main()
             ret = -1;
         }
     }
-
-    // if( ret == 0 )
-    // {
-    //     pthread_create( &threadIceController, NULL, executeIceController, &demoContext.iceControllerContext );
-    // }
 
     if( ret == 0 )
     {

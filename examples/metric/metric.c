@@ -85,6 +85,8 @@ static void * Metric_Task( void * pParameter )
         //vTaskDelay( pdMS_TO_TICKS( METRIC_PRINT_INTERVAL_MS ) );
         usleep( METRIC_PRINT_INTERVAL_MS * 1000 );
     }
+
+    return 0;
 }
 
 void Metric_Init( void )
@@ -94,7 +96,7 @@ void Metric_Init( void )
 
     memset( &context, 0, sizeof( MetricContext_t ) );
 
-    retval = pthread_mutex_init( &( context.mutex ) , NULL );
+    retval = pthread_mutex_init( &( context.mutex ), NULL );
     if( retval != 0 )
     {
         LogError( ( "Fail to create mutex for Metric." ) );
