@@ -15,6 +15,7 @@ IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
 IceControllerResult_t IceControllerNet_Htons( uint16_t port,
                                               uint16_t * pOutPort );
 IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx );
+IceControllerResult_t IceControllerNet_AddRelayCandidates( IceControllerContext_t * pCtx );
 IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t * pCtx,
                                                          IceControllerSocketContext_t * pSocketContext,
                                                          uint8_t * pReceiveBuffer,

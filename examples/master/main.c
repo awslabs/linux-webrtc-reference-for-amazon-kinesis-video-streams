@@ -911,7 +911,7 @@ static const char * GetCandidateTypeString( IceCandidateType_t candidateType )
         case ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
             ret = DEMO_CANDIDATE_TYPE_SRFLX_STRING;
             break;
-        case ICE_CANDIDATE_TYPE_RELAYED:
+        case ICE_CANDIDATE_TYPE_RELAY:
             ret = DEMO_CANDIDATE_TYPE_RELAY_STRING;
             break;
         default:
@@ -1097,17 +1097,17 @@ int main()
 
     memset( &demoContext, 0, sizeof( DemoContext_t ) );
 
-    memset( &signalingControllerCred, 0, sizeof(SignalingControllerCredential_t) );
+    memset( &signalingControllerCred, 0, sizeof( SignalingControllerCredential_t ) );
     signalingControllerCred.pRegion = AWS_REGION;
     signalingControllerCred.regionLength = strlen( AWS_REGION );
     signalingControllerCred.pChannelName = AWS_KVS_CHANNEL_NAME;
     signalingControllerCred.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
     signalingControllerCred.pUserAgentName = AWS_KVS_AGENT_NAME;
-    signalingControllerCred.userAgentNameLength = strlen(AWS_KVS_AGENT_NAME);
+    signalingControllerCred.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
     signalingControllerCred.pAccessKeyId = AWS_ACCESS_KEY_ID;
-    signalingControllerCred.accessKeyIdLength = strlen(AWS_ACCESS_KEY_ID);
+    signalingControllerCred.accessKeyIdLength = strlen( AWS_ACCESS_KEY_ID );
     signalingControllerCred.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-    signalingControllerCred.secretAccessKeyLength = strlen(AWS_SECRET_ACCESS_KEY);
+    signalingControllerCred.secretAccessKeyLength = strlen( AWS_SECRET_ACCESS_KEY );
     signalingControllerCred.pCaCertPath = AWS_CA_CERT_PATH;
 
     signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &signalingControllerCred, handleSignalingMessage, NULL );
