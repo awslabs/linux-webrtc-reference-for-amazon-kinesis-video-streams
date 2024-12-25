@@ -689,6 +689,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                                                     pRemoteIceEndpoint,
                                                     &pTransactionIdBuffer,
                                                     &pCandidatePair );
+        LogInfo( ( "Ice_HandleStunPacket return %d", iceHandleStunResult ) );
 
         switch( iceHandleStunResult )
         {
@@ -711,11 +712,39 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                         LogWarn( ( "Fail to send server reflexive candidate to remote peer, ret: %d.", retLocalCandidateReady ) );
                     }
                 }
+                else
+                {
+                    LogError( ( "Unable to send srflx candidate ready message." ) );
+                }
 
                 pCtx->metrics.pendingSrflxCandidateNum--;
                 if( pCtx->metrics.pendingSrflxCandidateNum == 0 )
                 {
                     Metric_EndEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
+                }
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_UPDATED_RELAY_CANDIDATE_ADDRESS:
+                if( pCtx->onIceEventCallbackFunc )
+                {
+                    /* Update socket context. */
+                    UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY, pSocketContext->pLocalCandidate, pSocketContext->pRemoteCandidate, pSocketContext->pIceServerEndpoint );
+
+                    localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.pLocalCandidate = pSocketContext->pLocalCandidate;
+                    localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.localCandidateIndex = pCtx->candidateFoundationCounter;
+                    retLocalCandidateReady = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext, ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY, &localCandidateReadyContent );
+                    if( retLocalCandidateReady == 0 )
+                    {
+                        pCtx->candidateFoundationCounter++;
+                    }
+                    else
+                    {
+                        /* Free resource that already created. */
+                        LogWarn( ( "Fail to send server reflexive candidate to remote peer, ret: %d.", retLocalCandidateReady ) );
+                    }
+                }
+                else
+                {
+                    LogError( ( "Unable to send relay candidate ready message." ) );
                 }
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_TRIGGERED_CHECK:
@@ -764,6 +793,26 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                             }
                             ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
                         }
+                    }
+                }
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_SEND_CHANNEL_BIND_REQUEST:
+                iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
+                                                       pCandidatePair,
+                                                       sentStunBuffer,
+                                                       &sentStunBufferLength );
+                if( iceResult != ICE_RESULT_OK )
+                {
+                    LogWarn( ( "Unable to create channel binding message, result: %d", iceResult ) );
+                }
+                else
+                {
+                    LogVerbose( ( "Sending channel binding message" ) );
+                    IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+
+                    if( IceControllerNet_SendPacket( pCtx, pSocketContext, &pCandidatePair->pRemoteCandidate->endpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                    {
+                        LogWarn( ( "Unable to send channel binding message" ) );
                     }
                 }
                 break;

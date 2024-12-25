@@ -13,6 +13,7 @@
 #include "mbedtls/md.h"
 #include "mbedtls/md5.h"
 #include "metric.h"
+#include "networking_utils.h"
 
 #define ICE_CONTROLLER_MESSAGE_QUEUE_NAME "/WebrtcApplicationIceController"
 #define ICE_CONTROLLER_TIMER_NAME "IceControllerTimer"
@@ -180,6 +181,11 @@ static IceResult_t IceController_MbedtlsMd5( const uint8_t * pBuffer,
     }
 
     return ret;
+}
+
+static uint64_t IceController_GetCurrentTimeSeconds( void )
+{
+    return NetworkingUtils_GetCurrentTimeSec( NULL );
 }
 
 static IceControllerResult_t parseIceCandidate( const char * pDecodeMessage,
@@ -365,6 +371,8 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             ret = ICE_CONTROLLER_RESULT_OK;
             stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
 
+            LogInfo( ( "Candidate Pair state is %d", pCtx->iceContext.pCandidatePairs[i].state ) );
+
             iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
                                                    &pCtx->iceContext.pCandidatePairs[i],
                                                    stunBuffer,
@@ -416,11 +424,23 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             IceControllerNet_LogStunPacket( stunBuffer,
                                             stunBufferLength );
 
-            ret = IceControllerNet_SendPacket( pCtx,
-                                               pSocketContext,
-                                               &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint,
-                                               stunBuffer,
-                                               stunBufferLength );
+            if( pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->candidateType != ICE_CANDIDATE_TYPE_RELAY )
+            {
+                ret = IceControllerNet_SendPacket( pCtx,
+                                                   pSocketContext,
+                                                   &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint,
+                                                   stunBuffer,
+                                                   stunBufferLength );
+            }
+            else
+            {
+                ret = IceControllerNet_SendPacket( pCtx,
+                                                   pSocketContext,
+                                                   pSocketContext->pIceServerEndpoint,
+                                                   stunBuffer,
+                                                   stunBufferLength );
+            }
+
             if( ret != ICE_CONTROLLER_RESULT_OK )
             {
                 LogWarn( ( "Unable to send packet to remote address, result: %d", ret ) );
@@ -847,6 +867,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         iceInitInfo.cryptoFunctions.crc32Fxn = IceController_CalculateCrc32;
         iceInitInfo.cryptoFunctions.hmacFxn = IceController_MbedtlsHmac;
         iceInitInfo.cryptoFunctions.md5Fxn = IceController_MbedtlsMd5;
+        iceInitInfo.getCurrentTimeSecondsFxn = IceController_GetCurrentTimeSeconds;
         iceInitInfo.isControlling = 0;
         iceInitInfo.pStunBindingRequestTransactionIdStore = &pCtx->transactionIdStore;
 
