@@ -810,9 +810,35 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     LogVerbose( ( "Sending channel binding message" ) );
                     IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
 
-                    if( IceControllerNet_SendPacket( pCtx, pSocketContext, &pCandidatePair->pRemoteCandidate->endpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                    if( IceControllerNet_SendPacket( pCtx, pSocketContext, pSocketContext->pIceServerEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
                     {
                         LogWarn( ( "Unable to send channel binding message" ) );
+                    }
+                }
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_SEND_CONNECTIVITY_BINDING_REQUEST:
+                iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
+                                                       pCandidatePair,
+                                                       sentStunBuffer,
+                                                       &sentStunBufferLength );
+                if( iceResult != ICE_RESULT_OK )
+                {
+                    LogWarn( ( "Unable to STUN binding request  message, result: %d", iceResult ) );
+                }
+                else
+                {
+                    LogVerbose( ( "Sending STUN binding request message" ) );
+                    IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+                    iceResult = Ice_AppendTurnChannelHeader( &pCtx->iceContext,
+                                                             pCandidatePair,
+                                                             sentStunBuffer,
+                                                             &sentStunBufferLength,
+                                                             ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE );
+                    LogInfo( ( "Sending data through channel number 0x%02x%02x with length 0x%02x%02x", sentStunBuffer[0], sentStunBuffer[1], sentStunBuffer[2], sentStunBuffer[3] ) );
+
+                    if( IceControllerNet_SendPacket( pCtx, pSocketContext, pSocketContext->pIceServerEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                    {
+                        LogWarn( ( "Unable to send STUN binding request message" ) );
                     }
                 }
                 break;
@@ -1056,12 +1082,33 @@ void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
     }
     else
     {
-        LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-                      convertStunMsgTypeToString( pStunMsgHeader->msgType ),
-                      pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
-                      pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
-                      pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
-                      pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
+        if( ( pStunPacket[0] >= 0x40 ) && ( pStunPacket[0] <= 0x4F ) )
+        {
+            pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) ( pStunPacket + 4 );
+            if( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) + 4 )
+            {
+                // invalid channel data message, ignore it
+            }
+            else
+            {
+                LogVerbose( ( "Channel number: 0x%02x%02x, message length: 0x%02x%02x", pStunPacket[0], pStunPacket[1], pStunPacket[2], pStunPacket[3] ) );
+                LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                              convertStunMsgTypeToString( pStunMsgHeader->msgType ),
+                              pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
+                              pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
+                              pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
+                              pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
+            }
+        }
+        else
+        {
+            LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                          convertStunMsgTypeToString( pStunMsgHeader->msgType ),
+                          pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
+                          pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
+                          pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
+                          pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
+        }
     }
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_DEBUG  */
 

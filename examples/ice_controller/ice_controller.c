@@ -371,7 +371,7 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             ret = ICE_CONTROLLER_RESULT_OK;
             stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
 
-            LogInfo( ( "Candidate Pair state is %d", pCtx->iceContext.pCandidatePairs[i].state ) );
+            LogInfo( ( "Candidate Pair idx:%d state is %d", i, pCtx->iceContext.pCandidatePairs[i].state ) );
 
             iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
                                                    &pCtx->iceContext.pCandidatePairs[i],
@@ -410,6 +410,24 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             {
                 LogWarn( ( "Not able to find socket context mapping, mapping local candidate: %p", pCtx->iceContext.pCandidatePairs[i].pLocalCandidate ) );
                 continue;
+            }
+
+            if( pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
+            {
+                iceResult = Ice_AppendTurnChannelHeader( &pCtx->iceContext,
+                                                         &pCtx->iceContext.pCandidatePairs[i],
+                                                         stunBuffer,
+                                                         &stunBufferLength,
+                                                         ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE );
+                if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+                {
+                    LogError( ( "Fail to append TURN channel data, result: %d", iceResult ) );
+                    continue;
+                }
+                else
+                {
+                    LogInfo( ( "Sending data through channel number 0x%02x%02x with length 0x%02x%02x", stunBuffer[0], stunBuffer[1], stunBuffer[2], stunBuffer[3] ) );
+                }
             }
 
             LogVerbose( ( "Sending connecitivity check from IP/port: %s/%d to %s/%d",
