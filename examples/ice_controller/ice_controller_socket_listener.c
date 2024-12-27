@@ -32,9 +32,17 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
         {
             if( pCtx->socketsContexts[i].socketFd != pChosenSocketContext->socketFd )
             {
-                /* Release all unused socket contexts. */
-                LogDebug( ( "Closing socket: %d", pCtx->socketsContexts[i].socketFd ) );
-                IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
+                if( ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) && ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
+                {
+                    /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session. */
+
+                }
+                else
+                {
+                    /* Release all unused socket contexts. */
+                    LogDebug( ( "Closing socket: %d", pCtx->socketsContexts[i].socketFd ) );
+                    IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
+                }
             }
         }
 

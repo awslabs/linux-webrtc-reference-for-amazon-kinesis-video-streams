@@ -348,6 +348,7 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
     char ipFromBuffer[ INET_ADDRSTRLEN ];
     char ipToBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+    uint8_t isAnyEvent = 0;
 
     /* Send connectivity check for every candidate pair. */
     if( pCtx->metrics.isFirstConnectivityRequest == 1 )
@@ -402,6 +403,7 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             else
             {
                 /* Do nothing, coverity happy. */
+                isAnyEvent = 1;
             }
 
             pSocketContext = FindSocketContextByLocalCandidate( pCtx,
@@ -509,6 +511,7 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             else
             {
                 /* Do nothing, coverity happy. */
+                isAnyEvent = 1;
             }
 
             pSocketContext = FindSocketContextByLocalCandidate( pCtx,
@@ -537,6 +540,14 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
                 LogWarn( ( "Unable to send packet to remote address, result: %d", ret ) );
                 continue;
             }
+        }
+    }
+
+    if( ( isAnyEvent == 0 ) && ( pCtx->pNominatedSocketContext != NULL ) )
+    {
+        if( TIMER_CONTROLLER_RESULT_SET == TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
+        {
+            TimerController_ResetTimer( &pCtx->connectivityCheckTimer );
         }
     }
 

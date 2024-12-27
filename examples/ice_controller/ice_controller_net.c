@@ -772,15 +772,11 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                         LogDebug( ( "Sent STUN bind response back to remote" ) );
                         if( iceHandleStunResult == ICE_HANDLE_STUN_PACKET_RESULT_SEND_RESPONSE_FOR_NOMINATION )
                         {
+                            Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
                             LogInfo( ( "Found nomination pair." ) );
                             LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
                                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
                                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
-                            if( TIMER_CONTROLLER_RESULT_SET == TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
-                            {
-                                TimerController_ResetTimer( &pCtx->connectivityCheckTimer );
-                                Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
-                            }
 
                             /* Update socket context. */
                             if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
