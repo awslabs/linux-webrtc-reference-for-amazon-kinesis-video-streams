@@ -3,7 +3,7 @@
 #include "logging.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
-//#include "task.h"
+#include "ice_api.h"
 #include "stun_deserializer.h"
 
 #define ICE_CONTROLLER_SOCKET_LISTENER_QUEUE_NAME "/WebrtcApplicationIceControllerSocketListener"
@@ -52,6 +52,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 {
     uint8_t skipProcess = 0;
     int readBytes;
+    size_t uReadBytes;
     struct sockaddr_storage srcAddress;
     socklen_t srcAddressLength = sizeof( srcAddress );
     struct sockaddr_in * pIpv4Address;
@@ -63,6 +64,8 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
     StunHeader_t stunHeader;
     int32_t retPeerToPeerConnectionFound;
     IceControllerCallbackContent_t peerToPeerConnectionFoundContent;
+    IceResult_t iceResult;
+    IceCandidatePair_t * pCandidatePair = NULL;
 
     if( ( pCtx == NULL ) || ( pSocketContext == NULL ) )
     {
@@ -83,18 +86,17 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             {
                 LogError( ( "Fail to receive packets from socket ID: %d, errno: %s", pSocketContext->socketFd, strerror( errno ) ) );
             }
-            skipProcess = 1;
             break;
         }
         else if( readBytes == 0 )
         {
             /* Nothing to do if receive 0 byte. */
-            skipProcess = 1;
             break;
         }
         else
         {
             /* Received valid data, keep addressing. */
+            uReadBytes = ( size_t ) readBytes;
         }
 
         /* Received data, handle this STUN message. */
@@ -118,8 +120,21 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
         {
             /* Unknown IP type, drop packet. */
             LogWarn( ( "Unknown IP type: %d", srcAddress.ss_family ) );
-            skipProcess = 1;
             break;
+        }
+
+        if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
+        {
+            iceResult = Ice_RemoveTurnChannelHeader( &pCtx->iceContext,
+                                                     pSocketContext->pLocalCandidate,
+                                                     receiveBuffer,
+                                                     &uReadBytes,
+                                                     &pCandidatePair );
+            if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+            {
+                LogError( ( "Fail to remove TURN channel header, iceResult: %d", iceResult ) );
+                break;
+            }
         }
 
         /*
@@ -135,7 +150,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
          */
         retStun = StunDeserializer_Init( &stunContext,
                                          receiveBuffer,
-                                         readBytes,
+                                         uReadBytes,
                                          &stunHeader );
         if( retStun != STUN_RESULT_OK )
         {
@@ -145,7 +160,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                 /* RTP/RTCP packets. */
                 if( onRecvRtpRtcpPacketCallbackFunc )
                 {
-                    ( void ) onRecvRtpRtcpPacketCallbackFunc( pOnRecvRtpRtcpPacketCallbackCustomContext, receiveBuffer, readBytes );
+                    ( void ) onRecvRtpRtcpPacketCallbackFunc( pOnRecvRtpRtcpPacketCallbackCustomContext, receiveBuffer, uReadBytes );
                 }
                 else
                 {
@@ -155,12 +170,12 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             else if( ( receiveBuffer[0] > 19 ) && ( receiveBuffer[0] < 64 ) )
             {
                 /* DTLS packet */
-                LogWarn( ( "Drop unknown DTLS RX packets(%d), first byte: 0x%x", readBytes, receiveBuffer[0] ) );
+                LogWarn( ( "Drop unknown DTLS RX packets(%lu), first byte: 0x%x", uReadBytes, receiveBuffer[0] ) );
             }
             else
             {
                 /* Unknown packet. Drop it. */
-                LogWarn( ( "Drop unknown RX packets(%d), first byte: 0x%x", readBytes, receiveBuffer[0] ) );
+                LogWarn( ( "Drop unknown RX packets(%lu), first byte: 0x%x", uReadBytes, receiveBuffer[0] ) );
             }
         }
         else
@@ -168,8 +183,9 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             ret = IceControllerNet_HandleStunPacket( pCtx,
                                                      pSocketContext,
                                                      receiveBuffer,
-                                                     readBytes,
-                                                     &remoteIceEndpoint );
+                                                     uReadBytes,
+                                                     &remoteIceEndpoint,
+                                                     pCandidatePair );
             if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) && ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE ) )
             {
                 /* Set state to pass handshake in ReleaseOtherSockets. */
@@ -199,7 +215,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             }
             else
             {
-                LogError( ( "Fail to handle this RX packet, ret: %d, readBytes: %d", ret, readBytes ) );
+                LogError( ( "Fail to handle this RX packet, ret: %d, readBytes: %lu", ret, uReadBytes ) );
             }
         }
     }

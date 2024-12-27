@@ -651,12 +651,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                                                          IceControllerSocketContext_t * pSocketContext,
                                                          uint8_t * pReceiveBuffer,
                                                          size_t receiveBufferLength,
-                                                         IceEndpoint_t * pRemoteIceEndpoint )
+                                                         IceEndpoint_t * pRemoteIceEndpoint,
+                                                         IceCandidatePair_t * pCandidatePair )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceHandleStunPacketResult_t iceHandleStunResult;
     uint8_t * pTransactionIdBuffer;
-    IceCandidatePair_t * pCandidatePair = NULL;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipBuffer[ INET_ADDRSTRLEN ];
     char ipBuffer2[ INET_ADDRSTRLEN ];
@@ -685,7 +685,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
         iceHandleStunResult = Ice_HandleStunPacket( &pCtx->iceContext,
                                                     pReceiveBuffer,
                                                     ( size_t ) receiveBufferLength,
-                                                    &pSocketContext->pLocalCandidate->endpoint,
+                                                    pSocketContext->pLocalCandidate,
                                                     pRemoteIceEndpoint,
                                                     &pTransactionIdBuffer,
                                                     &pCandidatePair );
