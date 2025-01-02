@@ -39,6 +39,7 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/threading.h"
 #include "mbedtls/x509.h"
+#include "mbedtls/timing.h"
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE( array ) ( sizeof( array ) / sizeof *( array ) )
@@ -92,6 +93,16 @@
 
 #define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
 
+typedef int (* OnTransportDtlsSendHook)( void *pCustomContext,
+                                         const uint8_t *pInputBuffer,
+                                         size_t inputBufferLength,
+                                         uint8_t *pOutputBuffer,
+                                         size_t *pOutputBufferSize );
+typedef int (* OnTransportDtlsRecvHook)( void *pCustomContext,
+                                         const uint8_t *pInputBuffer,
+                                         size_t inputBufferLength,
+                                         uint8_t *pOutputBuffer,
+                                         size_t *pOutputBufferSize );
 
 /*
  * For code readability use a typedef for DTLS-SRTP profiles
@@ -171,7 +182,11 @@ typedef struct DtlsTransportParams
 {
     Socket_t udpSocket;
     DtlsSSLContext_t dtlsSslContext;
-    DtlsSessionTimer_t xSessionTimer;
+    mbedtls_timing_delay_context mbedtlsTimer;
+    OnTransportDtlsSendHook onDtlsSendHook;
+    void * pOnDtlsSendCustomContext;
+    OnTransportDtlsRecvHook onDtlsRecvHook;
+    void * pOnDtlsRecvCustomContext;
 } DtlsTransportParams_t;
 
 

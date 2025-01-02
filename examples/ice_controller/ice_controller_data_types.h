@@ -71,8 +71,12 @@ typedef struct IceControllerLocalCandidateReadyMsg
 typedef struct IceControllerPeerToPeerConnectionFoundMsg
 {
     int socketFd;
-    IceCandidate_t * pLocalCandidate;
-    IceCandidate_t * pRemoteCandidate;
+    IceEndpoint_t * pLocalEndpoint;
+    IceEndpoint_t * pRemoteEndpoint;
+    OnTransportDtlsSendHook OnDtlsSendHook;
+    void * pOnDtlsSendCustomContext;
+    OnTransportDtlsRecvHook OnDtlsRecvHook;
+    void * pOnDtlsRecvCustomContext;
 } IceControllerPeerToPeerConnectionFoundMsg_t;
 
 typedef struct IceControllerCallbackContent
@@ -114,6 +118,7 @@ typedef enum IceControllerResult
     ICE_CONTROLLER_RESULT_FAIL_ADD_REMOTE_CANDIDATE,
     ICE_CONTROLLER_RESULT_FAIL_ADD_IPv6_REMOTE_CANDIDATE,
     ICE_CONTROLLER_RESULT_FAIL_ADD_NON_UDP_REMOTE_CANDIDATE,
+    ICE_CONTROLLER_RESULT_FAIL_APPEND_TURN_CHANNEL_HEADER,
     ICE_CONTROLLER_RESULT_FAIL_TIMER_INIT,
     ICE_CONTROLLER_RESULT_FAIL_DNS_QUERY,
     ICE_CONTROLLER_RESULT_FAIL_SET_CONNECTIVITY_CHECK_TIMER,
@@ -183,6 +188,7 @@ typedef struct IceControllerSocketContext
     IceCandidate_t * pLocalCandidate;
     IceCandidate_t * pRemoteCandidate;
     IceEndpoint_t * pIceServerEndpoint;
+    IceCandidatePair_t * pCandidatePair;
     int socketFd;
 } IceControllerSocketContext_t;
 

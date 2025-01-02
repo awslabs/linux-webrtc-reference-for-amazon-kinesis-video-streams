@@ -13,6 +13,109 @@
 
 uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
 
+static int AppendTurnChannelHeader( void * pCustomContext,
+                                    const uint8_t * pInputBuffer,
+                                    size_t inputBufferLength,
+                                    uint8_t * pOutputBuffer,
+                                    size_t * pOutputBufferSize )
+{
+    int ret = 0;
+    IceResult_t iceResult;
+    IceControllerContext_t * pCtx = ( IceControllerContext_t * ) pCustomContext;
+    size_t writtenLength = 0;
+
+    if( ( pInputBuffer == NULL ) || ( pOutputBuffer == NULL ) || ( pOutputBufferSize == NULL ) )
+    {
+        LogError( ( "Invalid input, pInputBuffer: %p, pOutputBuffer: %p, pOutputBufferSize: %p", pInputBuffer, pOutputBuffer, pOutputBufferSize ) );
+        ret = -1;
+    }
+    else if( *pOutputBufferSize < inputBufferLength )
+    {
+        LogError( ( "Insufficient output buffer size, *pOutputBufferSize: %lu, inputBufferLength: %lu", *pOutputBufferSize, inputBufferLength ) );
+        ret = -2;
+    }
+    {
+        memcpy( pOutputBuffer, pInputBuffer, inputBufferLength );
+        writtenLength = inputBufferLength;
+    }
+
+    if( ret == 0 )
+    {
+        iceResult = Ice_AppendTurnChannelHeader( &pCtx->iceContext,
+                                                 pCtx->pNominatedSocketContext->pCandidatePair,
+                                                 pOutputBuffer,
+                                                 &writtenLength,
+                                                 *pOutputBufferSize );
+        if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+        {
+            LogError( ( "Fail to append TURN channel header, iceResult: %d", iceResult ) );
+            ret = -10;
+        }
+        else
+        {
+            *pOutputBufferSize = writtenLength;
+        }
+    }
+
+    return ret;
+}
+
+static int RemoveTurnChannelHeader( void * pCustomContext,
+                                    const uint8_t * pInputBuffer,
+                                    size_t inputBufferLength,
+                                    uint8_t * pOutputBuffer,
+                                    size_t * pOutputBufferSize )
+{
+    int ret = 0;
+    IceResult_t iceResult;
+    IceControllerContext_t * pCtx = ( IceControllerContext_t * ) pCustomContext;
+    size_t writtenLength = 0;
+    IceCandidatePair_t * pIceCandidatePair = NULL;
+
+    if( ( pInputBuffer == NULL ) || ( pOutputBuffer == NULL ) || ( pOutputBufferSize == NULL ) )
+    {
+        LogError( ( "Invalid input, pInputBuffer: %p, pOutputBuffer: %p, pOutputBufferSize: %p", pInputBuffer, pOutputBuffer, pOutputBufferSize ) );
+        ret = -1;
+    }
+    else if( *pOutputBufferSize < inputBufferLength )
+    {
+        LogError( ( "Insufficient output buffer size, *pOutputBufferSize: %lu, inputBufferLength: %lu", *pOutputBufferSize, inputBufferLength ) );
+        ret = -2;
+    }
+    else
+    {
+        memcpy( pOutputBuffer, pInputBuffer, inputBufferLength );
+        writtenLength = inputBufferLength;
+    }
+
+    if( ret == 0 )
+    {
+        LogVerbose( ( "Dump first 4 bytes, length: %lu, data: 0x%x 0x%x 0x%x 0x%x", inputBufferLength, pInputBuffer[0], pInputBuffer[1], pInputBuffer[2], pInputBuffer[3] ) );
+        iceResult = Ice_RemoveTurnChannelHeader( &pCtx->iceContext,
+                                                 pCtx->pNominatedSocketContext->pLocalCandidate,
+                                                 pOutputBuffer,
+                                                 &writtenLength,
+                                                 &pIceCandidatePair );
+        if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+        {
+            LogError( ( "Fail to remove TURN channel header, iceResult: %d", iceResult ) );
+            ret = -10;
+        }
+        else if( pIceCandidatePair != pCtx->pNominatedSocketContext->pCandidatePair )
+        {
+            LogInfo( ( "Receiving data, length(%lu), for other candidate, drop it.", inputBufferLength ) );
+            *pOutputBufferSize = 0;
+        }
+        else
+        {
+            LogInfo( ( "Receiving data, length(%lu), for other candidate, drop it.", inputBufferLength ) );
+            *pOutputBufferSize = writtenLength;
+        }
+    }
+
+    return ret;
+}
+
 static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                                  IceControllerSocketContext_t * pChosenSocketContext )
 {
@@ -202,9 +305,22 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                 /* Found nominated pair, execute DTLS handshake and release all other resources. */
                 if( onIceEventCallbackFunc )
                 {
+                    memset( &peerToPeerConnectionFoundContent, 0, sizeof( IceControllerCallbackContent_t ) );
                     peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.socketFd = pSocketContext->socketFd;
-                    peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pLocalCandidate = pSocketContext->pLocalCandidate;
-                    peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pRemoteCandidate = pSocketContext->pRemoteCandidate;
+                    peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pLocalEndpoint = &pSocketContext->pLocalCandidate->endpoint;
+                    if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
+                    {
+                        peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pRemoteEndpoint = pSocketContext->pIceServerEndpoint;
+                        peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.OnDtlsSendHook = AppendTurnChannelHeader;
+                        peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pOnDtlsSendCustomContext = pCtx;
+                        peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.OnDtlsRecvHook = RemoveTurnChannelHeader;
+                        peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pOnDtlsRecvCustomContext = pCtx;
+                    }
+                    else
+                    {
+                        peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pRemoteEndpoint = &pSocketContext->pRemoteCandidate->endpoint;
+                    }
+
                     retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, &peerToPeerConnectionFoundContent );
                     if( retPeerToPeerConnectionFound != 0 )
                     {

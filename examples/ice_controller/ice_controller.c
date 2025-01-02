@@ -341,7 +341,7 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
     IceResult_t iceResult;
     uint32_t i;
     size_t count;
-    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
+    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_HEADER_LENGTH ];
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
@@ -414,24 +414,6 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
                 continue;
             }
 
-            if( pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
-            {
-                iceResult = Ice_AppendTurnChannelHeader( &pCtx->iceContext,
-                                                         &pCtx->iceContext.pCandidatePairs[i],
-                                                         stunBuffer,
-                                                         &stunBufferLength,
-                                                         ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE );
-                if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
-                {
-                    LogError( ( "Fail to append TURN channel data, result: %d", iceResult ) );
-                    continue;
-                }
-                else
-                {
-                    LogInfo( ( "Sending data through channel number 0x%02x%02x with length 0x%02x%02x", stunBuffer[0], stunBuffer[1], stunBuffer[2], stunBuffer[3] ) );
-                }
-            }
-
             LogVerbose( ( "Sending connecitivity check from IP/port: %s/%d to %s/%d",
                           IceControllerNet_LogIpAddressInfo( &pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->endpoint,
                                                              ipFromBuffer,
@@ -444,22 +426,12 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             IceControllerNet_LogStunPacket( stunBuffer,
                                             stunBufferLength );
 
-            if( pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->candidateType != ICE_CANDIDATE_TYPE_RELAY )
-            {
-                ret = IceControllerNet_SendPacket( pCtx,
-                                                   pSocketContext,
-                                                   &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint,
-                                                   stunBuffer,
-                                                   stunBufferLength );
-            }
-            else
-            {
-                ret = IceControllerNet_SendPacket( pCtx,
-                                                   pSocketContext,
-                                                   pSocketContext->pIceServerEndpoint,
-                                                   stunBuffer,
-                                                   stunBufferLength );
-            }
+            ret = IceControllerNet_SendPacket( pCtx,
+                                               pSocketContext,
+                                               &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint,
+                                               &pCtx->iceContext.pCandidatePairs[i],
+                                               stunBuffer,
+                                               stunBufferLength );
 
             if( ret != ICE_CONTROLLER_RESULT_OK )
             {
@@ -533,6 +505,7 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
             ret = IceControllerNet_SendPacket( pCtx,
                                                pSocketContext,
                                                pSocketContext->pIceServerEndpoint,
+                                               NULL,
                                                stunBuffer,
                                                stunBufferLength );
             if( ret != ICE_CONTROLLER_RESULT_OK )
@@ -951,7 +924,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 }
 
 IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * pCtx,
-                                                      const uint8_t * pBuffer,
+                                                      uint8_t * pBuffer,
                                                       size_t bufferLength )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
@@ -987,6 +960,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
         ret = IceControllerNet_SendPacket( pCtx,
                                            pCtx->pNominatedSocketContext,
                                            &pCtx->pNominatedSocketContext->pRemoteCandidate->endpoint,
+                                           pCtx->pNominatedSocketContext->pCandidatePair,
                                            pBuffer,
                                            bufferLength );
     }

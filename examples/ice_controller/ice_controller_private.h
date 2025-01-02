@@ -26,8 +26,9 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
                                                   IceTransportAddress_t * pIceTransportAddress );
 IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx,
                                                    IceControllerSocketContext_t * pSocketContext,
-                                                   IceEndpoint_t * pDestinationIceEndpoint,
-                                                   const uint8_t * pBuffer,
+                                                   IceEndpoint_t * pRemoteEndpoint,
+                                                   IceCandidatePair_t * pCandidatePair,
+                                                   uint8_t * pBuffer,
                                                    size_t length );
 void IceControllerNet_FreeSocketContext( IceControllerContext_t * pCtx,
                                          IceControllerSocketContext_t * pSocketContext );

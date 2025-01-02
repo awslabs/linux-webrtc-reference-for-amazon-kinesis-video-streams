@@ -63,7 +63,6 @@
 /* OS specific port header. */
 #include "transport_dtls_mbedtls_port.h"
 
-
 /*-----------------------------------------------------------*/
 
 /**  https://tools.ietf.org/html/rfc5764#section-4.1.2 */
@@ -78,6 +77,8 @@ mbedtls_ssl_srtp_profile DTLS_SRTP_SUPPORTED_PROFILES[] = {
     MBEDTLS_TLS_SRTP_UNSET
 #endif
 };
+
+#define DTLS_MTU_MAX_SIZE ( 1500 )
 
 /**
  * @brief Utility for converting the high-level code in an mbedTLS error to
@@ -179,6 +180,102 @@ void dtls_mbedtls_string_printf( void * sslContext,
 }
 #endif /* MBEDTLS_DEBUG_C */
 
+/*-----------------------------------------------------------*/
+
+static int DtlsUdpSendWrap( void * pCustomCtx,
+                                      const unsigned char * pBuf,
+                                      size_t len )
+{
+    int ret = 0;
+    DtlsTransportParams_t * pDtlsTransportParams = (DtlsTransportParams_t*) pCustomCtx;
+    static char sendingBuffer[ DTLS_MTU_MAX_SIZE ];
+    size_t sendingBufferSize = DTLS_MTU_MAX_SIZE;
+    const uint8_t * pBuffer;
+    size_t * pBufferLength;
+    size_t diff = 0;
+
+    if( pDtlsTransportParams == NULL )
+    {
+        LogError( ("Invalid parameter: pCustomCtx is NULL.") );
+        return -1;
+    }
+
+    if( ret == 0 )
+    {
+        if( pDtlsTransportParams->onDtlsSendHook != NULL )
+        {
+            pDtlsTransportParams->onDtlsSendHook( pDtlsTransportParams->pOnDtlsSendCustomContext, pBuf, len, sendingBuffer, &sendingBufferSize );
+            diff = sendingBufferSize - len;
+            pBuffer = sendingBuffer;
+            pBufferLength = &sendingBufferSize;
+        }
+        else
+        {
+            pBuffer = pBuf;
+            pBufferLength = &len;
+        }
+    }
+
+    if( ret == 0 )
+    {
+        ret = xMbedTLSBioUDPSocketsWrapperSend( pDtlsTransportParams->udpSocket,
+                                      pBuffer,
+                                      *pBufferLength );
+        if( ret > diff )
+        {
+            ret -= diff;
+        }
+    }
+
+    return ret;
+}
+/*-----------------------------------------------------------*/
+
+static int DtlsUdpRecvWrap( void * pCustomCtx,
+                                      unsigned char * pBuf,
+                                      size_t len )
+{
+    int ret = 0;
+    DtlsTransportParams_t * pDtlsTransportParams = (DtlsTransportParams_t*) pCustomCtx;
+    int receivedLength;
+
+    if( pDtlsTransportParams == NULL )
+    {
+        LogError( ("Invalid parameter: pCustomCtx is NULL.") );
+        return -1;
+    }
+
+    if( ret == 0 )
+    {
+        ret = xMbedTLSBioUDPSocketsWrapperRecv( pDtlsTransportParams->udpSocket,
+                                      pBuf,
+                                      len );
+    }
+
+    if( ret > 0 )
+    {
+        if( pDtlsTransportParams->onDtlsRecvHook != NULL )
+        {
+            receivedLength = ret;
+            ret = pDtlsTransportParams->onDtlsRecvHook( pDtlsTransportParams->pOnDtlsRecvCustomContext, pBuf, receivedLength, pBuf, &len );
+            if( ret == 0 && len == 0 )
+            {
+                /* Receiving data for other candidate, drop it and keep receiving. */
+                ret = MBEDTLS_ERR_SSL_WANT_READ;
+            }
+            else if( ret == 0 )
+            {
+                ret = len;
+            }
+            else
+            {
+                /* Empty else marker. */
+            }
+        }
+    }
+
+    return ret;
+}
 /*-----------------------------------------------------------*/
 
 static void DtlsSslContextInit( DtlsSSLContext_t * pSslContext )
@@ -403,9 +500,9 @@ static DtlsTransportStatus_t dtlsHandshake( DtlsNetworkContext_t * pNetworkConte
          * use.
          */
         mbedtls_ssl_set_bio( &( pDtlsTransportParams->dtlsSslContext.context ),
-                             ( void * )pDtlsTransportParams->udpSocket,
-                             xMbedTLSBioUDPSocketsWrapperSend,
-                             xMbedTLSBioUDPSocketsWrapperRecv,
+                             ( void * ) pDtlsTransportParams,
+                             DtlsUdpSendWrap,
+                             DtlsUdpRecvWrap,
                              NULL );
     }
 
@@ -543,8 +640,6 @@ DTLS_Connect( DtlsNetworkContext_t * pNetworkContext,
     /* Establish a UDP connection with the server. */
     if( returnStatus == DTLS_TRANSPORT_SUCCESS )
     {
-
-
         pDtlsTransportParams = pNetworkContext->pParams;
 
         socketStatus = UDP_Sockets_Connect( &( pDtlsTransportParams->udpSocket ),
@@ -569,13 +664,13 @@ DTLS_Connect( DtlsNetworkContext_t * pNetworkContext,
                                   pNetworkCredentials );
     }
 
-    memset( &pNetworkContext->pParams->xSessionTimer,
+    memset( &pNetworkContext->pParams->mbedtlsTimer,
             0,
-            sizeof( DtlsSessionTimer_t ) );
+            sizeof( mbedtls_timing_delay_context ) );
 
     /* Set the timer functions for mbed DTLS. */
     mbedtls_ssl_set_timer_cb( &pNetworkContext->pParams->dtlsSslContext.context,
-                              &pNetworkContext->pParams->xSessionTimer,
+                              &pNetworkContext->pParams->mbedtlsTimer,
                               &mbedtls_timing_set_delay,
                               &mbedtls_timing_get_delay );
 

@@ -33,7 +33,7 @@ static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSess
                                                               PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
                                      int socketFd,
-                                     IceCandidate_t * pRemoteCandidate );
+                                     IceEndpoint_t * pRemoteEndpoint );
 
 static void * PeerConnection_SessionTask( void * pParameter )
 {
@@ -219,17 +219,17 @@ static int32_t OnIceEventConnectivityCheck( PeerConnectionSession_t * pSession )
 
 static int32_t OnIceEventPeerToPeerConnectionFound( PeerConnectionSession_t * pSession,
                                                     int socketFd,
-                                                    IceCandidate_t * pRemoteCandidate )
+                                                    IceEndpoint_t * pRemoteEndpoint )
 {
     int32_t ret = 0;
     PeerConnectionResult_t retPeerConnection;
     int i;
 
     if( ( pSession == NULL ) ||
-        ( pRemoteCandidate == NULL ) ||
+        ( pRemoteEndpoint == NULL ) ||
         ( socketFd < 0 ) )
     {
-        LogError( ( "Invalid input, pSession: %p, pRemoteCandidate: %p, socketFd: %d", pSession, pRemoteCandidate, socketFd ) );
+        LogError( ( "Invalid input, pSession: %p, pRemoteEndpoint: %p, socketFd: %d", pSession, pRemoteEndpoint, socketFd ) );
         ret = -10;
     }
 
@@ -239,7 +239,7 @@ static int32_t OnIceEventPeerToPeerConnectionFound( PeerConnectionSession_t * pS
 
         /* Execute DTLS handshaking. */
         Metric_StartEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
-        ret = ExecuteDtlsHandshake( pSession, socketFd, pRemoteCandidate );
+        ret = ExecuteDtlsHandshake( pSession, socketFd, pRemoteEndpoint );
         Metric_EndEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
     }
 
@@ -324,20 +324,27 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
                 pPeerToPeerConnectionFoundMsg = &pEventMsg->iceControllerCallbackContent.peerTopeerConnectionFoundMsg;
                 pLocalIpPos = inet_ntop( AF_INET,
-                                         pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.address,
+                                         pPeerToPeerConnectionFoundMsg->pLocalEndpoint->transportAddress.address,
                                          localIpAddr,
                                          INET_ADDRSTRLEN );
                 pRemoteIpPos = inet_ntop( AF_INET,
-                                          pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.address,
+                                          pPeerToPeerConnectionFoundMsg->pRemoteEndpoint->transportAddress.address,
                                           remoteIpAddr,
                                           INET_ADDRSTRLEN );
                 LogInfo( ( "Found P2P connection between source %s:%d with remote %s:%d",
                            pLocalIpPos ? pLocalIpPos : "UNKNOWN",
-                           pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.port,
+                           pPeerToPeerConnectionFoundMsg->pLocalEndpoint->transportAddress.port,
                            pRemoteIpPos ? pRemoteIpPos : "UNKNOWN",
-                           pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.port ) );
+                           pPeerToPeerConnectionFoundMsg->pRemoteEndpoint->transportAddress.port ) );
 
-                ret = OnIceEventPeerToPeerConnectionFound( pSession, pPeerToPeerConnectionFoundMsg->socketFd, pPeerToPeerConnectionFoundMsg->pRemoteCandidate );
+                /* Assign transport send/recv callback function/context for TURN headers. */
+                memset( &pSession->dtlsSession.xDtlsTransportParams, 0, sizeof( DtlsTransportParams_t ) );
+                pSession->dtlsSession.xDtlsTransportParams.onDtlsSendHook = pPeerToPeerConnectionFoundMsg->OnDtlsSendHook;
+                pSession->dtlsSession.xDtlsTransportParams.pOnDtlsSendCustomContext = pPeerToPeerConnectionFoundMsg->pOnDtlsSendCustomContext;
+                pSession->dtlsSession.xDtlsTransportParams.onDtlsRecvHook = pPeerToPeerConnectionFoundMsg->OnDtlsRecvHook;
+                pSession->dtlsSession.xDtlsTransportParams.pOnDtlsRecvCustomContext = pPeerToPeerConnectionFoundMsg->pOnDtlsRecvCustomContext;
+
+                ret = OnIceEventPeerToPeerConnectionFound( pSession, pPeerToPeerConnectionFoundMsg->socketFd, pPeerToPeerConnectionFoundMsg->pRemoteEndpoint );
                 break;
             default:
                 LogError( ( "Unknown event: %d", event ) );
@@ -350,7 +357,7 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
 
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
                                      int socketFd,
-                                     IceCandidate_t * pRemoteCandidate )
+                                     IceEndpoint_t * pRemoteEndpoint )
 {
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_TRANSPORT_SUCCESS;
@@ -359,9 +366,9 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
     char remoteIpAddr[ INET_ADDRSTRLEN ];
     const char * pRemoteIpPos;
 
-    if( ( pSession == NULL ) || ( pRemoteCandidate == NULL ) || ( socketFd < 0 ) )
+    if( ( pSession == NULL ) || ( pRemoteEndpoint == NULL ) || ( socketFd < 0 ) )
     {
-        LogError( ( "Invalid input, pSession: %p, pRemoteCandidate: %p, socketFd: %d", pSession, pRemoteCandidate, socketFd ) );
+        LogError( ( "Invalid input, pSession: %p, pRemoteEndpoint: %p, socketFd: %d", pSession, pRemoteEndpoint, socketFd ) );
         ret = -20;
     }
 
@@ -370,6 +377,7 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
         /* Set the pParams member of the network context with desired transport. */
         pDtlsSession = &pSession->dtlsSession;
         pDtlsSession->xNetworkContext.pParams = &pDtlsSession->xDtlsTransportParams;
+
         retUdpTransport = UDP_Sockets_CreateAndAssign( &pDtlsSession->xNetworkContext.pParams->udpSocket, socketFd );
         if( retUdpTransport != UDP_SOCKETS_ERRNO_NONE )
         {
@@ -391,10 +399,10 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
         pDtlsSession->xNetworkCredentials.disableSni = 1;
 
         pRemoteIpPos = inet_ntop( AF_INET,
-                                  pRemoteCandidate->endpoint.transportAddress.address,
+                                  pRemoteEndpoint->transportAddress.address,
                                   remoteIpAddr,
                                   INET_ADDRSTRLEN );
-        LogInfo( ( "Start DTLS handshaking with %s:%d", pRemoteIpPos ? pRemoteIpPos : "UNKNOWN", pRemoteCandidate->endpoint.transportAddress.port ) );
+        LogInfo( ( "Start DTLS handshaking with %s:%d", pRemoteIpPos ? pRemoteIpPos : "UNKNOWN", pRemoteEndpoint->transportAddress.port ) );
         if( pRemoteIpPos == NULL )
         {
             LogError( ( "Unknown remote candidate." ) );
@@ -423,7 +431,7 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
             xNetworkStatus = DTLS_Connect( &pDtlsSession->xNetworkContext,
                                            &pDtlsSession->xNetworkCredentials,
                                            pRemoteIpPos,
-                                           pRemoteCandidate->endpoint.transportAddress.port );
+                                           pRemoteEndpoint->transportAddress.port );
 
             if( xNetworkStatus != DTLS_TRANSPORT_SUCCESS )
             {
