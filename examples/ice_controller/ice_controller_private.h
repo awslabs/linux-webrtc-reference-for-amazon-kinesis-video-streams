@@ -9,6 +9,8 @@ extern "C" {
 
 #include "ice_controller_data_types.h"
 
+void IceController_CloseOtherCandidatePairs( IceControllerContext_t * pCtx,
+                                             IceCandidatePair_t * pCandidatePair );
 IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
                                                         size_t ipAddrLength,
                                                         IceEndpoint_t * pDestinationIceEndpoint );

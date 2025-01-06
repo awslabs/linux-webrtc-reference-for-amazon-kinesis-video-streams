@@ -152,6 +152,11 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
         /* Found DTLS socket context, update the state. */
         pChosenSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE;
     }
+
+    if( skipProcess == 0 )
+    {
+        IceController_CloseOtherCandidatePairs( pCtx, pChosenSocketContext->pCandidatePair );
+    }
 }
 
 static void HandleRxPacket( IceControllerContext_t * pCtx,

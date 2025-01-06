@@ -134,7 +134,10 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
     // struct sockaddr_in6 ipv6Addr;
     struct sockaddr * sockAddress = NULL;
     socklen_t addressLength;
-    uint32_t socketTimeoutMs = 1U;
+    struct timeval tv = {
+        .tv_sec = 0,
+        .tv_usec = 1000
+    };
     uint32_t sendBufferSize = 0;
     uint8_t isLocked = 0;
     uint8_t needBinding = pBindEndpoint != NULL ? 1 : 0;
@@ -229,8 +232,8 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         setsockopt( pSocketContext->socketFd, SOL_SOCKET, SO_SNDBUF, &sendBufferSize, sizeof( sendBufferSize ) );
-        setsockopt( pSocketContext->socketFd, SOL_SOCKET, SO_RCVTIMEO, &socketTimeoutMs, sizeof( socketTimeoutMs ) );
-        setsockopt( pSocketContext->socketFd, SOL_SOCKET, SO_SNDTIMEO, &socketTimeoutMs, sizeof( socketTimeoutMs ) );
+        setsockopt( pSocketContext->socketFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof( struct timeval ) );
+        setsockopt( pSocketContext->socketFd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof( struct timeval ) );
     }
 
     if( isLocked != 0 )

@@ -520,6 +520,7 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
     {
         if( TIMER_CONTROLLER_RESULT_SET == TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
         {
+            LogInfo( ( "Stopping Timer, no any future steps." ) );
             TimerController_ResetTimer( &pCtx->connectivityCheckTimer );
         }
     }
@@ -887,7 +888,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
     {
         Metric_StartEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
         Metric_StartEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
-        // ret = IceControllerNet_AddLocalCandidates( pCtx );
+        ret = IceControllerNet_AddLocalCandidates( pCtx );
         Metric_EndEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
     }
 
@@ -1007,4 +1008,46 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
     }
 
     return ret;
+}
+
+void IceController_CloseOtherCandidatePairs( IceControllerContext_t * pCtx,
+                                             IceCandidatePair_t * pCandidatePair )
+{
+    uint8_t skipProcess = 0;
+    size_t i;
+    IceResult_t iceResult;
+    size_t count;
+
+    if( ( pCtx == NULL ) || ( pCandidatePair == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: %p, pCandidatePair: %p", pCtx, pCandidatePair ) );
+        skipProcess = 1;
+    }
+
+    if( skipProcess == 0 )
+    {
+        iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
+                                               &count );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate pair count, result: %d", iceResult ) );
+            skipProcess = 1;
+        }
+    }
+
+    if( skipProcess == 0 )
+    {
+        for( i = 0; i < count; i++ )
+        {
+            if( &pCtx->iceContext.pCandidatePairs[i] != pCandidatePair )
+            {
+                iceResult = Ice_CloseCandidatePair( &pCtx->iceContext, &pCtx->iceContext.pCandidatePairs[i] );
+                if( iceResult != ICE_RESULT_OK )
+                {
+                    LogWarn( ( "Fail to close candidate pair, result: %d", iceResult ) );
+                    continue;
+                }
+            }
+        }
+    }
 }
