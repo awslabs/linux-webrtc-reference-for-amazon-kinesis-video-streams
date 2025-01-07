@@ -76,6 +76,8 @@ TimerControllerResult_t TimerController_SetTimer( TimerHandler_t *pTimerHandler,
             ret = TIMER_CONTROLLER_RESULT_FAIL_TIMER_SET;
         }
     }
+
+    return ret;
 }
 
 void TimerController_ResetTimer( TimerHandler_t *pTimerHandler )

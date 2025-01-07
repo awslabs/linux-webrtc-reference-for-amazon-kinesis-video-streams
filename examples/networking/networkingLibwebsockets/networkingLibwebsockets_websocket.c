@@ -15,7 +15,8 @@
 #define NETWORKING_LWS_CREDENTIAL_PARAM_DATE_LENGTH ( 8 )
 #define NETWORKING_LWS_STATIC_CRED_EXPIRES_SECONDS ( 604800 )
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedAlgorithm( char **ppBuffer, size_t *pBufferLength )
+static NetworkingLibwebsocketsResult_t writeUriEncodedAlgorithm( char ** ppBuffer,
+                                                                 size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -39,7 +40,10 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedAlgorithm( char **ppBuffer
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedChannelArn( char **ppBuffer, size_t *pBufferLength, char *pChannelArn, size_t channelArnLength )
+static NetworkingLibwebsocketsResult_t writeUriEncodedChannelArn( char ** ppBuffer,
+                                                                  size_t * pBufferLength,
+                                                                  char * pChannelArn,
+                                                                  size_t channelArnLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -86,7 +90,7 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedChannelArn( char **ppBuffe
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, (*ppBuffer) + writtenLength, &encodedLength );
+        ret = uriEncodedString( *ppBuffer, writtenLength, ( *ppBuffer ) + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -100,7 +104,8 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedChannelArn( char **ppBuffe
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedCredential( char **ppBuffer, size_t *pBufferLength )
+static NetworkingLibwebsocketsResult_t writeUriEncodedCredential( char ** ppBuffer,
+                                                                  size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -163,7 +168,8 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedCredential( char **ppBuffe
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedDate( char **ppBuffer, size_t *pBufferLength )
+static NetworkingLibwebsocketsResult_t writeUriEncodedDate( char ** ppBuffer,
+                                                            size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -224,7 +230,8 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedDate( char **ppBuffer, siz
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedExpires( char **ppBuffer, size_t *pBufferLength )
+static NetworkingLibwebsocketsResult_t writeUriEncodedExpires( char ** ppBuffer,
+                                                               size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -284,7 +291,8 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedExpires( char **ppBuffer, 
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedSignedHeaders( char **ppBuffer, size_t *pBufferLength )
+static NetworkingLibwebsocketsResult_t writeUriEncodedSignedHeaders( char ** ppBuffer,
+                                                                     size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -312,23 +320,26 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedSignedHeaders( char **ppBu
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t generateQueryParameters( char *pQueryStart, size_t queryLength, char *pOutput, size_t *pOutputLength )
+static NetworkingLibwebsocketsResult_t generateQueryParameters( char * pQueryStart,
+                                                                size_t queryLength,
+                                                                char * pOutput,
+                                                                size_t * pOutputLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    char *pChannelArnQueryParam, *pChannelArnValue, *pEqual;
-    size_t channelArnQueryParamLength, channelArnValueLength;
-    char *pCurrentWrite = pOutput;
+    char * pChannelArnValue, * pEqual;
+    size_t channelArnValueLength;
+    char * pCurrentWrite = pOutput;
     size_t remainLength;
 
-    if( pOutput == NULL || pOutputLength == NULL )
+    if( ( pOutput == NULL ) || ( pOutputLength == NULL ) )
     {
         ret = NETWORKING_LIBWEBSOCKETS_RESULT_BAD_PARAMETER;
     }
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        if( queryLength < strlen( NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME ) ||
-            strncmp( pQueryStart, NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME, strlen( NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME ) ) != 0 )
+        if( ( queryLength < strlen( NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME ) ) ||
+            ( strncmp( pQueryStart, NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME, strlen( NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME ) ) != 0 ) )
         {
             /* No channel ARN exist. */
             ret = NETWORKING_LIBWEBSOCKETS_RESULT_UNEXPECTED_WEBSOCKET_URL;
@@ -338,7 +349,6 @@ static NetworkingLibwebsocketsResult_t generateQueryParameters( char *pQueryStar
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         /* Parse existing query parameters. */
-        pChannelArnQueryParam = pQueryStart;
         pEqual = strchr( pQueryStart, '=' );
         if( pEqual == NULL )
         {
@@ -347,7 +357,6 @@ static NetworkingLibwebsocketsResult_t generateQueryParameters( char *pQueryStar
         }
         else
         {
-            channelArnQueryParamLength = pEqual - pQueryStart;
             pChannelArnValue = pEqual + 1;
             channelArnValueLength = pQueryStart + queryLength - pChannelArnValue;
         }
@@ -402,13 +411,13 @@ static NetworkingLibwebsocketsResult_t generateQueryParameters( char *pQueryStar
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo_t *pWebsocketServerInfo )
+static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo_t * pWebsocketServerInfo )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     int32_t headerLength;
-    NetworkingLibwebsocketsAppendHeaders_t *pAppendHeaders = &networkingLibwebsocketContext.appendHeaders;
+    NetworkingLibwebsocketsAppendHeaders_t * pAppendHeaders = &networkingLibwebsocketContext.appendHeaders;
     NetworkingLibwebsocketCanonicalRequest_t canonicalRequest;
-    char *pPath, *pQueryStart, *pUrlEnd;
+    char * pPath, * pQueryStart, * pUrlEnd;
     size_t pathLength, queryLength, remainLength;
     size_t queryParamsStringLength;
 
@@ -432,9 +441,9 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
         /* Follow https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html to create query parameters. */
         queryParamsStringLength = NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH;
         ret = generateQueryParameters( pQueryStart,
-                                             queryLength,
-                                             networkingLibwebsocketContext.sigv4Metadatabuffer,
-                                             &queryParamsStringLength );
+                                       queryLength,
+                                       networkingLibwebsocketContext.sigv4Metadatabuffer,
+                                       &queryParamsStringLength );
     }
 
     /* Follow https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html to create canonical headers.
@@ -521,7 +530,11 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
     return ret;
 }
 
-int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons reason, void *pUser, void *pDataIn, size_t dataSize)
+int32_t lwsWebsocketCallbackRoutine( struct lws * wsi,
+                                     enum lws_callback_reasons reason,
+                                     void * pUser,
+                                     void * pDataIn,
+                                     size_t dataSize )
 {
     int32_t retValue = 0;
     int32_t skipProcess = 0;
@@ -529,11 +542,11 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
     int writeSize = 0;
     size_t remainSize = 0;
     size_t index;
-    NetworkingLibwebsocketBufferInfo_t *pRingBufferInfo;
+    NetworkingLibwebsocketBufferInfo_t * pRingBufferInfo;
 
     LogVerbose( ( "Websocket callback with reason %d", reason ) );
 
-    switch (reason)
+    switch( reason )
     {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
             LogWarn( ( "Client WSS connection error" ) );
@@ -556,8 +569,8 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
             break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
-            if( lws_frame_is_binary(wsi) ||
-                dataSize == 0 )
+            if( lws_frame_is_binary( wsi ) ||
+                ( dataSize == 0 ) )
             {
                 /* Binary data is not supported. */
                 skipProcess = 1;
@@ -567,7 +580,7 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
             {
                 /* Store the message into buffer. */
                 // Check what type of a message it is. We will set the size to 0 on first and flush on last
-                if( lws_is_first_fragment(wsi) )
+                if( lws_is_first_fragment( wsi ) )
                 {
                     networkingLibwebsocketContext.websocketRxBufferLength = 0;
                 }
@@ -587,7 +600,7 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
                 }
 
                 /* callback to user if it's the final fragment. */
-                if( lws_is_final_fragment(wsi) )
+                if( lws_is_final_fragment( wsi ) )
                 {
                     if( networkingLibwebsocketContext.websocketRxCallback != NULL )
                     {
@@ -642,9 +655,7 @@ int32_t lwsWebsocketCallbackRoutine(struct lws *wsi, enum lws_callback_reasons r
 
 WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
 {
-    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    char *pPath;
-    size_t pathLength;
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 
     /* Append HTTP headers for signing.
      * Refer to https://docs.aws.amazon.com/AmazonECR/latest/APIReference/CommonParameters.html for details. */
@@ -673,24 +684,26 @@ WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
         ret = performLwsConnect( networkingLibwebsocketContext.appendHeaders.pHost, networkingLibwebsocketContext.appendHeaders.hostLength, 443U, 0U );
     }
 
-    return ret;
+    return ( WebsocketResult_t ) ret;
 }
 
 WebsocketResult_t Websocket_Disconnect( void )
 {
-    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 
     lws_set_timeout( networkingLibwebsocketContext.pLws[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ],
                      PENDING_TIMEOUT_CLOSE_SEND,
                      LWS_TO_KILL_SYNC );
 
-    return ret;
+    return ( WebsocketResult_t ) ret;
 }
 
-WebsocketResult_t Websocket_Init( void * pCredential, WebsocketMessageCallback_t rxCallback, void *pRxCallbackContext )
+WebsocketResult_t Websocket_Init( void * pCredential,
+                                  WebsocketMessageCallback_t rxCallback,
+                                  void * pRxCallbackContext )
 {
-    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    NetworkingLibwebsocketsCredentials_t *pNetworkingLibwebsocketsCredentials = (NetworkingLibwebsocketsCredentials_t *)pCredential;
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    NetworkingLibwebsocketsCredentials_t * pNetworkingLibwebsocketsCredentials = ( NetworkingLibwebsocketsCredentials_t * )pCredential;
 
     ret = NetworkingLibwebsockets_Init( pNetworkingLibwebsocketsCredentials );
 
@@ -700,12 +713,13 @@ WebsocketResult_t Websocket_Init( void * pCredential, WebsocketMessageCallback_t
         networkingLibwebsocketContext.pWebsocketRxCallbackContext = pRxCallbackContext;
     }
 
-    return ret;
+    return ( WebsocketResult_t ) ret;
 }
 
-WebsocketResult_t Websocket_Send( char *pMessage, size_t messageLength )
+WebsocketResult_t Websocket_Send( char * pMessage,
+                                  size_t messageLength )
 {
-    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t index;
 
     if( pMessage == NULL )
@@ -735,16 +749,16 @@ WebsocketResult_t Websocket_Send( char *pMessage, size_t messageLength )
         lws_callback_on_writable( networkingLibwebsocketContext.pLws[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ] );
     }
 
-    return ret;
+    return ( WebsocketResult_t ) ret;
 }
 
 WebsocketResult_t Websocket_Recv()
 {
-    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 
     ret = performLwsRecv();
 
-    return ret;
+    return ( WebsocketResult_t ) ret;
 }
 
 WebsocketResult_t Websocket_Signal()
@@ -752,5 +766,5 @@ WebsocketResult_t Websocket_Signal()
     /* wake the thread running lws_service() up to handle events. */
     NetworkingLibwebsockets_Signal( networkingLibwebsocketContext.pLwsContext );
 
-    return NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    return ( WebsocketResult_t ) NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 }

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include "logging.h"
 #include "peer_connection.h"
@@ -41,7 +42,7 @@ static void * PeerConnection_SessionTask( void * pParameter )
 
     for( ; pSession->state < PEER_CONNECTION_SESSION_STATE_START; )
     {
-        //vTaskDelay( pdMS_TO_TICKS( 50 ) );
+        usleep( 50 * 1000 );
     }
 
     LogInfo( ( "Start peer connection session task." ) );
@@ -52,7 +53,10 @@ static void * PeerConnection_SessionTask( void * pParameter )
     {
         LogError( ( "PeerConnectionTask returns unexpectly." ) );
         //vTaskDelay( pdMS_TO_TICKS( 2000 ) );
+        usleep( 2 * 1000 * 1000 );
     }
+
+    return 0;
 }
 
 static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession )

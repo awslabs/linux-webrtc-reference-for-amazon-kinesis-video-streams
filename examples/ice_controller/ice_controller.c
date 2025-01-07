@@ -699,15 +699,15 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         memset( &iceInitInfo,
                 0,
                 sizeof( IceInitInfo_t ) );
-        iceInitInfo.creds.pLocalUsername = pLocalUserName;
+        iceInitInfo.creds.pLocalUsername = ( const uint8_t * ) pLocalUserName;
         iceInitInfo.creds.localUsernameLength = localUserNameLength;
-        iceInitInfo.creds.pLocalPassword = pLocalPassword;
+        iceInitInfo.creds.pLocalPassword = ( const uint8_t * ) pLocalPassword;
         iceInitInfo.creds.localPasswordLength = localPasswordLength;
-        iceInitInfo.creds.pRemoteUsername = pRemoteUserName;
+        iceInitInfo.creds.pRemoteUsername = ( const uint8_t * ) pRemoteUserName;
         iceInitInfo.creds.remoteUsernameLength = remoteUserNameLength;
-        iceInitInfo.creds.pRemotePassword = pRemotePassword;
+        iceInitInfo.creds.pRemotePassword = ( const uint8_t * ) pRemotePassword;
         iceInitInfo.creds.remotePasswordLength = remotePasswordLength;
-        iceInitInfo.creds.pCombinedUsername = pCombinedName;
+        iceInitInfo.creds.pCombinedUsername = ( const uint8_t * ) pCombinedName;
         iceInitInfo.creds.combinedUsernameLength = combinedNameLength;
         iceInitInfo.pLocalCandidatesArray = pCtx->localCandidatesBuffer;
         iceInitInfo.localCandidatesArrayLength = ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT;
