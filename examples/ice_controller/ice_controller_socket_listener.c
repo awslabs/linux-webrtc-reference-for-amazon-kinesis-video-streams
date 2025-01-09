@@ -108,7 +108,7 @@ static int RemoveTurnChannelHeader( void * pCustomContext,
         }
         else
         {
-            LogInfo( ( "Receiving data, length(%lu), for other candidate, drop it.", inputBufferLength ) );
+            LogInfo( ( "Receiving valid data, length(%lu).", inputBufferLength ) );
             *pOutputBufferSize = writtenLength;
         }
     }
@@ -306,6 +306,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             {
                 /* Set state to pass handshake in ReleaseOtherSockets. */
                 ReleaseOtherSockets( pCtx, pSocketContext );
+                LogDebug( ( "Released all other socket contexts" ) );
 
                 /* Found nominated pair, execute DTLS handshake and release all other resources. */
                 if( onIceEventCallbackFunc )
@@ -336,7 +337,6 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                 {
                     LogWarn( ( "No callback function to handle P2P connection found event." ) );
                 }
-                LogDebug( ( "Released all other socket contexts" ) );
             }
             else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
             {

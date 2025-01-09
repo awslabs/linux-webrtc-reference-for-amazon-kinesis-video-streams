@@ -818,6 +818,9 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                                 /* We have finished accessing the shared resource.  Release the mutex. */
                                 pthread_mutex_unlock( &( pCtx->socketMutex ) );
                             }
+
+                            IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_READY );
+                            IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
                             ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
                         }
                     }
@@ -908,6 +911,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 {
                     LogWarn( ( "Not able to create candidate request with return: %d", iceResult ) );
                 }
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_FRESH_COMPLETE:
+                LogInfo( ( "TURN session is refreshed." ) );
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_TURN_SESSION_TERMINATED:
+                LogInfo( ( "TURN session is terminated." ) );
                 break;
             default:
                 LogWarn( ( "Unknown case: %d", iceHandleStunResult ) );

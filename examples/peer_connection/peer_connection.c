@@ -31,6 +31,8 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
                                                                PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSession_t * pSession,
                                                               PeerConnectionSessionRequestMessage_t * pRequestMessage );
+static PeerConnectionResult_t HandlePeriodConnectionCheck( PeerConnectionSession_t * pSession,
+                                                           PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
                                      int socketFd,
                                      IceEndpoint_t * pRemoteEndpoint );
@@ -87,7 +89,7 @@ static void HandleRequest( PeerConnectionSession_t * pSession,
     if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
     {
         /* Received message, process it. */
-        LogDebug( ( "Receive request type: %d", requestMsg.requestType ) );
+        LogDebug( ( "Peer connection receives request with type: %d", requestMsg.requestType ) );
         switch( requestMsg.requestType )
         {
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE:
@@ -97,6 +99,10 @@ static void HandleRequest( PeerConnectionSession_t * pSession,
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_CONNECTIVITY_CHECK:
                 ( void ) HandleConnectivityCheckRequest( pSession,
                                                          &requestMsg );
+                break;
+            case PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK:
+                ( void ) HandlePeriodConnectionCheck( pSession,
+                                                      &requestMsg );
                 break;
             default:
                 /* Unknown request, drop it. */
@@ -145,8 +151,29 @@ static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSess
         iceControllerResult = IceController_SendConnectivityCheck( &pSession->iceControllerContext );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to add remote candidate." ) );
+            LogError( ( "Fail to send connectivity check." ) );
             ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_SEND_CONNECTIVITY_CHECK;
+        }
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t HandlePeriodConnectionCheck( PeerConnectionSession_t * pSession,
+                                                           PeerConnectionSessionRequestMessage_t * pRequestMessage )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    IceControllerResult_t iceControllerResult;
+
+    ( void ) pRequestMessage;
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        iceControllerResult = IceController_PeriodConnectionCheck( &pSession->iceControllerContext );
+        if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to check ICE connection." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_PERIOD_CONNECTION_CHECK;
         }
     }
 
@@ -271,6 +298,34 @@ static int32_t OnIceEventPeerToPeerConnectionFound( PeerConnectionSession_t * pS
     return ret;
 }
 
+static int32_t OnIceEventPeriodicConnectionCheck( PeerConnectionSession_t * pSession )
+{
+    int32_t ret = 0;
+    MessageQueueResult_t retMessageQueue;
+    PeerConnectionSessionRequestMessage_t requestMessage = {
+        .requestType = PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK,
+    };
+
+    if( pSession == NULL )
+    {
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        ret = -10;
+    }
+
+    if( ret == 0 )
+    {
+        retMessageQueue = MessageQueue_Send( &pSession->requestQueue,
+                                             &requestMessage,
+                                             sizeof( PeerConnectionSessionRequestMessage_t ) );
+        if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+        {
+            ret = -11;
+        }
+    }
+
+    return ret;
+}
+
 static int32_t HandleIceEventCallback( void * pCustomContext,
                                        IceControllerCallbackEvent_t event,
                                        IceControllerCallbackContent_t * pEventMsg )
@@ -345,6 +400,9 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 pSession->dtlsSession.xDtlsTransportParams.pOnDtlsRecvCustomContext = pPeerToPeerConnectionFoundMsg->pOnDtlsRecvCustomContext;
 
                 ret = OnIceEventPeerToPeerConnectionFound( pSession, pPeerToPeerConnectionFoundMsg->socketFd, pPeerToPeerConnectionFoundMsg->pRemoteEndpoint );
+                break;
+            case ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK:
+                ret = OnIceEventPeriodicConnectionCheck( pSession );
                 break;
             default:
                 LogError( ( "Unknown event: %d", event ) );
