@@ -582,12 +582,22 @@ IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_
             if( pCtx->pNominatedSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
             {
                 iceResult = Ice_CheckTurnConnection( &pCtx->iceContext,
-                                                     pCtx->pNominatedSocketContext->pLocalCandidate );
-                if( iceResult == ICE_RESULT_OK )
+                                                     pCtx->pNominatedSocketContext->pCandidatePair );
+                if( iceResult == ICE_RESULT_NEED_REFRESH_CANDIDATE )
                 {
-                    LogInfo( ( "Need to refresh the connection." ) );
-                    ret = IceController_SendTurnRefresh( pCtx,
-                                                         pCtx->pNominatedSocketContext->pLocalCandidate );
+                    LogInfo( ( "Need to refresh TURN allocation." ) );
+                    ret = IceController_SendTurnRefreshAllocation( pCtx,
+                                                                   pCtx->pNominatedSocketContext->pLocalCandidate );
+                }
+                else if( iceResult == ICE_RESULT_NEED_REFRESH_PERMISSION )
+                {
+                    LogInfo( ( "Need to refresh TURN permission." ) );
+                    ret = IceController_SendTurnRefreshPermission( pCtx,
+                                                                   pCtx->pNominatedSocketContext->pCandidatePair );
+                }
+                else
+                {
+                    /* Empty else marker. */
                 }
             }
         }
@@ -607,8 +617,8 @@ IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_
     return ret;
 }
 
-IceControllerResult_t IceController_SendTurnRefresh( IceControllerContext_t * pCtx,
-                                                     IceCandidate_t * pTargetCandidate )
+IceControllerResult_t IceController_SendTurnRefreshAllocation( IceControllerContext_t * pCtx,
+                                                               IceCandidate_t * pTargetCandidate )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
@@ -654,6 +664,71 @@ IceControllerResult_t IceController_SendTurnRefresh( IceControllerContext_t * pC
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         LogVerbose( ( "Sending TURN refresh request from IP/port: %s/%d",
+                      IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint,
+                                                         ipFromBuffer,
+                                                         sizeof( ipFromBuffer ) ),
+                      pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
+        IceControllerNet_LogStunPacket( stunBuffer,
+                                        stunBufferLength );
+
+        ret = IceControllerNet_SendPacket( pCtx,
+                                           pSocketContext,
+                                           pSocketContext->pIceServerEndpoint,
+                                           NULL,
+                                           stunBuffer,
+                                           stunBufferLength );
+    }
+
+    return ret;
+}
+
+IceControllerResult_t IceController_SendTurnRefreshPermission( IceControllerContext_t * pCtx,
+                                                               IceCandidatePair_t * pTargetCandidatePair )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_HEADER_LENGTH ];
+    size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+    IceControllerSocketContext_t * pSocketContext;
+    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    char ipFromBuffer[ INET_ADDRSTRLEN ];
+    char ipToBuffer[ INET_ADDRSTRLEN ];
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+
+    if( ( pCtx == NULL ) || ( pTargetCandidatePair == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: %p, pTargetCandidatePair: %p", pCtx, pTargetCandidatePair ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        iceResult = Ice_CreateTurnRefreshPermissionRequest( &pCtx->iceContext,
+                                                            pTargetCandidatePair,
+                                                            stunBuffer,
+                                                            &stunBufferLength );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to package TURN refresh request, result: %d", iceResult ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_TURN_REFRESH_REQUEST;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        pSocketContext = FindSocketContextByLocalCandidate( pCtx,
+                                                            pTargetCandidatePair->pLocalCandidate );
+        if( pSocketContext == NULL )
+        {
+            LogWarn( ( "Not able to find socket context mapping, mapping local candidate: %p", pTargetCandidatePair->pLocalCandidate ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_FIND_SOCKET_CONTEXT;
+        }
+
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        LogVerbose( ( "Sending TURN refresh permission request from IP/port: %s/%d",
                       IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint,
                                                          ipFromBuffer,
                                                          sizeof( ipFromBuffer ) ),

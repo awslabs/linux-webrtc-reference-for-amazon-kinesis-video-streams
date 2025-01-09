@@ -40,8 +40,10 @@ void IceControllerNet_FreeSocketContext( IceControllerContext_t * pCtx,
                                          IceControllerSocketContext_t * pSocketContext );
 void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
                                      size_t stunPacketSize );
-IceControllerResult_t IceController_SendTurnRefresh( IceControllerContext_t * pCtx,
-                                                     IceCandidate_t * pTargetCandidate );
+IceControllerResult_t IceController_SendTurnRefreshAllocation( IceControllerContext_t * pCtx,
+                                                               IceCandidate_t * pTargetCandidate );
+IceControllerResult_t IceController_SendTurnRefreshPermission( IceControllerContext_t * pCtx,
+                                                               IceCandidatePair_t * pTargetCandidatePair );
 
 IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t * pCtx,
                                                         OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc,
