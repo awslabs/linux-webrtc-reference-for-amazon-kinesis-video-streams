@@ -295,7 +295,6 @@ static IceControllerResult_t ProcessLocalCandidates( IceControllerContext_t * pC
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipFromBuffer[ INET_ADDRSTRLEN ];
-    char ipToBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     iceResult = Ice_GetLocalCandidateCount( &pCtx->iceContext,
@@ -474,6 +473,8 @@ static IceControllerResult_t ProcessCandidatePairs( IceControllerContext_t * pCt
             }
         }
     }
+
+    return ret;
 }
 
 IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t * pCtx,
@@ -564,7 +565,6 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
 IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    TimerControllerResult_t retTimer;
     IceResult_t iceResult;
 
     if( pCtx == NULL )
@@ -627,7 +627,6 @@ IceControllerResult_t IceController_SendTurnRefreshAllocation( IceControllerCont
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipFromBuffer[ INET_ADDRSTRLEN ];
-    char ipToBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( ( pCtx == NULL ) || ( pTargetCandidate == NULL ) )
@@ -692,7 +691,6 @@ IceControllerResult_t IceController_SendTurnRefreshPermission( IceControllerCont
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipFromBuffer[ INET_ADDRSTRLEN ];
-    char ipToBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( ( pCtx == NULL ) || ( pTargetCandidatePair == NULL ) )
@@ -1047,7 +1045,6 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
-    TimerControllerResult_t retTimer;
     IceInitInfo_t iceInitInfo;
 
     if( ( pCtx == NULL ) ||

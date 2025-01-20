@@ -188,7 +188,7 @@ static int DtlsUdpSendWrap( void * pCustomCtx,
 {
     int ret = 0;
     DtlsTransportParams_t * pDtlsTransportParams = (DtlsTransportParams_t*) pCustomCtx;
-    static char sendingBuffer[ DTLS_MTU_MAX_SIZE ];
+    static uint8_t sendingBuffer[ DTLS_MTU_MAX_SIZE ];
     size_t sendingBufferSize = DTLS_MTU_MAX_SIZE;
     const uint8_t * pBuffer;
     size_t * pBufferLength;

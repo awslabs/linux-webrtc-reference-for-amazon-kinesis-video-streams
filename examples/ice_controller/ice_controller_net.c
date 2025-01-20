@@ -630,8 +630,6 @@ IceControllerResult_t IceControllerNet_AddRelayCandidates( IceControllerContext_
     IceResult_t iceResult;
     uint32_t i;
     IceControllerSocketContext_t * pSocketContext = NULL;
-    int32_t retLocalCandidateReady;
-    IceControllerCallbackContent_t localCandidateReadyContent;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
@@ -695,7 +693,6 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
     IceControllerCallbackContent_t localCandidateReadyContent;
     uint8_t sentStunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_HEADER_LENGTH ];
     size_t sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
-    static uint32_t counter = 0;
     IceResult_t iceResult;
 
     if( ( pCtx == NULL ) || ( pReceiveBuffer == NULL ) || ( pRemoteIceEndpoint == NULL ) )
