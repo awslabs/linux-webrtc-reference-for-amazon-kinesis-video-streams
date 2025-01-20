@@ -193,7 +193,7 @@ static SignalingControllerResult_t SignalingController_WebsocketInit( SignalingC
 
     retWebsocket = Websocket_Init( &libwebsocketsCred, handleWssMessage, pCtx );
 
-    if( retWebsocket != HTTP_RESULT_OK )
+    if( retWebsocket != WEBSOCKET_RESULT_OK )
     {
         ret = SIGNALING_CONTROLLER_RESULT_WEBSOCKET_INIT_FAIL;
     }

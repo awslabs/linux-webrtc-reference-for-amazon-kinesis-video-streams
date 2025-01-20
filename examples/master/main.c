@@ -1089,7 +1089,6 @@ int main()
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerCredential_t signalingControllerCred;
-    pthread_t threadIceController;
 
     srand( time( NULL ) );
 
@@ -1140,11 +1139,6 @@ int main()
             ret = -1;
         }
     }
-
-    // if( ret == 0 )
-    // {
-    //     pthread_create( &threadIceController, NULL, executeIceController, &demoContext.iceControllerContext );
-    // }
 
     if( ret == 0 )
     {

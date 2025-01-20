@@ -63,27 +63,27 @@ typedef enum NetworkingLibwebsocketsResult
 
 typedef struct NetworkingLibwebsocketsAppendHeaders
 {
-    char *pChannelArn;
+    char * pChannelArn;
     size_t channelArnLength;
-    char *pUserAgent;
+    char * pUserAgent;
     size_t userAgentLength;
-    char *pHost;
+    char * pHost;
     size_t hostLength;
-    char *pDate;
+    char * pDate;
     size_t dateLength;
-    char *pContentType;
+    char * pContentType;
     size_t contentTypeLength;
     size_t contentLength;
-    char *pAuthorization;
+    char * pAuthorization;
     size_t authorizationLength;
-    char *pSignature;
+    char * pSignature;
     size_t signatureLength;
 } NetworkingLibwebsocketsAppendHeaders_t;
 
 typedef struct NetworkingLibwebsocketsCredentials
 {
     /* user-agent */
-    char *pUserAgent;
+    char * pUserAgent;
     size_t userAgentLength;
 
     /* Region */
@@ -118,15 +118,15 @@ typedef struct NetworkingLibwebsocketRingBuffer
 
 typedef struct NetworkingLibwebsocketContext
 {
-    struct lws_context *pLwsContext;
-    struct lws *pLws[ NETWORKING_LWS_PROTOCOLS_NUM ];
+    struct lws_context * pLwsContext;
+    struct lws * pLws[ NETWORKING_LWS_PROTOCOLS_NUM ];
     uint8_t terminateLwsService;
     char pLwsBuffer[ NETWORKING_LWS_MAX_BUFFER_LENGTH ];
 
     /* append HTTP headers */
     NetworkingLibwebsocketsAppendHeaders_t appendHeaders;
-    HttpRequest_t *pRequest;
-    HttpResponse_t *pResponse;
+    HttpRequest_t * pRequest;
+    HttpResponse_t * pResponse;
 
     NetworkingLibwebsocketsCredentials_t libwebsocketsCredentials;
 
@@ -139,7 +139,7 @@ typedef struct NetworkingLibwebsocketContext
     SigV4Credentials_t sigv4Credential;
 
     /* OpenSSL EVP context. */
-    EVP_MD_CTX *pEvpMdCtx;
+    EVP_MD_CTX * pEvpMdCtx;
 
     /* Rx path: callback user to handle received message. */
     WebsocketMessageCallback_t websocketRxCallback;

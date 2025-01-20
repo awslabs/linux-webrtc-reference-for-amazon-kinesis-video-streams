@@ -50,17 +50,20 @@ uint8_t base64DecodeAlpha[256] =
     0,  0,  0,  0,  0,  0,
 };
 
-Base64Result_t base64Encode( const char *pInputData, size_t inputDataLength, char *pOutputData, size_t *pOutputDataLength )
+Base64Result_t base64Encode( const char * pInputData,
+                             size_t inputDataLength,
+                             char * pOutputData,
+                             size_t * pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
     uint32_t padding, i;
     size_t mod3;
-    const char *pInput = pInputData;
-    char *pOutput = pOutputData;
+    const char * pInput = pInputData;
+    char * pOutput = pOutputData;
     size_t outputLength = 0;
     uint8_t b0, b1, b2;
 
-    if( pInputData == NULL || pOutputData == NULL || pOutputDataLength == NULL )
+    if( ( pInputData == NULL ) || ( pOutputData == NULL ) || ( pOutputDataLength == NULL ) )
     {
         ret = BASE64_RESULT_BAD_PARAMETER;
     }
@@ -103,7 +106,7 @@ Base64Result_t base64Encode( const char *pInputData, size_t inputDataLength, cha
         {
             *pOutput++ = base64EecodeAlpha[ *pInput >> 2 ];
             *pOutput++ = base64EecodeAlpha[ ( ( 0x03 & *pInput ) << 4 ) + ( *( pInput + 1 ) >> 4 ) ];
-            *pOutput++ = base64EecodeAlpha[ ( 0x0f & *( pInput + 1 )) << 2 ];
+            *pOutput++ = base64EecodeAlpha[ ( 0x0f & *( pInput + 1 ) ) << 2 ];
             *pOutput++ = '=';
         }
         else if( padding == 2 )
@@ -121,16 +124,19 @@ Base64Result_t base64Encode( const char *pInputData, size_t inputDataLength, cha
     return ret;
 }
 
-Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, char *pOutputData, size_t *pOutputDataLength )
+Base64Result_t base64Decode( const char * pInputData,
+                             size_t inputDataLength,
+                             char * pOutputData,
+                             size_t * pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
-    const char *pInput = pInputData;
-    char *pOutput = pOutputData;
+    const unsigned char * pInput = ( const unsigned char * ) pInputData;
+    char * pOutput = pOutputData;
     uint32_t padding, i;
     size_t outputLength = 0;
     uint8_t b0, b1, b2, b3;
 
-    if( pInputData == NULL || pOutputData == NULL || pOutputDataLength == NULL )
+    if( ( pInputData == NULL ) || ( pOutputData == NULL ) || ( pOutputDataLength == NULL ) )
     {
         ret = BASE64_RESULT_BAD_PARAMETER;
     }
@@ -161,7 +167,7 @@ Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, cha
         padding = base64DecodePadding[ inputDataLength % 4 ];
 
         // Mod4 can't be 1 which means the padding can never be 0xff
-        if (padding == 0xff)
+        if( padding == 0xff )
         {
             ret = BASE64_RESULT_INVALID_INPUT;
         }
@@ -190,9 +196,9 @@ Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, cha
                 b2 = base64DecodeAlpha[ *pInput++ ];
                 b3 = base64DecodeAlpha[ *pInput++ ];
 
-                *pOutput++ = (b0 << 2) | (b1 >> 4);
-                *pOutput++ = (b1 << 4) | (b2 >> 2);
-                *pOutput++ = (b2 << 6) | b3;
+                *pOutput++ = ( b0 << 2 ) | ( b1 >> 4 );
+                *pOutput++ = ( b1 << 4 ) | ( b2 >> 2 );
+                *pOutput++ = ( b2 << 6 ) | b3;
             }
         }
 
@@ -203,15 +209,15 @@ Base64Result_t base64Decode( const char *pInputData, size_t inputDataLength, cha
             b1 = base64DecodeAlpha[ *pInput++ ];
             b2 = base64DecodeAlpha[ *pInput++ ];
 
-            *pOutput++ = (b0 << 2) | (b1 >> 4);
-            *pOutput++ = (b1 << 4) | (b2 >> 2);
+            *pOutput++ = ( b0 << 2 ) | ( b1 >> 4 );
+            *pOutput++ = ( b1 << 4 ) | ( b2 >> 2 );
         }
         else if( padding == 2 )
         {
             b0 = base64DecodeAlpha[*pInput++];
             b1 = base64DecodeAlpha[*pInput++];
 
-            *pOutput++ = (b0 << 2) | (b1 >> 4);
+            *pOutput++ = ( b0 << 2 ) | ( b1 >> 4 );
         }
         else
         {

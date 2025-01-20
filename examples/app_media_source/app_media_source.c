@@ -41,10 +41,9 @@ static void * AudioTx_Task( void * pParameter );
 static void * VideoTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pVideoContext = ( AppMediaSourceContext_t * )pParameter;
-    MessageQueueResult_t retMessageQueue;
     webrtc_frame_t frame;
     char filePath[ MAX_PATH_LEN + 1 ];
-    FILE* fp = NULL;
+    FILE * fp = NULL;
     int32_t fileIndex = 0;
     size_t frameLength;
     size_t allocatedBufferLength = 0;
@@ -110,15 +109,16 @@ static void * VideoTx_Task( void * pParameter )
             usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
     }
+
+    return 0;
 }
 
 static void * AudioTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pAudioContext = ( AppMediaSourceContext_t * )pParameter;
-    MessageQueueResult_t retMessageQueue;
     webrtc_frame_t frame;
     char filePath[ MAX_PATH_LEN + 1 ];
-    FILE* fp = NULL;
+    FILE * fp = NULL;
     int32_t fileIndex = 0;
     size_t frameLength;
     size_t allocatedBufferLength = 0;
@@ -184,6 +184,8 @@ static void * AudioTx_Task( void * pParameter )
             usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
     }
+
+    return 0;
 }
 
 static int32_t OnPcEventRemotePeerReady( AppMediaSourceContext_t * pMediaSource )
@@ -318,10 +320,10 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
         pAudioSource->transceiver.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
         pAudioSource->transceiver.direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
         #if ( AUDIO_OPUS )
-            TRANSCEIVER_ENABLE_CODEC( pAudioSource->transceiver.codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT );
+        TRANSCEIVER_ENABLE_CODEC( pAudioSource->transceiver.codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT );
         #else
-            TRANSCEIVER_ENABLE_CODEC( pAudioSource->transceiver.codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT );
-            TRANSCEIVER_ENABLE_CODEC( pAudioSource->transceiver.codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT );
+        TRANSCEIVER_ENABLE_CODEC( pAudioSource->transceiver.codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT );
+        TRANSCEIVER_ENABLE_CODEC( pAudioSource->transceiver.codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT );
         #endif
         pAudioSource->transceiver.rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND;
         pAudioSource->transceiver.rollingbufferBitRate = DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE;
