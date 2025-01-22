@@ -22,6 +22,8 @@ typedef struct HttpRequest
     size_t urlLength;
     char * pBody;
     size_t bodyLength;
+
+    uint8_t isFetchingCredential;
 } HttpRequest_t;
 
 typedef struct HttpResponse
@@ -31,7 +33,10 @@ typedef struct HttpResponse
 } HttpResponse_t;
 
 HttpResult_t Http_Init( void * pCredential );
-HttpResult_t Http_Send( HttpRequest_t * pRequest, size_t timeoutMs, HttpResponse_t *pResponse );
+HttpResult_t Http_Send( HttpRequest_t * pRequest,
+                        size_t timeoutMs,
+                        HttpResponse_t * pResponse );
+HttpResult_t Http_UpdateCredential( void * pCredential );
 
 #ifdef __cplusplus
 }

@@ -14,14 +14,14 @@
 #endif
 
 #if ( defined( SIGNALING_CONTROLLER_USING_LIBWEBSOCKETS ) && SIGNALING_CONTROLLER_USING_LIBWEBSOCKETS )
-    #include "libwebsockets.h"
-    #include "networkingLibwebsockets.h"
+#include "libwebsockets.h"
+#include "networkingLibwebsockets.h"
 #elif ( defined( SIGNALING_CONTROLLER_USING_COREHTTP ) && SIGNALING_CONTROLLER_USING_COREHTTP ) /* defined( SIGNALING_CONTROLLER_USING_LIBWEBSOCKETS ) && SIGNALING_CONTROLLER_USING_LIBWEBSOCKETS */
-    #include "core_http_helper.h"
+#include "core_http_helper.h"
 #endif /* defined( SIGNALING_CONTROLLER_USING_LIBWEBSOCKETS ) && SIGNALING_CONTROLLER_USING_LIBWEBSOCKETS */
 
 #if ( defined( SIGNALING_CONTROLLER_USING_WSLAY ) && SIGNALING_CONTROLLER_USING_WSLAY )
-    #include "wslay_helper.h"
+#include "wslay_helper.h"
 #endif /* defined( SIGNALING_CONTROLLER_USING_WSLAY ) && SIGNALING_CONTROLLER_USING_WSLAY */
 #define SIGNALING_CONTROLLER_MESSAGE_QUEUE_NAME "/WebrtcApplicationSignalingController"
 
@@ -35,11 +35,11 @@
 #define SIGNALING_CONTROLLER_SDP_EVENT_MESSAGE_CONTENT_KEY "sdp"
 #define SIGNALING_CONTROLLER_SDP_EVENT_MESSAGE_NEWLINE_ENDING "\\n"
 
-static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t * pCtx,
+static SignalingControllerResult_t UpdateIceServerConfigs( SignalingControllerContext_t * pCtx,
                                                            SignalingIceServer_t * pIceServerList,
                                                            size_t iceServerListNum );
 
-static WebsocketResult_t handleWssMessage( char * pMessage,
+static WebsocketResult_t HandleWssMessage( char * pMessage,
                                            size_t messageLength,
                                            void * pUserContext )
 {
@@ -109,13 +109,13 @@ static WebsocketResult_t handleWssMessage( char * pMessage,
 
             case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
 
-                if( strcmp(wssRecvMessage.statusResponse.pStatusCode,"200")!= 0 )
+                if( strcmp( wssRecvMessage.statusResponse.pStatusCode,"200" ) != 0 )
                 {
-                    LogWarn(( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s",
-                            wssRecvMessage.statusResponse.pCorrelationId,
-                            wssRecvMessage.statusResponse.pErrorType,
-                            wssRecvMessage.statusResponse.pStatusCode,
-                            wssRecvMessage.statusResponse.pDescription));
+                    LogWarn( ( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s",
+                               wssRecvMessage.statusResponse.pCorrelationId,
+                               wssRecvMessage.statusResponse.pErrorType,
+                               wssRecvMessage.statusResponse.pStatusCode,
+                               wssRecvMessage.statusResponse.pDescription ) );
                 }
                 else
                 {
@@ -138,7 +138,7 @@ static WebsocketResult_t handleWssMessage( char * pMessage,
         receiveEvent.pDecodeMessage = pCtx->base64Buffer;
         receiveEvent.decodeMessageLength = pCtx->base64BufferLength;
 
-        if( (needCallback == true ) && ( pCtx->receiveMessageCallback != NULL ) )
+        if( ( needCallback == true ) && ( pCtx->receiveMessageCallback != NULL ) )
         {
             pCtx->receiveMessageCallback( &receiveEvent, pCtx->pReceiveMessageCallbackContext );
         }
@@ -155,15 +155,24 @@ static SignalingControllerResult_t SignalingController_HttpInit( SignalingContro
     HttpResult_t retHttp;
     NetworkingLibwebsocketsCredentials_t libwebsocketsCred;
 
-    libwebsocketsCred.pUserAgent = pCtx->credential.pUserAgentName;
+    libwebsocketsCred.pUserAgent = pCtx->credential.userAgentName;
     libwebsocketsCred.userAgentLength = pCtx->credential.userAgentNameLength;
-    libwebsocketsCred.pRegion = pCtx->credential.pRegion;
+    libwebsocketsCred.pRegion = pCtx->credential.region;
     libwebsocketsCred.regionLength = pCtx->credential.regionLength;
-    libwebsocketsCred.pAccessKeyId = pCtx->credential.pAccessKeyId;
+    libwebsocketsCred.pAccessKeyId = pCtx->credential.accessKeyId;
     libwebsocketsCred.accessKeyIdLength = pCtx->credential.accessKeyIdLength;
-    libwebsocketsCred.pSecretAccessKey = pCtx->credential.pSecretAccessKey;
+    libwebsocketsCred.pSecretAccessKey = pCtx->credential.secretAccessKey;
     libwebsocketsCred.secretAccessKeyLength = pCtx->credential.secretAccessKeyLength;
-    libwebsocketsCred.pCaCertPath = pCtx->credential.pCaCertPath;
+    libwebsocketsCred.pCaCertPath = pCtx->credential.caCertPath;
+    libwebsocketsCred.pIotThingCertPath = pCtx->credential.iotThingCertPath;
+    libwebsocketsCred.iotThingCertPathLength = pCtx->credential.iotThingCertPathLength;
+    libwebsocketsCred.pIotThingPrivateKeyPath = pCtx->credential.iotThingPrivateKeyPath;
+    libwebsocketsCred.iotThingPrivateKeyPathLength = pCtx->credential.iotThingPrivateKeyPathLength;
+    libwebsocketsCred.pIotThingName = pCtx->credential.iotThingName;
+    libwebsocketsCred.iotThingNameLength = pCtx->credential.iotThingNameLength;
+    libwebsocketsCred.pSessionToken = pCtx->credential.sessionToken;
+    libwebsocketsCred.sessionTokenLength = pCtx->credential.sessionTokenLength;
+    libwebsocketsCred.expirationSeconds = 0LU;
 
     retHttp = Http_Init( &libwebsocketsCred );
 
@@ -175,27 +184,98 @@ static SignalingControllerResult_t SignalingController_HttpInit( SignalingContro
     return ret;
 }
 
+static SignalingControllerResult_t SignalingController_HttpUpdateCred( SignalingControllerCredential_t * pCredential )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    HttpResult_t retHttp;
+    NetworkingLibwebsocketsCredentials_t libwebsocketsCred;
+
+    libwebsocketsCred.pUserAgent = pCredential->userAgentName;
+    libwebsocketsCred.userAgentLength = pCredential->userAgentNameLength;
+    libwebsocketsCred.pRegion = pCredential->region;
+    libwebsocketsCred.regionLength = pCredential->regionLength;
+    libwebsocketsCred.pAccessKeyId = pCredential->accessKeyId;
+    libwebsocketsCred.accessKeyIdLength = pCredential->accessKeyIdLength;
+    libwebsocketsCred.pSecretAccessKey = pCredential->secretAccessKey;
+    libwebsocketsCred.secretAccessKeyLength = pCredential->secretAccessKeyLength;
+    libwebsocketsCred.pCaCertPath = pCredential->caCertPath;
+    libwebsocketsCred.pIotThingCertPath = pCredential->iotThingCertPath;
+    libwebsocketsCred.iotThingCertPathLength = pCredential->iotThingCertPathLength;
+    libwebsocketsCred.pIotThingPrivateKeyPath = pCredential->iotThingPrivateKeyPath;
+    libwebsocketsCred.iotThingPrivateKeyPathLength = pCredential->iotThingPrivateKeyPathLength;
+    libwebsocketsCred.pIotThingName = pCredential->iotThingName;
+    libwebsocketsCred.iotThingNameLength = pCredential->iotThingNameLength;
+    libwebsocketsCred.pSessionToken = pCredential->sessionToken;
+    libwebsocketsCred.sessionTokenLength = pCredential->sessionTokenLength;
+    libwebsocketsCred.expirationSeconds = pCredential->expirationSeconds;
+
+    retHttp = Http_UpdateCredential( &libwebsocketsCred );
+
+    if( retHttp != HTTP_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_HTTP_UPDATE_FAIL;
+    }
+
+    return ret;
+}
+
 static SignalingControllerResult_t SignalingController_WebsocketInit( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     WebsocketResult_t retWebsocket;
     NetworkingLibwebsocketsCredentials_t libwebsocketsCred;
 
-    libwebsocketsCred.pUserAgent = pCtx->credential.pUserAgentName;
+    libwebsocketsCred.pUserAgent = pCtx->credential.userAgentName;
     libwebsocketsCred.userAgentLength = pCtx->credential.userAgentNameLength;
-    libwebsocketsCred.pRegion = pCtx->credential.pRegion;
+    libwebsocketsCred.pRegion = pCtx->credential.region;
     libwebsocketsCred.regionLength = pCtx->credential.regionLength;
-    libwebsocketsCred.pAccessKeyId = pCtx->credential.pAccessKeyId;
+    libwebsocketsCred.pAccessKeyId = pCtx->credential.accessKeyId;
     libwebsocketsCred.accessKeyIdLength = pCtx->credential.accessKeyIdLength;
-    libwebsocketsCred.pSecretAccessKey = pCtx->credential.pSecretAccessKey;
+    libwebsocketsCred.pSecretAccessKey = pCtx->credential.secretAccessKey;
     libwebsocketsCred.secretAccessKeyLength = pCtx->credential.secretAccessKeyLength;
-    libwebsocketsCred.pCaCertPath = pCtx->credential.pCaCertPath;
+    libwebsocketsCred.pCaCertPath = pCtx->credential.caCertPath;
+    libwebsocketsCred.expirationSeconds = 0LU;
 
-    retWebsocket = Websocket_Init( &libwebsocketsCred, handleWssMessage, pCtx );
+    retWebsocket = Websocket_Init( &libwebsocketsCred, HandleWssMessage, pCtx );
 
     if( retWebsocket != WEBSOCKET_RESULT_OK )
     {
         ret = SIGNALING_CONTROLLER_RESULT_WEBSOCKET_INIT_FAIL;
+    }
+
+    return ret;
+}
+
+static SignalingControllerResult_t SignalingController_WebsocketUpdateCred( SignalingControllerCredential_t * pCredential )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    WebsocketResult_t retWebsocket;
+    NetworkingLibwebsocketsCredentials_t libwebsocketsCred;
+
+    libwebsocketsCred.pUserAgent = pCredential->userAgentName;
+    libwebsocketsCred.userAgentLength = pCredential->userAgentNameLength;
+    libwebsocketsCred.pRegion = pCredential->region;
+    libwebsocketsCred.regionLength = pCredential->regionLength;
+    libwebsocketsCred.pAccessKeyId = pCredential->accessKeyId;
+    libwebsocketsCred.accessKeyIdLength = pCredential->accessKeyIdLength;
+    libwebsocketsCred.pSecretAccessKey = pCredential->secretAccessKey;
+    libwebsocketsCred.secretAccessKeyLength = pCredential->secretAccessKeyLength;
+    libwebsocketsCred.pCaCertPath = pCredential->caCertPath;
+    libwebsocketsCred.pIotThingCertPath = pCredential->iotThingCertPath;
+    libwebsocketsCred.iotThingCertPathLength = pCredential->iotThingCertPathLength;
+    libwebsocketsCred.pIotThingPrivateKeyPath = pCredential->iotThingPrivateKeyPath;
+    libwebsocketsCred.iotThingPrivateKeyPathLength = pCredential->iotThingPrivateKeyPathLength;
+    libwebsocketsCred.pIotThingName = pCredential->iotThingName;
+    libwebsocketsCred.iotThingNameLength = pCredential->iotThingNameLength;
+    libwebsocketsCred.pSessionToken = pCredential->sessionToken;
+    libwebsocketsCred.sessionTokenLength = pCredential->sessionTokenLength;
+    libwebsocketsCred.expirationSeconds = pCredential->expirationSeconds;
+
+    retWebsocket = Websocket_UpdateCredential( &libwebsocketsCred );
+
+    if( retWebsocket != WEBSOCKET_RESULT_OK )
+    {
+        ret = SIGNALING_CONTROLLER_RESULT_WEBSOCKET_UPDATE_FAIL;
     }
 
     return ret;
@@ -333,7 +413,7 @@ static SignalingControllerResult_t SignalingController_WebsocketInit( SignalingC
     credential.pRootCa = ( uint8_t * ) pCtx->credential.pCaCertPem;
     credential.rootCaSize = pCtx->credential.caCertPemSize;
 
-    retWebsocket = Websocket_Init( &credential, handleWssMessage, pCtx );
+    retWebsocket = Websocket_Init( &credential, HandleWssMessage, pCtx );
 
     if( retWebsocket != WEBSOCKET_RESULT_OK )
     {
@@ -391,7 +471,7 @@ static void printMetrics( SignalingControllerContext_t * pCtx )
     for( i = 0; i < pCtx->iceServerConfigsCount; i++ )
     {
         LogInfo( ( "======================================== Ice Server[%u] ========================================", i ) );
-        LogInfo( ( "    TTL (secodns): %u", pCtx->iceServerConfigs[i].ttlSeconds ) );
+        LogInfo( ( "    TTL (seconds): %u", pCtx->iceServerConfigs[i].ttlSeconds ) );
         LogInfo( ( "    User Name: %s", pCtx->iceServerConfigs[i].userName ) );
         LogInfo( ( "    Password: %s", pCtx->iceServerConfigs[i].password ) );
         LogInfo( ( "    URI Count: %u", pCtx->iceServerConfigs[i].uriCount ) );
@@ -402,7 +482,7 @@ static void printMetrics( SignalingControllerContext_t * pCtx )
     }
 }
 
-static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerContext_t * pCtx,
+static SignalingControllerResult_t UpdateIceServerConfigs( SignalingControllerContext_t * pCtx,
                                                            SignalingIceServer_t * pIceServerList,
                                                            size_t iceServerListNum )
 {
@@ -500,6 +580,140 @@ static SignalingControllerResult_t updateIceServerConfigs( SignalingControllerCo
     return ret;
 }
 
+static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControllerContext_t * pCtx,
+                                                              SignalingControllerCredential_t * pCredential )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+    SignalingResult_t retSignal;
+    SignalingRequest_t signalRequest;
+    HttpRequest_t request;
+    HttpResponse_t response;
+    SignalingCredential_t retCredentials;
+
+    // Prepare URL buffer
+    signalRequest.pUrl = pCtx->httpUrlBuffer;
+    signalRequest.urlLength = SIGNALING_CONTROLLER_MAX_HTTP_URI_LENGTH;
+
+    if( ( pCtx == NULL ) || ( pCredential == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: 0x%p, pCredential: 0x%p", pCtx, pCredential ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    retSignal = Signaling_ConstructFetchTempCredsRequestForAwsIot( pCredential->credEndpoint,
+                                                                    pCredential->credEndpointLength,
+                                                                    pCredential->iotThingRoleAlias,
+                                                                    pCredential->iotThingRoleAliasLength,
+                                                                    &signalRequest );
+
+    if( retSignal != SIGNALING_RESULT_OK )
+    {
+        LogError( ( "Fail to construct Fetch Temporary Credential request, return=0x%x", retSignal ) );
+        ret = SIGNALING_CONTROLLER_RESULT_CONSTRUCT_DESCRIBE_SIGNALING_CHANNEL_FAIL;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        memset( &request, 0, sizeof( HttpRequest_t ) );
+        request.pUrl = signalRequest.pUrl;
+        request.urlLength = signalRequest.urlLength;
+        request.isFetchingCredential = 1U;
+
+        memset( &response, 0, sizeof( HttpResponse_t ) );
+        response.pBuffer = pCtx->httpResponserBuffer;
+        response.bufferLength = SIGNALING_CONTROLLER_MAX_HTTP_BODY_LENGTH;
+
+        ret = SignalingController_HttpPerform( pCtx, &request, 0, &response );
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        retSignal = Signaling_ParseFetchTempCredsResponseFromAwsIot( response.pBuffer,
+                                                                      response.bufferLength,
+                                                                      &retCredentials );
+
+        if( retSignal != SIGNALING_RESULT_OK )
+        {
+            LogError( ( "Fail to parse fetching credentials response, return=0x%x, response(%lu): %.*s", retSignal, response.bufferLength,
+                        ( int ) response.bufferLength, response.pBuffer ) );
+            ret = SIGNALING_CONTROLLER_RESULT_PARSE_TEMPORARY_CREDENTIALS_FAIL;
+        }
+        else
+        {
+            LogDebug( ( "Access Key ID : %.*s \n \n Secret Access Key ID : %.*s \n \n Session Token : %.*s \n \n Expiration : %.*s",
+                        ( int ) retCredentials.accessKeyIdLength, retCredentials.pAccessKeyId,
+                        ( int ) retCredentials.secretAccessKeyLength, retCredentials.pSecretAccessKey,
+                        ( int ) retCredentials.sessionTokenLength, retCredentials.pSessionToken,
+                        ( int ) retCredentials.expirationLength, ( char * ) retCredentials.pExpiration ) );
+        }
+    }
+
+    // Parse the response
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( retCredentials.pAccessKeyId != NULL ) )
+    {
+        if( retCredentials.accessKeyIdLength > SIGNALING_CONTROLLER_ACCESS_KEY_ID_MAX_LENGTH )
+        {
+            /* Return Access Key is longer than expectation. Drop it. */
+            LogError( ( "Length of Access Key ID(%lu) is out of maximum value.",
+                        retCredentials.accessKeyIdLength ) );
+            ret = SIGNALING_CONTROLLER_RESULT_PARSE_TEMPORARY_CREDENTIALS_FAIL;
+        }
+        else
+        {
+            memcpy( pCredential->accessKeyId, retCredentials.pAccessKeyId, retCredentials.accessKeyIdLength );
+            pCredential->accessKeyIdLength = retCredentials.accessKeyIdLength;
+            pCredential->accessKeyId[ pCredential->accessKeyIdLength ] = '\0';
+        }
+    }
+
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( retCredentials.pSecretAccessKey != NULL ) )
+    {
+        if( retCredentials.secretAccessKeyLength > SIGNALING_CONTROLLER_SECRET_ACCESS_KEY_MAX_LENGTH )
+        {
+            /* Return Secret Access Key is longer than expectation. Drop it. */
+            LogError( ( "Secret Access Key Greater than MAX Length. " ) );
+            ret = SIGNALING_CONTROLLER_RESULT_PARSE_TEMPORARY_CREDENTIALS_FAIL;
+        }
+        else
+        {
+            memcpy( pCredential->secretAccessKey, retCredentials.pSecretAccessKey, retCredentials.secretAccessKeyLength );
+            pCredential->secretAccessKeyLength = retCredentials.secretAccessKeyLength;
+            pCredential->secretAccessKey[ pCredential->secretAccessKeyLength ] = '\0';
+        }
+    }
+
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( retCredentials.pSessionToken != NULL ) )
+    {
+        if( retCredentials.sessionTokenLength > SIGNALING_CONTROLLER_AWS_MAX_SESSION_TOKEN_LENGTH )
+        {
+            /* Return Session Token is longer than expectation. Drop it. */
+            LogError( ( "Session Token Greater than MAX Length. " ) );
+            ret = SIGNALING_CONTROLLER_RESULT_PARSE_TEMPORARY_CREDENTIALS_FAIL;
+        }
+        else
+        {
+            memcpy( pCredential->sessionToken, retCredentials.pSessionToken, retCredentials.sessionTokenLength );
+            pCredential->sessionTokenLength = retCredentials.sessionTokenLength;
+            pCredential->sessionToken[ pCredential->sessionTokenLength ] = '\0';
+        }
+    }
+
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( retCredentials.pExpiration != NULL ) )
+    {
+        if( retCredentials.expirationLength > EXPIRATION_MAX_LEN )
+        {
+            /* Return Expiration for Access Key's is longer than expectation. Drop it. */
+            LogError( ( "Expiration for Access Key's Greater than MAX Length. " ) );
+            ret = SIGNALING_CONTROLLER_RESULT_PARSE_TEMPORARY_CREDENTIALS_FAIL;
+        }
+        else
+        {
+            pCredential->expirationSeconds = NetworkingUtils_GetTimeFromIso8601( retCredentials.pExpiration, retCredentials.expirationLength );
+        }
+    }
+
+    return ret;
+}
 static SignalingControllerResult_t describeSignalingChannel( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
@@ -512,10 +726,10 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
     SignalingChannelInfo_t channelInfo;
 
     // Prepare AWS region
-    awsRegion.pAwsRegion = pCtx->credential.pRegion;
+    awsRegion.pAwsRegion = pCtx->credential.region;
     awsRegion.awsRegionLength = pCtx->credential.regionLength;
     // Prepare channel name
-    channelName.pChannelName = pCtx->credential.pChannelName;
+    channelName.pChannelName = pCtx->credential.channelName;
     channelName.channelNameLength = pCtx->credential.channelNameLength;
     // Prepare URL buffer
     signalRequest.pUrl = pCtx->httpUrlBuffer;
@@ -541,6 +755,7 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
         request.urlLength = signalRequest.urlLength;
         request.pBody = signalRequest.pBody;
         request.bodyLength = signalRequest.bodyLength;
+        request.isFetchingCredential = 0U;
 
         memset( &response, 0, sizeof( HttpResponse_t ) );
         response.pBuffer = pCtx->httpResponserBuffer;
@@ -623,7 +838,7 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
     SignalingChannelEndpoints_t endpoints;
 
     // Prepare AWS region
-    awsRegion.pAwsRegion = pCtx->credential.pRegion;
+    awsRegion.pAwsRegion = pCtx->credential.region;
     awsRegion.awsRegionLength = pCtx->credential.regionLength;
     // Prepare URL buffer
     signalRequest.pUrl = pCtx->httpUrlBuffer;
@@ -652,6 +867,7 @@ static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingContro
         request.urlLength = signalRequest.urlLength;
         request.pBody = signalRequest.pBody;
         request.bodyLength = signalRequest.bodyLength;
+        request.isFetchingCredential = 0U;
 
         memset( &response, 0, sizeof( HttpResponse_t ) );
         response.pBuffer = pCtx->httpResponserBuffer;
@@ -761,6 +977,7 @@ static SignalingControllerResult_t getIceServerList( SignalingControllerContext_
         request.urlLength = signalRequest.urlLength;
         request.pBody = signalRequest.pBody;
         request.bodyLength = signalRequest.bodyLength;
+        request.isFetchingCredential = 0U;
 
         memset( &response, 0, sizeof( HttpResponse_t ) );
         response.pBuffer = pCtx->httpResponserBuffer;
@@ -783,7 +1000,7 @@ static SignalingControllerResult_t getIceServerList( SignalingControllerContext_
     // Parse the response
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        ret = updateIceServerConfigs( pCtx, iceServers, iceServersNum );
+        ret = UpdateIceServerConfigs( pCtx, iceServers, iceServersNum );
     }
 
     return ret;
@@ -927,14 +1144,14 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t * p
                 LogInfo( ( "Disconnected Websocket Server. " ) );
 
                 /* Change the State to Describe state and attempt Re-connection. */
-                ret = SignalingController_ConnectServers(pCtx);
+                ret = SignalingController_ConnectServers( pCtx );
             }
             if( ret != SIGNALING_CONTROLLER_RESULT_OK )
             {
                 LogInfo( ( "Reconnection Un-Successful. %d ",ret ) );
                 websocketRet = NETWORKING_LIBWEBSOCKETS_RESULT_FAIL_CONNECT;
             }
-            if(ret == SIGNALING_CONTROLLER_RESULT_OK)
+            if( ret == SIGNALING_CONTROLLER_RESULT_OK )
             {
                 LogInfo( ( "Reconnection Successful. " ) );
             }
@@ -954,44 +1171,125 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t * p
 }
 
 SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx,
-                                                      SignalingControllerCredential_t * pCred,
+                                                      SignalingControllerCredentialInfo_t * pCredInfo,
                                                       SignalingControllerReceiveMessageCallback receiveMessageCallback,
                                                       void * pReceiveMessageCallbackContext )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     MessageQueueResult_t retMessageQueue;
 
-    if( ( pCtx == NULL ) || ( pCred == NULL ) )
+    if( ( pCtx == NULL ) || ( pCredInfo == NULL ) )
     {
+        LogError( ( "Invalid input, pCtx: 0x%p, pCredInfo: 0x%p", pCtx, pCredInfo ) );
         ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
     }
-    else if( ( pCred->pAccessKeyId == NULL ) || ( pCred->pSecretAccessKey == NULL ) )
+    /* User must provide either access kay pair or role-alias information for AWS cloud access. */
+    else if( ( ( pCredInfo->pAccessKeyId == NULL ) || ( pCredInfo->pSecretAccessKey == NULL ) ) &&
+             ( ( pCredInfo->pCredEndpoint == NULL ) || ( pCredInfo->pIotThingName == NULL ) ||
+               ( pCredInfo->pIotThingRoleAlias == NULL ) ) )
     {
+        LogError( ( "Invalid input, pAccessKeyId: 0x%p, pSecretAccessKey: 0x%p, pCredEndpoint: 0x%p, pIotThingName: 0x%p, pIotThingRoleAlias: 0x%p",
+                    pCredInfo->pAccessKeyId, pCredInfo->pSecretAccessKey,
+                    pCredInfo->pCredEndpoint, pCredInfo->pIotThingName,
+                    pCredInfo->pIotThingRoleAlias ) );
         ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( ( pCredInfo->regionLength > SIGNALING_CONTROLLER_AWS_REGION_MAX_LENGTH ) ||
+             ( pCredInfo->channelNameLength > SIGNALING_CONTROLLER_AWS_MAX_CHANNEL_NAME_LENGTH ) ||
+             ( pCredInfo->userAgentNameLength > SIGNALING_CONTROLLER_AWS_USER_AGENT_MAX_LENGTH ) )
+    {
+        LogError( ( "Invalid input, regionLength: %lu, channelNameLength: %lu, userAgentNameLength: %lu",
+                    pCredInfo->regionLength, pCredInfo->channelNameLength, pCredInfo->userAgentNameLength ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( ( pCredInfo->accessKeyIdLength > SIGNALING_CONTROLLER_ACCESS_KEY_ID_MAX_LENGTH ) ||
+             ( pCredInfo->secretAccessKeyLength > SIGNALING_CONTROLLER_SECRET_ACCESS_KEY_MAX_LENGTH ) ||
+             ( pCredInfo->sessionTokenLength > SIGNALING_CONTROLLER_AWS_MAX_SESSION_TOKEN_LENGTH ) )
+    {
+        LogError( ( "Invalid input, accessKeyIdLength: %lu, secretAccessKeyLength: %lu, sessionTokenLength: %lu",
+                    pCredInfo->accessKeyIdLength, pCredInfo->secretAccessKeyLength, pCredInfo->sessionTokenLength ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( ( pCredInfo->caCertPathLength > SIGNALING_CONTROLLER_MAX_PATH_LENGTH ) ||
+             ( pCredInfo->caCertPemSize > SIGNALING_CONTROLLER_CERTIFICATE_MAX_LENGTH ) )
+    {
+        LogError( ( "Invalid input, caCertPathLength: %lu, caCertPemSize: %lu",
+                    pCredInfo->caCertPathLength, pCredInfo->caCertPemSize ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( ( pCredInfo->credEndpointLength > SIGNALING_CONTROLLER_AWS_CRED_ENDPOINT_MAX_LENGTH ) ||
+             ( pCredInfo->iotThingNameLength > SIGNALING_CONTROLLER_AWS_IOT_THING_NAME_MAX_LENGTH ) ||
+             ( pCredInfo->iotThingRoleAliasLength > SIGNALING_CONTROLLER_AWS_IOT_ROLE_ALIAS_MAX_LENGTH ) )
+    {
+        LogError( ( "Invalid input, credEndpointLength: %lu, iotThingNameLength: %lu, iotThingRoleAliasLength: %lu",
+                    pCredInfo->credEndpointLength, pCredInfo->iotThingNameLength, pCredInfo->iotThingRoleAliasLength ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( ( pCredInfo->iotThingCertPathLength > SIGNALING_CONTROLLER_MAX_PATH_LENGTH ) ||
+             ( pCredInfo->iotThingPrivateKeyPathLength > SIGNALING_CONTROLLER_MAX_PATH_LENGTH ) )
+    {
+        LogError( ( "Invalid input, iotThingCertPathLength: %lu, iotThingPrivateKeyPathLength: %lu",
+                    pCredInfo->iotThingCertPathLength, pCredInfo->iotThingPrivateKeyPathLength ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         /* Initialize signaling controller context. */
         memset( pCtx, 0, sizeof( SignalingControllerContext_t ) );
-        pCtx->credential.pRegion = pCred->pRegion;
-        pCtx->credential.regionLength = pCred->regionLength;
+        memcpy( pCtx->credential.region, pCredInfo->pRegion, pCredInfo->regionLength );
+        pCtx->credential.regionLength = pCredInfo->regionLength;
+        pCtx->credential.region[ pCtx->credential.regionLength ] = '\0';
 
-        pCtx->credential.pChannelName = pCred->pChannelName;
-        pCtx->credential.channelNameLength = pCred->channelNameLength;
+        memcpy( pCtx->credential.channelName, pCredInfo->pChannelName, pCredInfo->channelNameLength );
+        pCtx->credential.channelNameLength = pCredInfo->channelNameLength;
+        pCtx->credential.channelName[ pCtx->credential.channelNameLength ] = '\0';
 
-        pCtx->credential.pUserAgentName = pCred->pUserAgentName;
-        pCtx->credential.userAgentNameLength = pCred->userAgentNameLength;
+        memcpy( pCtx->credential.userAgentName, pCredInfo->pUserAgentName, pCredInfo->userAgentNameLength );
+        pCtx->credential.userAgentNameLength = pCredInfo->userAgentNameLength;
+        pCtx->credential.userAgentName[ pCtx->credential.userAgentNameLength ] = '\0';
 
-        pCtx->credential.pAccessKeyId = pCred->pAccessKeyId;
-        pCtx->credential.accessKeyIdLength = pCred->accessKeyIdLength;
-        pCtx->credential.pSecretAccessKey = pCred->pSecretAccessKey;
-        pCtx->credential.secretAccessKeyLength = pCred->secretAccessKeyLength;
+        memcpy( pCtx->credential.accessKeyId, pCredInfo->pAccessKeyId, pCredInfo->accessKeyIdLength );
+        pCtx->credential.accessKeyIdLength = pCredInfo->accessKeyIdLength;
+        pCtx->credential.accessKeyId[ pCtx->credential.accessKeyIdLength ] = '\0';
+        memcpy( pCtx->credential.secretAccessKey, pCredInfo->pSecretAccessKey, pCredInfo->secretAccessKeyLength );
+        pCtx->credential.secretAccessKeyLength = pCredInfo->secretAccessKeyLength;
+        pCtx->credential.secretAccessKey[ pCtx->credential.secretAccessKeyLength ] = '\0';
+        memcpy( pCtx->credential.sessionToken, pCredInfo->pSessionToken, pCredInfo->sessionTokenLength );
+        pCtx->credential.sessionTokenLength = pCredInfo->sessionTokenLength;
+        pCtx->credential.sessionToken[ pCtx->credential.sessionTokenLength ] = '\0';
 
-        pCtx->credential.pCaCertPath = pCred->pCaCertPath;
+        memcpy( pCtx->credential.caCertPath, pCredInfo->pCaCertPath, pCredInfo->caCertPathLength );
+        pCtx->credential.caCertPathLength = pCredInfo->caCertPathLength;
+        pCtx->credential.caCertPath[ pCtx->credential.caCertPathLength ] = '\0';
 
-        pCtx->credential.pCaCertPem = pCred->pCaCertPem;
-        pCtx->credential.caCertPemSize = pCred->caCertPemSize;
+        memcpy( pCtx->credential.caCertPem, pCredInfo->pCaCertPem, pCredInfo->caCertPemSize );
+        pCtx->credential.caCertPemSize = pCredInfo->caCertPemSize;
+        pCtx->credential.caCertPem[ pCtx->credential.caCertPemSize ] = '\0';
+
+        memcpy( pCtx->credential.credEndpoint, pCredInfo->pCredEndpoint, pCredInfo->credEndpointLength );
+        pCtx->credential.credEndpointLength = pCredInfo->credEndpointLength;
+        pCtx->credential.credEndpoint[ pCtx->credential.credEndpointLength ] = '\0';
+
+        memcpy( pCtx->credential.iotThingName, pCredInfo->pIotThingName, pCredInfo->iotThingNameLength );
+        pCtx->credential.iotThingNameLength = pCredInfo->iotThingNameLength;
+        pCtx->credential.iotThingName[ pCtx->credential.iotThingNameLength ] = '\0';
+
+        memcpy( pCtx->credential.iotThingRoleAlias, pCredInfo->pIotThingRoleAlias, pCredInfo->iotThingRoleAliasLength );
+        pCtx->credential.iotThingRoleAliasLength = pCredInfo->iotThingRoleAliasLength;
+        pCtx->credential.iotThingRoleAlias[ pCtx->credential.iotThingRoleAliasLength ] = '\0';
+
+        memcpy( pCtx->credential.iotThingCertPath, pCredInfo->pIotThingCertPath, pCredInfo->iotThingCertPathLength );
+        pCtx->credential.iotThingCertPathLength = pCredInfo->iotThingCertPathLength;
+        pCtx->credential.iotThingCertPath[ pCtx->credential.iotThingCertPathLength ] = '\0';
+
+        memcpy( pCtx->credential.iotThingPrivateKeyPath, pCredInfo->pIotThingPrivateKeyPath, pCredInfo->iotThingPrivateKeyPathLength );
+        pCtx->credential.iotThingPrivateKeyPathLength = pCredInfo->iotThingPrivateKeyPathLength;
+        pCtx->credential.iotThingPrivateKeyPath[ pCtx->credential.iotThingPrivateKeyPathLength ] = '\0';
 
         pCtx->receiveMessageCallback = receiveMessageCallback;
         pCtx->pReceiveMessageCallbackContext = pReceiveMessageCallbackContext;
@@ -1041,46 +1339,46 @@ void SignalingController_Deinit( SignalingControllerContext_t * pCtx )
     }
 }
 
-SignalingControllerResult_t SignalingController_IceServerReconnection(SignalingControllerContext_t *pCtx)
+SignalingControllerResult_t SignalingController_IceServerReconnection( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     WebsocketResult_t retWebsocket = WEBSOCKET_RESULT_OK;
 
-    if (pCtx == NULL)
+    if( pCtx == NULL )
     {
         ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
-    if (ret == SIGNALING_CONTROLLER_RESULT_OK)
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         /* Disconnect the Web-Socket Server. */
         retWebsocket = Websocket_Disconnect();
     }
     else
     {
-        LogWarn((" Web-Socket Disconnect Unsuccessful. "));
+        LogWarn( ( " Web-Socket Disconnect Unsuccessful. " ) );
     }
 
-    if (retWebsocket == WEBSOCKET_RESULT_OK)
+    if( retWebsocket == WEBSOCKET_RESULT_OK )
     {
-        LogDebug(("Disconnected Websocket Server."));
+        LogDebug( ( "Disconnected Websocket Server." ) );
 
         /* Change the State to Describe state and attempt Re-connection. */
-        ret = getIceServerList(pCtx);
+        ret = getIceServerList( pCtx );
     }
     else
     {
-        LogWarn((" Fetching ICE Server List Unsuccessful. "));
+        LogWarn( ( " Fetching ICE Server List Unsuccessful. " ) );
     }
 
-    if (ret == SIGNALING_CONTROLLER_RESULT_OK)
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         /* Reconnect to the websocket secure endpoint. */
-        ret = connectWssEndpoint(pCtx);
+        ret = connectWssEndpoint( pCtx );
     }
     else
     {
-        LogWarn((" Reconnection WSS Endpoint Unsuccessful. "));
+        LogWarn( ( " Reconnection WSS Endpoint Unsuccessful. " ) );
     }
 
     return ret;
@@ -1091,6 +1389,8 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingControllerIceServerConfig_t * pIceServerConfigs;
     size_t iceServerConfigsCount;
+    uint64_t currentTimeSeconds;
+    uint8_t needFetchCredential = 0U;
 
     /* Check input parameters. */
     if( pCtx == NULL )
@@ -1099,10 +1399,35 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
     }
 
     /* Get security token. */
-    // if( ret == SIGNALING_CONTROLLER_RESULT_OK )
-    // {
-    //     ret = getIso8601CurrentTime( &pCtx->credential );
-    // }
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) &&
+        ( pCtx->credential.iotThingRoleAliasLength > 0 ) )
+    {
+        currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
+
+        if( ( pCtx->credential.expirationSeconds == 0 ) ||
+            ( currentTimeSeconds >= pCtx->credential.expirationSeconds - SIGNALING_CONTROLLER_FETCH_SESSION_TOKEN_GRACE_PERIOD_SEC ) )
+        {
+            needFetchCredential = 1U;
+        }
+    }
+
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( needFetchCredential != 0U ) )
+    {
+        Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
+        ret = FetchTemporaryCredentials( pCtx,
+                                         &pCtx->credential );
+        Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
+    }
+
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( needFetchCredential != 0U ) )
+    {
+        ret = SignalingController_HttpUpdateCred( &pCtx->credential );
+    }
+
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( needFetchCredential != 0U ) )
+    {
+        ret = SignalingController_WebsocketUpdateCred( &pCtx->credential );
+    }
 
     /* Execute describe channel if no channel ARN. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )

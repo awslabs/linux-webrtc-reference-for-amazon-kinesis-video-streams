@@ -18,6 +18,7 @@ typedef enum NetworkingLibwebsocketHttpVerb
     NETWORKING_LWS_HTTP_VERB_NONE = 0,
     NETWORKING_LWS_HTTP_VERB_GET,
     NETWORKING_LWS_HTTP_VERB_POST,
+    NETWORKING_LWS_HTTP_VERB_WSS,
 } NetworkingLibwebsocketHttpVerb_t;
 
 /* Refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html
@@ -36,47 +37,48 @@ typedef struct NetworkingLibwebsocketCanonicalRequest
 } NetworkingLibwebsocketCanonicalRequest_t;
 
 /* Util functions */
-HttpResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t * pCredential );
-NetworkingLibwebsocketsResult_t getUrlHost( char * pUrl,
+NetworkingLibwebsocketsResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t * pCredential );
+NetworkingLibwebsocketsResult_t GetUrlHost( char * pUrl,
                                             size_t urlLength,
                                             char ** ppStart,
                                             size_t * pHostLength );
-NetworkingLibwebsocketsResult_t getPathFromUrl( char * pUrl,
+NetworkingLibwebsocketsResult_t GetPathFromUrl( char * pUrl,
                                                 size_t urlLength,
                                                 char ** ppPath,
                                                 size_t * pPathLength );
-NetworkingLibwebsocketsResult_t getIso8601CurrentTime( char ** ppDate,
+NetworkingLibwebsocketsResult_t GetIso8601CurrentTime( char ** ppDate,
                                                        size_t * pDateLength );
-NetworkingLibwebsocketsResult_t performLwsConnect( char * pHost,
+NetworkingLibwebsocketsResult_t PerformLwsConnect( char * pHost,
                                                    size_t hostLength,
                                                    uint16_t port,
-                                                   uint8_t isHttp );
-NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsocketCanonicalRequest_t * pCanonicalRequest );
-NetworkingLibwebsocketsResult_t uriEncodedString( char * pSrc,
-                                                  size_t srcLength,
-                                                  char * pDst,
-                                                  size_t * pDstLength );
+                                                   NetworkingLibwebsocketHttpVerb_t httpVerb );
+NetworkingLibwebsocketsResult_t GenerateAuthorizationHeader( NetworkingLibwebsocketCanonicalRequest_t * pCanonicalRequest );
+NetworkingLibwebsocketsResult_t UriEncode( char * pSrc,
+                                           size_t srcLength,
+                                           char * pDst,
+                                           size_t * pDstLength );
 void NetworkingLibwebsockets_Signal( struct lws_context * pLwsContext );
+NetworkingLibwebsocketsResult_t UpdateCredential( NetworkingLibwebsocketsCredentials_t * pCredential );
 
 /* HTTP functions */
-int32_t lwsHttpCallbackRoutine( struct lws * wsi,
+int32_t LwsHttpCallbackRoutine( struct lws * wsi,
                                 enum lws_callback_reasons reason,
                                 void * pUser,
                                 void * pDataIn,
                                 size_t dataSize );
 
 /* Websocket functions */
-int32_t lwsWebsocketCallbackRoutine( struct lws * wsi,
+int32_t LwsWebsocketCallbackRoutine( struct lws * wsi,
                                      enum lws_callback_reasons reason,
                                      void * pUser,
                                      void * pDataIn,
                                      size_t dataSize );
-NetworkingLibwebsocketsResult_t performLwsRecv();
-NetworkingLibwebsocketsResult_t allocateRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
+NetworkingLibwebsocketsResult_t PerformLwsRecv();
+NetworkingLibwebsocketsResult_t AllocateRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
                                                     size_t * pNextIdx );
-NetworkingLibwebsocketsResult_t freeRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
+NetworkingLibwebsocketsResult_t FreeRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
                                                 size_t idx );
-NetworkingLibwebsocketsResult_t getRingBufferCurrentIndex( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
+NetworkingLibwebsocketsResult_t GetRingBufferCurrentIndex( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
                                                            size_t * pCurrentIdx );
 
 extern NetworkingLibwebsocketContext_t networkingLibwebsocketContext;
