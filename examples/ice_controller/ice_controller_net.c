@@ -643,8 +643,28 @@ IceControllerResult_t IceControllerNet_AddRelayCandidates( IceControllerContext_
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         /* TODO, as POC, we use only one UDP TURN server. */
-        for( i = 1; i < pCtx->iceServersCount && i < 2; i++ )
+        for( i = 0; i < pCtx->iceServersCount; i++ )
         {
+            if( pCtx->iceServers[i].iceEndpoint.transportAddress.family != STUN_ADDRESS_IPv4 )
+            {
+                LogInfo(("Only IPv4 TURN server is supported."));
+                continue;
+            }
+            else if( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ||
+                     pCtx->iceServers[i].protocol != ICE_SOCKET_PROTOCOL_UDP )
+            {
+                /* For now we only support pure UDP connection over TURN server. */
+                LogInfo(("Only pure UDP TURN server is supported."));
+                continue;
+            }
+            else
+            {
+                /* Empty else marker. */
+                LogInfo(("Creating connection with TURN server %.*s.",
+                (int) pCtx->iceServers[i].urlLength,
+                pCtx->iceServers[i].url ));
+            }
+
             ret = CreateSocketContext( pCtx, STUN_ADDRESS_IPv4, NULL, ICE_SOCKET_PROTOCOL_UDP, &pSocketContext );
 
             if( ret == ICE_CONTROLLER_RESULT_OK )

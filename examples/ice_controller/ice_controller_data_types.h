@@ -164,6 +164,7 @@ typedef enum IceControllerIceServerType
     ICE_CONTROLLER_ICE_SERVER_TYPE_NONE = 0,
     ICE_CONTROLLER_ICE_SERVER_TYPE_STUN,
     ICE_CONTROLLER_ICE_SERVER_TYPE_TURN,
+    ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS,
 } IceControllerIceServerType_t;
 
 typedef enum IceControllerSocketContextState

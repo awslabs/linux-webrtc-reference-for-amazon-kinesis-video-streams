@@ -181,7 +181,7 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
                                                                           pUri,
                                                                           ICE_SERVER_TYPE_TURNS_LENGTH ) == 0 ) ) )
     {
-        pIceServer->serverType = ICE_CONTROLLER_ICE_SERVER_TYPE_TURN;
+        pIceServer->serverType = ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS;
         pTail = pUri + uriLength;
         pCurr = pUri + ICE_SERVER_TYPE_TURNS_LENGTH;
     }
@@ -263,12 +263,13 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
 
     if( ret == 0 )
     {
-        if( ( pIceServer->serverType == ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) && ( pCurr >= pTail ) )
+        if( pCurr >= pTail )
         {
             LogWarn( ( "No valid transport string found" ) );
             ret = -1;
         }
-        else if( pIceServer->serverType == ICE_CONTROLLER_ICE_SERVER_TYPE_TURN )
+        else if( pIceServer->serverType == ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ||
+                 pIceServer->serverType == ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS )
         {
             if( strncmp( pCurr,
                          "?transport=udp",

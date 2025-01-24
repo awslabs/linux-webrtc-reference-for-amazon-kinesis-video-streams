@@ -155,7 +155,7 @@ static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSess
         iceControllerResult = IceController_SendConnectivityCheck( &pSession->iceControllerContext );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to send connectivity check." ) );
+            LogError( ( "Fail to send connectivity check, result: %d", iceControllerResult ) );
             ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_SEND_CONNECTIVITY_CHECK;
         }
     }

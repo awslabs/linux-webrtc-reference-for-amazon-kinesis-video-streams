@@ -1299,5 +1299,9 @@ void IceController_UpdateTimerInterval( IceControllerContext_t * pCtx,
         {
             LogError( ( "Fail to re-start timer, result: %d, intervalMs: %u", retTimer, newIntervalMs ) );
         }
+        else
+        {
+            LogInfo( ("Timer is re-started, intervalMs: %u", newIntervalMs) );
+        }
     }
 }
