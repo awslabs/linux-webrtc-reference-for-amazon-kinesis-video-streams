@@ -408,9 +408,10 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
             }
             else if( currentIceServerIndex >= *pOutputIceServersCount )
             {
-                LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %lu, buffer size: %lu",
+                LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %lu, buffer size: %lu, skipped server config idx: %u",
                            currentIceServerIndex,
-                           *pOutputIceServersCount ) );
+                           *pOutputIceServersCount,
+                           i ) );
                 break;
             }
             else
@@ -420,6 +421,16 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
 
             for( j = 0; j < pIceServerConfigs[ i ].uriCount; j++ )
             {
+                if( currentIceServerIndex >= *pOutputIceServersCount )
+                {
+                    LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %lu, buffer size: %lu, skipped server URL: %.*s",
+                               currentIceServerIndex,
+                               *pOutputIceServersCount,
+                               ( int ) pIceServerConfigs[ i ].urisLength[ j ],
+                               pIceServerConfigs[ i ].uris[ j ] ) );
+                    break;
+                }
+
                 /* Parse each URI */
                 parseResult = ParseIceServerUri( &pOutputIceServers[ currentIceServerIndex ],
                                                  pIceServerConfigs[ i ].uris[ j ],
@@ -438,14 +449,6 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
                         pIceServerConfigs[ i ].passwordLength );
                 pOutputIceServers[ currentIceServerIndex ].passwordLength = pIceServerConfigs[ i ].passwordLength;
                 currentIceServerIndex++;
-
-                if( currentIceServerIndex >= *pOutputIceServersCount )
-                {
-                    LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %lu, buffer size: %lu",
-                               currentIceServerIndex,
-                               *pOutputIceServersCount ) );
-                    break;
-                }
             }
         }
     }
