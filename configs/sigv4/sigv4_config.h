@@ -1,0 +1,6 @@
+#ifndef SIGV4_CONFIG_H_
+#define SIGV4_CONFIG_H_
+
+#define SIGV4_PROCESSING_BUFFER_LENGTH    2048U
+
+#endif

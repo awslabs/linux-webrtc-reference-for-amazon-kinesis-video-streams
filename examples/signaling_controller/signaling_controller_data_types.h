@@ -22,8 +22,8 @@ extern "C" {
 /* Refer to https://docs.aws.amazon.com/IAM/latest/APIReference/API_AccessKey.html,
    length of access key ID should be limited to 128. There is no other definition of
    length of secret access key, set it same as access key ID for now. */
-#define SIGNALING_CONTROLLER_ACCESS_KEY_ID_MAX_LENGTH ( 128 )
-#define SIGNALING_CONTROLLER_SECRET_ACCESS_KEY_MAX_LENGTH ( 128 )
+#define SIGNALING_CONTROLLER_ACCESS_KEY_ID_MAX_LENGTH ( ACCESS_KEY_MAX_LEN )
+#define SIGNALING_CONTROLLER_SECRET_ACCESS_KEY_MAX_LENGTH ( SECRET_ACCESS_KEY_MAX_LEN )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT ( 5 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_URIS_COUNT ( 3 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_URI_LENGTH ( 256 )
@@ -35,7 +35,35 @@ extern "C" {
 #define SIGNALING_CONTROLLER_MAX_HTTP_URI_LENGTH ( 10000 )
 #define SIGNALING_CONTROLLER_MAX_HTTP_BODY_LENGTH ( 10 * 1024 )
 #define SIGNALING_CONTROLLER_AWS_MAX_ARN_LENGTH ( 1024 )
-#define SIGNALING_CONTROLLER_AWS_MAX_CHANNEL_NAME_LENGTH ( 256 )
+#define SIGNALING_CONTROLLER_AWS_MAX_CHANNEL_NAME_LENGTH ( SIGNALING_CHANNEL_NAME_MAX_LEN )
+#define SIGNALING_CONTROLLER_AWS_MAX_SESSION_TOKEN_LENGTH ( SESSION_TOKEN_MAX_LEN )
+#define SIGNALING_CONTROLLER_AWS_MAX_EXPIRATION_LENGTH ( 2048 )
+#define SIGNALING_CONTROLLER_AWS_REGION_MAX_LENGTH ( 50 )
+#define SIGNALING_CONTROLLER_AWS_USER_AGENT_MAX_LENGTH ( 128 )
+
+// Max path characters as defined in linux/limits.h
+#define SIGNALING_CONTROLLER_MAX_PATH_LENGTH ( 2048 )
+
+// Max size of certificate
+#define SIGNALING_CONTROLLER_CERTIFICATE_MAX_LENGTH ( 2048 )
+
+// Max URL length of AWS credential endpoint
+#define SIGNALING_CONTROLLER_AWS_CRED_ENDPOINT_MAX_LENGTH ( 2048 )
+
+/**
+ * Maximum allowed string length for IoT thing name: https://docs.aws.amazon.com/iot/latest/apireference/API_CreateThing.html
+ */
+#define SIGNALING_CONTROLLER_AWS_IOT_THING_NAME_MAX_LENGTH ( 128 )
+
+/**
+ * Maximum allowed role alias length https://docs.aws.amazon.com/iot/latest/apireference/API_UpdateRoleAlias.html
+ */
+#define SIGNALING_CONTROLLER_AWS_IOT_ROLE_ALIAS_MAX_LENGTH ( 128 )
+
+/**
+ * Grace period for refetching the session token
+ */
+#define SIGNALING_CONTROLLER_FETCH_SESSION_TOKEN_GRACE_PERIOD_SEC ( 30 )
 
 /**
  * Default connect sync API timeout
@@ -97,6 +125,7 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_INVALID_WEBRTC_ENDPOINT,
     SIGNALING_CONTROLLER_RESULT_HTTP_INIT_FAIL,
     SIGNALING_CONTROLLER_RESULT_HTTP_PERFORM_REQUEST_FAIL,
+    SIGNALING_CONTROLLER_RESULT_HTTP_UPDATE_FAIL,
     SIGNALING_CONTROLLER_RESULT_INACTIVE_SIGNALING_CHANNEL,
     SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_ARN,
     SIGNALING_CONTROLLER_RESULT_INVALID_SIGNALING_CHANNEL_NAME,
@@ -108,15 +137,17 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_SDP_NOT_TARGET_TYPE,
     SIGNALING_CONTROLLER_RESULT_SDP_SNPRINTF_FAIL,
     SIGNALING_CONTROLLER_RESULT_WEBSOCKET_INIT_FAIL,
+    SIGNALING_CONTROLLER_RESULT_WEBSOCKET_UPDATE_FAIL,
     SIGNALING_CONTROLLER_RESULT_WSS_CONNECT_FAIL,
     SIGNALING_CONTROLLER_RESULT_WSS_RECV_FAIL,
     SIGNALING_CONTROLLER_RESULT_MQ_INIT_FAIL,
     SIGNALING_CONTROLLER_RESULT_MQ_SEND_FAIL,
     SIGNALING_CONTROLLER_RESULT_BASE64_ENCODE_FAIL,
     SIGNALING_CONTROLLER_RESULT_CONSTRUCT_SIGNALING_MSG_FAIL,
+    SIGNALING_CONTROLLER_RESULT_PARSE_TEMPORARY_CREDENTIALS_FAIL,
 } SignalingControllerResult_t;
 
-typedef struct SignalingControllerCredential
+typedef struct SignalingControllerCredentialInfo
 {
     /* Region */
     char * pRegion;
@@ -136,12 +167,89 @@ typedef struct SignalingControllerCredential
     char * pSecretAccessKey;
     size_t secretAccessKeyLength;
 
+    /* Session Token */
+    char * pSessionToken;
+    size_t sessionTokenLength;
+
     /* CA Cert Path */
     char * pCaCertPath;
+    size_t caCertPathLength;
     char * pCaCertPem;
     size_t caCertPemSize;
 
-    /* TODO: Or credential */
+    /* Credential Endpoint */
+    char * pCredEndpoint;
+    size_t credEndpointLength;
+
+    /* AWS IoT Thing name */
+    char * pIotThingName;
+    size_t iotThingNameLength;
+
+    /* AWS IoT Thing Role Alias name */
+    char * pIotThingRoleAlias;
+    size_t iotThingRoleAliasLength;
+
+    /* AWS IoT Thing certificate path */
+    char * pIotThingCertPath;
+    size_t iotThingCertPathLength;
+
+    /* AWS IoT Thing private key path */
+    char * pIotThingPrivateKeyPath;
+    size_t iotThingPrivateKeyPathLength;
+} SignalingControllerCredentialInfo_t;
+
+typedef struct SignalingControllerCredential
+{
+    /* Region */
+    char region[ SIGNALING_CONTROLLER_AWS_REGION_MAX_LENGTH + 1 ];
+    size_t regionLength;
+
+    /* Channel Name */
+    char channelName[ SIGNALING_CONTROLLER_AWS_MAX_CHANNEL_NAME_LENGTH + 1 ];
+    size_t channelNameLength;
+
+    /* User Agent Name */
+    char userAgentName[ SIGNALING_CONTROLLER_AWS_USER_AGENT_MAX_LENGTH + 1 ];
+    size_t userAgentNameLength;
+
+    /* AKSK */
+    char accessKeyId[ SIGNALING_CONTROLLER_ACCESS_KEY_ID_MAX_LENGTH + 1 ];
+    size_t accessKeyIdLength;
+    char secretAccessKey[ SIGNALING_CONTROLLER_SECRET_ACCESS_KEY_MAX_LENGTH + 1 ];
+    size_t secretAccessKeyLength;
+
+    /* Session Token */
+    char sessionToken[ SIGNALING_CONTROLLER_AWS_MAX_SESSION_TOKEN_LENGTH + 1 ];
+    size_t sessionTokenLength;
+
+    /* Expiration */
+    uint64_t expirationSeconds;
+
+    /* CA Cert Path */
+    char caCertPath[ SIGNALING_CONTROLLER_MAX_PATH_LENGTH + 1 ];
+    size_t caCertPathLength;
+    char caCertPem[ SIGNALING_CONTROLLER_CERTIFICATE_MAX_LENGTH + 1 ];
+    size_t caCertPemSize;
+
+    /* Credential Endpoint */
+    char credEndpoint[ SIGNALING_CONTROLLER_AWS_CRED_ENDPOINT_MAX_LENGTH + 1 ];
+    size_t credEndpointLength;
+
+    /* AWS IoT Thing name */
+    char iotThingName[ SIGNALING_CONTROLLER_AWS_IOT_THING_NAME_MAX_LENGTH + 1 ];
+    size_t iotThingNameLength;
+
+    /* AWS IoT Thing Role Alias name */
+    char iotThingRoleAlias[ SIGNALING_CONTROLLER_AWS_IOT_ROLE_ALIAS_MAX_LENGTH + 1 ];
+    size_t iotThingRoleAliasLength;
+
+    /* AWS IoT Thing certificate path */
+    char iotThingCertPath[ SIGNALING_CONTROLLER_MAX_PATH_LENGTH + 1 ];
+    size_t iotThingCertPathLength;
+
+    /* AWS IoT Thing private key path */
+    char iotThingPrivateKeyPath[ SIGNALING_CONTROLLER_MAX_PATH_LENGTH + 1 ];
+    size_t iotThingPrivateKeyPathLength;
 } SignalingControllerCredential_t;
 
 typedef struct SignalingControllerChannelInfo

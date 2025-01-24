@@ -50,6 +50,7 @@ typedef enum NetworkingLibwebsocketsResult
     NETWORKING_LIBWEBSOCKETS_RESULT_HOST_BUFFER_TOO_SMALL,
     NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL,
     NETWORKING_LIBWEBSOCKETS_RESULT_INVALID_AUTH_VERB,
+    NETWORKING_LIBWEBSOCKETS_RESULT_INVALID_HTTP_VERB,
     NETWORKING_LIBWEBSOCKETS_RESULT_UNEXPECTED_WEBSOCKET_URL,
     NETWORKING_LIBWEBSOCKETS_RESULT_URI_ENCODED_BUFFER_TOO_SMALL,
     NETWORKING_LIBWEBSOCKETS_RESULT_UNKNOWN_MESSAGE,
@@ -74,6 +75,8 @@ typedef struct NetworkingLibwebsocketsAppendHeaders
     char * pContentType;
     size_t contentTypeLength;
     size_t contentLength;
+    char * pIotThingName;
+    size_t iotThingNameLength;
     char * pAuthorization;
     size_t authorizationLength;
     char * pSignature;
@@ -98,6 +101,18 @@ typedef struct NetworkingLibwebsocketsCredentials
 
     /* CA Cert Path */
     char * pCaCertPath;
+
+    /* IoT thing credentials for role alias. */
+    char * pIotThingCertPath;
+    size_t iotThingCertPathLength;
+    char * pIotThingPrivateKeyPath;
+    size_t iotThingPrivateKeyPathLength;
+    char * pIotThingName;
+    size_t iotThingNameLength;
+    char * pSessionToken;
+    size_t sessionTokenLength;
+
+    uint64_t expirationSeconds;
 } NetworkingLibwebsocketsCredentials_t;
 
 typedef struct NetworkingLibwebsocketBufferInfo

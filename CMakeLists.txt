@@ -79,7 +79,8 @@ file(
   "libraries/crypto/mbedtls/library/*.c" )
 
 set( WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS
-     "libraries/crypto/mbedtls/include" )
+     "libraries/crypto/mbedtls/include"
+     "configs/mbedtls" )
 
 set_source_files_properties("libraries/crypto/mbedtls/library/ssl_tls.c" PROPERTIES COMPILE_FLAGS -Wno-stringop-overflow)
 
@@ -142,7 +143,9 @@ file(
   "examples/master/*.c" )
 
 set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
-     "examples/master/" )
+     "examples/master/"
+     "configs/mbedtls"
+     "configs/sigv4" )
 
 add_executable(
     WebRTCLinuxApplicationMaster

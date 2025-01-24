@@ -34,9 +34,8 @@
 #define DEMO_ICE_CANDIDATE_JSON_TEMPLATE "{\"candidate\":\"%.*s\",\"sdpMid\":\"0\",\"sdpMLineIndex\":0}"
 #define DEMO_ICE_CANDIDATE_JSON_MAX_LENGTH ( 1024 )
 #define DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE "candidate:%lu 1 udp %u %d.%d.%d.%d %d typ %s raddr 0.0.0.0 rport 0 generation 0 network-cost 999"
-#define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X "\
-    "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
-
+#define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X " \
+                                              "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
 
 #define ICE_SERVER_TYPE_STUN "stun:"
 #define ICE_SERVER_TYPE_STUN_LENGTH ( 5 )
@@ -1075,24 +1074,13 @@ static int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t * pEven
     return 0;
 }
 
-// void *executeIceController( void *pArgs )
-// {
-//     IceControllerContext_t *pIceControllerContext = (IceControllerContext_t *) pArgs;
-//     IceControllerResult_t iceControllerReturn;
-
-//     while( 1 )
-//     {
-//         iceControllerReturn = IceController_ProcessLoop( pIceControllerContext );
-//     }
-
-//     return 0;
-// }
-
 int main()
 {
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerCredential_t signalingControllerCred;
+    SignalingControllerCredentialInfo_t credentialInfo;
+    pthread_t threadIceController;
+
 
     srand( time( NULL ) );
 
@@ -1100,20 +1088,42 @@ int main()
 
     memset( &demoContext, 0, sizeof( DemoContext_t ) );
 
-    memset( &signalingControllerCred, 0, sizeof( SignalingControllerCredential_t ) );
-    signalingControllerCred.pRegion = AWS_REGION;
-    signalingControllerCred.regionLength = strlen( AWS_REGION );
-    signalingControllerCred.pChannelName = AWS_KVS_CHANNEL_NAME;
-    signalingControllerCred.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
-    signalingControllerCred.pUserAgentName = AWS_KVS_AGENT_NAME;
-    signalingControllerCred.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
-    signalingControllerCred.pAccessKeyId = AWS_ACCESS_KEY_ID;
-    signalingControllerCred.accessKeyIdLength = strlen( AWS_ACCESS_KEY_ID );
-    signalingControllerCred.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-    signalingControllerCred.secretAccessKeyLength = strlen( AWS_SECRET_ACCESS_KEY );
-    signalingControllerCred.pCaCertPath = AWS_CA_CERT_PATH;
 
-    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &signalingControllerCred, handleSignalingMessage, NULL );
+    memset( &credentialInfo, 0, sizeof( SignalingControllerCredentialInfo_t ) );
+    credentialInfo.pRegion = AWS_REGION;
+    credentialInfo.regionLength = strlen( AWS_REGION );
+    credentialInfo.pChannelName = AWS_KVS_CHANNEL_NAME;
+    credentialInfo.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
+    credentialInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
+    credentialInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
+    credentialInfo.pCaCertPath = AWS_CA_CERT_PATH;
+
+    #if defined( AWS_ACCESS_KEY_ID )
+    credentialInfo.pAccessKeyId = AWS_ACCESS_KEY_ID;
+    credentialInfo.accessKeyIdLength = strlen( AWS_ACCESS_KEY_ID );
+    credentialInfo.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+    credentialInfo.secretAccessKeyLength = strlen( AWS_SECRET_ACCESS_KEY );
+    #if defined( AWS_SESSION_TOKEN )
+    credentialInfo.pSessionToken = AWS_SESSION_TOKEN;
+    credentialInfo.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
+    #endif /* #if defined( AWS_SESSION_TOKEN ) */
+    #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
+
+    #if defined( AWS_IOT_THING_ROLE_ALIAS )
+    credentialInfo.pCredEndpoint = AWS_CREDENTIALS_ENDPOINT;
+    credentialInfo.credEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
+    credentialInfo.pIotThingName = AWS_IOT_THING_NAME;
+    credentialInfo.iotThingNameLength = strlen( AWS_IOT_THING_NAME );
+    credentialInfo.pIotThingRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
+    credentialInfo.iotThingRoleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
+    credentialInfo.pIotThingCertPath = AWS_IOT_THING_CERT_PATH;
+    credentialInfo.iotThingCertPathLength = strlen( AWS_IOT_THING_CERT_PATH );
+    credentialInfo.pIotThingPrivateKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
+    credentialInfo.iotThingPrivateKeyPathLength = strlen( AWS_IOT_THING_PRIVATE_KEY_PATH );
+    #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
+
+    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &credentialInfo, handleSignalingMessage, NULL );
+
     if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
     {
         LogError( ( "Fail to initialize signaling controller." ) );

@@ -10,7 +10,7 @@ extern "C" {
 #include "signaling_controller_data_types.h"
 
 SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx,
-                                                      SignalingControllerCredential_t * pCred,
+                                                      SignalingControllerCredentialInfo_t * pCredInfo,
                                                       SignalingControllerReceiveMessageCallback receiveMessageCallback,
                                                       void * pReceiveMessageCallbackContext );
 void SignalingController_Deinit( SignalingControllerContext_t * pCtx );

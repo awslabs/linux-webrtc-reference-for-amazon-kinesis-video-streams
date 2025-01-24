@@ -12,6 +12,8 @@ extern "C" {
 
 uint64_t NetworkingUtils_GetCurrentTimeSec( void * pTick );
 uint64_t NetworkingUtils_GetCurrentTimeUs( void * pTick );
+uint64_t NetworkingUtils_GetTimeFromIso8601( const char * pDate,
+                                             size_t dateLength );
 
 #ifdef __cplusplus
 }

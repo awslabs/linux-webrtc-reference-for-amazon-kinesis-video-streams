@@ -1,12 +1,14 @@
 #include "logging.h"
 #include "networkingLibwebsockets.h"
 #include "networkingLibwebsockets_private.h"
+#include "networking_utils.h"
 
 #define NETWORKING_LWS_STRING_CHANNEL_ARN_PARAM_NAME "X-Amz-ChannelARN"
 #define NETWORKING_LWS_STRING_CREDENTIAL_PARAM_NAME "X-Amz-Credential"
 #define NETWORKING_LWS_STRING_DATE_PARAM_NAME "X-Amz-Date"
 #define NETWORKING_LWS_STRING_EXPIRES_PARAM_NAME "X-Amz-Expires"
 #define NETWORKING_LWS_STRING_SIGNED_HEADERS_PARAM_NAME "X-Amz-SignedHeaders"
+#define NETWORKING_LWS_STRING_SECURITY_TOKEN_PARAM_NAME "X-Amz-Security-Token"
 #define NETWORKING_LWS_STRING_SIGNATURE_PARAM_NAME "X-Amz-Signature"
 #define NETWORKING_LWS_STRING_SIGNED_HEADERS_VALUE "host"
 
@@ -15,8 +17,16 @@
 #define NETWORKING_LWS_CREDENTIAL_PARAM_DATE_LENGTH ( 8 )
 #define NETWORKING_LWS_STATIC_CRED_EXPIRES_SECONDS ( 604800 )
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedAlgorithm( char ** ppBuffer,
-                                                                 size_t * pBufferLength )
+#ifndef MIN
+#define MIN( a,b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+#endif
+
+#ifndef MAX
+#define MAX( a,b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+#endif
+
+static NetworkingLibwebsocketsResult_t WriteUriEncodeAlgorithm( char ** ppBuffer,
+                                                                size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -40,10 +50,10 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedAlgorithm( char ** ppBuffe
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedChannelArn( char ** ppBuffer,
-                                                                  size_t * pBufferLength,
-                                                                  char * pChannelArn,
-                                                                  size_t channelArnLength )
+static NetworkingLibwebsocketsResult_t WriteUriEncodeChannelArn( char ** ppBuffer,
+                                                                 size_t * pBufferLength,
+                                                                 char * pChannelArn,
+                                                                 size_t channelArnLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -90,7 +100,7 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedChannelArn( char ** ppBuff
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, ( *ppBuffer ) + writtenLength, &encodedLength );
+        ret = UriEncode( *ppBuffer, writtenLength, ( *ppBuffer ) + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -104,8 +114,8 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedChannelArn( char ** ppBuff
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedCredential( char ** ppBuffer,
-                                                                  size_t * pBufferLength )
+static NetworkingLibwebsocketsResult_t WriteUriEncodeCredential( char ** ppBuffer,
+                                                                 size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -131,10 +141,15 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedCredential( char ** ppBuff
     /* X-Amz-Credential value (plaintext). */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        writtenLength = snprintf( *ppBuffer, *pBufferLength, NETWORKING_LWS_STRING_CREDENTIAL_VALUE_TEMPLATE,
-                                  ( int ) networkingLibwebsocketContext.libwebsocketsCredentials.accessKeyIdLength, networkingLibwebsocketContext.libwebsocketsCredentials.pAccessKeyId,
-                                  NETWORKING_LWS_CREDENTIAL_PARAM_DATE_LENGTH, networkingLibwebsocketContext.appendHeaders.pDate,
-                                  ( int ) networkingLibwebsocketContext.libwebsocketsCredentials.regionLength, networkingLibwebsocketContext.libwebsocketsCredentials.pRegion );
+        writtenLength = snprintf( *ppBuffer,
+                                  *pBufferLength,
+                                  NETWORKING_LWS_STRING_CREDENTIAL_VALUE_TEMPLATE,
+                                  ( int ) networkingLibwebsocketContext.libwebsocketsCredentials.accessKeyIdLength,
+                                  networkingLibwebsocketContext.libwebsocketsCredentials.pAccessKeyId,
+                                  NETWORKING_LWS_CREDENTIAL_PARAM_DATE_LENGTH,
+                                  networkingLibwebsocketContext.appendHeaders.pDate,
+                                  ( int ) networkingLibwebsocketContext.libwebsocketsCredentials.regionLength,
+                                  networkingLibwebsocketContext.libwebsocketsCredentials.pRegion );
 
         if( writtenLength < 0 )
         {
@@ -154,7 +169,7 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedCredential( char ** ppBuff
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+        ret = UriEncode( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -168,8 +183,8 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedCredential( char ** ppBuff
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedDate( char ** ppBuffer,
-                                                            size_t * pBufferLength )
+static NetworkingLibwebsocketsResult_t WriteUriEncodeDate( char ** ppBuffer,
+                                                           size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -216,7 +231,7 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedDate( char ** ppBuffer,
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+        ret = UriEncode( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -230,12 +245,15 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedDate( char ** ppBuffer,
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedExpires( char ** ppBuffer,
-                                                               size_t * pBufferLength )
+static NetworkingLibwebsocketsResult_t WriteUriEncodeExpires( char ** ppBuffer,
+                                                              size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
     size_t encodedLength;
+    uint64_t expirationSeconds;
+    char * pCurrentTime;
+    size_t dateLength;
 
     /* X-Amz-Expires query parameter. */
     writtenLength = snprintf( *ppBuffer, *pBufferLength, "&" NETWORKING_LWS_STRING_EXPIRES_PARAM_NAME "=" );
@@ -257,7 +275,20 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedExpires( char ** ppBuffer,
     /* X-Amz-Expires value (plaintext). */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        writtenLength = snprintf( *ppBuffer, *pBufferLength, "%d", NETWORKING_LWS_STATIC_CRED_EXPIRES_SECONDS );
+        ret = GetIso8601CurrentTime( &pCurrentTime, &dateLength );
+
+        if( networkingLibwebsocketContext.libwebsocketsCredentials.expirationSeconds == 0U )
+        {
+            /* Using permanent credential, set the expires to default value. */
+            expirationSeconds = NETWORKING_LWS_STATIC_CRED_EXPIRES_SECONDS;
+        }
+        else
+        {
+            expirationSeconds = MIN( NETWORKING_LWS_STATIC_CRED_EXPIRES_SECONDS, networkingLibwebsocketContext.libwebsocketsCredentials.expirationSeconds - NetworkingUtils_GetCurrentTimeSec( NULL ) );
+            expirationSeconds = MAX( expirationSeconds, 1 );
+        }
+
+        writtenLength = snprintf( *ppBuffer, *pBufferLength, "%lu", expirationSeconds );
 
         if( writtenLength < 0 )
         {
@@ -277,7 +308,7 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedExpires( char ** ppBuffer,
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+        ret = UriEncode( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -291,8 +322,8 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedExpires( char ** ppBuffer,
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t writeUriEncodedSignedHeaders( char ** ppBuffer,
-                                                                     size_t * pBufferLength )
+static NetworkingLibwebsocketsResult_t WriteUriEncodeSignedHeaders( char ** ppBuffer,
+                                                                    size_t * pBufferLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t writtenLength;
@@ -320,14 +351,82 @@ static NetworkingLibwebsocketsResult_t writeUriEncodedSignedHeaders( char ** ppB
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t generateQueryParameters( char * pQueryStart,
+static NetworkingLibwebsocketsResult_t WriteUriEncodeSecurityToken( char ** ppBuffer,
+                                                                    size_t * pBufferLength )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    size_t writtenLength;
+    size_t encodedLength;
+
+    /* X-Amz-Security-Token query parameter. */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        writtenLength = snprintf( *ppBuffer, *pBufferLength, "&" NETWORKING_LWS_STRING_SECURITY_TOKEN_PARAM_NAME "=" );
+
+
+        if( writtenLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( writtenLength == *pBufferLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            *ppBuffer += writtenLength;
+            *pBufferLength -= writtenLength;
+        }
+    }
+
+    /* X-Amz-Security-Token value (plaintext). */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+
+        writtenLength = snprintf( *ppBuffer, *pBufferLength, "%.*s",
+                                  ( int ) networkingLibwebsocketContext.libwebsocketsCredentials.sessionTokenLength, networkingLibwebsocketContext.libwebsocketsCredentials.pSessionToken );
+
+        if( writtenLength < 0 )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_SNPRINTF_FAIL;
+        }
+        else if( writtenLength == *pBufferLength )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_QUERY_PARAM_BUFFER_TOO_SMALL;
+        }
+        else
+        {
+            /* Keep the pointer and pBufferLength for URI encoded. */
+        }
+    }
+
+    /* X-Amz-Security-Token value (URI encoded) */
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        encodedLength = *pBufferLength - writtenLength;
+        ret = UriEncode( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+
+        /* Move and update pointer/remain length. */
+        if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+        {
+            memmove( *ppBuffer, *ppBuffer + writtenLength, encodedLength );
+            *ppBuffer += encodedLength;
+            *pBufferLength -= encodedLength;
+        }
+    }
+
+    return ret;
+
+}
+
+static NetworkingLibwebsocketsResult_t GenerateQueryParameters( char * pQueryStart,
                                                                 size_t queryLength,
                                                                 char * pOutput,
                                                                 size_t * pOutputLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    char * pChannelArnValue, * pEqual;
-    size_t channelArnValueLength;
+    char * pChannelArnQueryParam, * pChannelArnValue, * pEqual;
+    size_t channelArnQueryParamLength, channelArnValueLength;
     char * pCurrentWrite = pOutput;
     size_t remainLength;
 
@@ -370,37 +469,43 @@ static NetworkingLibwebsocketsResult_t generateQueryParameters( char * pQuerySta
     {
         remainLength = *pOutputLength;
 
-        ret = writeUriEncodedAlgorithm( &pCurrentWrite, &remainLength );
+        ret = WriteUriEncodeAlgorithm( &pCurrentWrite, &remainLength );
     }
 
     /* X-Amz-ChannelARN query parameter. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = writeUriEncodedChannelArn( &pCurrentWrite, &remainLength, pChannelArnValue, channelArnValueLength );
+        ret = WriteUriEncodeChannelArn( &pCurrentWrite, &remainLength, pChannelArnValue, channelArnValueLength );
     }
 
     /* X-Amz-Credential query parameter. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = writeUriEncodedCredential( &pCurrentWrite, &remainLength );
+        ret = WriteUriEncodeCredential( &pCurrentWrite, &remainLength );
     }
 
     /* X-Amz-Date query parameter. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = writeUriEncodedDate( &pCurrentWrite, &remainLength );
+        ret = WriteUriEncodeDate( &pCurrentWrite, &remainLength );
     }
 
     /* X-Amz-Expires query parameter. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = writeUriEncodedExpires( &pCurrentWrite, &remainLength );
+        ret = WriteUriEncodeExpires( &pCurrentWrite, &remainLength );
+    }
+
+    // /* X-Amz-Security-Token query parameter. */
+    if( ( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK ) && ( networkingLibwebsocketContext.libwebsocketsCredentials.sessionTokenLength > 0U ) )
+    {
+        ret = WriteUriEncodeSecurityToken( &pCurrentWrite, &remainLength );
     }
 
     /* X-Amz-SignedHeaders query parameter. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = writeUriEncodedSignedHeaders( &pCurrentWrite, &remainLength );
+        ret = WriteUriEncodeSignedHeaders( &pCurrentWrite, &remainLength );
     }
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -411,7 +516,7 @@ static NetworkingLibwebsocketsResult_t generateQueryParameters( char * pQuerySta
     return ret;
 }
 
-static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo_t * pWebsocketServerInfo )
+static NetworkingLibwebsocketsResult_t SignWebsocketRequest( WebsocketServerInfo_t * pWebsocketServerInfo )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     int32_t headerLength;
@@ -422,7 +527,7 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
     size_t queryParamsStringLength;
 
     /* Find the path for request. */
-    ret = getPathFromUrl( pWebsocketServerInfo->pUrl, pWebsocketServerInfo->urlLength, &pPath, &pathLength );
+    ret = GetPathFromUrl( pWebsocketServerInfo->pUrl, pWebsocketServerInfo->urlLength, &pPath, &pathLength );
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
@@ -440,7 +545,7 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
     {
         /* Follow https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html to create query parameters. */
         queryParamsStringLength = NETWORKING_LWS_SIGV4_METADATA_BUFFER_LENGTH;
-        ret = generateQueryParameters( pQueryStart,
+        ret = GenerateQueryParameters( pQueryStart,
                                        queryLength,
                                        networkingLibwebsocketContext.sigv4Metadatabuffer,
                                        &queryParamsStringLength );
@@ -484,7 +589,7 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
         canonicalRequest.pPayload = NULL;
         canonicalRequest.payloadLength = 0U;
 
-        ret = generateAuthorizationHeader( &canonicalRequest );
+        ret = GenerateAuthorizationHeader( &canonicalRequest );
     }
 
     /* Append signature. */
@@ -530,7 +635,7 @@ static NetworkingLibwebsocketsResult_t signWebsocketRequest( WebsocketServerInfo
     return ret;
 }
 
-int32_t lwsWebsocketCallbackRoutine( struct lws * wsi,
+int32_t LwsWebsocketCallbackRoutine( struct lws * wsi,
                                      enum lws_callback_reasons reason,
                                      void * pUser,
                                      void * pDataIn,
@@ -614,7 +719,7 @@ int32_t lwsWebsocketCallbackRoutine( struct lws * wsi,
             break;
 
         case LWS_CALLBACK_CLIENT_WRITEABLE:
-            websocketRet = getRingBufferCurrentIndex( &networkingLibwebsocketContext.websocketTxRingBuffer, &index );
+            websocketRet = GetRingBufferCurrentIndex( &networkingLibwebsocketContext.websocketTxRingBuffer, &index );
 
             /* If the ring buffer is empty, it returns NETWORKING_LIBWEBSOCKETS_RESULT_RING_BUFFER_EMPTY instead of NETWORKING_LIBWEBSOCKETS_RESULT_OK. */
             if( websocketRet == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -636,7 +741,7 @@ int32_t lwsWebsocketCallbackRoutine( struct lws * wsi,
                 else if( writeSize == remainSize )
                 {
                     /* Entire message is sent successfully, free ring buffer. */
-                    websocketRet = freeRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer, index );
+                    websocketRet = FreeRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer, index );
                 }
                 else
                 {
@@ -655,7 +760,11 @@ int32_t lwsWebsocketCallbackRoutine( struct lws * wsi,
 
 WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
 {
-    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    char * pPath;
+    size_t pathLength;
+
+    memset( &networkingLibwebsocketContext.appendHeaders, 0, sizeof( NetworkingLibwebsocketsAppendHeaders_t ) );
 
     /* Append HTTP headers for signing.
      * Refer to https://docs.aws.amazon.com/AmazonECR/latest/APIReference/CommonParameters.html for details. */
@@ -664,24 +773,24 @@ WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
     networkingLibwebsocketContext.appendHeaders.userAgentLength = networkingLibwebsocketContext.libwebsocketsCredentials.userAgentLength;
 
     /* host */
-    ret = getUrlHost( pServerInfo->pUrl, pServerInfo->urlLength, &networkingLibwebsocketContext.appendHeaders.pHost, &networkingLibwebsocketContext.appendHeaders.hostLength );
+    ret = GetUrlHost( pServerInfo->pUrl, pServerInfo->urlLength, &networkingLibwebsocketContext.appendHeaders.pHost, &networkingLibwebsocketContext.appendHeaders.hostLength );
 
     /* x-amz-date */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = getIso8601CurrentTime( &networkingLibwebsocketContext.appendHeaders.pDate, &networkingLibwebsocketContext.appendHeaders.dateLength );
+        ret = GetIso8601CurrentTime( &networkingLibwebsocketContext.appendHeaders.pDate, &networkingLibwebsocketContext.appendHeaders.dateLength );
     }
 
     /* Create query parameters. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = signWebsocketRequest( pServerInfo );
+        ret = SignWebsocketRequest( pServerInfo );
     }
 
     /* Blocking execution until getting response from server. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = performLwsConnect( networkingLibwebsocketContext.appendHeaders.pHost, networkingLibwebsocketContext.appendHeaders.hostLength, 443U, 0U );
+        ret = PerformLwsConnect( networkingLibwebsocketContext.appendHeaders.pHost, networkingLibwebsocketContext.appendHeaders.hostLength, 443U, NETWORKING_LWS_HTTP_VERB_WSS );
     }
 
     return ( WebsocketResult_t ) ret;
@@ -702,7 +811,7 @@ WebsocketResult_t Websocket_Init( void * pCredential,
                                   WebsocketMessageCallback_t rxCallback,
                                   void * pRxCallbackContext )
 {
-    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     NetworkingLibwebsocketsCredentials_t * pNetworkingLibwebsocketsCredentials = ( NetworkingLibwebsocketsCredentials_t * )pCredential;
 
     ret = NetworkingLibwebsockets_Init( pNetworkingLibwebsocketsCredentials );
@@ -737,7 +846,7 @@ WebsocketResult_t Websocket_Send( char * pMessage,
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = allocateRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer, &index );
+        ret = AllocateRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer, &index );
     }
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -756,7 +865,7 @@ WebsocketResult_t Websocket_Recv()
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 
-    ret = performLwsRecv();
+    ret = PerformLwsRecv();
 
     return ( WebsocketResult_t ) ret;
 }
@@ -767,4 +876,9 @@ WebsocketResult_t Websocket_Signal()
     NetworkingLibwebsockets_Signal( networkingLibwebsocketContext.pLwsContext );
 
     return ( WebsocketResult_t ) NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+}
+
+WebsocketResult_t Websocket_UpdateCredential( void * pCredential )
+{
+    return UpdateCredential( ( NetworkingLibwebsocketsCredentials_t * ) pCredential );
 }

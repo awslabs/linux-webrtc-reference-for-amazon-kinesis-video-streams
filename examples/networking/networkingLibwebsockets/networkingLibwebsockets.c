@@ -13,11 +13,11 @@
 #define NETWORKING_LWS_URI_ENCODED_CHAR_SIZE ( 3 ) // We need 3 char spaces to translate symbols, such as from '/' to "%2F".
 #define NETWORKING_LWS_URI_ENCODED_FORWARD_SLASH "%2F"
 
-static int32_t sha256Init( void * hashContext );
-static int32_t sha256Update( void * hashContext,
+static int32_t Sha256Init( void * hashContext );
+static int32_t Sha256Update( void * hashContext,
                              const uint8_t * pInput,
                              size_t inputLen );
-static int32_t sha256Final( void * hashContext,
+static int32_t Sha256Final( void * hashContext,
                             uint8_t * pOutput,
                             size_t outputLen );
 
@@ -29,9 +29,9 @@ NetworkingLibwebsocketContext_t networkingLibwebsocketContext;
  */
 static SigV4CryptoInterface_t cryptoInterface =
 {
-    .hashInit = sha256Init,
-    .hashUpdate = sha256Update,
-    .hashFinal = sha256Final,
+    .hashInit = Sha256Init,
+    .hashUpdate = Sha256Update,
+    .hashFinal = Sha256Final,
     .pHashContext = NULL,
     .hashBlockLen = 64,
     .hashDigestLen = 32,
@@ -49,7 +49,7 @@ static SigV4Parameters_t sigv4Params =
     .pHttpParameters = NULL
 };
 
-static int32_t sha256Init( void * hashContext )
+static int32_t Sha256Init( void * hashContext )
 {
     int32_t ret = 0;
     const EVP_MD * md = EVP_sha256();
@@ -62,7 +62,7 @@ static int32_t sha256Init( void * hashContext )
     return ret == 1 ? 0 : -1;
 }
 
-static int32_t sha256Update( void * hashContext,
+static int32_t Sha256Update( void * hashContext,
                              const uint8_t * pInput,
                              size_t inputLen )
 {
@@ -76,7 +76,7 @@ static int32_t sha256Update( void * hashContext,
     return ret == 1 ? 0 : -1;
 }
 
-static int32_t sha256Final( void * hashContext,
+static int32_t Sha256Final( void * hashContext,
                             uint8_t * pOutput,
                             size_t outputLen )
 {
@@ -94,7 +94,8 @@ static int32_t sha256Final( void * hashContext,
     return ret == 1 ? 0 : -1;
 }
 
-NetworkingLibwebsocketsResult_t initRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer )
+
+NetworkingLibwebsocketsResult_t InitRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
 
@@ -104,7 +105,7 @@ NetworkingLibwebsocketsResult_t initRingBuffer( NetworkingLibwebsocketRingBuffer
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t getRingBufferCurrentIndex( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
+NetworkingLibwebsocketsResult_t GetRingBufferCurrentIndex( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
                                                            size_t * pCurrentIdx )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
@@ -122,7 +123,7 @@ NetworkingLibwebsocketsResult_t getRingBufferCurrentIndex( NetworkingLibwebsocke
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t allocateRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
+NetworkingLibwebsocketsResult_t AllocateRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
                                                     size_t * pNextIdx )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
@@ -143,7 +144,7 @@ NetworkingLibwebsocketsResult_t allocateRingBuffer( NetworkingLibwebsocketRingBu
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t freeRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
+NetworkingLibwebsocketsResult_t FreeRingBuffer( NetworkingLibwebsocketRingBuffer_t * pRingBuffer,
                                                 size_t idx )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
@@ -169,10 +170,11 @@ NetworkingLibwebsocketsResult_t freeRingBuffer( NetworkingLibwebsocketRingBuffer
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t uriEncodedString( char * pSrc,
-                                                  size_t srcLength,
-                                                  char * pDst,
-                                                  size_t * pDstLength )
+
+NetworkingLibwebsocketsResult_t UriEncode( char * pSrc,
+                                           size_t srcLength,
+                                           char * pDst,
+                                           size_t * pDstLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     size_t encodedLength = 0, remainLength;
@@ -242,12 +244,14 @@ NetworkingLibwebsocketsResult_t uriEncodedString( char * pSrc,
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsocketCanonicalRequest_t * pCanonicalRequest )
+NetworkingLibwebsocketsResult_t GenerateAuthorizationHeader( NetworkingLibwebsocketCanonicalRequest_t * pCanonicalRequest )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     SigV4HttpParameters_t sigv4HttpParams;
     SigV4Status_t sigv4Status = SigV4Success;
     uint8_t isHttp;
+    char securityTokenHeader[1024] = {0}; // Buffer for security token header
+    size_t originalHeadersLength;
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
@@ -320,19 +324,33 @@ NetworkingLibwebsocketsResult_t generateAuthorizationHeader( NetworkingLibwebsoc
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t performLwsConnect( char * pHost,
+
+NetworkingLibwebsocketsResult_t PerformLwsConnect( char * pHost,
                                                    size_t hostLength,
                                                    uint16_t port,
-                                                   uint8_t isHttp )
+                                                   NetworkingLibwebsocketHttpVerb_t httpVerb )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     struct lws_client_connect_info connectInfo;
     struct lws * clientLws;
+    int32_t lwsReturn;
     static char host[ NETWORKING_LWS_URI_HOST_MAX_LENGTH + 1 ];
 
     if( hostLength > NETWORKING_LWS_URI_HOST_MAX_LENGTH )
     {
+        LogError( ( "Invalid HTTP host length: %lu", hostLength ) );
         ret = NETWORKING_LIBWEBSOCKETS_RESULT_HOST_BUFFER_TOO_SMALL;
+    }
+    else if( ( httpVerb != NETWORKING_LWS_HTTP_VERB_GET ) &&
+             ( httpVerb != NETWORKING_LWS_HTTP_VERB_POST ) &&
+             ( httpVerb != NETWORKING_LWS_HTTP_VERB_WSS ) )
+    {
+        LogError( ( "Invalid HTTP verb: 0x%x", httpVerb ) );
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_INVALID_HTTP_VERB;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -350,9 +368,15 @@ NetworkingLibwebsocketsResult_t performLwsConnect( char * pHost,
         connectInfo.pwsi = &clientLws;
         connectInfo.opaque_user_data = NULL;
 
-        if( isHttp )
+        if( httpVerb == NETWORKING_LWS_HTTP_VERB_GET )
         {
-            connectInfo.method = NETWORKING_LWS_STRING_HTTPS_METHOD;
+            connectInfo.method = "GET";
+            connectInfo.protocol = NETWORKING_LWS_STRING_HTTPS;
+            networkingLibwebsocketContext.pLws[ NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ] = lws_client_connect_via_info( &connectInfo );
+        }
+        else if( httpVerb == NETWORKING_LWS_HTTP_VERB_POST )
+        {
+            connectInfo.method = "POST";
             connectInfo.protocol = NETWORKING_LWS_STRING_HTTPS;
             networkingLibwebsocketContext.pLws[ NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ] = lws_client_connect_via_info( &connectInfo );
         }
@@ -366,21 +390,24 @@ NetworkingLibwebsocketsResult_t performLwsConnect( char * pHost,
         networkingLibwebsocketContext.terminateLwsService = 0U;
         while( networkingLibwebsocketContext.terminateLwsService == 0U )
         {
-            ( void ) lws_service( networkingLibwebsocketContext.pLwsContext, 0 );
+            lwsReturn = lws_service( networkingLibwebsocketContext.pLwsContext, 0 );
         }
     }
 
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t performLwsRecv()
+NetworkingLibwebsocketsResult_t PerformLwsRecv()
 {
-    ( void ) lws_service( networkingLibwebsocketContext.pLwsContext, 0 );
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    int32_t lwsReturn;
 
-    return NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    lwsReturn = lws_service( networkingLibwebsocketContext.pLwsContext, 0 );
+
+    return ret;
 }
 
-NetworkingLibwebsocketsResult_t getPathFromUrl( char * pUrl,
+NetworkingLibwebsocketsResult_t GetPathFromUrl( char * pUrl,
                                                 size_t urlLength,
                                                 char ** ppPath,
                                                 size_t * pPathLength )
@@ -398,7 +425,7 @@ NetworkingLibwebsocketsResult_t getPathFromUrl( char * pUrl,
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         /* Get host pointer & length */
-        ret = getUrlHost( pUrl, urlLength, &pHost, &hostLength );
+        ret = GetUrlHost( pUrl, urlLength, &pHost, &hostLength );
     }
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -425,7 +452,7 @@ NetworkingLibwebsocketsResult_t getPathFromUrl( char * pUrl,
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t getIso8601CurrentTime( char ** ppDate,
+NetworkingLibwebsocketsResult_t GetIso8601CurrentTime( char ** ppDate,
                                                        size_t * pDateLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
@@ -458,7 +485,7 @@ NetworkingLibwebsocketsResult_t getIso8601CurrentTime( char ** ppDate,
     return ret;
 }
 
-NetworkingLibwebsocketsResult_t getUrlHost( char * pUrl,
+NetworkingLibwebsocketsResult_t GetUrlHost( char * pUrl,
                                             size_t urlLength,
                                             char ** ppStart,
                                             size_t * pHostLength )
@@ -527,7 +554,7 @@ void NetworkingLibwebsockets_Signal( struct lws_context * pLwsContext )
     lws_cancel_service( pLwsContext );
 }
 
-HttpResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t * pCredential )
+NetworkingLibwebsocketsResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t * pCredential )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     static uint8_t first = 0U;
@@ -559,9 +586,9 @@ HttpResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t 
     if( ( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK ) && !first )
     {
         protocols[ NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ].name = NETWORKING_LWS_STRING_HTTPS;
-        protocols[ NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ].callback = lwsHttpCallbackRoutine;
+        protocols[ NETWORKING_LWS_PROTOCOLS_HTTP_INDEX ].callback = LwsHttpCallbackRoutine;
         protocols[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ].name = NETWORKING_LWS_STRING_WSS;
-        protocols[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ].callback = lwsWebsocketCallbackRoutine;
+        protocols[ NETWORKING_LWS_PROTOCOLS_WEBSOCKET_INDEX ].callback = LwsWebsocketCallbackRoutine;
 
         memset( &creationInfo, 0, sizeof( struct lws_context_creation_info ) );
         creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
@@ -577,6 +604,12 @@ HttpResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t 
         creationInfo.ka_interval = 1;
         creationInfo.retry_and_idle_policy = &retryPolicy;
 
+        if( networkingLibwebsocketContext.libwebsocketsCredentials.iotThingCertPathLength > 0 )
+        {
+            creationInfo.client_ssl_cert_filepath = networkingLibwebsocketContext.libwebsocketsCredentials.pIotThingCertPath;
+            creationInfo.client_ssl_private_key_filepath = networkingLibwebsocketContext.libwebsocketsCredentials.pIotThingPrivateKeyPath;
+        }
+
         lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
         networkingLibwebsocketContext.pLwsContext = lws_create_context( &creationInfo );
 
@@ -589,7 +622,7 @@ HttpResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t 
     if( ( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK ) && !first )
     {
         /* Initialize Tx ring buffer. */
-        ret = initRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer );
+        ret = InitRingBuffer( &networkingLibwebsocketContext.websocketTxRingBuffer );
     }
 
     if( ( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK ) && !first )
@@ -598,4 +631,30 @@ HttpResult_t NetworkingLibwebsockets_Init( NetworkingLibwebsocketsCredentials_t 
     }
 
     return ( HttpResult_t ) ret;
+}
+
+NetworkingLibwebsocketsResult_t UpdateCredential( NetworkingLibwebsocketsCredentials_t * pCredential )
+{
+    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+
+    if( pCredential == NULL )
+    {
+        ret = NETWORKING_LIBWEBSOCKETS_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    {
+        memcpy( &networkingLibwebsocketContext.libwebsocketsCredentials, pCredential, sizeof( NetworkingLibwebsocketsCredentials_t ) );
+        networkingLibwebsocketContext.sigv4Credential.pAccessKeyId = pCredential->pAccessKeyId;
+        networkingLibwebsocketContext.sigv4Credential.accessKeyIdLen = pCredential->accessKeyIdLength;
+        networkingLibwebsocketContext.sigv4Credential.pSecretAccessKey = pCredential->pSecretAccessKey;
+        networkingLibwebsocketContext.sigv4Credential.secretAccessKeyLen = pCredential->secretAccessKeyLength;
+
+        if( networkingLibwebsocketContext.libwebsocketsCredentials.userAgentLength > NETWORKING_LWS_USER_AGENT_NAME_MAX_LENGTH )
+        {
+            ret = NETWORKING_LIBWEBSOCKETS_RESULT_USER_AGENT_NAME_TOO_LONG;
+        }
+    }
+
+    return ret;
 }

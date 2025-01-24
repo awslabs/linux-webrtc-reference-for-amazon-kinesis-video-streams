@@ -3,7 +3,7 @@
 #include "networkingLibwebsockets_private.h"
 #include "libwebsockets.h"
 
-static NetworkingLibwebsocketsResult_t signHttpRequest( HttpRequest_t * pHttpRequest )
+static NetworkingLibwebsocketsResult_t SignHttpRequest( HttpRequest_t * pHttpRequest )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
     int32_t writtenLength;
@@ -37,7 +37,7 @@ static NetworkingLibwebsocketsResult_t signHttpRequest( HttpRequest_t * pHttpReq
     /* Find the path for request. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = getPathFromUrl( pHttpRequest->pUrl, pHttpRequest->urlLength, &pPath, &pathLength );
+        ret = GetPathFromUrl( pHttpRequest->pUrl, pHttpRequest->urlLength, &pPath, &pathLength );
     }
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
@@ -55,7 +55,8 @@ static NetworkingLibwebsocketsResult_t signHttpRequest( HttpRequest_t * pHttpReq
         }
     }
 
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    /* While fetching credential, we don't need to generate authorization header and we don't have the key pair at this moment. */
+    if( ( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK ) && ( pHttpRequest->isFetchingCredential == 0U ) )
     {
         memset( &canonicalRequest, 0, sizeof( canonicalRequest ) );
         canonicalRequest.verb = NETWORKING_LWS_HTTP_VERB_POST;
@@ -68,13 +69,13 @@ static NetworkingLibwebsocketsResult_t signHttpRequest( HttpRequest_t * pHttpReq
         canonicalRequest.pPayload = pHttpRequest->pBody;
         canonicalRequest.payloadLength = pHttpRequest->bodyLength;
 
-        ret = generateAuthorizationHeader( &canonicalRequest );
+        ret = GenerateAuthorizationHeader( &canonicalRequest );
     }
 
     return ret;
 }
 
-int32_t lwsHttpCallbackRoutine( struct lws * wsi,
+int32_t LwsHttpCallbackRoutine( struct lws * wsi,
                                 enum lws_callback_reasons reason,
                                 void * pUser,
                                 void * pDataIn,
@@ -82,8 +83,18 @@ int32_t lwsHttpCallbackRoutine( struct lws * wsi,
 {
     int32_t retValue = 0;
     int32_t status, writtenBodyLength, readLength;
-    unsigned char * pEndPtr;
-    unsigned char ** ppStartPtr;
+    void * pCustomData;
+    char * pCurPtr;
+    // char dateHdrBuffer[MAX_DATE_HEADER_BUFFER_LENGTH + 1];
+    char * pEndPtr;
+    char ** ppStartPtr;
+    uint64_t item, serverTime;
+    uint32_t headerCount;
+    uint32_t logLevel;
+    time_t td;
+    size_t len;
+    uint64_t nowTime, clockSkew = 0;
+    NetworkingLibwebsocketContext_t * pCtx;
 
     char pContentLength[ 11 ]; /* It needs 10 bytes for 32 bit integer, +1 for NULL terminator. */
     size_t contentWrittenLength;
@@ -217,51 +228,49 @@ int32_t lwsHttpCallbackRoutine( struct lws * wsi,
             break;
 
         case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
-            ppStartPtr = ( unsigned char ** ) pDataIn;
+            ppStartPtr = ( char ** ) pDataIn;
             pEndPtr = *ppStartPtr + dataSize - 1;
 
             // Append headers
-            LogDebug( ( "Appending header - Authorization=%.*s", ( int ) networkingLibwebsocketContext.appendHeaders.authorizationLength, networkingLibwebsocketContext.appendHeaders.pAuthorization ) );
-            status = lws_add_http_header_by_name( wsi,
-                                                  ( const unsigned char * ) "Authorization",
-                                                  ( const unsigned char * ) networkingLibwebsocketContext.appendHeaders.pAuthorization,
-                                                  networkingLibwebsocketContext.appendHeaders.authorizationLength,
-                                                  ppStartPtr,
-                                                  pEndPtr );
+            LogDebug( ( "Appending header - Authorization=%.*s ", ( int ) networkingLibwebsocketContext.appendHeaders.authorizationLength, networkingLibwebsocketContext.appendHeaders.pAuthorization ) );
+            status = lws_add_http_header_by_name( wsi, "Authorization", networkingLibwebsocketContext.appendHeaders.pAuthorization, networkingLibwebsocketContext.appendHeaders.authorizationLength,
+                                                  ( unsigned char ** ) ppStartPtr, pEndPtr );
 
             /* user-agent */
-            LogDebug( ( "Appending header - user-agent=%.*s", ( int ) networkingLibwebsocketContext.appendHeaders.userAgentLength, networkingLibwebsocketContext.appendHeaders.pUserAgent ) );
-            status = lws_add_http_header_by_name( wsi,
-                                                  ( const unsigned char * ) "user-agent",
-                                                  ( const unsigned char * ) networkingLibwebsocketContext.appendHeaders.pUserAgent,
-                                                  networkingLibwebsocketContext.appendHeaders.userAgentLength,
-                                                  ppStartPtr,
-                                                  pEndPtr );
+            LogDebug( ( "Appending header - user-agent=%.*s ", ( int ) networkingLibwebsocketContext.appendHeaders.userAgentLength, networkingLibwebsocketContext.appendHeaders.pUserAgent ) );
+            status = lws_add_http_header_by_name( wsi, "user-agent", networkingLibwebsocketContext.appendHeaders.pUserAgent, networkingLibwebsocketContext.appendHeaders.userAgentLength,
+                                                  ( unsigned char ** ) ppStartPtr, pEndPtr );
 
-            LogDebug( ( "Appending header - x-amz-date=%.*s", ( int ) networkingLibwebsocketContext.appendHeaders.dateLength, networkingLibwebsocketContext.appendHeaders.pDate ) );
-            status = lws_add_http_header_by_name( wsi,
-                                                  ( const unsigned char * ) "x-amz-date",
-                                                  ( const unsigned char * ) networkingLibwebsocketContext.appendHeaders.pDate,
-                                                  networkingLibwebsocketContext.appendHeaders.dateLength,
-                                                  ppStartPtr,
-                                                  pEndPtr );
+            LogDebug( ( "Appending header - x-amz-date=%.*s ", ( int ) networkingLibwebsocketContext.appendHeaders.dateLength, networkingLibwebsocketContext.appendHeaders.pDate ) );
+            status = lws_add_http_header_by_name( wsi, "x-amz-date", networkingLibwebsocketContext.appendHeaders.pDate, networkingLibwebsocketContext.appendHeaders.dateLength,
+                                                  ( unsigned char ** ) ppStartPtr, pEndPtr );
 
-            LogDebug( ( "Appending header - content-type=%.*s", ( int ) networkingLibwebsocketContext.appendHeaders.contentTypeLength, networkingLibwebsocketContext.appendHeaders.pContentType ) );
-            status = lws_add_http_header_by_name( wsi,
-                                                  ( const unsigned char * ) "content-type",
-                                                  ( const unsigned char * ) networkingLibwebsocketContext.appendHeaders.pContentType,
-                                                  networkingLibwebsocketContext.appendHeaders.contentTypeLength,
-                                                  ppStartPtr,
-                                                  pEndPtr );
+            LogDebug( ( "Appending header - content-type=%.*s ", ( int ) networkingLibwebsocketContext.appendHeaders.contentTypeLength, networkingLibwebsocketContext.appendHeaders.pContentType ) );
+            status = lws_add_http_header_by_name( wsi, "content-type", networkingLibwebsocketContext.appendHeaders.pContentType, networkingLibwebsocketContext.appendHeaders.contentTypeLength,
+                                                  ( unsigned char ** ) ppStartPtr, pEndPtr );
 
-            LogDebug( ( "Appending header - content-length=%lu", networkingLibwebsocketContext.appendHeaders.contentLength ) );
+            LogDebug( ( "Appending header - content-length=%lu ", networkingLibwebsocketContext.appendHeaders.contentLength ) );
             contentWrittenLength = snprintf( pContentLength, 11, "%lu", networkingLibwebsocketContext.appendHeaders.contentLength );
-            status = lws_add_http_header_by_name( wsi,
-                                                  ( const unsigned char * ) "content-length",
-                                                  ( const unsigned char * ) pContentLength,
-                                                  contentWrittenLength,
-                                                  ppStartPtr,
-                                                  pEndPtr );
+            status = lws_add_http_header_by_name( wsi, "content-length", pContentLength, contentWrittenLength,
+                                                  ( unsigned char ** ) ppStartPtr, pEndPtr );
+
+            /* While fetching credential, append IoT Thing Name. */
+            if( networkingLibwebsocketContext.appendHeaders.iotThingNameLength > 0 )
+            {
+                LogDebug( ( "Appending header - x-amzn-iot-thingname:  %.*s ",( int ) networkingLibwebsocketContext.appendHeaders.iotThingNameLength, networkingLibwebsocketContext.appendHeaders.pIotThingName ) );
+                status = lws_add_http_header_by_name( wsi, "x-amzn-iot-thingname", networkingLibwebsocketContext.appendHeaders.pIotThingName, networkingLibwebsocketContext.appendHeaders.iotThingNameLength,
+                                                      ( unsigned char ** ) ppStartPtr, pEndPtr );
+            }
+            else if( networkingLibwebsocketContext.libwebsocketsCredentials.sessionTokenLength > 0 )
+            {
+                LogDebug( ( "Appending header - x-amz-security-token:  %.*s ",( int ) networkingLibwebsocketContext.libwebsocketsCredentials.sessionTokenLength, networkingLibwebsocketContext.libwebsocketsCredentials.pSessionToken ) );
+                status = lws_add_http_header_by_name( wsi, SIGV4_HTTP_X_AMZ_SECURITY_TOKEN_HEADER, networkingLibwebsocketContext.libwebsocketsCredentials.pSessionToken, networkingLibwebsocketContext.libwebsocketsCredentials.sessionTokenLength,
+                                                      ( unsigned char ** ) ppStartPtr, pEndPtr );
+            }
+            else
+            {
+                /* Empty else marker. */
+            }
 
             lws_client_http_body_pending( wsi, 1 );
             lws_callback_on_writable( wsi );
@@ -271,7 +280,7 @@ int32_t lwsHttpCallbackRoutine( struct lws * wsi,
         case LWS_CALLBACK_CLIENT_HTTP_WRITEABLE:
             LogDebug( ( "Sending the body %.*s, size %lu ", ( int ) networkingLibwebsocketContext.pRequest->bodyLength, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength ) );
 
-            writtenBodyLength = lws_write( wsi, ( unsigned char * ) networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength, LWS_WRITE_TEXT );
+            writtenBodyLength = lws_write( wsi, networkingLibwebsocketContext.pRequest->pBody, networkingLibwebsocketContext.pRequest->bodyLength, LWS_WRITE_TEXT );
 
             if( writtenBodyLength != networkingLibwebsocketContext.pRequest->bodyLength )
             {
@@ -318,7 +327,10 @@ HttpResult_t Http_Send( HttpRequest_t * pRequest,
                         size_t timeoutMs,
                         HttpResponse_t * pResponse )
 {
-    NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    HttpResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
+    NetworkingLibwebsocketHttpVerb_t httpVerb = NETWORKING_LWS_HTTP_VERB_POST;
+
+    memset( &networkingLibwebsocketContext.appendHeaders, 0, sizeof( NetworkingLibwebsocketsAppendHeaders_t ) );
 
     /* Append HTTP headers for signing.
      * Refer to https://docs.aws.amazon.com/AmazonECR/latest/APIReference/CommonParameters.html for details. */
@@ -327,12 +339,12 @@ HttpResult_t Http_Send( HttpRequest_t * pRequest,
     networkingLibwebsocketContext.appendHeaders.userAgentLength = networkingLibwebsocketContext.libwebsocketsCredentials.userAgentLength;
 
     /* host */
-    ret = getUrlHost( pRequest->pUrl, pRequest->urlLength, &networkingLibwebsocketContext.appendHeaders.pHost, &networkingLibwebsocketContext.appendHeaders.hostLength );
+    ret = GetUrlHost( pRequest->pUrl, pRequest->urlLength, &networkingLibwebsocketContext.appendHeaders.pHost, &networkingLibwebsocketContext.appendHeaders.hostLength );
 
     /* x-amz-date */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = getIso8601CurrentTime( &networkingLibwebsocketContext.appendHeaders.pDate, &networkingLibwebsocketContext.appendHeaders.dateLength );
+        ret = GetIso8601CurrentTime( &networkingLibwebsocketContext.appendHeaders.pDate, &networkingLibwebsocketContext.appendHeaders.dateLength );
     }
 
     /* content-type - application/json */
@@ -351,17 +363,30 @@ HttpResult_t Http_Send( HttpRequest_t * pRequest,
         networkingLibwebsocketContext.pResponse = pResponse;
     }
 
+    /* While fetching credential, append IoT Thing Name and use HTTP GET. */
+    if( ( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK ) && ( pRequest->isFetchingCredential != 0U ) )
+    {
+        httpVerb = NETWORKING_LWS_HTTP_VERB_GET;
+        networkingLibwebsocketContext.appendHeaders.pIotThingName = networkingLibwebsocketContext.libwebsocketsCredentials.pIotThingName;
+        networkingLibwebsocketContext.appendHeaders.iotThingNameLength = networkingLibwebsocketContext.libwebsocketsCredentials.iotThingNameLength;
+    }
+
     /* Sign this request. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = signHttpRequest( pRequest );
+        ret = SignHttpRequest( pRequest );
     }
 
     /* Blocking execution until getting response from server. */
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
-        ret = performLwsConnect( networkingLibwebsocketContext.appendHeaders.pHost, networkingLibwebsocketContext.appendHeaders.hostLength, 443U, 1U );
+        ret = PerformLwsConnect( networkingLibwebsocketContext.appendHeaders.pHost, networkingLibwebsocketContext.appendHeaders.hostLength, 443U, httpVerb );
     }
 
-    return ( HttpResult_t ) ret;
+    return ret;
+}
+
+HttpResult_t Http_UpdateCredential( void * pCredential )
+{
+    return UpdateCredential( ( NetworkingLibwebsocketsCredentials_t * ) pCredential );
 }
