@@ -736,7 +736,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                                                     pRemoteIceEndpoint,
                                                     &pTransactionIdBuffer,
                                                     &pCandidatePair );
-        LogInfo( ( "Ice_HandleStunPacket return %d", iceHandleStunResult ) );
+        LogDebug( ( "Ice_HandleStunPacket return %d", iceHandleStunResult ) );
 
         switch( iceHandleStunResult )
         {

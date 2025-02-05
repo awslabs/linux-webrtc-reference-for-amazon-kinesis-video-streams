@@ -406,7 +406,7 @@ static IceControllerResult_t ProcessCandidatePairs( IceControllerContext_t * pCt
             ret = ICE_CONTROLLER_RESULT_OK;
             stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
 
-            LogInfo( ( "Candidate Pair idx:%d state is %d", i, pCtx->iceContext.pCandidatePairs[i].state ) );
+            LogVerbose( ( "Candidate Pair idx:%d state is %d", i, pCtx->iceContext.pCandidatePairs[i].state ) );
 
             iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
                                                    &pCtx->iceContext.pCandidatePairs[i],
