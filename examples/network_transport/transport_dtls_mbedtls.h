@@ -39,6 +39,7 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/threading.h"
 #include "mbedtls/x509.h"
+#include "mbedtls/timing.h"
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE( array ) ( sizeof( array ) / sizeof *( array ) )
@@ -92,6 +93,9 @@
 
 #define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
 
+typedef int (* OnTransportDtlsSendHook_t)( void * pCustomContext,
+                                           const uint8_t * pInputBuffer,
+                                           size_t inputBufferLength );
 
 /*
  * For code readability use a typedef for DTLS-SRTP profiles
@@ -171,9 +175,22 @@ typedef struct DtlsTransportParams
 {
     Socket_t udpSocket;
     DtlsSSLContext_t dtlsSslContext;
-    DtlsSessionTimer_t xSessionTimer;
+    mbedtls_timing_delay_context mbedtlsTimer;
+    OnTransportDtlsSendHook_t onDtlsSendHook;
+    void * pOnDtlsSendCustomContext;
+
+    /* Store the processing packet here. */
+    uint8_t * pReceivedPacket;
+    size_t receivedPacketLength;
 } DtlsTransportParams_t;
 
+typedef enum DtlsState
+{
+    DTLS_STATE_NONE = 0,
+    DTLS_STATE_NEW,
+    DTLS_STATE_HANDSHAKING,
+    DTLS_STATE_READY,
+} DtlsState_t;
 
 /**
  * @brief Each compilation unit that consumes the NetworkContext must define it.
@@ -185,6 +202,7 @@ typedef struct DtlsTransportParams
  */
 struct DtlsNetworkContext
 {
+    DtlsState_t state;
     DtlsTransportParams_t * pParams;
 };
 typedef struct DtlsNetworkContext DtlsNetworkContext_t;
@@ -248,12 +266,18 @@ typedef struct DtlsSession {
 typedef enum DtlsTransportStatus
 {
     DTLS_TRANSPORT_SUCCESS = 0,         /**< Function successfully completed. */
+
+    /* Error code. */
     DTLS_TRANSPORT_INVALID_PARAMETER,   /**< At least one parameter was invalid. */
     DTLS_TRANSPORT_INSUFFICIENT_MEMORY, /**< Insufficient memory required to establish connection. */
     DTLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid. */
     DTLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server failed. */
     DTLS_TRANSPORT_INTERNAL_ERROR,      /**< A call to a system API resulted in an internal error. */
-    DTLS_TRANSPORT_CONNECT_FAILURE      /**< Initial connection to the server failed. */
+    DTLS_TRANSPORT_CONNECT_FAILURE,     /**< Initial connection to the server failed. */
+    DTLS_TRANSPORT_PROCESS_FAILURE,     /**< Fail while processing received packet. */
+
+    /* User info. */
+    DTLS_HANDSHAKE_COMPLETE,            /**< Complete the DTLS handshaking. */
 } DtlsTransportStatus_t;
 
 /**
@@ -266,11 +290,10 @@ typedef enum DtlsTransportStatus
  * @return #DTLS_TRANSPORT_SUCCESS, #DTLS_TRANSPORT_INSUFFICIENT_MEMORY, #DTLS_TRANSPORT_INVALID_CREDENTIALS,
  * #DTLS_TRANSPORT_HANDSHAKE_FAILED, #DTLS_TRANSPORT_INTERNAL_ERROR, or #DTLS_TRANSPORT_CONNECT_FAILURE.
  */
-DtlsTransportStatus_t
-DTLS_Connect( DtlsNetworkContext_t * pNetworkContext,
-              DtlsNetworkCredentials_t * pNetworkCredentials,
-              const char * pHostName,
-              uint16_t port );
+DtlsTransportStatus_t DTLS_Connect( DtlsNetworkContext_t * pNetworkContext,
+                                    DtlsNetworkCredentials_t * pNetworkCredentials,
+                                    const char * pHostName,
+                                    uint16_t port );
 
 /**
  * @brief Gracefully disconnect an established DTLS connection.
@@ -314,6 +337,7 @@ int32_t DTLS_recv( DtlsNetworkContext_t * pNetworkContext,
 int32_t DTLS_send( DtlsNetworkContext_t * pNetworkContext,
                    const void * pBuffer,
                    size_t bytesToSend );
+
 /**
  * @brief Get the socket FD for this network context.
  *
@@ -322,6 +346,54 @@ int32_t DTLS_send( DtlsNetworkContext_t * pNetworkContext,
  * @return The socket descriptor if value >= 0. It returns -1 when failure.
  */
 int32_t DTLS_GetSocketFd( DtlsNetworkContext_t * pNetworkContext );
+
+/**
+ * @brief Initialise DTLS network context with provided credentials
+ *
+ * @param[in] pNetworkContext The DTLS network context.
+ * @param[in] pNetworkCredentials The DTLS network credential.
+ * @param[in] isServer Boolean flag indicating the DTLS role:
+ *                     - 0: Initialize as DTLS client
+ *                     - 1: Initialize as DTLS server
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_TRANSPORT_SUCCESS if initialization is successful
+ *         - Other specific error codes in case of failure
+ */
+DtlsTransportStatus_t DTLS_Init( DtlsNetworkContext_t * pNetworkContext,
+                                 DtlsNetworkCredentials_t * pNetworkCredentials,
+                                 uint8_t isServer );
+
+/**
+ * @brief Process a received packet in an established DTLS session.
+ *
+ * @param[in] pNetworkContext The DTLS network context.
+ * @param[in] pBuffer Pointer to the buffer containing the received packet.
+ * @param[in, out] pBufferLength Pointer to the size of the buffer.
+ *                               On input: The length of the received encrypted packet.
+ *                               On output: The length of the decrypted data (if applicable).
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_TRANSPORT_SUCCESS if the packet was successfully processed
+ *         - DTLS_HANDSHAKE_COMPLETE if the handshake is completed
+ *         - Other specific error codes in case of failure
+ */
+DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext,
+                                          uint8_t * pBuffer,
+                                          size_t * pBufferLength );
+
+
+/**
+ * @brief Checking DTLS handshaking status. Do handshaking if it's not finished yet.
+ *
+ * @param[in] pNetworkContext The DTLS network context.
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_TRANSPORT_SUCCESS if DTLS handshaking is still in-progress
+ *         - DTLS_HANDSHAKE_COMPLETE if the handshake is completed
+ *         - Other specific error codes in case of failure
+ */
+DtlsTransportStatus_t DTLS_CheckHandshakeStatus( DtlsNetworkContext_t * pNetworkContext );
 
 #ifdef MBEDTLS_DTLS_DEBUG_C
 

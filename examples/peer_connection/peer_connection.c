@@ -32,9 +32,7 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
                                                                PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSession_t * pSession,
                                                               PeerConnectionSessionRequestMessage_t * pRequestMessage );
-static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
-                                     int socketFd,
-                                     IceCandidate_t * pRemoteCandidate );
+static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession );
 
 static void * PeerConnection_SessionTask( void * pParameter )
 {
@@ -221,55 +219,25 @@ static int32_t OnIceEventConnectivityCheck( PeerConnectionSession_t * pSession )
     return ret;
 }
 
-static int32_t OnIceEventPeerToPeerConnectionFound( PeerConnectionSession_t * pSession,
-                                                    int socketFd,
-                                                    IceCandidate_t * pRemoteCandidate )
+static int32_t OnDtlsSendHook( void * pCustomContext,
+                               const uint8_t * pBuffer,
+                               size_t bufferLength )
 {
     int32_t ret = 0;
-    PeerConnectionResult_t retPeerConnection;
-    int i;
+    PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
+    IceControllerResult_t resultIceController = ICE_CONTROLLER_RESULT_OK;
 
-    if( ( pSession == NULL ) ||
-        ( pRemoteCandidate == NULL ) ||
-        ( socketFd < 0 ) )
+    resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
+                                                          pBuffer,
+                                                          bufferLength );
+    if( resultIceController != ICE_CONTROLLER_RESULT_OK )
     {
-        LogError( ( "Invalid input, pSession: %p, pRemoteCandidate: %p, socketFd: %d", pSession, pRemoteCandidate, socketFd ) );
-        ret = -10;
+        LogWarn( ( "Fail to send DTLS packet, ret: %d", resultIceController ) );
+        ret = -1;
     }
-
-    if( ret == 0 )
+    else
     {
-        pSession->state = PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND;
-
-        /* Execute DTLS handshaking. */
-        Metric_StartEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
-        ret = ExecuteDtlsHandshake( pSession, socketFd, pRemoteCandidate );
-        Metric_EndEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
-    }
-
-    if( ret == 0 )
-    {
-        /* Initialize SRTP sessions. */
-        retPeerConnection = PeerConnectionSrtp_Init( pSession );
-        if( retPeerConnection != PEER_CONNECTION_RESULT_OK )
-        {
-            LogError( ( "Fail to create SRTP sessions, ret: %d", retPeerConnection ) );
-            ret = -12;
-        }
-    }
-
-    if( ret == 0 )
-    {
-        pSession->state = PEER_CONNECTION_SESSION_STATE_CONNECTION_READY;
-        for( i = 0; i < pSession->transceiverCount; i++ )
-        {
-            if( pSession->pTransceivers[i]->onPcEventCallbackFunc )
-            {
-                pSession->pTransceivers[i]->onPcEventCallbackFunc( pSession->pTransceivers[i]->pOnPcEventCustomContext,
-                                                                   TRANSCEIVER_CB_EVENT_REMOTE_PEER_READY,
-                                                                   NULL );
-            }
-        }
+        ret = bufferLength;
     }
 
     return ret;
@@ -282,11 +250,6 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
     int32_t ret = 0;
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
     PeerConnectionIceLocalCandidate_t * pLocalCandidateReadyMsg = NULL;
-    IceControllerPeerToPeerConnectionFoundMsg_t * pPeerToPeerConnectionFoundMsg = NULL;
-    char localIpAddr[ INET_ADDRSTRLEN ];
-    const char * pLocalIpPos;
-    char remoteIpAddr[ INET_ADDRSTRLEN ];
-    const char * pRemoteIpPos;
 
     if( ( pCustomContext == NULL ) )
     {
@@ -326,22 +289,17 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 ret = OnIceEventConnectivityCheck( pSession );
                 break;
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
-                pPeerToPeerConnectionFoundMsg = &pEventMsg->iceControllerCallbackContent.peerTopeerConnectionFoundMsg;
-                pLocalIpPos = inet_ntop( AF_INET,
-                                         pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.address,
-                                         localIpAddr,
-                                         INET_ADDRSTRLEN );
-                pRemoteIpPos = inet_ntop( AF_INET,
-                                          pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.address,
-                                          remoteIpAddr,
-                                          INET_ADDRSTRLEN );
-                LogInfo( ( "Found P2P connection between source %s:%d with remote %s:%d",
-                           pLocalIpPos ? pLocalIpPos : "UNKNOWN",
-                           pPeerToPeerConnectionFoundMsg->pLocalCandidate->endpoint.transportAddress.port,
-                           pRemoteIpPos ? pRemoteIpPos : "UNKNOWN",
-                           pPeerToPeerConnectionFoundMsg->pRemoteCandidate->endpoint.transportAddress.port ) );
+                /* Assign transport send/recv callback function/context for TURN headers. */
+                memset( &pSession->dtlsSession.xDtlsTransportParams, 0, sizeof( DtlsTransportParams_t ) );
+                pSession->dtlsSession.xDtlsTransportParams.onDtlsSendHook = OnDtlsSendHook;
+                pSession->dtlsSession.xDtlsTransportParams.pOnDtlsSendCustomContext = ( void * ) pSession;
 
-                ret = OnIceEventPeerToPeerConnectionFound( pSession, pPeerToPeerConnectionFoundMsg->socketFd, pPeerToPeerConnectionFoundMsg->pRemoteCandidate );
+                /* Start DTLS handshaking. */
+                Metric_StartEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
+                ret = StartDtlsHandshake( pSession );
+
+                /* This must set after StartDtlsHandshake, or the other thread might execute handshake earlier than expectation. */
+                pSession->state = PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND;
                 break;
             default:
                 LogError( ( "Unknown event: %d", event ) );
@@ -352,20 +310,15 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
     return ret;
 }
 
-static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
-                                     int socketFd,
-                                     IceCandidate_t * pRemoteCandidate )
+static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
 {
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_TRANSPORT_SUCCESS;
-    int32_t retUdpTransport;
     DtlsSession_t * pDtlsSession = NULL;
-    char remoteIpAddr[ INET_ADDRSTRLEN ];
-    const char * pRemoteIpPos;
 
-    if( ( pSession == NULL ) || ( pRemoteCandidate == NULL ) || ( socketFd < 0 ) )
+    if( pSession == NULL )
     {
-        LogError( ( "Invalid input, pSession: %p, pRemoteCandidate: %p, socketFd: %d", pSession, pRemoteCandidate, socketFd ) );
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
         ret = -20;
     }
 
@@ -374,16 +327,6 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
         /* Set the pParams member of the network context with desired transport. */
         pDtlsSession = &pSession->dtlsSession;
         pDtlsSession->xNetworkContext.pParams = &pDtlsSession->xDtlsTransportParams;
-        retUdpTransport = UDP_Sockets_CreateAndAssign( &pDtlsSession->xNetworkContext.pParams->udpSocket, socketFd );
-        if( retUdpTransport != UDP_SOCKETS_ERRNO_NONE )
-        {
-            LogError( ( "Fail to create UDP socket descriptor, ret: %d", retUdpTransport ) );
-            ret = -21;
-        }
-    }
-
-    if( ret == 0 )
-    {
         /* Set transport interface. */
         pDtlsSession->xTransportInterface.pNetworkContext = ( NetworkContext_t * ) &pDtlsSession->xNetworkContext;
         pDtlsSession->xTransportInterface.send = ( TransportSend_t ) DTLS_send;
@@ -393,17 +336,6 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
         /* Disable SNI server name indication*/
         // https://mbed-tls.readthedocs.io/en/latest/kb/how-to/use-sni/
         pDtlsSession->xNetworkCredentials.disableSni = 1;
-
-        pRemoteIpPos = inet_ntop( AF_INET,
-                                  pRemoteCandidate->endpoint.transportAddress.address,
-                                  remoteIpAddr,
-                                  INET_ADDRSTRLEN );
-        LogInfo( ( "Start DTLS handshaking with %s:%d", pRemoteIpPos ? pRemoteIpPos : "UNKNOWN", pRemoteCandidate->endpoint.transportAddress.port ) );
-        if( pRemoteIpPos == NULL )
-        {
-            LogError( ( "Unknown remote candidate." ) );
-            ret = -22;
-        }
     }
 
     if( ret == 0 )
@@ -424,14 +356,13 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
             pDtlsSession->xNetworkCredentials.pPrivateKey = &pSession->pCtx->dtlsContext.localKey;
 
             /* Attempt to create a DTLS connection. */
-            xNetworkStatus = DTLS_Connect( &pDtlsSession->xNetworkContext,
-                                           &pDtlsSession->xNetworkCredentials,
-                                           pRemoteIpPos,
-                                           pRemoteCandidate->endpoint.transportAddress.port );
+            xNetworkStatus = DTLS_Init( &pDtlsSession->xNetworkContext,
+                                        &pDtlsSession->xNetworkCredentials,
+                                        0U );
 
             if( xNetworkStatus != DTLS_TRANSPORT_SUCCESS )
             {
-                LogError( ( "Fail to connect with server with return % d ", xNetworkStatus ) );
+                LogError( ( "Fail to initialize the DTLS session with return %d ", xNetworkStatus ) );
                 ret = -24;
             }
         }
@@ -439,33 +370,98 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession,
 
     if( ret == 0 )
     {
+        /* Trigger the DTLS handshaking to send client hello if necessary. */
+        xNetworkStatus = DTLS_CheckHandshakeStatus( &pDtlsSession->xNetworkContext );
+
+        if( xNetworkStatus != DTLS_TRANSPORT_SUCCESS )
+        {
+            LogError( ( "Error happens when trigger the DTLS handshake, return %d", xNetworkStatus ) );
+            ret = -25;
+        }
+    }
+
+    return ret;
+}
+
+static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
+                                  uint8_t * pBuffer,
+                                  size_t bufferLength )
+{
+    int32_t ret = 0;
+    DtlsTransportStatus_t xNetworkStatus = DTLS_TRANSPORT_SUCCESS;
+    PeerConnectionResult_t retPc;
+    uint32_t i;
+
+    xNetworkStatus = DTLS_ProcessPacket( &pSession->dtlsSession.xNetworkContext,
+                                         pBuffer,
+                                         &bufferLength );
+
+    if( xNetworkStatus == DTLS_HANDSHAKE_COMPLETE )
+    {
+        LogInfo( ( "Complete DTLS handshaking." ) );
+        Metric_EndEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
+
         /* Verify remote fingerprint (if remote cert fingerprint is the expected one) */
-        xNetworkStatus = dtlsSessionVerifyRemoteCertificateFingerprint( &pDtlsSession->xNetworkContext.pParams->dtlsSslContext,
+        xNetworkStatus = dtlsSessionVerifyRemoteCertificateFingerprint( &pSession->dtlsSession.xNetworkContext.pParams->dtlsSslContext,
                                                                         pSession->remoteCertFingerprint,
                                                                         pSession->remoteCertFingerprintLength );
 
         if( xNetworkStatus != DTLS_TRANSPORT_SUCCESS )
         {
             LogError( ( "Fail to dtlsSessionVerifyRemoteCertificateFingerprint with return %d ", xNetworkStatus ) );
-            ret = -25;
+            ret = -0x1001;
+        }
+
+        if( ret == 0 )
+        {
+            /* Retrieve key material into DTLS session. */
+            xNetworkStatus = dtlsSessionPopulateKeyingMaterial( &pSession->dtlsSession.xNetworkContext.pParams->dtlsSslContext,
+                                                                &pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial );
+
+            if( xNetworkStatus != DTLS_TRANSPORT_SUCCESS )
+            {
+                LogError( ( "Fail to dtlsSessionPopulateKeyingMaterial with return %d ", xNetworkStatus ) );
+                ret = -0x1002;
+            }
+            else
+            {
+                LogDebug( ( "dtlsSessionPopulateKeyingMaterial with key_length: %i ", pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.key_length ) );
+            }
+        }
+
+        if( ret == 0 )
+        {
+            /* Initialize SRTP sessions. */
+            retPc = PeerConnectionSrtp_Init( pSession );
+            if( retPc != PEER_CONNECTION_RESULT_OK )
+            {
+                LogError( ( "Fail to create SRTP sessions, ret: %d", retPc ) );
+                ret = -0x1003;
+            }
+        }
+
+        if( ret == 0 )
+        {
+            pSession->state = PEER_CONNECTION_SESSION_STATE_CONNECTION_READY;
+            for( i = 0; i < pSession->transceiverCount; i++ )
+            {
+                if( pSession->pTransceivers[i]->onPcEventCallbackFunc )
+                {
+                    pSession->pTransceivers[i]->onPcEventCallbackFunc( pSession->pTransceivers[i]->pOnPcEventCustomContext,
+                                                                       TRANSCEIVER_CB_EVENT_REMOTE_PEER_READY,
+                                                                       NULL );
+                }
+            }
         }
     }
-
-    if( ret == 0 )
+    else if( xNetworkStatus != DTLS_TRANSPORT_SUCCESS )
     {
-        /* Retrieve key material into DTLS session. */
-        xNetworkStatus = dtlsSessionPopulateKeyingMaterial( &pDtlsSession->xNetworkContext.pParams->dtlsSslContext,
-                                                            &pDtlsSession->xNetworkCredentials.dtlsKeyingMaterial );
-
-        if( xNetworkStatus != DTLS_TRANSPORT_SUCCESS )
-        {
-            LogError( ( "Fail to dtlsSessionPopulateKeyingMaterial with return %d ", xNetworkStatus ) );
-            ret = -26;
-        }
-        else
-        {
-            LogDebug( ( "dtlsSessionPopulateKeyingMaterial with key_length: %i ", pDtlsSession->xNetworkCredentials.dtlsKeyingMaterial.key_length ) );
-        }
+        LogError( ( "Error happens when trigger the DTLS handshake, return %d", xNetworkStatus ) );
+        ret = -3;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     return ret;
@@ -488,25 +484,42 @@ static int32_t HandleRtpRtcpPackets( void * pCustomContext,
 
     if( ret == 0 )
     {
-        if( ( bufferLength >= 2 ) && ( pBuffer[1] >= 192 ) && ( pBuffer[1] <= 223 ) )
+        if( bufferLength < 2 )
         {
-            /* RTCP packet */
-            resultPeerConnection = PeerConnectionSrtp_HandleSrtcpPacket( pSession, pBuffer, bufferLength );
-            if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
+            LogWarn( ( "Invalid buffer length: %ld", bufferLength ) );
+            ret = -2;
+        }
+        else if( ( pBuffer[0] > 127 ) && ( pBuffer[0] < 192 ) )
+        {
+            if( ( pBuffer[1] >= 192 ) && ( pBuffer[1] <= 223 ) )
             {
-                LogWarn( ( "Failed to handle SRTCP packets, result: %d", resultPeerConnection ) );
-                ret = -2;
+                /* RTCP packet */
+                resultPeerConnection = PeerConnectionSrtp_HandleSrtcpPacket( pSession, pBuffer, bufferLength );
+                if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
+                {
+                    LogWarn( ( "Failed to handle SRTCP packets, result: %d", resultPeerConnection ) );
+                    ret = -2;
+                }
             }
+            else
+            {
+                /* RTP packet */
+                resultPeerConnection = PeerConnectionSrtp_HandleSrtpPacket( pSession, pBuffer, bufferLength );
+                if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
+                {
+                    LogWarn( ( "Failed to handle SRTP packets, result: %d", resultPeerConnection ) );
+                    ret = -2;
+                }
+            }
+        }
+        else if( ( pBuffer[0] > 19 ) && ( pBuffer[0] < 64 ) )
+        {
+            /* Trigger the DTLS handshaking to send client hello if necessary. */
+            ret = ProcessDtlsPacket( pSession, pBuffer, bufferLength );
         }
         else
         {
-            /* RTP packet */
-            resultPeerConnection = PeerConnectionSrtp_HandleSrtpPacket( pSession, pBuffer, bufferLength );
-            if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
-            {
-                LogWarn( ( "Failed to handle SRTP packets, result: %d", resultPeerConnection ) );
-                ret = -2;
-            }
+            LogWarn( ( "Unknown packet received, length=%lu, first byte=%u", bufferLength, pBuffer[0] ) );
         }
     }
 

@@ -782,7 +782,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         if( ( pCtx->pNominatedSocketContext == NULL ) ||
-            ( pCtx->pNominatedSocketContext->state < ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE ) )
+            ( pCtx->pNominatedSocketContext->state < ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
         {
             LogWarn( ( "The connection of this session is not ready." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_CONNECTION_NOT_READY;
