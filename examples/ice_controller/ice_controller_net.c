@@ -687,6 +687,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                                 /* We have finished accessing the shared resource.  Release the mutex. */
                                 pthread_mutex_unlock( &( pCtx->socketMutex ) );
                             }
+
                             ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
                         }
                     }

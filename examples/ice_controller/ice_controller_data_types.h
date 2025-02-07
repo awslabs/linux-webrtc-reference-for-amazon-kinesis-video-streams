@@ -82,9 +82,9 @@ typedef int32_t (* OnIceEventCallback_t)( void * pCustomContext,
                                           IceControllerCallbackEvent_t event,
                                           IceControllerCallbackContent_t * pEventMsg );
 
-typedef int32_t (* OnRecvRtpRtcpPacketCallback_t)( void * pCustomContext,
-                                                   uint8_t * pBuffer,
-                                                   size_t bufferLength );
+typedef int32_t (* OnRecvDtlsPacketCallback_t)( void * pCustomContext,
+                                                uint8_t * pBuffer,
+                                                size_t bufferLength );
 
 typedef enum IceControllerResult
 {
@@ -200,7 +200,7 @@ typedef struct IceControllerStunMsgHeader
 typedef struct IceControllerSocketListenerContext
 {
     volatile uint8_t executeSocketListener;
-    OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc;
+    OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc;
     void * pOnRecvRtpRtcpPacketCallbackCustomContext;
 } IceControllerSocketListenerContext_t;
 

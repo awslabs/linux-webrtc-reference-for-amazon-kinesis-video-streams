@@ -13,7 +13,7 @@ extern "C" {
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           OnIceEventCallback_t onIceEventCallbackFunc,
                                           void * pOnIceEventCallbackContext,
-                                          OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc,
+                                          OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc,
                                           void * pOnRecvRtpRtcpPacketCallbackContext );
 IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx );
 IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecodeMessage,
