@@ -425,8 +425,8 @@ static NetworkingLibwebsocketsResult_t GenerateQueryParameters( char * pQuerySta
                                                                 size_t * pOutputLength )
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    char * pChannelArnQueryParam, * pChannelArnValue, * pEqual;
-    size_t channelArnQueryParamLength, channelArnValueLength;
+    char * pChannelArnValue, * pEqual;
+    size_t channelArnValueLength;
     char * pCurrentWrite = pOutput;
     size_t remainLength;
 
@@ -761,8 +761,6 @@ int32_t LwsWebsocketCallbackRoutine( struct lws * wsi,
 WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
 {
     WebsocketResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    char * pPath;
-    size_t pathLength;
 
     memset( &networkingLibwebsocketContext.appendHeaders, 0, sizeof( NetworkingLibwebsocketsAppendHeaders_t ) );
 
@@ -776,19 +774,19 @@ WebsocketResult_t Websocket_Connect( WebsocketServerInfo_t * pServerInfo )
     ret = GetUrlHost( pServerInfo->pUrl, pServerInfo->urlLength, &networkingLibwebsocketContext.appendHeaders.pHost, &networkingLibwebsocketContext.appendHeaders.hostLength );
 
     /* x-amz-date */
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    if( ret == (WebsocketResult_t) NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         ret = GetIso8601CurrentTime( &networkingLibwebsocketContext.appendHeaders.pDate, &networkingLibwebsocketContext.appendHeaders.dateLength );
     }
 
     /* Create query parameters. */
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    if( ret == (WebsocketResult_t) NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         ret = SignWebsocketRequest( pServerInfo );
     }
 
     /* Blocking execution until getting response from server. */
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    if( ret == (WebsocketResult_t) NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         ret = PerformLwsConnect( networkingLibwebsocketContext.appendHeaders.pHost, networkingLibwebsocketContext.appendHeaders.hostLength, 443U, NETWORKING_LWS_HTTP_VERB_WSS );
     }
@@ -816,7 +814,7 @@ WebsocketResult_t Websocket_Init( void * pCredential,
 
     ret = NetworkingLibwebsockets_Init( pNetworkingLibwebsocketsCredentials );
 
-    if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
+    if( ret == (WebsocketResult_t) NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
         networkingLibwebsocketContext.websocketRxCallback = rxCallback;
         networkingLibwebsocketContext.pWebsocketRxCallbackContext = pRxCallbackContext;

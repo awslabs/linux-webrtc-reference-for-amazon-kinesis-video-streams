@@ -1075,8 +1075,6 @@ int main()
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerCredentialInfo_t credentialInfo;
-    pthread_t threadIceController;
-
 
     srand( time( NULL ) );
 

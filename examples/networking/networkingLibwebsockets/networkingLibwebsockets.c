@@ -250,8 +250,6 @@ NetworkingLibwebsocketsResult_t GenerateAuthorizationHeader( NetworkingLibwebsoc
     SigV4HttpParameters_t sigv4HttpParams;
     SigV4Status_t sigv4Status = SigV4Success;
     uint8_t isHttp;
-    char securityTokenHeader[1024] = {0}; // Buffer for security token header
-    size_t originalHeadersLength;
 
     if( ret == NETWORKING_LIBWEBSOCKETS_RESULT_OK )
     {
@@ -334,6 +332,7 @@ NetworkingLibwebsocketsResult_t PerformLwsConnect( char * pHost,
     struct lws_client_connect_info connectInfo;
     struct lws * clientLws;
     int32_t lwsReturn;
+    (void) lwsReturn;
     static char host[ NETWORKING_LWS_URI_HOST_MAX_LENGTH + 1 ];
 
     if( hostLength > NETWORKING_LWS_URI_HOST_MAX_LENGTH )
@@ -400,7 +399,8 @@ NetworkingLibwebsocketsResult_t PerformLwsConnect( char * pHost,
 NetworkingLibwebsocketsResult_t PerformLwsRecv()
 {
     NetworkingLibwebsocketsResult_t ret = NETWORKING_LIBWEBSOCKETS_RESULT_OK;
-    int32_t lwsReturn;
+    int32_t lwsReturn; 
+    (void) lwsReturn;                   
 
     lwsReturn = lws_service( networkingLibwebsocketContext.pLwsContext, 0 );
 

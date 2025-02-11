@@ -53,7 +53,7 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
     H264Packet_t h264Packets[ PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME ];
     H264Packet_t h264Packet;
     Frame_t frame;
-    uint32_t rtpTimestamp;
+    uint32_t rtpTimestamp = 0;
 
     if( ( pJitterBuffer == NULL ) ||
         ( pOutBuffer == NULL ) ||
