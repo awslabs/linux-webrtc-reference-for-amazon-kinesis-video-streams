@@ -504,7 +504,7 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     }
     else if( xNetworkStatus != DTLS_SUCCESS )
     {
-        LogError( ( "Error happens when trigger the DTLS handshake, return %d", xNetworkStatus ) );
+        LogError( ( "Error happens when process the DTLS packet, return %d", xNetworkStatus ) );
         ret = -3;
     }
     else

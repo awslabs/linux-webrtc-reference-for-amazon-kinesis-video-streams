@@ -239,19 +239,34 @@ static int DtlsUdpRecvWrap( void * pCustomCtx,
         {
             ret = MBEDTLS_ERR_SSL_WANT_READ;
         }
-        else
+    }
+
+    if( ret == 0 )
+    {
+        if( len > pDtlsTransportParams->receivedPacketLength )
         {
             ret = pDtlsTransportParams->receivedPacketLength;
-
-            /* If pBuf is same pointer of received packet, then we skip the memcpy step for efficiency. */
-            if( pBuf != pDtlsTransportParams->pReceivedPacket )
-            {
-                memcpy( pBuf, pDtlsTransportParams->pReceivedPacket, pDtlsTransportParams->receivedPacketLength );
-            }
+        }
+        else
+        {
+            ret = len;
         }
 
-        pDtlsTransportParams->pReceivedPacket = NULL;
-        pDtlsTransportParams->receivedPacketLength = 0;
+        /* Copy the buffer content to mbedtls buffer. */
+        memcpy( pBuf, pDtlsTransportParams->pReceivedPacket + pDtlsTransportParams->receivedPacketOffset, ret );
+
+        if( ret + pDtlsTransportParams->receivedPacketOffset >= pDtlsTransportParams->receivedPacketLength )
+        {
+            /* Received packet is all addressed. */
+            pDtlsTransportParams->pReceivedPacket = NULL;
+            pDtlsTransportParams->receivedPacketLength = 0;
+            pDtlsTransportParams->receivedPacketOffset = 0;
+        }
+        else
+        {
+            /* Received packet is partially addressed. */
+            pDtlsTransportParams->receivedPacketOffset += ret;
+        }
     }
 
     return ret;
@@ -1551,7 +1566,7 @@ DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext
 {
     DtlsTransportStatus_t returnStatus = DTLS_SUCCESS;
     DtlsTransportParams_t * pDtlsTransportParams = NULL;
-    int32_t mbedtlsError = 0;
+    int32_t mbedtlsError = MBEDTLS_ERR_SSL_WANT_READ;
 
     if( ( pNetworkContext == NULL ) || ( pBuffer == NULL ) || ( pBufferLength == NULL ) )
     {
@@ -1570,28 +1585,32 @@ DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext
         /* Store the processing packet into transport params. */
         pDtlsTransportParams->pReceivedPacket = pBuffer;
         pDtlsTransportParams->receivedPacketLength = *pBufferLength;
+        pDtlsTransportParams->receivedPacketOffset = 0;
 
-        /* Perform read function. Mbedtls would execute mbedtls_ssl_handshake inside if the handshake is not done. */
-        mbedtlsError = mbedtls_ssl_read( &( pDtlsTransportParams->dtlsSslContext.context ),
-                                         pBuffer,
-                                         *pBufferLength );
+        while( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ && pDtlsTransportParams->pReceivedPacket != NULL )
+        {
+            /* Perform read function. Mbedtls would execute mbedtls_ssl_handshake inside if the handshake is not done. */
+            mbedtlsError = mbedtls_ssl_read( &( pDtlsTransportParams->dtlsSslContext.context ),
+                                             pBuffer,
+                                             *pBufferLength );
 
-        if( ( mbedtlsError == MBEDTLS_ERR_SSL_TIMEOUT ) || ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) || ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) )
-        {
-            LogDebug( ( "Failed to read data. However, a read can be retried on "
-                        "this error. "
-                        "mbedTLSError= %s : %s.",
-                        mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
-                        mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
-        }
-        else if( mbedtlsError < 0 )
-        {
-            LogError( ( "Failed to read data: mbedTLSError= %s : %s.", mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
-            returnStatus = DTLS_TRANSPORT_PROCESS_FAILURE;
-        }
-        else
-        {
-            *pBufferLength = mbedtlsError;
+            if( ( mbedtlsError == MBEDTLS_ERR_SSL_TIMEOUT ) || ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) || ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) )
+            {
+                LogDebug( ( "Failed to read data. However, a read can be retried on "
+                            "this error. "
+                            "mbedTLSError= %s : %s.",
+                            mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
+                            mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+            }
+            else if( mbedtlsError < 0 )
+            {
+                LogError( ( "Failed to read data: mbedTLSError=-0x%x %s : %s.", -mbedtlsError, mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+                returnStatus = DTLS_TRANSPORT_PROCESS_FAILURE;
+            }
+            else
+            {
+                *pBufferLength = mbedtlsError;
+            }
         }
     }
 

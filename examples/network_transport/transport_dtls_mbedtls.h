@@ -161,6 +161,7 @@ typedef struct DtlsTransportParams
     /* Store the processing packet here. */
     uint8_t * pReceivedPacket;
     size_t receivedPacketLength;
+    uint32_t receivedPacketOffset;
 } DtlsTransportParams_t;
 
 typedef enum DtlsState
