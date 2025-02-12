@@ -1091,6 +1091,7 @@ int main()
     credentialInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
     credentialInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
     credentialInfo.pCaCertPath = AWS_CA_CERT_PATH;
+    credentialInfo.caCertPathLength = strlen( AWS_CA_CERT_PATH );
 
     #if defined( AWS_ACCESS_KEY_ID )
     credentialInfo.pAccessKeyId = AWS_ACCESS_KEY_ID;
@@ -1136,16 +1137,6 @@ int main()
     if( ret == 0 )
     {
         ret = InitializeAppMediaSource( &demoContext );
-    }
-
-    if( ret == 0 )
-    {
-        signalingControllerReturn = SignalingController_ConnectServers( &demoContext.signalingControllerContext );
-        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
-        {
-            LogError( ( "Fail to connect with signaling controller." ) );
-            ret = -1;
-        }
     }
 
     if( ret == 0 )
