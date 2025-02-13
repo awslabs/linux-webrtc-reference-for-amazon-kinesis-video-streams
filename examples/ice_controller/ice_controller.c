@@ -412,7 +412,7 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           OnIceEventCallback_t onIceEventCallbackFunc,
                                           void * pOnIceEventCallbackContext,
                                           OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc,
-                                          void * pOnRecvRtpRtcpPacketCallbackContext )
+                                          void * pOnRecvDtlsPacketCallbackContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TimerControllerResult_t retTimer;
@@ -474,7 +474,7 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
     {
         ret = IceControllerSocketListener_Init( pCtx,
                                                 onRecvDtlsPacketCallbackFunc,
-                                                pOnRecvRtpRtcpPacketCallbackContext );
+                                                pOnRecvDtlsPacketCallbackContext );
     }
 
     return ret;

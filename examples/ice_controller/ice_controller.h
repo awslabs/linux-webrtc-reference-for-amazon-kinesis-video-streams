@@ -14,7 +14,7 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           OnIceEventCallback_t onIceEventCallbackFunc,
                                           void * pOnIceEventCallbackContext,
                                           OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc,
-                                          void * pOnRecvRtpRtcpPacketCallbackContext );
+                                          void * pOnRecvDtlsPacketCallbackContext );
 IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx );
 IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecodeMessage,
                                                              size_t decodeMessageLength,
