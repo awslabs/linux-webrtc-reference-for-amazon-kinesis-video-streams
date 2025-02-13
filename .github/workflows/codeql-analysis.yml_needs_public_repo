@@ -1,0 +1,91 @@
+name: "CodeQL"
+
+on:
+    push:
+    workflow_dispatch:
+    pull_request:
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python' ]
+        # Learn more:
+        # https://docs.github.com/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#changing-the-languages-that-are-analyzed
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+       submodules: recursive
+
+    - name: Generate (dummy) demo_config.h
+      run: |
+         cat << 'EOF' > examples/master/demo_config.h
+         #ifndef DEMO_CONFIG_H
+         #define DEMO_CONFIG_H
+
+         #define AWS_REGION "${{ env.AWS_REGION }}"
+
+         #define AWS_KVS_CHANNEL_NAME "${{ env.CHANNEL_NAME }}"
+
+         #define AWS_KVS_AGENT_NAME "AWS-SDK-KVS"
+
+         #define AWS_CREDENTIALS_ENDPOINT "${{ env.CREDENTIALS_ENDPOINT }}"
+         #define AWS_IOT_THING_NAME "${{ env.THING_NAME }}"
+         #define AWS_IOT_THING_ROLE_ALIAS "${{ env.ROLE_ALIAS }}"
+         #define AWS_IOT_THING_CERT_PATH "certificate.pem"
+         #define AWS_IOT_THING_PRIVATE_KEY_PATH "private.key"
+
+         #define AWS_CA_CERT_PATH "cert/cert.pem"
+
+         #define AWS_MAX_VIEWER_NUM ( 2 )
+
+         /* Audio format setting. */
+         #define AUDIO_G711_MULAW    0
+         #define AUDIO_G711_ALAW     0
+         #define AUDIO_OPUS          1
+         #if ( AUDIO_G711_MULAW + AUDIO_G711_ALAW + AUDIO_OPUS ) != 1
+             #error only one of audio format should be set.
+         #endif
+
+         /* Video format setting. */
+         #define USE_H265 0
+
+         #endif /* DEMO_CONFIG_H */
+         EOF
+         echo demo_config.h:
+         cat examples/master/demo_config.h
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        # If you wish to specify custom queries, you can do so here or in a config file.
+        # By default, queries listed here will override any specified in a config file.
+        # Prefix the list here with "+" to use these queries and those in the config file.
+        # queries: ./path/to/local/query, your-org/your-repo/queries@main
+
+    # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
+    # If this step fails, then you should remove it and run the build manually (see below)
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    # ℹ️ Command-line programs to run using the OS shell.
+    # 📚 https://git.io/JvXDl
+
+    # ✏️ If the Autobuild fails above, remove it and uncomment the following three lines
+    #    and modify them (or add more) to build your code if your project
+    #    uses a compiled language
+
+    #- run: |
+    #   make bootstrap
+    #   make release
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2

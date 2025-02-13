@@ -277,7 +277,7 @@ target_link_libraries(WebRTCLinuxApplicationMaster
 )
 
 if(BUILD_USRSCTP_LIBRARY)
-  target_link_libraries(WebRTCLinuxApplicationMaster 
+  target_link_libraries(WebRTCLinuxApplicationMaster
   usrsctp
   dcep
 )
