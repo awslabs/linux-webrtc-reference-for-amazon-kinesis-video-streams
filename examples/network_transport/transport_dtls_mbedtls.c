@@ -139,18 +139,6 @@ static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pDtlsNetworkConte
                                         DtlsNetworkCredentials_t * pNetworkCredentials );
 
 /**
- * @brief Perform the DTLS handshake on a UDP connection.
- *
- * @param[in] pDtlsNetworkContext Network context.
- * @param[in] pNetworkCredentials DTLS setup parameters.
- *
- * @return #DTLS_SUCCESS, #DTLS_TRANSPORT_HANDSHAKE_FAILED, or
- * #DTLS_TRANSPORT_INTERNAL_ERROR.
- */
-static DtlsTransportStatus_t dtlsHandshake( DtlsNetworkContext_t * pNetworkContext,
-                                            const DtlsNetworkCredentials_t * pNetworkCredentials );
-
-/**
  * @brief Initialize mbedTLS.
  *
  * @param[out] entropyContext mbed DTLS entropy context for generation of random
@@ -474,73 +462,6 @@ static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pNetworkContext,
 }
 /*-----------------------------------------------------------*/
 
-static DtlsTransportStatus_t dtlsHandshake( DtlsNetworkContext_t * pNetworkContext,
-                                            const DtlsNetworkCredentials_t * pNetworkCredentials )
-{
-    DtlsTransportParams_t * pDtlsTransportParams = NULL;
-    DtlsTransportStatus_t returnStatus = DTLS_SUCCESS;
-    int32_t mbedtlsError = 0;
-
-    assert( pNetworkContext != NULL );
-    assert( pNetworkContext->pParams != NULL );
-    assert( pNetworkCredentials != NULL );
-
-    pDtlsTransportParams = pNetworkContext->pParams;
-    /* Initialize the mbed DTLS secured connection context. */
-    mbedtlsError = mbedtls_ssl_setup( &( pDtlsTransportParams->dtlsSslContext.context ),
-                                      &( pDtlsTransportParams->dtlsSslContext.config ) );
-
-    if( mbedtlsError != 0 )
-    {
-        LogError( ( "Failed to set up mbed DTLS SSL context: mbedTLSError= %s : %s.", mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
-
-        returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
-    }
-    else
-    {
-        /* Set the underlying IO for the DTLS connection. */
-
-        /* MISRA Rule 11.2 flags the following line for casting the second
-         * parameter to void *. This rule is suppressed because
-         * #mbedtls_ssl_set_bio requires the second parameter as void *.
-         */
-        /* coverity[misra_c_2012_rule_11_2_violation] */
-
-        /* These two macros MBEDTLS_SSL_SEND and MBEDTLS_SSL_RECV need to be
-         * defined in mbedtls_config.h according to which implementation you
-         * use.
-         */
-        mbedtls_ssl_set_bio( &( pDtlsTransportParams->dtlsSslContext.context ),
-                             ( void * )pDtlsTransportParams->udpSocket,
-                             xMbedTLSBioUDPSocketsWrapperSend,
-                             xMbedTLSBioUDPSocketsWrapperRecv,
-                             NULL );
-    }
-
-    if( returnStatus == DTLS_SUCCESS )
-    {
-        /* Perform the DTLS handshake. */
-        do
-        {
-            mbedtlsError = mbedtls_ssl_handshake( &( pDtlsTransportParams->dtlsSslContext.context ) );
-        } while( ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) || ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) );
-
-        if( mbedtlsError != 0 )
-        {
-            LogError( ( "Failed to perform DTLS handshake: mbedTLSError= %s : %s.", mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
-            MBEDTLS_ERROR_DESCRIPTION( mbedtlsError );
-            returnStatus = DTLS_TRANSPORT_HANDSHAKE_FAILED;
-        }
-        else
-        {
-            LogInfo( ( "(Network connection %p) DTLS handshake successful.", pNetworkContext ) );
-        }
-    }
-
-    return returnStatus;
-}
-/*-----------------------------------------------------------*/
-
 static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyContext,
                                           mbedtls_ctr_drbg_context * pCtrDrbgContext )
 {
@@ -600,127 +521,6 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
 }
 /*-----------------------------------------------------------*/
 
-DtlsTransportStatus_t
-DTLS_Connect( DtlsNetworkContext_t * pNetworkContext,
-              DtlsNetworkCredentials_t * pNetworkCredentials,
-              const char * pHostName,
-              uint16_t port )
-{
-    DtlsTransportParams_t * pDtlsTransportParams = NULL;
-    DtlsTransportStatus_t returnStatus = DTLS_SUCCESS;
-    int32_t socketStatus = 0;
-    int32_t isSocketConnected = 0, isTlsSetup = 0;
-
-    if( NULL == pNetworkCredentials->pClientCert )
-    {
-        LogError( ( "NULL == pNetworkCredentials->pClientCert" ) );
-        returnStatus = DTLS_INVALID_PARAMETER;
-    }
-
-    if( NULL == pNetworkCredentials->pPrivateKey )
-    {
-        LogError( ( "NULL == pNetworkCredentials->pPrivateKey" ) );
-        returnStatus = DTLS_INVALID_PARAMETER;
-    }
-
-    if( ( pNetworkContext == NULL ) || ( pNetworkContext->pParams == NULL ) || ( pNetworkCredentials == NULL ) || ( pHostName == NULL ) )
-    {
-        LogError( ( "Invalid input parameter(s): Arguments cannot be NULL. "
-                    "pNetworkContext=%p, "
-                    "pNetworkCredentials=%p,"
-                    " pHostName: %s.",
-                    pNetworkContext,
-                    pNetworkCredentials,
-                    pHostName ) );
-        returnStatus = DTLS_INVALID_PARAMETER;
-    }
-    else
-    {
-        /* Empty else for MISRA 15.7 compliance. */
-    }
-
-    /* Initialize mbedtls. */
-    if( returnStatus == DTLS_SUCCESS )
-    {
-        pDtlsTransportParams = pNetworkContext->pParams;
-
-        returnStatus = initMbedtls( &( pDtlsTransportParams->dtlsSslContext.entropyContext ),
-                                    &( pDtlsTransportParams->dtlsSslContext.ctrDrbgContext ) );
-    }
-
-    /* Establish a UDP connection with the server. */
-    if( returnStatus == DTLS_SUCCESS )
-    {
-
-
-        pDtlsTransportParams = pNetworkContext->pParams;
-
-        socketStatus = UDP_Sockets_Connect( &( pDtlsTransportParams->udpSocket ),
-                                            pHostName,
-                                            port,
-                                            1000,
-                                            1000 );
-
-        if( socketStatus != 0 )
-        {
-            LogError( ( "Failed to connect to %s with error %d.", pHostName, socketStatus ) );
-            returnStatus = DTLS_TRANSPORT_CONNECT_FAILURE;
-        }
-    }
-
-    /* Initialize DTLS contexts and set credentials. */
-    if( returnStatus == DTLS_SUCCESS )
-    {
-        isSocketConnected = 1;
-
-        returnStatus = dtlsSetup( pNetworkContext,
-                                  pNetworkCredentials );
-    }
-
-    memset( &pNetworkContext->pParams->mbedtlsTimer,
-            0,
-            sizeof( DtlsSessionTimer_t ) );
-
-    /* Set the timer functions for mbed DTLS. */
-    mbedtls_ssl_set_timer_cb( &pNetworkContext->pParams->dtlsSslContext.context,
-                              &pNetworkContext->pParams->mbedtlsTimer,
-                              &mbedtls_timing_set_delay,
-                              &mbedtls_timing_get_delay );
-
-    /* Perform DTLS handshake. */
-    if( returnStatus == DTLS_SUCCESS )
-    {
-        isTlsSetup = 1;
-
-        returnStatus = dtlsHandshake( pNetworkContext,
-                                      pNetworkCredentials );
-    }
-
-    /* Clean up on failure. */
-    if( returnStatus != DTLS_SUCCESS )
-    {
-        /* Free SSL context if it's setup. */
-        if( isTlsSetup == 1 )
-        {
-            DtlsSslContextFree( &( pDtlsTransportParams->dtlsSslContext ) );
-        }
-
-        /* Call Sockets_Disconnect if socket was connected. */
-        if( isSocketConnected == 1 )
-        {
-            UDP_Sockets_Disconnect( pDtlsTransportParams->udpSocket );
-            pDtlsTransportParams->udpSocket = NULL;
-        }
-    }
-    else
-    {
-        LogInfo( ( "(Network connection %p) Connection to %s established.", pNetworkContext, pHostName ) );
-    }
-
-    return returnStatus;
-}
-/*-----------------------------------------------------------*/
-
 void DTLS_Disconnect( DtlsNetworkContext_t * pNetworkContext )
 {
     DtlsTransportParams_t * pTlsTransportParams = NULL;
@@ -763,62 +563,6 @@ void DTLS_Disconnect( DtlsNetworkContext_t * pNetworkContext )
 }
 /*-----------------------------------------------------------*/
 
-int32_t DTLS_recv( DtlsNetworkContext_t * pNetworkContext,
-                   void * pBuffer,
-                   size_t bytesToRecv )
-{
-    DtlsTransportParams_t * pDtlsTransportParams = NULL;
-    int32_t dtlsStatus = 0;
-
-    if( ( pNetworkContext == NULL ) || ( pNetworkContext->pParams == NULL ) )
-    {
-        LogError( ( "invalid input, pNetworkContext=%p", pNetworkContext ) );
-        dtlsStatus = -1;
-    }
-    else if( pBuffer == NULL )
-    {
-        LogError( ( "invalid input, pBuffer == NULL" ) );
-        dtlsStatus = -1;
-    }
-    else if( bytesToRecv == 0 )
-    {
-        LogError( ( "invalid input, bytesToRecv == 0" ) );
-        dtlsStatus = -1;
-    }
-    else
-    {
-        pDtlsTransportParams = pNetworkContext->pParams;
-
-        dtlsStatus = ( int32_t )mbedtls_ssl_read( &( pDtlsTransportParams->dtlsSslContext.context ),
-                                                  pBuffer,
-                                                  bytesToRecv );
-
-        if( ( dtlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) || ( dtlsStatus == MBEDTLS_ERR_SSL_WANT_READ ) || ( dtlsStatus == MBEDTLS_ERR_SSL_WANT_WRITE ) )
-        {
-            LogDebug( ( "Failed to read data. However, a read can be retried on "
-                        "this error. "
-                        "mbedTLSError= %s : %s.",
-                        mbedtlsHighLevelCodeOrDefault( dtlsStatus ),
-                        mbedtlsLowLevelCodeOrDefault( dtlsStatus ) ) );
-
-            /* Mark these set of errors as a timeout. The libraries may retry
-             * read on these errors. */
-            dtlsStatus = 0;
-        }
-        else if( dtlsStatus < 0 )
-        {
-            LogError( ( "Failed to read data: mbedTLSError= %s : %s.", mbedtlsHighLevelCodeOrDefault( dtlsStatus ), mbedtlsLowLevelCodeOrDefault( dtlsStatus ) ) );
-        }
-        else
-        {
-            /* Empty else marker. */
-        }
-    }
-
-    return dtlsStatus;
-}
-/*-----------------------------------------------------------*/
-
 int32_t DTLS_Send( DtlsNetworkContext_t * pNetworkContext,
                    const void * pBuffer,
                    size_t bytesToSend )
@@ -845,9 +589,9 @@ int32_t DTLS_Send( DtlsNetworkContext_t * pNetworkContext,
     {
         pDtlsTransportParams = pNetworkContext->pParams;
 
-        dtlsStatus = ( int32_t )mbedtls_ssl_write( &( pDtlsTransportParams->dtlsSslContext.context ),
-                                                   pBuffer,
-                                                   bytesToSend );
+        dtlsStatus = ( int32_t ) mbedtls_ssl_write( &( pDtlsTransportParams->dtlsSslContext.context ),
+                                                    pBuffer,
+                                                    bytesToSend );
 
         if( ( dtlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) || ( dtlsStatus == MBEDTLS_ERR_SSL_WANT_READ ) || ( dtlsStatus == MBEDTLS_ERR_SSL_WANT_WRITE ) )
         {
