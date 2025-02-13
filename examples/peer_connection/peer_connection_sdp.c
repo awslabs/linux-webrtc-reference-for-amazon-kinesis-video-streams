@@ -978,7 +978,7 @@ PeerConnectionResult_t PeerConnectionSdp_SetPayloadTypes( PeerConnectionSession_
     int i;
     uint8_t isTransceiverCodecSet[ PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ] = { 0 };
     uint32_t remoteMediaCodecBitMap = 0;
-    uint32_t remoteCodecPayloads[ TRANSCEIVER_RTC_CODEC_NUM ];
+    uint32_t remoteCodecPayloads[ TRANSCEIVER_RTC_CODEC_NUM ] = {0};
 
     if( ( pSession == NULL ) ||
         ( pRemoteBufferSessionDescription == NULL ) )

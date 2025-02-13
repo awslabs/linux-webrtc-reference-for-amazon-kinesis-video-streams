@@ -17,7 +17,10 @@ set(LWS_WITH_SHARED OFF CACHE INTERNAL "Do not build the shared version of the l
 set(LWS_WITH_THREADPOOL OFF CACHE INTERNAL "Managed worker thread pool support (relies on pthreads)")
 set(LWS_WITH_ZLIB OFF CACHE INTERNAL "Include zlib support (required for extensions)")
 set(LWS_HAVE_PTHREAD_H ON CACHE INTERNAL "Have pthread")
-
+# Uncomment the following to dump all LibWebsockets outgoing packets.
+# set(LWS_TLS_LOG_PLAINTEXT_TX ON CACHE INTERNAL "Dump tx")
+# Uncomment the following to dump all LibWebsockets incoming packets.
+# set(LWS_TLS_LOG_PLAINTEXT_RX ON CACHE INTERNAL "Dump rx")
 # Include libwebsockets, then the library is named websockets
 message(STATUS "adding libwebsockets subdirectory")
 add_subdirectory(${CMAKE_LIBWEBSOCKETS_DIRECTORY})

@@ -23,7 +23,7 @@ set( WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS
 file(
   GLOB
   WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES
-  "examples/networking/networkingLibwebsockets/*.c" )
+  "examples/networking/*.c" )
 
 set( WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS
     "examples/networking/"
