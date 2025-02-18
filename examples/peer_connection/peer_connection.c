@@ -21,6 +21,8 @@
 
 #define PEER_CONNECTION_MAX_QUEUE_MSG_NUM ( 10 )
 
+#define PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ( 2048 )
+
 PeerConnectionContext_t peerConnectionContext = { 0 };
 
 extern void * IceControllerSocketListener_Task( void * pParameter );
@@ -488,15 +490,19 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
 }
 
 static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
-                                  uint8_t * pBuffer,
-                                  size_t bufferLength )
+                                  uint8_t * pDtlsEncryptData,
+                                  size_t dtlsEncryptDataLength )
 {
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_SUCCESS;
+    uint8_t dtlsDecryptBuffer[ PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ];
+    size_t dtlsDecryptBufferLength = PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH;
 
     xNetworkStatus = DTLS_ProcessPacket( &pSession->dtlsSession.xNetworkContext,
-                                         pBuffer,
-                                         &bufferLength );
+                                         pDtlsEncryptData,
+                                         dtlsEncryptDataLength,
+                                         dtlsDecryptBuffer,
+                                         &dtlsDecryptBufferLength );
 
     if( xNetworkStatus == DTLS_HANDSHAKE_COMPLETE )
     {
