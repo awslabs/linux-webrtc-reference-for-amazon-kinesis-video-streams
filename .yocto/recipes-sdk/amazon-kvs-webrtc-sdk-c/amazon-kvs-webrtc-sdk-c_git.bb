@@ -69,6 +69,7 @@ do_install() {
 do_install_ptest:append() {
   install -d ${D}${sysconfdir}
   install ${S}/tests/iot-credentials/THING_NAME ${D}${sysconfdir}/
+  install ${S}/tests/iot-credentials/CHANNEL_NAME ${D}${sysconfdir}/
   install ${S}/tests/iot-credentials/ROLE_ALIAS ${D}${sysconfdir}/
   install ${S}/tests/iot-credentials/CREDENTIALS_ENDPOINT ${D}${sysconfdir}/
   install ${S}/tests/iot-credentials/AWS_REGION ${D}${sysconfdir}/
