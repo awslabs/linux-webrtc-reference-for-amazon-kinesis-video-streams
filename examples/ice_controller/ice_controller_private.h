@@ -34,7 +34,7 @@ void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
 
 IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t * pCtx,
                                                         OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                                                        void * pOnRecvRtpRtcpPacketCallbackContext );
+                                                        void * pOnRecvNonStunPacketCallbackContext );
 IceControllerResult_t IceControllerSocketListener_StartPolling( IceControllerContext_t * pCtx );
 IceControllerResult_t IceControllerSocketListener_StopPolling( IceControllerContext_t * pCtx );
 

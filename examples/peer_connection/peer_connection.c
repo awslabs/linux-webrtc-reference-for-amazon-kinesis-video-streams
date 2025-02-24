@@ -75,8 +75,8 @@ static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession )
     {
         HandleRequest( pSession,
                        &pSession->requestQueue );
-        
-        /* If a P2P connection is found and DTLS handshaking is in progress,  
+
+        /* If a P2P connection is found and DTLS handshaking is in progress,
          * invoke the handshake here to retry and prevent packet loss in transit. */
         if( pSession->state == PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND )
         {
@@ -408,8 +408,8 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession )
         {
             ret = OnDtlsHandshakeComplete( pSession );
         }
-        else if( xNetworkStatus != DTLS_SUCCESS &&
-                 xNetworkStatus != DTLS_HANDSHAKE_ALREADY_COMPLETE )
+        else if( ( xNetworkStatus != DTLS_SUCCESS ) &&
+                 ( xNetworkStatus != DTLS_HANDSHAKE_ALREADY_COMPLETE ) )
         {
             LogError( ( "Error happens when executing DTLS handshake, return %d", xNetworkStatus ) );
             ret = -31;
@@ -429,14 +429,14 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     DtlsTransportStatus_t xNetworkStatus = DTLS_SUCCESS;
     PeerConnectionResult_t retPc;
     uint32_t i;
-    
+
     LogDebug( ( "Complete DTLS handshaking." ) );
     Metric_EndEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
 
     /* Verify remote fingerprint (if remote cert fingerprint is the expected one) */
     xNetworkStatus = DTLS_VerifyRemoteCertificateFingerprint( &pSession->dtlsSession.xNetworkContext.pParams->dtlsSslContext,
-                                                                    pSession->remoteCertFingerprint,
-                                                                    pSession->remoteCertFingerprintLength );
+                                                              pSession->remoteCertFingerprint,
+                                                              pSession->remoteCertFingerprintLength );
 
     if( xNetworkStatus != DTLS_SUCCESS )
     {
@@ -448,7 +448,7 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     {
         /* Retrieve key material into DTLS session. */
         xNetworkStatus = DTLS_PopulateKeyingMaterial( &pSession->dtlsSession.xNetworkContext.pParams->dtlsSslContext,
-                                                            &pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial );
+                                                      &pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial );
 
         if( xNetworkStatus != DTLS_SUCCESS )
         {
@@ -521,9 +521,9 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     return ret;
 }
 
-static int32_t HandleDtlsPackets( void * pCustomContext,
-                                  uint8_t * pBuffer,
-                                  size_t bufferLength )
+static int32_t HandleNonStunPackets( void * pCustomContext,
+                                     uint8_t * pBuffer,
+                                     size_t bufferLength )
 {
     int32_t ret = 0;
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
@@ -625,7 +625,7 @@ static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t *
         iceControllerResult = IceController_Init( &pSession->iceControllerContext,
                                                   HandleIceEventCallback,
                                                   pSession,
-                                                  HandleDtlsPackets,
+                                                  HandleNonStunPackets,
                                                   pSession );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
@@ -716,9 +716,9 @@ static PeerConnectionResult_t InitializeDtlsContext( PeerConnectionDtlsContext_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         xNetworkStatus = DTLS_CreateCertificateAndKey( GENERATED_CERTIFICATE_BITS,
-                                                  0,
-                                                  &pDtlsContext->localCert,
-                                                  &pDtlsContext->localKey );
+                                                       0,
+                                                       &pDtlsContext->localCert,
+                                                       &pDtlsContext->localKey );
         if( xNetworkStatus != DTLS_SUCCESS )
         {
             LogError( ( "Fail to DTLS_CreateCertificateAndKey, return %d", xNetworkStatus ) );
@@ -730,8 +730,8 @@ static PeerConnectionResult_t InitializeDtlsContext( PeerConnectionDtlsContext_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         xNetworkStatus = DTLS_CreateCertificateFingerprint( &pDtlsContext->localCert,
-                                                           pDtlsContext->localCertFingerprint,
-                                                           CERTIFICATE_FINGERPRINT_LENGTH );
+                                                            pDtlsContext->localCertFingerprint,
+                                                            CERTIFICATE_FINGERPRINT_LENGTH );
         if( xNetworkStatus != DTLS_SUCCESS )
         {
             LogError( ( "Fail to dtlsCertificateFingerprint answer cert, return %d", xNetworkStatus ) );

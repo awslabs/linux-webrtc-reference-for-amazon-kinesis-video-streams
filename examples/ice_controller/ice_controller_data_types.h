@@ -201,7 +201,7 @@ typedef struct IceControllerSocketListenerContext
 {
     volatile uint8_t executeSocketListener;
     OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc;
-    void * pOnRecvDtlsPacketCallbackContext;
+    void * pOnRecvNonStunPacketCallbackContext;
 } IceControllerSocketListenerContext_t;
 
 typedef struct IceControllerContext

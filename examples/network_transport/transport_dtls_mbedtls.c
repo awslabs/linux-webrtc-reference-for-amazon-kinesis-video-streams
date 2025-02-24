@@ -720,9 +720,9 @@ int32_t DTLS_CreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
 }
 /*-----------------------------------------------------------*/
 
-int32_t dtlsSessionGetLocalCertificateFingerprint( DtlsSSLContext_t * pSslContext,
-                                                   void * pBuff,
-                                                   size_t buffLen )
+int32_t DTLS_GetLocalCertificateFingerprint( DtlsSSLContext_t * pSslContext,
+                                             void * pBuff,
+                                             size_t buffLen )
 {
     int32_t retStatus = 0;
 

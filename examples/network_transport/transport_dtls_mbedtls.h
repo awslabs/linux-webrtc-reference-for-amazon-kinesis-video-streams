@@ -352,7 +352,7 @@ int32_t DTLS_GetSocketFd( DtlsNetworkContext_t * pNetworkContext );
  * @param[out] readBuffer The buffer to store the decrypted DTLS packet.
  * @param[in,out] pReadBufferSize The size of the buffer. It will be updated
  * to the size of the decrypted packet.
- * 
+ *
  * @return DtlsTransportStatus_t Returns the status of the initialization:
  *         - DTLS_SUCCESS if the packet was successfully processed
  *         - DTLS_HANDSHAKE_COMPLETE if the handshake is completed

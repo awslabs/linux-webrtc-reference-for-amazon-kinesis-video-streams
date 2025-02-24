@@ -43,7 +43,7 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
 static void HandleRxPacket( IceControllerContext_t * pCtx,
                             IceControllerSocketContext_t * pSocketContext,
                             OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                            void * pOnRecvDtlsPacketCallbackContext,
+                            void * pOnRecvNonStunPacketCallbackContext,
                             OnIceEventCallback_t onIceEventCallbackFunc,
                             void * pOnIceEventCallbackCustomContext )
 {
@@ -138,7 +138,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
             if( onRecvNonStunPacketFunc )
             {
-                ( void ) onRecvNonStunPacketFunc( pOnRecvDtlsPacketCallbackContext, receiveBuffer, readBytes );
+                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, readBytes );
             }
             else
             {
@@ -200,7 +200,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     int fds[ ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT ];
     size_t fdsCount;
     OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc;
-    void * pOnRecvDtlsPacketCallbackContext = NULL;
+    void * pOnRecvNonStunPacketCallbackContext = NULL;
     OnIceEventCallback_t onIceEventCallbackFunc;
     void * pOnIceEventCallbackCustomContext = NULL;
 
@@ -214,7 +214,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         }
         fdsCount = pCtx->socketsContextsCount;
         onRecvNonStunPacketFunc = pCtx->socketListenerContext.onRecvNonStunPacketFunc;
-        pOnRecvDtlsPacketCallbackContext = pCtx->socketListenerContext.pOnRecvDtlsPacketCallbackContext;
+        pOnRecvNonStunPacketCallbackContext = pCtx->socketListenerContext.pOnRecvNonStunPacketCallbackContext;
         onIceEventCallbackFunc = pCtx->onIceEventCallbackFunc;
         pOnIceEventCallbackCustomContext = pCtx->pOnIceEventCustomContext;
 
@@ -270,7 +270,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
                 LogVerbose( ( "Detect packets on fd %d, idx: %d", fds[i], i ) );
 
                 HandleRxPacket( pCtx, &pCtx->socketsContexts[i],
-                                onRecvNonStunPacketFunc, pOnRecvDtlsPacketCallbackContext,
+                                onRecvNonStunPacketFunc, pOnRecvNonStunPacketCallbackContext,
                                 onIceEventCallbackFunc, pOnIceEventCallbackCustomContext );
             }
         }
@@ -323,7 +323,7 @@ IceControllerResult_t IceControllerSocketListener_StopPolling( IceControllerCont
 
 IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t * pCtx,
                                                         OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                                                        void * pOnRecvDtlsPacketCallbackContext )
+                                                        void * pOnRecvNonStunPacketCallbackContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
 
@@ -337,7 +337,7 @@ IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t *
     {
         pCtx->socketListenerContext.executeSocketListener = 0;
         pCtx->socketListenerContext.onRecvNonStunPacketFunc = onRecvNonStunPacketFunc;
-        pCtx->socketListenerContext.pOnRecvDtlsPacketCallbackContext = pOnRecvDtlsPacketCallbackContext;
+        pCtx->socketListenerContext.pOnRecvNonStunPacketCallbackContext = pOnRecvNonStunPacketCallbackContext;
     }
 
     return ret;
