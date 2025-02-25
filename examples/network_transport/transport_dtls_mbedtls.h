@@ -74,9 +74,9 @@
 
 #define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
 
-typedef int (* OnTransportDtlsSendHook_t)( void * pCustomContext,
-                                           const uint8_t * pInputBuffer,
-                                           size_t inputBufferLength );
+typedef int32_t (* OnTransportDtlsSendHook_t)( void * pCustomContext,
+                                               const uint8_t * pInputBuffer,
+                                               size_t inputBufferLength );
 
 /*
  * For code readability use a typedef for DTLS-SRTP profiles

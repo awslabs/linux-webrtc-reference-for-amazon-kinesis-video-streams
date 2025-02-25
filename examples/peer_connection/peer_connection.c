@@ -540,7 +540,7 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
     {
         if( bufferLength < 2 )
         {
-            LogWarn( ( "Invalid buffer length: %ld", bufferLength ) );
+            LogWarn( ( "Invalid buffer length: %lu", bufferLength ) );
             ret = -2;
         }
         else if( ( pBuffer[0] > 127 ) && ( pBuffer[0] < 192 ) )
