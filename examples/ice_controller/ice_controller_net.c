@@ -668,6 +668,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                         if( iceHandleStunResult == ICE_HANDLE_STUN_PACKET_RESULT_SEND_RESPONSE_FOR_NOMINATION )
                         {
                             LogInfo( ( "Found nomination pair." ) );
+
                             LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
                                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
                                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
@@ -686,6 +687,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                                 /* We have finished accessing the shared resource.  Release the mutex. */
                                 pthread_mutex_unlock( &( pCtx->socketMutex ) );
                             }
+
                             ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
                         }
                     }

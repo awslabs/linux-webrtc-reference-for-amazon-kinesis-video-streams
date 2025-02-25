@@ -39,6 +39,7 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/threading.h"
 #include "mbedtls/x509.h"
+#include "mbedtls/timing.h"
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE( array ) ( sizeof( array ) / sizeof *( array ) )
@@ -64,25 +65,6 @@
 /* Transport interface include. */
 #include "transport_interface.h"
 
-
-/*! \addtogroup DTLSStatusCodes
- * WEBRTC DTLS related codes. Values are derived from STATUS_DTLS_BASE (0x59000000)
- *  @{
- */
-#define STATUS_WEBRTC_BASE 0x55000000
-#define STATUS_SDP_BASE STATUS_WEBRTC_BASE + 0x01000000
-#define STATUS_STUN_BASE STATUS_SDP_BASE + 0x01000000
-#define STATUS_NETWORKING_BASE STATUS_STUN_BASE + 0x01000000
-#define STATUS_DTLS_BASE STATUS_NETWORKING_BASE + 0x01000000
-#define STATUS_CERTIFICATE_GENERATION_FAILED STATUS_DTLS_BASE + 0x00000001
-#define STATUS_SSL_CTX_CREATION_FAILED STATUS_DTLS_BASE + 0x00000002
-#define STATUS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED STATUS_DTLS_BASE + 0x00000003
-#define STATUS_SSL_PACKET_BEFORE_DTLS_READY STATUS_DTLS_BASE + 0x00000004
-#define STATUS_SSL_UNKNOWN_SRTP_PROFILE STATUS_DTLS_BASE + 0x00000005
-#define STATUS_SSL_INVALID_CERTIFICATE_BITS STATUS_DTLS_BASE + 0x00000006
-#define STATUS_DTLS_SESSION_ALREADY_FREED STATUS_DTLS_BASE + 0x00000007
-/*!@} */
-
 /* SRTP */
 #define CERTIFICATE_FINGERPRINT_LENGTH 160
 #define MAX_SRTP_MASTER_KEY_LEN 16
@@ -92,6 +74,9 @@
 
 #define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
 
+typedef int32_t (* OnTransportDtlsSendHook_t)( void * pCustomContext,
+                                               const uint8_t * pInputBuffer,
+                                               size_t inputBufferLength );
 
 /*
  * For code readability use a typedef for DTLS-SRTP profiles
@@ -123,8 +108,6 @@ typedef struct
     uint8_t randBytes[2 * MAX_DTLS_RANDOM_BYTES_LEN];
     mbedtls_tls_prf_types tlsProfile;
 } TlsKeys;
-
-
 
 /**
  * @brief Secured connection context.
@@ -171,9 +154,23 @@ typedef struct DtlsTransportParams
 {
     Socket_t udpSocket;
     DtlsSSLContext_t dtlsSslContext;
-    DtlsSessionTimer_t xSessionTimer;
+    mbedtls_timing_delay_context mbedtlsTimer;
+    OnTransportDtlsSendHook_t onDtlsSendHook;
+    void * pOnDtlsSendCustomContext;
+
+    /* Store the processing packet here. */
+    uint8_t * pReceivedPacket;
+    size_t receivedPacketLength;
+    uint32_t receivedPacketOffset;
 } DtlsTransportParams_t;
 
+typedef enum DtlsState
+{
+    DTLS_STATE_NONE = 0,
+    DTLS_STATE_NEW,
+    DTLS_STATE_HANDSHAKING,
+    DTLS_STATE_READY,
+} DtlsState_t;
 
 /**
  * @brief Each compilation unit that consumes the NetworkContext must define it.
@@ -185,6 +182,7 @@ typedef struct DtlsTransportParams
  */
 struct DtlsNetworkContext
 {
+    DtlsState_t state;
     DtlsTransportParams_t * pParams;
 };
 typedef struct DtlsNetworkContext DtlsNetworkContext_t;
@@ -230,13 +228,9 @@ typedef struct DtlsNetworkCredentials
     DtlsKeyingMaterial dtlsKeyingMaterial; /**< @brief derivated SRTP keys */
 } DtlsNetworkCredentials_t;
 
-typedef struct DtlsSession {
-    DtlsNetworkCredentials_t credentials;
-
-    /* The transport layer interface used by the HTTP Client library. */
-    TransportInterface_t xTransportInterface;
-    /* The network context for the transport layer interface. */
-
+typedef struct DtlsSession
+{
+    /* The DTLS network context. */
     DtlsNetworkContext_t xNetworkContext;
     DtlsTransportParams_t xDtlsTransportParams;
     DtlsNetworkCredentials_t xNetworkCredentials;
@@ -247,30 +241,73 @@ typedef struct DtlsSession {
  */
 typedef enum DtlsTransportStatus
 {
-    DTLS_TRANSPORT_SUCCESS = 0,         /**< Function successfully completed. */
-    DTLS_TRANSPORT_INVALID_PARAMETER,   /**< At least one parameter was invalid. */
+    DTLS_SUCCESS = 0,         /**< Function successfully completed. */
+
+    /* Common error code. */
+    DTLS_INVALID_PARAMETER,   /**< At least one parameter was invalid. */
+    DTLS_OUT_OF_MEMORY, /**< Fail to allocate memory by malloc. */
+
+    /* Transport error code */
     DTLS_TRANSPORT_INSUFFICIENT_MEMORY, /**< Insufficient memory required to establish connection. */
     DTLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid. */
     DTLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server failed. */
     DTLS_TRANSPORT_INTERNAL_ERROR,      /**< A call to a system API resulted in an internal error. */
-    DTLS_TRANSPORT_CONNECT_FAILURE      /**< Initial connection to the server failed. */
+    DTLS_TRANSPORT_CONNECT_FAILURE,     /**< Initial connection to the server failed. */
+    DTLS_TRANSPORT_PROCESS_FAILURE,     /**< Fail while processing received packet. */
+
+    /* Error code for key and certificate generation. */
+    DTLS_INITIALIZE_PK_FAILURE,         /**< Fail to initialize SSL context before generating RSA key. */
+    DTLS_GENERATE_KEY_FAILURE,          /**< Fail to generate SSL key. */
+    DTLS_SET_CERT_ISSUER_NAME_FAILURE,  /**< Fail to set issuer name. */
+    DTLS_SET_CERT_VALIDITY_FAILURE,     /**< Fail to set validity. */
+    DTLS_WRITE_CERT_CRT_DER_FAILURE,    /**< Fail to write X509 crt der. */
+    DTLS_PARSE_CERT_DER_FAILURE,        /**< Fail to parse X509 der. */
+    DTLS_SET_CERT_SERIAL_FAILURE,       /**< Fail to set cert serial. */
+    DTLS_GENERATE_TIMESTAMP_STRING_FAILURE, /**< Fail to generate timestamp string. */
+    DTLS_READ_BINARY_FAILURE, /**< Fail to read binary. */
+    DTLS_GENERATE_RANDOM_BITS_FAILURE, /**< Fail to generate random bits. */
+
+    DTLS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED, /**< The remote certificate failed verification. */
+    DTLS_SSL_UNKNOWN_SRTP_PROFILE, /**< The SRTP profile is unknown. */
+
+    /* User info. */
+    DTLS_HANDSHAKE_COMPLETE, /**< Just complete the DTLS handshaking. */
+    DTLS_HANDSHAKE_ALREADY_COMPLETE, /**< DTLS handshaking is done before calling. */
 } DtlsTransportStatus_t;
 
+#define DTLS_RSA_F4 0x10001L
+
+#define PRIVATE_KEY_PCS_PEM_SIZE  228
+
+#define GENERATED_CERTIFICATE_MAX_SIZE 4096
+#define GENERATED_CERTIFICATE_BITS 2048
+#define DTLS_CERT_MIN_SERIAL_NUM_SIZE 8
+#define DTLS_CERT_MAX_SERIAL_NUM_SIZE 20
+#define GENERATED_CERTIFICATE_DAYS 365
+#define DTLS_SECONDS_IN_A_DAY ( 86400 )
+#define GENERATED_CERTIFICATE_NAME "KVS-WebRTC-Client"
+#define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
+
+/////////////////////////////////////////////////////
+/// DTLS related status codes
+/////////////////////////////////////////////////////
+
 /**
- * @brief Create a DTLS connection with sockets.
+ * @brief Initialise DTLS network context with provided credentials
  *
- * @param[out] pNetworkContext Pointer to a network context to contain the
- * connected socket handle.
- * @param[in] pNetworkCredentials Credentials for the TLS connection.
+ * @param[in] pNetworkContext The DTLS network context.
+ * @param[in] pNetworkCredentials The DTLS network credential.
+ * @param[in] isServer Boolean flag indicating the DTLS role:
+ *                     - 0: Initialize as DTLS client
+ *                     - 1: Initialize as DTLS server
  *
- * @return #DTLS_TRANSPORT_SUCCESS, #DTLS_TRANSPORT_INSUFFICIENT_MEMORY, #DTLS_TRANSPORT_INVALID_CREDENTIALS,
- * #DTLS_TRANSPORT_HANDSHAKE_FAILED, #DTLS_TRANSPORT_INTERNAL_ERROR, or #DTLS_TRANSPORT_CONNECT_FAILURE.
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_SUCCESS if initialization is successful
+ *         - Other specific error codes in case of failure
  */
-DtlsTransportStatus_t
-DTLS_Connect( DtlsNetworkContext_t * pNetworkContext,
-              DtlsNetworkCredentials_t * pNetworkCredentials,
-              const char * pHostName,
-              uint16_t port );
+DtlsTransportStatus_t DTLS_Init( DtlsNetworkContext_t * pNetworkContext,
+                                 DtlsNetworkCredentials_t * pNetworkCredentials,
+                                 uint8_t isServer );
 
 /**
  * @brief Gracefully disconnect an established DTLS connection.
@@ -278,24 +315,6 @@ DTLS_Connect( DtlsNetworkContext_t * pNetworkContext,
  * @param[in] pNetworkContext Network context.
  */
 void DTLS_Disconnect( DtlsNetworkContext_t * pNetworkContext );
-
-/**
- * @brief Receives data from an established DTLS connection.
- *
- * @note This is the DTLS version of the transport interface's
- * #TransportRecv_t function.
- *
- * @param[in] pNetworkContext The Network context.
- * @param[out] pBuffer Buffer to receive bytes into.
- * @param[in] bytesToRecv Number of bytes to receive from the network.
- *
- * @return Number of bytes (> 0) received if successful;
- * 0 if the socket times out without reading any bytes;
- * negative value on error.
- */
-int32_t DTLS_recv( DtlsNetworkContext_t * pNetworkContext,
-                   void * pBuffer,
-                   size_t bytesToRecv );
 
 /**
  * @brief Sends data over an established DTLS connection.
@@ -311,9 +330,10 @@ int32_t DTLS_recv( DtlsNetworkContext_t * pNetworkContext,
  * 0 if the socket times out without sending any bytes;
  * else a negative value to represent error.
  */
-int32_t DTLS_send( DtlsNetworkContext_t * pNetworkContext,
+int32_t DTLS_Send( DtlsNetworkContext_t * pNetworkContext,
                    const void * pBuffer,
                    size_t bytesToSend );
+
 /**
  * @brief Get the socket FD for this network context.
  *
@@ -323,83 +343,115 @@ int32_t DTLS_send( DtlsNetworkContext_t * pNetworkContext,
  */
 int32_t DTLS_GetSocketFd( DtlsNetworkContext_t * pNetworkContext );
 
-#ifdef MBEDTLS_DTLS_DEBUG_C
+/**
+ * @brief Process a received packet in an established DTLS session.
+ *
+ * @param[in] pNetworkContext The DTLS network context.
+ * @param[in] pDtlsPacket Pointer to the received DTLS packet.
+ * @param[in] dtlsPacketLength The length of the received DTLS encrypted packet.
+ * @param[out] readBuffer The buffer to store the decrypted DTLS packet.
+ * @param[in,out] pReadBufferSize The size of the buffer. It will be updated
+ * to the size of the decrypted packet.
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_SUCCESS if the packet was successfully processed
+ *         - DTLS_HANDSHAKE_COMPLETE if the handshake is completed
+ *         - Other specific error codes in case of failure
+ */
+DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext,
+                                          void * pDtlsPacket,
+                                          size_t dtlsPacketLength,
+                                          uint8_t * readBuffer,
+                                          size_t * pReadBufferSize );
 
 /**
- * @brief Write an MBedTLS Debug message to the LogDebug() function
+ * @brief Execute DTLS handshaking.
  *
- * @param[in] sslContext Pointer of the SSL Context that is being used
- * @param[in] level The severity level of the debug message from MBedTLS
- * @param[in] file Name of the file that the debug message is from
- * @param[in] line The line number that the debug message is from
- * @param[in] str The full string debug message from MBedTLS
+ * @param[in] pNetworkContext The DTLS network context.
  *
- * @return void
+ * @return DtlsTransportStatus_t Returns the status of handshaking:
+ *         - DTLS_SUCCESS if DTLS handshaking is still in-progress
+ *         - DTLS_HANDSHAKE_COMPLETE if handshake is just completed
+ *         - DTLS_HANDSHAKE_ALREADY_COMPLETE if handshake has been completed before invoking.
+ *         - Other specific error codes in case of failure
  */
-void dtls_mbedtls_string_printf( void * dtlsSslContext,
-                                 int level,
-                                 const char * file,
-                                 int line,
-                                 const char * str );
-#endif /* MBEDTLS_DTLS_DEBUG_C */
+DtlsTransportStatus_t DTLS_ExecuteHandshake( DtlsNetworkContext_t * pNetworkContext );
 
-/* DTLS*/
+/**
+ * @brief Generates a new certificate and a key.
+ *
+ * @param[in] certificateBits The bit number to generate RSA certificate.
+ *            It's used only when generating RSA certificate.
+ * @param[in] generateRSACertificate To generate RSA or ECDSA certificate.
+ *            - 1 if generating RSA certificate
+ *            - 0 if generating ECDSA certificate
+ * @param[out] pCert The DTLS certificate generated.
+ * @param[out] pKey The DTLS key generated.
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_SUCCESS if DTLS handshaking is still in-progress
+ *         - DTLS_HANDSHAKE_COMPLETE if the handshake is completed
+ *         - Other specific error codes in case of failure
+ */
+int32_t DTLS_CreateCertificateAndKey( int32_t certificateBits,
+                                      int generateRSACertificate,
+                                      mbedtls_x509_crt * pCert,
+                                      mbedtls_pk_context * pKey );
 
-#define DTLS_RSA_F4 0x10001L
+/**
+ * @brief Free certificate and key
+ *
+ * @param[in] pCert The DTLS certificate to be freed.
+ * @param[in] pKey The DTLS key to be freed.
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_SUCCESS if DTLS certificate and key are freed.
+ *         - Other specific error codes in case of failure
+ */
+int32_t DTLS_FreeCertificateAndKey( mbedtls_x509_crt * pCert,
+                                    mbedtls_pk_context * pKey );
 
-#define PRIVATE_KEY_PCS_PEM_SIZE  228
+/**
+ * @brief Generates a fingerprint of the certificate.
+ *
+ * @param[in] pCert The DTLS certificate.
+ * @param[out] pBuff The buffer of generated fingerprint.
+ * @param[in] bufLen The maximum size of input buffer.
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_SUCCESS if fingerprint is created successfully.
+ *         - Other specific error codes in case of failure
+ */
+int32_t DTLS_CreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
+                                           char * pBuff,
+                                           const size_t bufLen );
 
-#define GENERATED_CERTIFICATE_MAX_SIZE 4096
-#define GENERATED_CERTIFICATE_BITS 2048
-#define DTLS_CERT_MIN_SERIAL_NUM_SIZE 8
-#define DTLS_CERT_MAX_SERIAL_NUM_SIZE 20
-#define GENERATED_CERTIFICATE_DAYS 365
-#define DTLS_SECONDS_IN_A_DAY ( 86400 )
-#define GENERATED_CERTIFICATE_NAME "KVS-WebRTC-Client"
-#define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
+/**
+ * @brief Verify the fingerprint of certificate.
+ *
+ * @param[in] pSslContext The DTLS SSL context storing remote certificate.
+ * @param[in] pExpectedFingerprint The expected certificate fingerprint.
+ * @param[in] fingerprintMaxLen The size of expected certificate fingerprint.
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_SUCCESS if the fingerprint of remote certificate matches the expected fingerprint.
+ *         - Other specific error codes in case of failure
+ */
+int32_t DTLS_VerifyRemoteCertificateFingerprint( DtlsSSLContext_t * pSslContext,
+                                                 char * pExpectedFingerprint,
+                                                 const size_t fingerprintMaxLen );
 
-#define DEFAULT_TIME_UNIT_IN_NANOS 100
-#define HUNDREDS_OF_NANOS_IN_A_MICROSECOND ( ( uint64_t )10 )
-#define HUNDREDS_OF_NANOS_IN_A_MILLISECOND ( HUNDREDS_OF_NANOS_IN_A_MICROSECOND * ( ( uint64_t )1000 ) )
-#define HUNDREDS_OF_NANOS_IN_A_SECOND ( HUNDREDS_OF_NANOS_IN_A_MILLISECOND * ( ( uint64_t )1000 ) )
-#define HUNDREDS_OF_NANOS_IN_A_MINUTE ( HUNDREDS_OF_NANOS_IN_A_SECOND * ( ( uint64_t )60 ) )
-#define HUNDREDS_OF_NANOS_IN_AN_HOUR ( HUNDREDS_OF_NANOS_IN_A_MINUTE * ( ( uint64_t )60 ) )
-#define HUNDREDS_OF_NANOS_IN_A_DAY ( HUNDREDS_OF_NANOS_IN_AN_HOUR * 24LL )
-
-#define STATUS_SUCCESS ( ( uint32_t )0x00000000 )
-
-#define STATUS_BASE 0x00000000
-#define STATUS_NULL_ARG STATUS_BASE + 0x00000001
-#define STATUS_INVALID_ARG STATUS_BASE + 0x00000002
-#define STATUS_NOT_ENOUGH_MEMORY STATUS_BASE + 0x00000004
-
-/////////////////////////////////////////////////////
-/// DTLS related status codes
-/////////////////////////////////////////////////////
-
-int32_t createCertificateAndKey( int32_t certificateBits,
-                                 int generateRSACertificate,
-                                 mbedtls_x509_crt * pCert,
-                                 mbedtls_pk_context * pKey );
-
-int32_t freeCertificateAndKey( mbedtls_x509_crt * pCert,
-                               mbedtls_pk_context * pKey );
-
-int32_t dtlsCreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
-                                          char * pBuff,
-                                          const size_t bufLen );
-
-int32_t dtlsSessionVerifyRemoteCertificateFingerprint( DtlsSSLContext_t * pSslContext,
-                                                       char * pExpectedFingerprint,
-                                                       const size_t fingerprintMaxLen );
-
-int32_t dtlsSessionPopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
-                                           pDtlsKeyingMaterial_t pDtlsKeyingMaterial );
-
-int32_t dtlsCertificateDemToPem( const unsigned char * der_data,
-                                 size_t der_len,
-                                 unsigned char * pem_buf,
-                                 size_t pem_buf_len,
-                                 size_t * olen );
+/**
+ * @brief Populate key material of DTLS session.
+ *
+ * @param[in] pSslContext The target DTLS SSL context passing handshake.
+ * @param[out] pDtlsKeyingMaterial The key material.
+ *
+ * @return DtlsTransportStatus_t Returns the status of the initialization:
+ *         - DTLS_SUCCESS if the key is retrieved successfully.
+ *         - Other specific error codes in case of failure
+ */
+int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
+                                     pDtlsKeyingMaterial_t pDtlsKeyingMaterial );
 
 #endif /* ifndef TRANSPORT_DTLS_MBEDTLS_H */

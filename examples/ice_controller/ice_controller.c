@@ -411,8 +411,8 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           OnIceEventCallback_t onIceEventCallbackFunc,
                                           void * pOnIceEventCallbackContext,
-                                          OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc,
-                                          void * pOnRecvRtpRtcpPacketCallbackContext )
+                                          OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
+                                          void * pOnRecvNonStunPacketCallbackContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TimerControllerResult_t retTimer;
@@ -473,8 +473,8 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         ret = IceControllerSocketListener_Init( pCtx,
-                                                onRecvRtpRtcpPacketCallbackFunc,
-                                                pOnRecvRtpRtcpPacketCallbackContext );
+                                                onRecvNonStunPacketFunc,
+                                                pOnRecvNonStunPacketCallbackContext );
     }
 
     return ret;
@@ -782,7 +782,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         if( ( pCtx->pNominatedSocketContext == NULL ) ||
-            ( pCtx->pNominatedSocketContext->state < ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE ) )
+            ( pCtx->pNominatedSocketContext->state < ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
         {
             LogWarn( ( "The connection of this session is not ready." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_CONNECTION_NOT_READY;

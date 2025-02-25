@@ -37,16 +37,13 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                 IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
             }
         }
-
-        /* Found DTLS socket context, update the state. */
-        pChosenSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE;
     }
 }
 
 static void HandleRxPacket( IceControllerContext_t * pCtx,
                             IceControllerSocketContext_t * pSocketContext,
-                            OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc,
-                            void * pOnRecvRtpRtcpPacketCallbackCustomContext,
+                            OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
+                            void * pOnRecvNonStunPacketCallbackContext,
                             OnIceEventCallback_t onIceEventCallbackFunc,
                             void * pOnIceEventCallbackCustomContext )
 {
@@ -62,7 +59,6 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
     StunContext_t stunContext;
     StunHeader_t stunHeader;
     int32_t retPeerToPeerConnectionFound;
-    IceControllerCallbackContent_t peerToPeerConnectionFoundContent;
 
     if( ( pCtx == NULL ) || ( pSocketContext == NULL ) )
     {
@@ -123,15 +119,15 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
         }
 
         /*
-            demux each packet off of its first byte
-            https://tools.ietf.org/html/rfc5764#section-5.1.2
-         +----------------+
-         | 127 < B < 192 -+--> forward to RTP/RTCP
-         |                |
-         |  19 < B < 64  -+--> forward to DTLS
-         |                |
-         |       B < 2   -+--> forward to STUN
-         +----------------+
+         * demux each packet off of its first byte
+         * https://tools.ietf.org/html/rfc5764#section-5.1.2
+         * +----------------+
+         * | 127 < B < 192 -+--> forward to RTP/RTCP
+         * |                |
+         * |  19 < B < 64  -+--> forward to DTLS
+         * |                |
+         * |       B < 2   -+--> forward to STUN
+         * +----------------+
          */
         retStun = StunDeserializer_Init( &stunContext,
                                          receiveBuffer,
@@ -139,28 +135,14 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                                          &stunHeader );
         if( retStun != STUN_RESULT_OK )
         {
-            /* It's not STUN packet, check if it's RTP or DTLS packet. */
-            if( ( receiveBuffer[0] > 127 ) && ( receiveBuffer[0] < 192 ) )
+            /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
+            if( onRecvNonStunPacketFunc )
             {
-                /* RTP/RTCP packets. */
-                if( onRecvRtpRtcpPacketCallbackFunc )
-                {
-                    ( void ) onRecvRtpRtcpPacketCallbackFunc( pOnRecvRtpRtcpPacketCallbackCustomContext, receiveBuffer, readBytes );
-                }
-                else
-                {
-                    LogWarn( ( "No callback function to handle RTP/RTCP packets." ) );
-                }
-            }
-            else if( ( receiveBuffer[0] > 19 ) && ( receiveBuffer[0] < 64 ) )
-            {
-                /* DTLS packet */
-                LogWarn( ( "Drop unknown DTLS RX packets(%d), first byte: 0x%x", readBytes, receiveBuffer[0] ) );
+                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, readBytes );
             }
             else
             {
-                /* Unknown packet. Drop it. */
-                LogWarn( ( "Drop unknown RX packets(%d), first byte: 0x%x", readBytes, receiveBuffer[0] ) );
+                LogError( ( "No callback function to handle DTLS/RTP/RTCP packets." ) );
             }
         }
         else
@@ -170,18 +152,17 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                                                      receiveBuffer,
                                                      readBytes,
                                                      &remoteIceEndpoint );
-            if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) && ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE ) )
+            if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) && ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
             {
-                /* Set state to pass handshake in ReleaseOtherSockets. */
+                /* Set state to pass handshake and release other un-selected sockets. */
+                pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
+
                 ReleaseOtherSockets( pCtx, pSocketContext );
 
                 /* Found nominated pair, execute DTLS handshake and release all other resources. */
                 if( onIceEventCallbackFunc )
                 {
-                    peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.socketFd = pSocketContext->socketFd;
-                    peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pLocalCandidate = pSocketContext->pLocalCandidate;
-                    peerToPeerConnectionFoundContent.iceControllerCallbackContent.peerTopeerConnectionFoundMsg.pRemoteCandidate = pSocketContext->pRemoteCandidate;
-                    retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, &peerToPeerConnectionFoundContent );
+                    retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, NULL );
                     if( retPeerToPeerConnectionFound != 0 )
                     {
                         LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
@@ -218,8 +199,8 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     uint8_t skipProcess = 0;
     int fds[ ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT ];
     size_t fdsCount;
-    OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc;
-    void * pOnRecvRtpRtcpPacketCallbackCustomContext = NULL;
+    OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc;
+    void * pOnRecvNonStunPacketCallbackContext = NULL;
     OnIceEventCallback_t onIceEventCallbackFunc;
     void * pOnIceEventCallbackCustomContext = NULL;
 
@@ -232,8 +213,8 @@ static void pollingSockets( IceControllerContext_t * pCtx )
             fds[i] = pCtx->socketsContexts[i].socketFd;
         }
         fdsCount = pCtx->socketsContextsCount;
-        onRecvRtpRtcpPacketCallbackFunc = pCtx->socketListenerContext.onRecvRtpRtcpPacketCallbackFunc;
-        pOnRecvRtpRtcpPacketCallbackCustomContext = pCtx->socketListenerContext.pOnRecvRtpRtcpPacketCallbackCustomContext;
+        onRecvNonStunPacketFunc = pCtx->socketListenerContext.onRecvNonStunPacketFunc;
+        pOnRecvNonStunPacketCallbackContext = pCtx->socketListenerContext.pOnRecvNonStunPacketCallbackContext;
         onIceEventCallbackFunc = pCtx->onIceEventCallbackFunc;
         pOnIceEventCallbackCustomContext = pCtx->pOnIceEventCustomContext;
 
@@ -289,7 +270,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
                 LogVerbose( ( "Detect packets on fd %d, idx: %d", fds[i], i ) );
 
                 HandleRxPacket( pCtx, &pCtx->socketsContexts[i],
-                                onRecvRtpRtcpPacketCallbackFunc, pOnRecvRtpRtcpPacketCallbackCustomContext,
+                                onRecvNonStunPacketFunc, pOnRecvNonStunPacketCallbackContext,
                                 onIceEventCallbackFunc, pOnIceEventCallbackCustomContext );
             }
         }
@@ -341,8 +322,8 @@ IceControllerResult_t IceControllerSocketListener_StopPolling( IceControllerCont
 }
 
 IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t * pCtx,
-                                                        OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc,
-                                                        void * pOnRecvRtpRtcpPacketCallbackContext )
+                                                        OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
+                                                        void * pOnRecvNonStunPacketCallbackContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
 
@@ -355,8 +336,8 @@ IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t *
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         pCtx->socketListenerContext.executeSocketListener = 0;
-        pCtx->socketListenerContext.onRecvRtpRtcpPacketCallbackFunc = onRecvRtpRtcpPacketCallbackFunc;
-        pCtx->socketListenerContext.pOnRecvRtpRtcpPacketCallbackCustomContext = pOnRecvRtpRtcpPacketCallbackContext;
+        pCtx->socketListenerContext.onRecvNonStunPacketFunc = onRecvNonStunPacketFunc;
+        pCtx->socketListenerContext.pOnRecvNonStunPacketCallbackContext = pOnRecvNonStunPacketCallbackContext;
     }
 
     return ret;
