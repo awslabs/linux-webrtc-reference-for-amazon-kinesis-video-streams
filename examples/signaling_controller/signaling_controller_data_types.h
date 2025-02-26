@@ -316,7 +316,8 @@ typedef struct SignalingControllerContext
     char constructedSignalingBuffer[ SIGNALING_CONTROLLER_MAX_CONTENT_LENGTH ];
     size_t constructedSignalingBufferLength;
 
-    NetworkingContext_t networkingContext;
+    NetworkingHttpContext_t httpContext;
+    NetworkingWebsocketContext_t websocketContext;
 } SignalingControllerContext_t;
 
 #ifdef __cplusplus

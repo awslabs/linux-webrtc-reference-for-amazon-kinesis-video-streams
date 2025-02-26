@@ -151,7 +151,7 @@ static SignalingControllerResult_t SignalingController_HttpPerform( SignalingCon
 
     for( i = 0; i < HTTPS_PERFORM_RETRY_TIMES; i++ )
     {
-       networkingResult = Networking_HttpSend( &( pCtx->networkingContext ),
+       networkingResult = Networking_HttpSend( &( pCtx->httpContext ),
                                                pRequest,
                                                &( awsCreds ),
                                                pResponse );
@@ -353,7 +353,7 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
         response.pBuffer = pCtx->httpResponserBuffer;
         response.bufferLength = SIGNALING_CONTROLLER_MAX_HTTP_BODY_LENGTH;
 
-        if( Networking_HttpSend( &( pCtx->networkingContext ),
+        if( Networking_HttpSend( &( pCtx->httpContext ),
                                  &( request ),
                                  NULL,
                                  &( response ) ) != NETWORKING_RESULT_OK )
@@ -804,7 +804,7 @@ static SignalingControllerResult_t connectWssEndpoint( SignalingControllerContex
         awsCreds.sessionTokenLength = pCtx->credential.sessionTokenLength;
         awsCreds.expirationSeconds = pCtx->credential.expirationSeconds;
 
-        networkingResult = Networking_WebsocketConnect( &( pCtx->networkingContext ),
+        networkingResult = Networking_WebsocketConnect( &( pCtx->websocketContext ),
                                                         &( serverInfo ),
                                                         &( awsCreds ) );
 
@@ -879,7 +879,7 @@ static SignalingControllerResult_t handleEvent( SignalingControllerContext_t * p
                               ( int ) pCtx->constructedSignalingBufferLength, pCtx->constructedSignalingBuffer ) );
 
                 /* Finally, sent it to websocket layer. */
-                networkingResult = Networking_WebsocketSend( &( pCtx->networkingContext ),
+                networkingResult = Networking_WebsocketSend( &( pCtx->websocketContext ),
                                                              pCtx->constructedSignalingBuffer,
                                                              pCtx->constructedSignalingBufferLength );
 
@@ -1043,14 +1043,27 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
         sslCreds.pDeviceCertPath = pCredInfo->iotThingCertPathLength == 0 ? NULL : pCtx->credential.iotThingCertPath;
         sslCreds.pDeviceKeyPath = pCredInfo->iotThingPrivateKeyPathLength == 0 ? NULL : pCtx->credential.iotThingPrivateKeyPath;
 
-        networkingResult = Networking_Init( &( pCtx->networkingContext ),
-                                            &( sslCreds ) );
+        networkingResult = Networking_HttpInit( &( pCtx->httpContext ),
+                                                &( sslCreds ) );
 
         if( networkingResult != NETWORKING_RESULT_OK )
         {
-            LogError( ( "Failed to initialize networking!") );
+            LogError( ( "Failed to initialize http!") );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
         }
+
+        if( networkingResult == NETWORKING_RESULT_OK )
+        {
+            networkingResult = Networking_WebsocketInit( &( pCtx->websocketContext ),
+                                                         &( sslCreds ) );
+        }
+
+        if( networkingResult != NETWORKING_RESULT_OK )
+        {
+            LogError( ( "Failed to initialize websocket!") );
+            ret = SIGNALING_CONTROLLER_RESULT_FAIL;
+        }
+
     }
 
     return ret;
@@ -1178,7 +1191,7 @@ SignalingControllerResult_t SignalingController_ProcessLoop( SignalingController
 
         while( result == NETWORKING_RESULT_OK )
         {
-            result = Networking_WebsocketSignal( &( pCtx->networkingContext ) );
+            result = Networking_WebsocketSignal( &( pCtx->websocketContext ) );
         }
     }
 
