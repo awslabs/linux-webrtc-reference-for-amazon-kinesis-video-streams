@@ -359,7 +359,8 @@ static IceControllerResult_t ProcessLocalCandidates( IceControllerContext_t * pC
                                                NULL,
                                                stunBuffer,
                                                stunBufferLength );
-            if( ret != ICE_CONTROLLER_RESULT_OK )
+
+            if( ( ret != ICE_CONTROLLER_RESULT_OK ) && ( ret != ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED ) )
             {
                 LogWarn( ( "Unable to send packet to remote address, result: %d", ret ) );
                 continue;
@@ -456,6 +457,11 @@ static IceControllerResult_t ProcessCandidatePairs( IceControllerContext_t * pCt
                                                              ipToBuffer,
                                                              sizeof( ipToBuffer ) ),
                           pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint.transportAddress.port ) );
+            LogInfo( ( "Sending STUN packet to candidate pair, idx: %u, state: %d, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
+                       i,
+                       pCtx->iceContext.pCandidatePairs[i].state,
+                       pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->candidateId,
+                       pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->candidateId ) );
             IceControllerNet_LogStunPacket( stunBuffer,
                                             stunBufferLength );
 
@@ -466,7 +472,7 @@ static IceControllerResult_t ProcessCandidatePairs( IceControllerContext_t * pCt
                                                stunBuffer,
                                                stunBufferLength );
 
-            if( ret != ICE_CONTROLLER_RESULT_OK )
+            if( ( ret != ICE_CONTROLLER_RESULT_OK ) && ( ret != ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED ) )
             {
                 LogWarn( ( "Unable to send packet to remote address, result: %d", ret ) );
                 continue;
@@ -537,6 +543,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
                                                              ipBuffer,
                                                              sizeof( ipBuffer ) ),
                           pRemoteCandidate->pEndpoint->transportAddress.port ) );
+            LogInfo( ( "Added new remote candidate with ID: 0x%04x", pCtx->iceContext.pRemoteCandidates[ pCtx->iceContext.numRemoteCandidates - 1 ].candidateId ) );
         }
     }
 
@@ -558,6 +565,9 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
     {
         ret = ProcessLocalCandidates( pCtx );
     }
+
+    /* Re-set the timer. */
+    IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
 
     return ret;
 }
@@ -614,6 +624,9 @@ IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_
         ret = ProcessLocalCandidates( pCtx );
     }
 
+    /* Reset the timer. */
+    IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
+
     return ret;
 }
 
@@ -667,6 +680,7 @@ IceControllerResult_t IceController_SendTurnRefreshAllocation( IceControllerCont
                                                          ipFromBuffer,
                                                          sizeof( ipFromBuffer ) ),
                       pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
+        LogInfo( ( "Sending TURN refresh request, local candidate ID: 0x%04x", pSocketContext->pLocalCandidate->candidateId ) );
         IceControllerNet_LogStunPacket( stunBuffer,
                                         stunBufferLength );
 
@@ -731,6 +745,7 @@ IceControllerResult_t IceController_SendTurnRefreshPermission( IceControllerCont
                                                          ipFromBuffer,
                                                          sizeof( ipFromBuffer ) ),
                       pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
+        LogInfo( ( "Sending TURN refresh permission request, local candidate ID: 0x%04x, remote candidate ID: 0x%04x", pTargetCandidatePair->pLocalCandidate->candidateId, pTargetCandidatePair->pRemoteCandidate->candidateId ) );
         IceControllerNet_LogStunPacket( stunBuffer,
                                         stunBufferLength );
 
@@ -779,8 +794,8 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           OnIceEventCallback_t onIceEventCallbackFunc,
                                           void * pOnIceEventCallbackContext,
-                                          OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc,
-                                          void * pOnRecvRtpRtcpPacketCallbackContext )
+                                          OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc,
+                                          void * pOnRecvDtlsPacketCallbackContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TimerControllerResult_t retTimer;
@@ -843,8 +858,8 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         ret = IceControllerSocketListener_Init( pCtx,
-                                                onRecvRtpRtcpPacketCallbackFunc,
-                                                pOnRecvRtpRtcpPacketCallbackContext );
+                                                onRecvDtlsPacketCallbackFunc,
+                                                pOnRecvDtlsPacketCallbackContext );
     }
 
     return ret;
@@ -1128,14 +1143,13 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         OnTimerExpire( pCtx );
-        IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
     }
 
     return ret;
 }
 
 IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * pCtx,
-                                                      uint8_t * pBuffer,
+                                                      const uint8_t * pBuffer,
                                                       size_t bufferLength )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
@@ -1150,7 +1164,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         if( ( pCtx->pNominatedSocketContext == NULL ) ||
-            ( pCtx->pNominatedSocketContext->state < ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE ) )
+            ( pCtx->pNominatedSocketContext->state < ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
         {
             LogWarn( ( "The connection of this session is not ready." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_CONNECTION_NOT_READY;
@@ -1180,23 +1194,53 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
 }
 
 IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t * pCtx,
-                                                        IceControllerIceServer_t * pIceServers,
-                                                        size_t iceServersCount )
+                                                        IceControllerIceServerConfig_t * pIceServersConfig )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceControllerResult_t dnsResult;
     int i;
 
     if( ( pCtx == NULL ) ||
-        ( pIceServers == NULL ) )
+        ( pIceServersConfig == NULL ) )
     {
-        LogError( ( "Invalid input, pCtx: %p, pIceServers: %p", pCtx, pIceServers ) );
+        LogError( ( "Invalid input, pCtx: %p, pIceServersConfig: %p", pCtx, pIceServersConfig ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( pIceServersConfig->rootCaPathLength > ICE_CONTROLLER_MAX_PATH_LENGTH )
+    {
+        LogError( ( "The root CA path is longer than buffer size, length: %lu", pIceServersConfig->rootCaPathLength ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( pIceServersConfig->rootCaPemLength > ICE_CONTROLLER_MAX_PEM_LENGTH )
+    {
+        LogError( ( "The root CA PEM is larger than buffer size, length: %lu", pIceServersConfig->rootCaPemLength ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        for( i = 0; i < iceServersCount; i++ )
+        if( pIceServersConfig->rootCaPathLength > 0U )
+        {
+            memcpy( &pCtx->rootCaPath, pIceServersConfig->pRootCaPath, pIceServersConfig->rootCaPathLength );
+            pCtx->rootCaPathLength = pIceServersConfig->rootCaPathLength;
+            pCtx->rootCaPath[ pIceServersConfig->rootCaPathLength ] = '\0';
+        }
+
+        if( pIceServersConfig->rootCaPemLength > 0U )
+        {
+            memcpy( &pCtx->rootCaPem, pIceServersConfig->pRootCaPem, pIceServersConfig->rootCaPemLength );
+            pCtx->rootCaPemLength = pIceServersConfig->rootCaPemLength;
+            pCtx->rootCaPem[ pIceServersConfig->rootCaPemLength ] = '\0';
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < pIceServersConfig->iceServersCount; i++ )
         {
             if( pCtx->iceServersCount >= ICE_CONTROLLER_MAX_ICE_SERVER_COUNT )
             {
@@ -1205,7 +1249,7 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
             }
 
             memcpy( &pCtx->iceServers[ pCtx->iceServersCount ],
-                    &pIceServers[i],
+                    &pIceServersConfig->pIceServers[i],
                     sizeof( IceControllerIceServer_t ) );
             dnsResult = IceControllerNet_DnsLookUp( pCtx->iceServers[ pCtx->iceServersCount ].url,
                                                     &pCtx->iceServers[ pCtx->iceServersCount ].iceEndpoint.transportAddress );
@@ -1279,29 +1323,40 @@ void IceController_UpdateTimerInterval( IceControllerContext_t * pCtx,
                                         uint32_t newIntervalMs )
 {
     TimerControllerResult_t retTimer;
+    uint8_t skipProcess = 0U;
 
     if( pCtx == NULL )
     {
         LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+        skipProcess = 1U;
     }
-    else
+
+    if( skipProcess == 0U )
     {
         retTimer = TimerController_IsTimerSet( &pCtx->timerHandler );
         if( retTimer == TIMER_CONTROLLER_RESULT_SET )
         {
             TimerController_ResetTimer( &pCtx->timerHandler );
         }
+    }
 
+    if( skipProcess == 0U )
+    {
         retTimer = TimerController_SetTimer( &pCtx->timerHandler,
                                              newIntervalMs,
-                                             newIntervalMs );
+                                             0U );
         if( retTimer != TIMER_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to re-start timer, result: %d, intervalMs: %u", retTimer, newIntervalMs ) );
         }
+        else if( newIntervalMs != pCtx->timerIntervalMs )
+        {
+            LogInfo( ( "Timer interval is updated from %u to %u", pCtx->timerIntervalMs, newIntervalMs ) );
+            pCtx->timerIntervalMs = newIntervalMs;
+        }
         else
         {
-            LogInfo( ("Timer is re-started, intervalMs: %u", newIntervalMs) );
+            LogVerbose( ( "Timer interval is %u", pCtx->timerIntervalMs ) );
         }
     }
 }

@@ -267,8 +267,8 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
             LogWarn( ( "No valid transport string found" ) );
             ret = -1;
         }
-        else if( pIceServer->serverType == ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ||
-                 pIceServer->serverType == ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS )
+        else if( ( pIceServer->serverType == ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) ||
+                 ( pIceServer->serverType == ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
         {
             if( strncmp( pCurr,
                          "?transport=udp",
@@ -481,6 +481,15 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
         memset( &pcConfig, 0, sizeof( PeerConnectionSessionConfiguration_t ) );
         pcConfig.canTrickleIce = 1U;
         pcConfig.iceServersCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
+        #if defined( AWS_CA_CERT_PATH )
+            pcConfig.pRootCaPath = AWS_CA_CERT_PATH;
+            pcConfig.rootCaPathLength = strlen( AWS_CA_CERT_PATH );
+        #endif /* #if defined( AWS_CA_CERT_PATH ) */
+        
+        #if defined( AWS_CA_CERT_PEM )
+            pcConfig.rootCaPem = AWS_CA_CERT_PEM;
+            pcConfig.rootCaPemLength = sizeof( AWS_CA_CERT_PEM );
+        #endif /* #if defined( AWS_CA_CERT_PEM ) */
 
         ret = GetIceServerList( pDemoContext,
                                 pcConfig.iceServers,

@@ -65,7 +65,7 @@ typedef struct xSOCKET * Socket_t;     /**< @brief Socket handle data type. */
  * @return Non-zero value on error, 0 on success.
  */
 int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
-                                        int assignFd );
+                                 int assignFd );
 
 /**
  * @brief Establish a connection to server.
@@ -81,10 +81,10 @@ int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
  * @return Non-zero value on error, 0 on success.
  */
 int UDP_Sockets_Connect( Socket_t * pUdpSocket,
-                                const char * pHostName,
-                                uint16_t port,
-                                uint32_t receiveTimeoutMs,
-                                uint32_t sendTimeoutMs );
+                         const char * pHostName,
+                         uint16_t port,
+                         uint32_t receiveTimeoutMs,
+                         uint32_t sendTimeoutMs );
 
 /**
  * @brief End connection to server.

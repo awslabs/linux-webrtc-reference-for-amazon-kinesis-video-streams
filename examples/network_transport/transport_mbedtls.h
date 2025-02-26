@@ -74,6 +74,11 @@ typedef struct TlsTransportParams
     SSLContext_t sslContext;
 } TlsTransportParams_t;
 
+struct NetworkContext
+{
+    TlsTransportParams_t * pParams;
+};
+
 /**
  * @brief Contains the credentials necessary for tls connection setup.
  */
@@ -96,11 +101,19 @@ typedef struct NetworkCredentials
 
     const uint8_t * pRootCa;     /**< @brief String representing a trusted server root certificate. */
     size_t rootCaSize;           /**< @brief Size associated with #NetworkCredentials.pRootCa. */
+    const uint8_t * pRootCaPath; /**< @brief String representing a trusted server root certificate path. */
+    size_t rootCaPathLength;     /**< @brief Length associated with #NetworkCredentials.pRootCaPath. */
     const uint8_t * pClientCert; /**< @brief String representing the client certificate. */
     size_t clientCertSize;       /**< @brief Size associated with #NetworkCredentials.pClientCert. */
     const uint8_t * pPrivateKey; /**< @brief String representing the client certificate's private key. */
     size_t privateKeySize;       /**< @brief Size associated with #NetworkCredentials.pPrivateKey. */
 } NetworkCredentials_t;
+
+typedef struct TlsSession
+{
+    NetworkContext_t xTlsNetworkContext;
+    TlsTransportParams_t xTlsTransportParams;
+} TlsSession_t;
 
 /**
  * @brief TLS Connect / Disconnect return status.

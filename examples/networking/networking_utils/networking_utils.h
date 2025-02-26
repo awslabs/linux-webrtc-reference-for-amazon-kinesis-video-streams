@@ -10,6 +10,8 @@ extern "C" {
 #include <stdio.h>
 #include <stdint.h>
 
+/*-----------------------------------------------------------*/
+
 uint64_t NetworkingUtils_GetCurrentTimeSec( void * pTick );
 uint64_t NetworkingUtils_GetCurrentTimeUs( void * pTick );
 uint64_t NetworkingUtils_GetTimeFromIso8601( const char * pDate,

@@ -14,6 +14,7 @@ extern "C" {
 #include "timer_controller.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include "transport_mbedtls.h"
 #include "transport_dtls_mbedtls.h"
 #include "transport_interface.h"
 
@@ -54,6 +55,20 @@ extern "C" {
 #define ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS ( 100 )
 #define ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS ( 1000 )
 
+#define ICE_CONTROLLER_MAX_PATH_LENGTH ( 2048 )
+#define ICE_CONTROLLER_MAX_PEM_LENGTH ( 2048 )
+
+#define ICE_CONTROLLER_MAX_MTU ( 1500 )
+
+typedef enum IceControllerSocketType
+{
+    ICE_CONTROLLER_SOCKET_TYPE_NONE = 0,
+    ICE_CONTROLLER_SOCKET_TYPE_TCP,
+    ICE_CONTROLLER_SOCKET_TYPE_TLS,
+    ICE_CONTROLLER_SOCKET_TYPE_UDP,
+    ICE_CONTROLLER_SOCKET_TYPE_DTLS,
+} IceControllerSocketType_t;
+
 typedef enum IceControllerCallbackEvent
 {
     ICE_CONTROLLER_CB_EVENT_NONE = 0,
@@ -70,24 +85,13 @@ typedef struct IceControllerLocalCandidateReadyMsg
     size_t localCandidateIndex;
 } IceControllerLocalCandidateReadyMsg_t;
 
-typedef struct IceControllerPeerToPeerConnectionFoundMsg
-{
-    int socketFd;
-    IceEndpoint_t * pLocalEndpoint;
-    IceEndpoint_t * pRemoteEndpoint;
-    OnTransportDtlsSendHook OnDtlsSendHook;
-    void * pOnDtlsSendCustomContext;
-    OnTransportDtlsRecvHook OnDtlsRecvHook;
-    void * pOnDtlsRecvCustomContext;
-} IceControllerPeerToPeerConnectionFoundMsg_t;
-
 typedef struct IceControllerCallbackContent
 {
     union
     {
         IceControllerLocalCandidateReadyMsg_t localCandidateReadyMsg; /* ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY */
         /* NULL for ICE_CONTROLLER_CB_EVENT_CONNECTIVITY_CHECK_TIMEOUT */
-        IceControllerPeerToPeerConnectionFoundMsg_t peerTopeerConnectionFoundMsg; /* ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND */
+        /* NULL for ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND */
         /* NULL for ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK */
     } iceControllerCallbackContent;
 } IceControllerCallbackContent_t;
@@ -96,9 +100,9 @@ typedef int32_t (* OnIceEventCallback_t)( void * pCustomContext,
                                           IceControllerCallbackEvent_t event,
                                           IceControllerCallbackContent_t * pEventMsg );
 
-typedef int32_t (* OnRecvRtpRtcpPacketCallback_t)( void * pCustomContext,
-                                                   uint8_t * pBuffer,
-                                                   size_t bufferLength );
+typedef int32_t (* OnRecvDtlsPacketCallback_t)( void * pCustomContext,
+                                                uint8_t * pBuffer,
+                                                size_t bufferLength );
 
 typedef enum IceControllerResult
 {
@@ -111,9 +115,13 @@ typedef enum IceControllerResult
     ICE_CONTROLLER_RESULT_INVALID_JSON,
     ICE_CONTROLLER_RESULT_INVALID_REMOTE_USERNAME,
     ICE_CONTROLLER_RESULT_INVALID_REMOTE_PASSWORD,
+    ICE_CONTROLLER_RESULT_INVALID_PROTOCOL,
     ICE_CONTROLLER_RESULT_FAIL_CREATE_ICE_AGENT,
     ICE_CONTROLLER_RESULT_FAIL_SOCKET_CREATE,
     ICE_CONTROLLER_RESULT_FAIL_SOCKET_BIND,
+    ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONNECT,
+    ICE_CONTROLLER_RESULT_FAIL_SOCKET_NTOP,
+    ICE_CONTROLLER_RESULT_FAIL_SOCKET_TYPE,
     ICE_CONTROLLER_RESULT_FAIL_SOCKET_GETSOCKNAME,
     ICE_CONTROLLER_RESULT_FAIL_SOCKET_SENDTO,
     ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE,
@@ -134,6 +142,9 @@ typedef enum IceControllerResult
     ICE_CONTROLLER_RESULT_FAIL_CREATE_TURN_REFRESH_REQUEST,
     ICE_CONTROLLER_RESULT_FAIL_FIND_SOCKET_CONTEXT,
     ICE_CONTROLLER_RESULT_FAIL_FIND_NOMINATED_CONTEXT,
+    ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED,
+    ICE_CONTROLLER_RESULT_FAIL_EXCEED_MTU,
+    ICE_CONTROLLER_RESULT_NO_SOCKET_CONTEXT_AVAILABLE,
     ICE_CONTROLLER_RESULT_JSON_CANDIDATE_NOT_FOUND,
     ICE_CONTROLLER_RESULT_JSON_CANDIDATE_INVALID_PRIORITY,
     ICE_CONTROLLER_RESULT_JSON_CANDIDATE_INVALID_PROTOCOL,
@@ -142,6 +153,7 @@ typedef enum IceControllerResult
     ICE_CONTROLLER_RESULT_JSON_CANDIDATE_INVALID_TYPE,
     ICE_CONTROLLER_RESULT_JSON_CANDIDATE_LACK_OF_ELEMENT,
     ICE_CONTROLLER_RESULT_FOUND_CONNECTION,
+    ICE_CONTROLLER_RESULT_CONNECTION_CLOSED,
 } IceControllerResult_t;
 
 /* https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate/candidate
@@ -172,7 +184,7 @@ typedef enum IceControllerSocketContextState
     ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE = 0,
     ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
     ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY,
-    ICE_CONTROLLER_SOCKET_CONTEXT_STATE_PASS_HANDSHAKE,
+    ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED,
 } IceControllerSocketContextState_t;
 
 typedef struct IceControllerMetrics
@@ -192,6 +204,9 @@ typedef struct IceControllerCandidate
 typedef struct IceControllerSocketContext
 {
     IceControllerSocketContextState_t state;
+    IceControllerSocketType_t socketType;
+    TlsSession_t tlsSession;
+
     IceCandidate_t * pLocalCandidate;
     IceCandidate_t * pRemoteCandidate;
     IceEndpoint_t * pIceServerEndpoint;
@@ -212,6 +227,16 @@ typedef struct IceControllerIceServer
     IceSocketProtocol_t protocol; //tcp or udp
 } IceControllerIceServer_t;
 
+typedef struct IceControllerIceServerConfig
+{
+    IceControllerIceServer_t * pIceServers;
+    size_t iceServersCount;
+    char * pRootCaPath;
+    size_t rootCaPathLength;
+    char * pRootCaPem;
+    size_t rootCaPemLength;
+} IceControllerIceServerConfig_t;
+
 typedef struct IceControllerStunMsgHeader
 {
     uint16_t msgType; //StunMessageType_t
@@ -224,8 +249,8 @@ typedef struct IceControllerStunMsgHeader
 typedef struct IceControllerSocketListenerContext
 {
     volatile uint8_t executeSocketListener;
-    OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc;
-    void * pOnRecvRtpRtcpPacketCallbackCustomContext;
+    OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc;
+    void * pOnRecvDtlsPacketCallbackContext;
 } IceControllerSocketListenerContext_t;
 
 typedef enum IceControllerState
@@ -245,10 +270,15 @@ typedef struct IceControllerContext
 
     IceControllerIceServer_t iceServers[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ]; /* Reserve 1 space for default STUN server. */
     size_t iceServersCount;
+    char rootCaPath[ ICE_CONTROLLER_MAX_PATH_LENGTH + 1 ];
+    size_t rootCaPathLength;
+    char rootCaPem[ ICE_CONTROLLER_MAX_PEM_LENGTH + 1 ];
+    size_t rootCaPemLength;
 
     IceControllerMetrics_t metrics;
 
     TimerHandler_t timerHandler;
+    uint32_t timerIntervalMs;
 
     IceControllerSocketListenerContext_t socketListenerContext;
 
@@ -272,6 +302,9 @@ typedef struct IceControllerContext
 
     /* Mutex to protect global variables shared between Ice controller and socket listener. */
     pthread_mutex_t socketMutex;
+
+    /* Allocate static buffer for TURN sending. */
+    uint8_t turnSendBuffer[ ICE_CONTROLLER_MAX_MTU ];
 } IceControllerContext_t;
 
 #ifdef __cplusplus

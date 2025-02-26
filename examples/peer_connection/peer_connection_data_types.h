@@ -322,6 +322,11 @@ typedef struct PeerConnectionSessionConfiguration
      * and the following 5 for maximum Ice server list from SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT. */
     IceControllerIceServer_t iceServers[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ];
     size_t iceServersCount;
+
+    char * pRootCaPath;
+    size_t rootCaPathLength;
+    char * pRootCaPem;
+    size_t rootCaPemLength;
 } PeerConnectionSessionConfiguration_t;
 
 /*

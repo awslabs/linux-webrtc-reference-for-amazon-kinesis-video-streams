@@ -59,7 +59,7 @@ struct xSOCKET
 };
 
 int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
-                                        int assignFd )
+                                 int assignFd )
 {
     int xRet = UDP_SOCKETS_ERRNO_NONE;
 
@@ -100,10 +100,10 @@ int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
  * @return Non-zero value on error, 0 on success.
  */
 int UDP_Sockets_Connect( Socket_t * pUdpSocket,
-                                const char * pHostName,
-                                uint16_t port,
-                                uint32_t receiveTimeoutMs,
-                                uint32_t sendTimeoutMs )
+                         const char * pHostName,
+                         uint16_t port,
+                         uint32_t receiveTimeoutMs,
+                         uint32_t sendTimeoutMs )
 {
     int xFd = -1;
     int xRet = UDP_SOCKETS_ERRNO_NONE;
@@ -184,7 +184,7 @@ void UDP_Sockets_Disconnect( Socket_t udpSocket )
 {
     ( void )shutdown( udpSocket->xFd, SHUT_RDWR );
     ( void )close( udpSocket->xFd );
-    free(udpSocket);
+    free( udpSocket );
 }
 
 /**

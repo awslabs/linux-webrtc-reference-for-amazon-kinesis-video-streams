@@ -13,8 +13,8 @@ extern "C" {
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           OnIceEventCallback_t onIceEventCallbackFunc,
                                           void * pOnIceEventCallbackContext,
-                                          OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc,
-                                          void * pOnRecvRtpRtcpPacketCallbackContext );
+                                          OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc,
+                                          void * pOnRecvDtlsPacketCallbackContext );
 IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx );
 IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecodeMessage,
                                                              size_t decodeMessageLength,
@@ -35,11 +35,10 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
                                                         IceRemoteCandidateInfo_t * pRemoteCandidate );
 IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_t * pCtx );
 IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * pCtx,
-                                                      uint8_t * pBuffer,
+                                                      const uint8_t * pBuffer,
                                                       size_t bufferLength );
 IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t * pCtx,
-                                                        IceControllerIceServer_t * pIceServers,
-                                                        size_t iceServersCount );
+                                                        IceControllerIceServerConfig_t * pIceServersConfig );
 IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_t * pCtx );
 
 #ifdef __cplusplus

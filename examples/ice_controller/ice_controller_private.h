@@ -34,7 +34,7 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
                                                    IceControllerSocketContext_t * pSocketContext,
                                                    IceEndpoint_t * pRemoteEndpoint,
                                                    IceCandidatePair_t * pCandidatePair,
-                                                   uint8_t * pBuffer,
+                                                   const uint8_t * pBuffer,
                                                    size_t length );
 void IceControllerNet_FreeSocketContext( IceControllerContext_t * pCtx,
                                          IceControllerSocketContext_t * pSocketContext );
@@ -46,8 +46,8 @@ IceControllerResult_t IceController_SendTurnRefreshPermission( IceControllerCont
                                                                IceCandidatePair_t * pTargetCandidatePair );
 
 IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t * pCtx,
-                                                        OnRecvRtpRtcpPacketCallback_t onRecvRtpRtcpPacketCallbackFunc,
-                                                        void * pOnRecvRtpRtcpPacketCallbackContext );
+                                                        OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc,
+                                                        void * pOnRecvDtlsPacketCallbackContext );
 IceControllerResult_t IceControllerSocketListener_StartPolling( IceControllerContext_t * pCtx );
 IceControllerResult_t IceControllerSocketListener_StopPolling( IceControllerContext_t * pCtx );
 
