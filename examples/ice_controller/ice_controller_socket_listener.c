@@ -233,7 +233,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
             if( onRecvNonStunPacketFunc )
             {
-                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, readBytes );
+                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, uReadBytes );
             }
             else
             {
