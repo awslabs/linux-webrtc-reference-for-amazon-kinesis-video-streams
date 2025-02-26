@@ -794,8 +794,8 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           OnIceEventCallback_t onIceEventCallbackFunc,
                                           void * pOnIceEventCallbackContext,
-                                          OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc,
-                                          void * pOnRecvDtlsPacketCallbackContext )
+                                          OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
+                                          void * pOnRecvNonStunPacketCallbackContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TimerControllerResult_t retTimer;
@@ -858,8 +858,8 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         ret = IceControllerSocketListener_Init( pCtx,
-                                                onRecvDtlsPacketCallbackFunc,
-                                                pOnRecvDtlsPacketCallbackContext );
+                                                onRecvNonStunPacketFunc,
+                                                pOnRecvNonStunPacketCallbackContext );
     }
 
     return ret;

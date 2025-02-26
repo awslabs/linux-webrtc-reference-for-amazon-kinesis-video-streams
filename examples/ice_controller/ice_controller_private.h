@@ -46,8 +46,8 @@ IceControllerResult_t IceController_SendTurnRefreshPermission( IceControllerCont
                                                                IceCandidatePair_t * pTargetCandidatePair );
 
 IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t * pCtx,
-                                                        OnRecvDtlsPacketCallback_t onRecvDtlsPacketCallbackFunc,
-                                                        void * pOnRecvDtlsPacketCallbackContext );
+                                                        OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
+                                                        void * pOnRecvNonStunPacketCallbackContext );
 IceControllerResult_t IceControllerSocketListener_StartPolling( IceControllerContext_t * pCtx );
 IceControllerResult_t IceControllerSocketListener_StopPolling( IceControllerContext_t * pCtx );
 

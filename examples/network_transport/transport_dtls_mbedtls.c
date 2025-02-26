@@ -484,7 +484,7 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
         returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
     }
 
-    #ifdef MBEDTLS_PSA_CRYPTO_C
+#ifdef MBEDTLS_PSA_CRYPTO_C
     if( returnStatus == DTLS_SUCCESS )
     {
         mbedtlsError = psa_crypto_init();
@@ -495,7 +495,7 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
             returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
         }
     }
-    #endif /* MBEDTLS_PSA_CRYPTO_C */
+#endif /* MBEDTLS_PSA_CRYPTO_C */
 
     if( returnStatus == DTLS_SUCCESS )
     {
@@ -590,9 +590,9 @@ int32_t DTLS_Send( DtlsNetworkContext_t * pNetworkContext,
     {
         pDtlsTransportParams = pNetworkContext->pParams;
 
-        dtlsStatus = ( int32_t )mbedtls_ssl_write( &( pDtlsTransportParams->dtlsSslContext.context ),
-                                                   pBuffer,
-                                                   bytesToSend );
+        dtlsStatus = ( int32_t ) mbedtls_ssl_write( &( pDtlsTransportParams->dtlsSslContext.context ),
+                                                    pBuffer,
+                                                    bytesToSend );
 
         if( ( dtlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) || ( dtlsStatus == MBEDTLS_ERR_SSL_WANT_READ ) || ( dtlsStatus == MBEDTLS_ERR_SSL_WANT_WRITE ) )
         {
@@ -721,9 +721,9 @@ int32_t DTLS_CreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
 }
 /*-----------------------------------------------------------*/
 
-int32_t dtlsSessionGetLocalCertificateFingerprint( DtlsSSLContext_t * pSslContext,
-                                                   void * pBuff,
-                                                   size_t buffLen )
+int32_t DTLS_GetLocalCertificateFingerprint( DtlsSSLContext_t * pSslContext,
+                                             void * pBuff,
+                                             size_t buffLen )
 {
     int32_t retStatus = 0;
 
@@ -1305,20 +1305,24 @@ DtlsTransportStatus_t DTLS_Init( DtlsNetworkContext_t * pNetworkContext,
 /*-----------------------------------------------------------*/
 
 DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext,
-                                          uint8_t * pBuffer,
-                                          size_t * pBufferLength )
+                                          void * pDtlsPacket,
+                                          size_t dtlsPacketLength,
+                                          uint8_t * readBuffer,
+                                          size_t * pReadBufferSize )
 {
     DtlsTransportStatus_t returnStatus = DTLS_SUCCESS;
     DtlsTransportParams_t * pDtlsTransportParams = NULL;
     int32_t mbedtlsError = MBEDTLS_ERR_SSL_WANT_READ;
+    int32_t readOffset = 0;
 
-    if( ( pNetworkContext == NULL ) || ( pBuffer == NULL ) || ( pBufferLength == NULL ) )
+    if( ( pNetworkContext == NULL ) || ( pDtlsPacket == NULL ) || ( readBuffer == NULL ) || ( pReadBufferSize == NULL ) )
     {
         LogError( ( "Invalid input parameter(s): Arguments cannot be NULL. "
-                    "pNetworkContext=%p, pBuffer=%p, pBufferLength=%p.",
+                    "pNetworkContext=%p, pDtlsPacket=%p, readBuffer=%p, pReadBufferSize=%p.",
                     pNetworkContext,
-                    pBuffer,
-                    pBufferLength ) );
+                    pDtlsPacket,
+                    readBuffer,
+                    pReadBufferSize ) );
         returnStatus = DTLS_INVALID_PARAMETER;
     }
 
@@ -1327,42 +1331,44 @@ DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext
         pDtlsTransportParams = pNetworkContext->pParams;
 
         /* Store the processing packet into transport params. */
-        pDtlsTransportParams->pReceivedPacket = pBuffer;
-        pDtlsTransportParams->receivedPacketLength = *pBufferLength;
+        pDtlsTransportParams->pReceivedPacket = pDtlsPacket;
+        pDtlsTransportParams->receivedPacketLength = dtlsPacketLength;
+        pDtlsTransportParams->receivedPacketOffset = 0;
 
         while( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ && pDtlsTransportParams->pReceivedPacket != NULL )
         {
             /* Perform read function. Mbedtls would execute mbedtls_ssl_handshake inside if the handshake is not done. */
             mbedtlsError = mbedtls_ssl_read( &( pDtlsTransportParams->dtlsSslContext.context ),
-                                             pBuffer,
-                                             *pBufferLength );
+                                             readBuffer + readOffset,
+                                             *pReadBufferSize - readOffset );
 
             if( ( mbedtlsError == MBEDTLS_ERR_SSL_TIMEOUT ) || ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) || ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) )
             {
                 LogDebug( ( "Failed to read data. However, a read can be retried on "
                             "this error. "
-                            "mbedTLSError=-0x%x, %s : %s.",
+                            "mbedTLSError=-0x%x %s : %s.",
                             -mbedtlsError,
                             mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
                             mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
             }
             else if( mbedtlsError < 0 )
             {
-                LogError( ( "Failed to read data: mbedTLSError=-0x%x, %s : %s.",
-                            -mbedtlsError,
-                            mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+                LogError( ( "Failed to read data: mbedTLSError=-0x%x %s : %s.", -mbedtlsError, mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
                 returnStatus = DTLS_TRANSPORT_PROCESS_FAILURE;
             }
             else
             {
-                *pBufferLength = mbedtlsError;
+                readOffset += mbedtlsError;
             }
         }
     }
 
-    /* Check handshake status. */
     if( returnStatus == DTLS_SUCCESS )
     {
+        /* Update recv buffer length for user. */
+        *pReadBufferSize = ( size_t ) readOffset;
+
+        /* Check handshake status. */
         if( pNetworkContext->state == DTLS_STATE_HANDSHAKING )
         {
             /* Check if handshake is done. */

@@ -21,6 +21,8 @@
 
 #define PEER_CONNECTION_MAX_QUEUE_MSG_NUM ( 10 )
 
+#define PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ( 2048 )
+
 PeerConnectionContext_t peerConnectionContext = { 0 };
 
 extern void * IceControllerSocketListener_Task( void * pParameter );
@@ -545,15 +547,19 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
 }
 
 static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
-                                  uint8_t * pBuffer,
-                                  size_t bufferLength )
+                                  uint8_t * pDtlsEncryptData,
+                                  size_t dtlsEncryptDataLength )
 {
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_SUCCESS;
+    uint8_t dtlsDecryptBuffer[ PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ];
+    size_t dtlsDecryptBufferLength = PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH;
 
     xNetworkStatus = DTLS_ProcessPacket( &pSession->dtlsSession.xNetworkContext,
-                                         pBuffer,
-                                         &bufferLength );
+                                         pDtlsEncryptData,
+                                         dtlsEncryptDataLength,
+                                         dtlsDecryptBuffer,
+                                         &dtlsDecryptBufferLength );
 
     if( xNetworkStatus == DTLS_HANDSHAKE_COMPLETE )
     {
@@ -561,7 +567,7 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     }
     else if( xNetworkStatus != DTLS_SUCCESS )
     {
-        LogError( ( "Error happens when process DTLS packet, return %d", xNetworkStatus ) );
+        LogError( ( "Error happens when process the DTLS packet, return %d", xNetworkStatus ) );
         ret = -3;
     }
     else
@@ -572,9 +578,9 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     return ret;
 }
 
-static int32_t HandleDtlsPackets( void * pCustomContext,
-                                  uint8_t * pBuffer,
-                                  size_t bufferLength )
+static int32_t HandleNonStunPackets( void * pCustomContext,
+                                     uint8_t * pBuffer,
+                                     size_t bufferLength )
 {
     int32_t ret = 0;
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
@@ -591,36 +597,29 @@ static int32_t HandleDtlsPackets( void * pCustomContext,
     {
         if( bufferLength < 2 )
         {
-            LogWarn( ( "Invalid buffer length: %ld", bufferLength ) );
+            LogWarn( ( "Invalid buffer length: %lu", bufferLength ) );
             ret = -2;
         }
         else if( ( pBuffer[0] > 127 ) && ( pBuffer[0] < 192 ) )
         {
-            if( pSession->state != PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
+            if( ( pBuffer[1] >= 192 ) && ( pBuffer[1] <= 223 ) )
             {
-                LogInfo( ( "Not ready to handle SRTP/SRTCP packet. state: %d", pSession->state ) );
+                /* RTCP packet */
+                resultPeerConnection = PeerConnectionSrtp_HandleSrtcpPacket( pSession, pBuffer, bufferLength );
+                if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
+                {
+                    LogWarn( ( "Failed to handle SRTCP packets, result: %d", resultPeerConnection ) );
+                    ret = -2;
+                }
             }
             else
             {
-                if( ( pBuffer[1] >= 192 ) && ( pBuffer[1] <= 223 ) )
+                /* RTP packet */
+                resultPeerConnection = PeerConnectionSrtp_HandleSrtpPacket( pSession, pBuffer, bufferLength );
+                if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
                 {
-                    /* RTCP packet */
-                    resultPeerConnection = PeerConnectionSrtp_HandleSrtcpPacket( pSession, pBuffer, bufferLength );
-                    if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
-                    {
-                        LogWarn( ( "Failed to handle SRTCP packets, result: %d", resultPeerConnection ) );
-                        ret = -2;
-                    }
-                }
-                else
-                {
-                    /* RTP packet */
-                    resultPeerConnection = PeerConnectionSrtp_HandleSrtpPacket( pSession, pBuffer, bufferLength );
-                    if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
-                    {
-                        LogWarn( ( "Failed to handle SRTP packets, result: %d", resultPeerConnection ) );
-                        ret = -2;
-                    }
+                    LogWarn( ( "Failed to handle SRTP packets, result: %d", resultPeerConnection ) );
+                    ret = -2;
                 }
             }
         }
@@ -685,7 +684,7 @@ static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t *
         iceControllerResult = IceController_Init( &pSession->iceControllerContext,
                                                   HandleIceEventCallback,
                                                   pSession,
-                                                  HandleDtlsPackets,
+                                                  HandleNonStunPackets,
                                                   pSession );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {

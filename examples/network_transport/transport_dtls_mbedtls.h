@@ -345,10 +345,11 @@ int32_t DTLS_GetSocketFd( DtlsNetworkContext_t * pNetworkContext );
  * @brief Process a received packet in an established DTLS session.
  *
  * @param[in] pNetworkContext The DTLS network context.
- * @param[in] pBuffer Pointer to the buffer containing the received packet.
- * @param[in, out] pBufferLength Pointer to the size of the buffer.
- *                               On input: The length of the received encrypted packet.
- *                               On output: The length of the decrypted data (if applicable).
+ * @param[in] pDtlsPacket Pointer to the received DTLS packet.
+ * @param[in] dtlsPacketLength The length of the received DTLS encrypted packet.
+ * @param[out] readBuffer The buffer to store the decrypted DTLS packet.
+ * @param[in,out] pReadBufferSize The size of the buffer. It will be updated
+ * to the size of the decrypted packet.
  *
  * @return DtlsTransportStatus_t Returns the status of the initialization:
  *         - DTLS_SUCCESS if the packet was successfully processed
@@ -356,8 +357,10 @@ int32_t DTLS_GetSocketFd( DtlsNetworkContext_t * pNetworkContext );
  *         - Other specific error codes in case of failure
  */
 DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext,
-                                          uint8_t * pBuffer,
-                                          size_t * pBufferLength );
+                                          void * pDtlsPacket,
+                                          size_t dtlsPacketLength,
+                                          uint8_t * readBuffer,
+                                          size_t * pReadBufferSize );
 
 /**
  * @brief Execute DTLS handshaking.
