@@ -669,6 +669,7 @@ static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t *
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
     IceControllerIceServerConfig_t iceServerConfig;
+    IceControllerInitConfig_t initConfig;
 
     if( ( pSession == NULL ) ||
         ( pSessionConfig == NULL ) )
@@ -681,11 +682,14 @@ static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t *
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        memset( &initConfig, 0, sizeof( IceControllerInitConfig_t ) );
+        initConfig.natTraversalConfigBitmap = pSessionConfig->natTraversalConfigBitmap;
+        initConfig.onIceEventCallbackFunc = HandleIceEventCallback;
+        initConfig.pOnIceEventCallbackContext = pSession;
+        initConfig.onRecvNonStunPacketFunc = HandleNonStunPackets;
+        initConfig.pOnRecvNonStunPacketCallbackContext = pSession;
         iceControllerResult = IceController_Init( &pSession->iceControllerContext,
-                                                  HandleIceEventCallback,
-                                                  pSession,
-                                                  HandleNonStunPackets,
-                                                  pSession );
+                                                  &initConfig );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to initialize Ice Controller." ) );

@@ -45,7 +45,7 @@ static void UpdateSocketContext( IceControllerContext_t * pCtx,
                                  IceCandidate_t * pRemoteCandidate,
                                  IceEndpoint_t * pIceServerEndpoint );
 
-static void getLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
+static void GetLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
                                 size_t * pLocalIpAddressesNum )
 {
     struct ifaddrs * pIfAddrs, * pIfAddr;
@@ -520,8 +520,70 @@ void IceControllerNet_FreeSocketContext( IceControllerContext_t * pCtx,
     }
 }
 
-static void IceControllerNet_AddSrflxCandidate( IceControllerContext_t * pCtx,
-                                                IceEndpoint_t * pLocalIceEndpoint )
+static void AddHostCandidate( IceControllerContext_t * pCtx,
+                              IceEndpoint_t * pLocalIceEndpoint )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    IceCandidate_t * pCandidate;
+    IceControllerSocketContext_t * pSocketContext;
+    IceControllerCallbackContent_t localCandidateReadyContent;
+    int32_t retLocalCandidateReady;
+    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    char ipBuffer[ INET_ADDRSTRLEN ];
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+
+    ret = CreateSocketContext( pCtx, pLocalIceEndpoint->transportAddress.family, pLocalIceEndpoint, NULL, ICE_SOCKET_PROTOCOL_UDP, &pSocketContext );
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        iceResult = Ice_AddHostCandidate( &pCtx->iceContext, pLocalIceEndpoint );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            /* Free resource that already created. */
+            LogError( ( "Ice_AddHostCandidate fail, result: %d", iceResult ) );
+            IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+            ret = ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        pCandidate = &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] );
+        if( pCtx->onIceEventCallbackFunc )
+        {
+            localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.pLocalCandidate = pCandidate;
+            localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.localCandidateIndex = pCtx->candidateFoundationCounter;
+            retLocalCandidateReady = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext, ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY, &localCandidateReadyContent );
+            if( retLocalCandidateReady == 0 )
+            {
+                pCtx->candidateFoundationCounter++;
+            }
+            else
+            {
+                /* Free resource that already created. */
+                IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                LogError( ( "Fail to send local candidate, ret: %d.", retLocalCandidateReady ) );
+                ret = ICE_CONTROLLER_RESULT_CANDIDATE_SEND_FAIL;
+            }
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY, pCandidate, NULL, NULL );
+
+        LogInfo( ( "Created host candidate with fd %d, ID: 0x%04x",
+                   pSocketContext->socketFd,
+                   pCandidate->candidateId ) );
+        LogVerbose( ( "host candidate's local IP/port: %s/%d",
+                      IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                      pLocalIceEndpoint->transportAddress.port ) );
+    }
+}
+
+static void AddSrflxCandidate( IceControllerContext_t * pCtx,
+                               IceEndpoint_t * pLocalIceEndpoint )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
@@ -585,13 +647,116 @@ static void IceControllerNet_AddSrflxCandidate( IceControllerContext_t * pCtx,
                           IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
                           pLocalIceEndpoint->transportAddress.port ) );
 
+            /* Send binding request to STUN server to query external address. */
             ret = IceControllerNet_SendPacket( pCtx, pSocketContext, &pCtx->iceServers[ i ].iceEndpoint, NULL, stunBuffer, stunBufferLength );
         }
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            pCtx->socketsContextsCount++;
             pCtx->metrics.pendingSrflxCandidateNum++;
+        }
+    }
+}
+
+static void AddRelayCandidates( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint32_t i;
+    IceControllerSocketContext_t * pSocketContext = NULL;
+    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    char ipBuffer[ INET_ADDRSTRLEN ];
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Loop through all ICE server configs and start allocate TURN with UDP and TLS TURN servers. */
+        for( i = 0; i < pCtx->iceServersCount; i++ )
+        {
+            /* Reset ret for every round. */
+            ret = ICE_CONTROLLER_RESULT_OK;
+
+            if( pCtx->iceServers[i].iceEndpoint.transportAddress.family != STUN_ADDRESS_IPv4 )
+            {
+                LogInfo( ( "Only IPv4 TURN server is supported." ) );
+                continue;
+            }
+            else if( ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) &&
+                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
+            {
+                /* Skip STUN servers. */
+                continue;
+            }
+            else if( ( pCtx->iceServers[i].protocol != ICE_SOCKET_PROTOCOL_UDP ) &&
+                     ( pCtx->iceServers[i].protocol != ICE_SOCKET_PROTOCOL_TCP ) )
+            {
+                LogInfo( ( "Unknown TURN Server, protocol: %d, Server URL: %.*s",
+                           pCtx->iceServers[i].protocol,
+                           ( int ) pCtx->iceServers[i].urlLength,
+                           pCtx->iceServers[i].url ) );
+                continue;
+            }
+            else if( ( pCtx->iceServers[i].protocol == ICE_SOCKET_PROTOCOL_UDP ) &&
+                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) )
+            {
+                /* For now we do not support DTLS connection over TURN server. */
+                LogInfo( ( "Only pure UDP TURN server is supported, serverType: %d, Server URL: %.*s",
+                           pCtx->iceServers[i].serverType,
+                           ( int ) pCtx->iceServers[i].urlLength,
+                           pCtx->iceServers[i].url ) );
+                continue;
+            }
+            else if( ( pCtx->iceServers[i].protocol == ICE_SOCKET_PROTOCOL_TCP ) &&
+                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
+            {
+                /* For now we only support TLS connection over TURN server. */
+                LogInfo( ( "Only TLS/TCP TURN server is supported, serverType: %d, Server URL: %.*s",
+                           pCtx->iceServers[i].serverType,
+                           ( int ) pCtx->iceServers[i].urlLength,
+                           pCtx->iceServers[i].url ) );
+                continue;
+            }
+            else
+            {
+                LogInfo( ( "Creating connection with TURN server %.*s.",
+                           ( int ) pCtx->iceServers[i].urlLength,
+                           pCtx->iceServers[i].url ) );
+            }
+
+            ret = CreateSocketContext( pCtx, STUN_ADDRESS_IPv4, NULL, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].protocol, &pSocketContext );
+
+            if( ret == ICE_CONTROLLER_RESULT_OK )
+            {
+                iceResult = Ice_AddRelayCandidate( &pCtx->iceContext, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].userName, pCtx->iceServers[i].userNameLength, pCtx->iceServers[i].password, pCtx->iceServers[i].passwordLength );
+                if( iceResult != ICE_RESULT_OK )
+                {
+                    /* Free resource that already created. */
+                    LogError( ( "Ice_AddRelayCandidate fail, result: %d", iceResult ) );
+                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                    ret = ICE_CONTROLLER_RESULT_FAIL_ADD_RELAY_CANDIDATE;
+                    break;
+                }
+            }
+
+            if( ret == ICE_CONTROLLER_RESULT_OK )
+            {
+                UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE, &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ), NULL, &pCtx->iceServers[ i ].iceEndpoint );
+
+                LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
+                           pSocketContext->socketFd,
+                           pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+                LogVerbose( ( "relay candidate's local IP/port: %s/%d",
+                              IceControllerNet_LogIpAddressInfo( &pCtx->iceServers[ i ].iceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                              pCtx->iceServers[ i ].iceEndpoint.transportAddress.port ) );
+
+                pCtx->metrics.pendingRelayCandidateNum++;
+            }
         }
     }
 }
@@ -793,15 +958,7 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
 IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    IceResult_t iceResult;
     uint32_t i;
-    IceCandidate_t * pCandidate;
-    IceControllerSocketContext_t * pSocketContext;
-    int32_t retLocalCandidateReady;
-    IceControllerCallbackContent_t localCandidateReadyContent;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipBuffer[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( pCtx == NULL )
     {
@@ -813,165 +970,29 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
     {
         /* Collect information from local network interfaces. */
         pCtx->localIceEndpointsCount = ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT;
-        getLocalIPAdresses( pCtx->localEndpoints, &pCtx->localIceEndpointsCount );
+        GetLocalIPAdresses( pCtx->localEndpoints, &pCtx->localIceEndpointsCount );
 
         /* Start gathering local candidates. */
         for( i = 0; i < pCtx->localIceEndpointsCount; i++ )
         {
-            ret = CreateSocketContext( pCtx, pCtx->localEndpoints[i].transportAddress.family, &pCtx->localEndpoints[i], NULL, ICE_SOCKET_PROTOCOL_UDP, &pSocketContext );
-
-            if( ret == ICE_CONTROLLER_RESULT_OK )
+            if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_HOST ) )
             {
-                iceResult = Ice_AddHostCandidate( &pCtx->iceContext, &pCtx->localEndpoints[i] );
-                if( iceResult != ICE_RESULT_OK )
-                {
-                    /* Free resource that already created. */
-                    LogError( ( "Ice_AddHostCandidate fail, result: %d", iceResult ) );
-                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                    ret = ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE;
-                    break;
-                }
+                Metric_StartEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
+                AddHostCandidate( pCtx, &pCtx->localEndpoints[i] );
+                Metric_EndEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
             }
 
-            if( ret == ICE_CONTROLLER_RESULT_OK )
+            if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_SRFLX ) )
             {
-                pCandidate = &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] );
-                if( pCtx->onIceEventCallbackFunc )
-                {
-                    localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.pLocalCandidate = pCandidate;
-                    localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.localCandidateIndex = pCtx->candidateFoundationCounter;
-                    retLocalCandidateReady = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext, ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY, &localCandidateReadyContent );
-                    if( retLocalCandidateReady == 0 )
-                    {
-                        pCtx->candidateFoundationCounter++;
-                    }
-                    else
-                    {
-                        /* Free resource that already created. */
-                        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                        LogError( ( "Fail to send local candidate, ret: %d.", retLocalCandidateReady ) );
-                        ret = ICE_CONTROLLER_RESULT_CANDIDATE_SEND_FAIL;
-                    }
-                }
-            }
-
-            if( ret == ICE_CONTROLLER_RESULT_OK )
-            {
-                UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY, pCandidate, NULL, NULL );
-
-                LogInfo( ( "Created host candidate with fd %d, ID: 0x%04x",
-                           pSocketContext->socketFd,
-                           pCandidate->candidateId ) );
-                LogVerbose( ( "host candidate's local IP/port: %s/%d",
-                              IceControllerNet_LogIpAddressInfo( &pCtx->localEndpoints[i], ipBuffer, sizeof( ipBuffer ) ),
-                              pCtx->localEndpoints[i].transportAddress.port ) );
-            }
-
-            /* Prepare srflx candidates based on current host candidate. */
-            if( ret == ICE_CONTROLLER_RESULT_OK )
-            {
-                IceControllerNet_AddSrflxCandidate( pCtx, &pCtx->localEndpoints[i] );
+                Metric_StartEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
+                AddSrflxCandidate( pCtx, &pCtx->localEndpoints[i] );
             }
         }
-    }
 
-    return ret;
-}
-
-IceControllerResult_t IceControllerNet_AddRelayCandidates( IceControllerContext_t * pCtx )
-{
-    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    IceResult_t iceResult;
-    uint32_t i;
-    IceControllerSocketContext_t * pSocketContext = NULL;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipBuffer[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
-
-    if( pCtx == NULL )
-    {
-        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
-        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
-    }
-
-    if( ret == ICE_CONTROLLER_RESULT_OK )
-    {
-        /* Loop through all ICE server configs and start allocate TURN with UDP and TLS TURN servers. */
-        for( i = 0; i < pCtx->iceServersCount; i++ )
+        if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_RELAY ) )
         {
-            if( pCtx->iceServers[i].iceEndpoint.transportAddress.family != STUN_ADDRESS_IPv4 )
-            {
-                LogInfo( ( "Only IPv4 TURN server is supported." ) );
-                continue;
-            }
-            else if( ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) &&
-                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
-            {
-                /* Skip STUN servers. */
-                continue;
-            }
-            else if( ( pCtx->iceServers[i].protocol != ICE_SOCKET_PROTOCOL_UDP ) &&
-                     ( pCtx->iceServers[i].protocol != ICE_SOCKET_PROTOCOL_TCP ) )
-            {
-                LogInfo( ( "Unknown TURN Server, protocol: %d, Server URL: %.*s",
-                           pCtx->iceServers[i].protocol,
-                           ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url ) );
-                continue;
-            }
-            else if( ( pCtx->iceServers[i].protocol == ICE_SOCKET_PROTOCOL_UDP ) &&
-                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) )
-            {
-                /* For now we do not support DTLS connection over TURN server. */
-                LogInfo( ( "Only pure UDP TURN server is supported, serverType: %d, Server URL: %.*s",
-                           pCtx->iceServers[i].serverType,
-                           ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url ) );
-                continue;
-            }
-            else if( ( pCtx->iceServers[i].protocol == ICE_SOCKET_PROTOCOL_TCP ) &&
-                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
-            {
-                /* For now we only support TLS connection over TURN server. */
-                LogInfo( ( "Only TLS/TCP TURN server is supported, serverType: %d, Server URL: %.*s",
-                           pCtx->iceServers[i].serverType,
-                           ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url ) );
-                continue;
-            }
-            else
-            {
-                LogInfo( ( "Creating connection with TURN server %.*s.",
-                           ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url ) );
-            }
-
-            ret = CreateSocketContext( pCtx, STUN_ADDRESS_IPv4, NULL, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].protocol, &pSocketContext );
-
-            if( ret == ICE_CONTROLLER_RESULT_OK )
-            {
-                iceResult = Ice_AddRelayCandidate( &pCtx->iceContext, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].userName, pCtx->iceServers[i].userNameLength, pCtx->iceServers[i].password, pCtx->iceServers[i].passwordLength );
-                if( iceResult != ICE_RESULT_OK )
-                {
-                    /* Free resource that already created. */
-                    LogError( ( "Ice_AddRelayCandidate fail, result: %d", iceResult ) );
-                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                    ret = ICE_CONTROLLER_RESULT_FAIL_ADD_RELAY_CANDIDATE;
-                    break;
-                }
-            }
-
-            if( ret == ICE_CONTROLLER_RESULT_OK )
-            {
-                UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE, &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ), NULL, &pCtx->iceServers[ i ].iceEndpoint );
-
-                LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
-                           pSocketContext->socketFd,
-                           pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
-                LogVerbose( ( "relay candidate's local IP/port: %s/%d",
-                              IceControllerNet_LogIpAddressInfo( &pCtx->iceServers[ i ].iceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
-                              pCtx->iceServers[ i ].iceEndpoint.transportAddress.port ) );
-            }
+            Metric_StartEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
+            AddRelayCandidates( pCtx );
         }
     }
 
@@ -1080,6 +1101,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     {
                         /* Free resource that already created. */
                         LogWarn( ( "Fail to send server reflexive candidate to remote peer, ret: %d.", retLocalCandidateReady ) );
+                    }
+
+                    pCtx->metrics.pendingRelayCandidateNum--;
+                    if( pCtx->metrics.pendingRelayCandidateNum == 0 )
+                    {
+                        Metric_EndEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
                     }
                 }
                 else

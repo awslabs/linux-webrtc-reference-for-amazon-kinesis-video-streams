@@ -129,6 +129,7 @@ typedef enum IceControllerResult
     ICE_CONTROLLER_RESULT_FAIL_ADD_REMOTE_CANDIDATE,
     ICE_CONTROLLER_RESULT_FAIL_ADD_IPv6_REMOTE_CANDIDATE,
     ICE_CONTROLLER_RESULT_FAIL_ADD_NON_UDP_REMOTE_CANDIDATE,
+    ICE_CONTROLLER_RESULT_FAIL_ADD_CANDIDATE_TYPE,
     ICE_CONTROLLER_RESULT_FAIL_TIMER_INIT,
     ICE_CONTROLLER_RESULT_FAIL_DNS_QUERY,
     ICE_CONTROLLER_RESULT_FAIL_SET_CONNECTIVITY_CHECK_TIMER,
@@ -190,6 +191,7 @@ typedef enum IceControllerSocketContextState
 typedef struct IceControllerMetrics
 {
     uint32_t pendingSrflxCandidateNum;
+    uint32_t pendingRelayCandidateNum;
     uint32_t isFirstConnectivityRequest;
 } IceControllerMetrics_t;
 
@@ -263,11 +265,34 @@ typedef enum IceControllerState
     ICE_CONTROLLER_STATE_DISCONNECTED,
 } IceControllerState_t;
 
+typedef enum IceControllerNatTraversalConfig
+{
+    ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_HOST = ( 1 << 0 ),
+    ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_HOST = ( 1 << 1 ),
+    ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_SRFLX = ( 1 << 2 ),
+    ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_SRFLX = ( 1 << 3 ),
+    ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_RELAY = ( 1 << 4 ),
+    ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_RELAY = ( 1 << 5 ),
+    ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL = 0xFF,
+} IceControllerNatTraversalConfig_t;
+
+typedef struct IceControllerInitConfig
+{
+    IceControllerNatTraversalConfig_t natTraversalConfigBitmap;
+
+    /* Callback functions. */
+    OnIceEventCallback_t onIceEventCallbackFunc;
+    void * pOnIceEventCallbackContext;
+    OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc;
+    void * pOnRecvNonStunPacketCallbackContext;
+} IceControllerInitConfig_t;
+
 typedef struct IceControllerContext
 {
     IceControllerState_t state;
     IceContext_t iceContext;
 
+    IceControllerNatTraversalConfig_t natTraversalConfigBitmap;
     IceControllerIceServer_t iceServers[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ]; /* Reserve 1 space for default STUN server. */
     size_t iceServersCount;
     char rootCaPath[ ICE_CONTROLLER_MAX_PATH_LENGTH + 1 ];

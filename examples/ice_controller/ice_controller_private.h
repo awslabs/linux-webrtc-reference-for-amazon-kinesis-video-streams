@@ -9,6 +9,8 @@ extern "C" {
 
 #include "ice_controller_data_types.h"
 
+#define ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, natConfig ) ( ( pCtx->natTraversalConfigBitmap & natConfig ) != 0 )
+
 void IceController_UpdateState( IceControllerContext_t * pCtx,
                                 IceControllerState_t newState );
 void IceController_UpdateTimerInterval( IceControllerContext_t * pCtx,
@@ -21,7 +23,6 @@ IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
 IceControllerResult_t IceControllerNet_Htons( uint16_t port,
                                               uint16_t * pOutPort );
 IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx );
-IceControllerResult_t IceControllerNet_AddRelayCandidates( IceControllerContext_t * pCtx );
 IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t * pCtx,
                                                          IceControllerSocketContext_t * pSocketContext,
                                                          uint8_t * pReceiveBuffer,

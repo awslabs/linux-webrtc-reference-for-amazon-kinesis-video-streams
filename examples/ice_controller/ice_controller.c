@@ -488,6 +488,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
+    uint8_t isAcceptCandidate = 0U;
     #if LIBRARY_LOG_LEVEL >= LOG_INFO
     char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
@@ -524,6 +525,51 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
                        pRemoteCandidate->pEndpoint->transportAddress.port,
                        pRemoteCandidate->remoteProtocol ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_ADD_NON_UDP_REMOTE_CANDIDATE;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        switch( pRemoteCandidate->candidateType )
+        {
+            case ICE_CANDIDATE_TYPE_HOST:
+            {
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_HOST ) )
+                {
+                    isAcceptCandidate = 1;
+                }
+                break;
+            }
+            case ICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
+            {
+                isAcceptCandidate = 1;
+                break;
+            }
+            case ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+            {
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_SRFLX ) )
+                {
+                    isAcceptCandidate = 1;
+                }
+                break;
+            }
+            case ICE_CANDIDATE_TYPE_RELAY:
+            {
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_RELAY ) )
+                {
+                    isAcceptCandidate = 1;
+                }
+                break;
+            }
+            default:
+                LogWarn( ( "Unknown candidate type: %d", pRemoteCandidate->candidateType ) );
+                break;
+        }
+
+        if( isAcceptCandidate == 0U )
+        {
+            LogInfo( ( "Dropping remote candidate with type: %d, NAT traversal config bitmap: 0x%x", pRemoteCandidate->candidateType, pCtx->natTraversalConfigBitmap ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_ADD_CANDIDATE_TYPE;
         }
     }
 
@@ -792,17 +838,15 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
 }
 
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
-                                          OnIceEventCallback_t onIceEventCallbackFunc,
-                                          void * pOnIceEventCallbackContext,
-                                          OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                                          void * pOnRecvNonStunPacketCallbackContext )
+                                          IceControllerInitConfig_t * pInitConfig )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TimerControllerResult_t retTimer;
     int i;
 
-    if( pCtx == NULL )
+    if( ( pCtx == NULL ) || ( pInitConfig == NULL ) )
     {
+        LogError( ( "Invalid parameters, pCtx: %p, pInitConfig: %p", pCtx, pInitConfig ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -814,11 +858,14 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
 
         IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_NEW );
 
-        pCtx->onIceEventCallbackFunc = onIceEventCallbackFunc;
-        pCtx->pOnIceEventCustomContext = pOnIceEventCallbackContext;
+        pCtx->onIceEventCallbackFunc = pInitConfig->onIceEventCallbackFunc;
+        pCtx->pOnIceEventCustomContext = pInitConfig->pOnIceEventCallbackContext;
 
         /* Initialize metrics. */
         pCtx->metrics.isFirstConnectivityRequest = 1;
+
+        /* Store NAT traversal config. */
+        pCtx->natTraversalConfigBitmap = pInitConfig->natTraversalConfigBitmap;
     }
 
     /* Initialize timer for connectivity check. */
@@ -858,8 +905,8 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         ret = IceControllerSocketListener_Init( pCtx,
-                                                onRecvNonStunPacketFunc,
-                                                pOnRecvNonStunPacketCallbackContext );
+                                                pInitConfig->onRecvNonStunPacketFunc,
+                                                pInitConfig->pOnRecvNonStunPacketCallbackContext );
     }
 
     return ret;
@@ -1124,15 +1171,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        Metric_StartEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
-        Metric_StartEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
-        ret = IceControllerNet_AddLocalCandidates( pCtx );
-        Metric_EndEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
-    }
-
-    if( ret == ICE_CONTROLLER_RESULT_OK )
-    {
-        ret = IceControllerNet_AddRelayCandidates( pCtx );
+        ( void ) IceControllerNet_AddLocalCandidates( pCtx );
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )

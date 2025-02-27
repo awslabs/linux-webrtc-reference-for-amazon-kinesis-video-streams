@@ -317,6 +317,7 @@ typedef struct PeerConnectionSession
 typedef struct PeerConnectionSessionConfiguration
 {
     uint8_t canTrickleIce;
+    IceControllerNatTraversalConfig_t natTraversalConfigBitmap;
 
     /* Provide Ice server list for peer connection. Note that the index 0 is for default STUN server,
      * and the following 5 for maximum Ice server list from SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT. */

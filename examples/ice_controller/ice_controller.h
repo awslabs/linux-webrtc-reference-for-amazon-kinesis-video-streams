@@ -11,10 +11,7 @@ extern "C" {
 #include "ice_controller_data_types.h"
 
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
-                                          OnIceEventCallback_t onIceEventCallbackFunc,
-                                          void * pOnIceEventCallbackContext,
-                                          OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                                          void * pOnRecvNonStunPacketCallbackContext );
+                                          IceControllerInitConfig_t * pInitConfig );
 IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx );
 IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecodeMessage,
                                                              size_t decodeMessageLength,

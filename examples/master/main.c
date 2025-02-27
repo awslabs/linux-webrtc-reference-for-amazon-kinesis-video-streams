@@ -485,7 +485,7 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
             pcConfig.pRootCaPath = AWS_CA_CERT_PATH;
             pcConfig.rootCaPathLength = strlen( AWS_CA_CERT_PATH );
         #endif /* #if defined( AWS_CA_CERT_PATH ) */
-        
+
         #if defined( AWS_CA_CERT_PEM )
             pcConfig.rootCaPem = AWS_CA_CERT_PEM;
             pcConfig.rootCaPemLength = sizeof( AWS_CA_CERT_PEM );
@@ -498,6 +498,7 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
 
     if( ret == 0 )
     {
+        pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
         peerConnectionResult = PeerConnection_Init( &pSession->peerConnectionSession,
                                                     &pcConfig );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
