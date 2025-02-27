@@ -32,8 +32,8 @@ static void HandleRequest( PeerConnectionSession_t * pSession,
                            MessageQueueHandler_t * pRequestQueue );
 static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSession_t * pSession,
                                                                PeerConnectionSessionRequestMessage_t * pRequestMessage );
-static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSession_t * pSession,
-                                                              PeerConnectionSessionRequestMessage_t * pRequestMessage );
+static PeerConnectionResult_t HandleProcessIceCandidatesAndPairs( PeerConnectionSession_t * pSession,
+                                                                  PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t HandlePeriodConnectionCheck( PeerConnectionSession_t * pSession,
                                                            PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession );
@@ -109,9 +109,9 @@ static void HandleRequest( PeerConnectionSession_t * pSession,
                 ( void ) HandleAddRemoteCandidateRequest( pSession,
                                                           &requestMsg );
                 break;
-            case PEER_CONNECTION_SESSION_REQUEST_TYPE_CONNECTIVITY_CHECK:
-                ( void ) HandleConnectivityCheckRequest( pSession,
-                                                         &requestMsg );
+            case PEER_CONNECTION_SESSION_REQUEST_TYPE_PROCESS_ICE_CANDIDATES_AND_PAIRS:
+                ( void ) HandleProcessIceCandidatesAndPairs( pSession,
+                                                             &requestMsg );
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK:
                 ( void ) HandlePeriodConnectionCheck( pSession,
@@ -151,8 +151,8 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
     return ret;
 }
 
-static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSession_t * pSession,
-                                                              PeerConnectionSessionRequestMessage_t * pRequestMessage )
+static PeerConnectionResult_t HandleProcessIceCandidatesAndPairs( PeerConnectionSession_t * pSession,
+                                                                  PeerConnectionSessionRequestMessage_t * pRequestMessage )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -161,11 +161,11 @@ static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSess
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        iceControllerResult = IceController_SendConnectivityCheck( &pSession->iceControllerContext );
+        iceControllerResult = IceController_ProcessIceCandidatesAndPairs( &pSession->iceControllerContext );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to send connectivity check, result: %d", iceControllerResult ) );
-            ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_SEND_CONNECTIVITY_CHECK;
+            LogError( ( "Fail to process ICE candidates and pairs, result: %d", iceControllerResult ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_PROCESS_CANDIDATES_AND_PAIRS;
         }
     }
 
@@ -229,12 +229,12 @@ static PeerConnectionResult_t SendRemoteCandidateRequest( PeerConnectionSession_
     return ret;
 }
 
-static int32_t OnIceEventConnectivityCheck( PeerConnectionSession_t * pSession )
+static int32_t OnIceEventProcessIceCandidatesAndPairs( PeerConnectionSession_t * pSession )
 {
     int32_t ret = 0;
     MessageQueueResult_t retMessageQueue;
     PeerConnectionSessionRequestMessage_t requestMessage = {
-        .requestType = PEER_CONNECTION_SESSION_REQUEST_TYPE_CONNECTIVITY_CHECK,
+        .requestType = PEER_CONNECTION_SESSION_REQUEST_TYPE_PROCESS_ICE_CANDIDATES_AND_PAIRS,
     };
 
     if( pSession == NULL )
@@ -351,15 +351,10 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                     LogError( ( "Event message pointer must be valid in event: %d.", event ) );
                 }
                 break;
-            case ICE_CONTROLLER_CB_EVENT_CONNECTIVITY_CHECK_TIMEOUT:
-                ret = OnIceEventConnectivityCheck( pSession );
+            case ICE_CONTROLLER_CB_EVENT_PROCESS_ICE_CANDIDATES_AND_PAIRS_TIMEOUT:
+                ret = OnIceEventProcessIceCandidatesAndPairs( pSession );
                 break;
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
-                /* Assign transport send/recv callback function/context for TURN headers. */
-                memset( &pSession->dtlsSession.xDtlsTransportParams, 0, sizeof( DtlsTransportParams_t ) );
-                pSession->dtlsSession.xDtlsTransportParams.onDtlsSendHook = OnDtlsSendHook;
-                pSession->dtlsSession.xDtlsTransportParams.pOnDtlsSendCustomContext = ( void * ) pSession;
-
                 /* Start DTLS handshaking. */
                 Metric_StartEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
                 ret = StartDtlsHandshake( pSession );
@@ -396,6 +391,11 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
         /* Set the pParams member of the network context with desired transport. */
         pDtlsSession = &pSession->dtlsSession;
         pDtlsSession->xNetworkContext.pParams = &pDtlsSession->xDtlsTransportParams;
+
+        /* Assign transport send callback function/context for different connection types. */
+        memset( &pDtlsSession->xDtlsTransportParams, 0, sizeof( DtlsTransportParams_t ) );
+        pDtlsSession->xDtlsTransportParams.onDtlsSendHook = OnDtlsSendHook;
+        pDtlsSession->xDtlsTransportParams.pOnDtlsSendCustomContext = ( void * ) pSession;
 
         // /* Set the network credentials. */
         /* Disable SNI server name indication*/

@@ -60,9 +60,9 @@ static void OnTimerExpire( void * pContext )
     {
         switch( pCtx->state )
         {
-            case ICE_CONTROLLER_STATE_CONNECTIVITY_CHECK:
+            case ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS:
                 pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_CONNECTIVITY_CHECK_TIMEOUT,
+                                              ICE_CONTROLLER_CB_EVENT_PROCESS_ICE_CANDIDATES_AND_PAIRS_TIMEOUT,
                                               NULL );
                 break;
             case ICE_CONTROLLER_STATE_READY:
@@ -550,7 +550,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
     return ret;
 }
 
-IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_t * pCtx )
+IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
 
@@ -1119,7 +1119,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_CONNECTIVITY_CHECK );
+        IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS );
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
