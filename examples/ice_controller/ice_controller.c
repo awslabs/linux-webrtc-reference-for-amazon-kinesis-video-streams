@@ -488,7 +488,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
-    uint8_t isAcceptCandidate = 0U;
+    uint8_t acceptCandidate = 0U;
     #if LIBRARY_LOG_LEVEL >= LOG_INFO
     char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
@@ -536,20 +536,20 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
             {
                 if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_HOST ) )
                 {
-                    isAcceptCandidate = 1;
+                    acceptCandidate = 1U;
                 }
                 break;
             }
             case ICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
             {
-                isAcceptCandidate = 1;
+                acceptCandidate = 1U;
                 break;
             }
             case ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
             {
                 if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_SRFLX ) )
                 {
-                    isAcceptCandidate = 1;
+                    acceptCandidate = 1U;
                 }
                 break;
             }
@@ -557,7 +557,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
             {
                 if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_RELAY ) )
                 {
-                    isAcceptCandidate = 1;
+                    acceptCandidate = 1U;
                 }
                 break;
             }
@@ -566,7 +566,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
                 break;
         }
 
-        if( isAcceptCandidate == 0U )
+        if( acceptCandidate == 0U )
         {
             LogInfo( ( "Dropping remote candidate with type: %d, NAT traversal config bitmap: 0x%x", pRemoteCandidate->candidateType, pCtx->natTraversalConfigBitmap ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_ADD_CANDIDATE_TYPE;

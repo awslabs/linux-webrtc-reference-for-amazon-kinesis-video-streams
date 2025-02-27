@@ -646,14 +646,10 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
             LogVerbose( ( "srflx candidate's local IP/port: %s/%d",
                           IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
                           pLocalIceEndpoint->transportAddress.port ) );
+            pCtx->metrics.pendingSrflxCandidateNum++;
 
             /* Send binding request to STUN server to query external address. */
             ret = IceControllerNet_SendPacket( pCtx, pSocketContext, &pCtx->iceServers[ i ].iceEndpoint, NULL, stunBuffer, stunBufferLength );
-        }
-
-        if( ret == ICE_CONTROLLER_RESULT_OK )
-        {
-            pCtx->metrics.pendingSrflxCandidateNum++;
         }
     }
 }
@@ -1100,7 +1096,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     else
                     {
                         /* Free resource that already created. */
-                        LogWarn( ( "Fail to send server reflexive candidate to remote peer, ret: %d.", retLocalCandidateReady ) );
+                        LogWarn( ( "Fail to send relay candidate to remote peer, ret: %d.", retLocalCandidateReady ) );
                     }
 
                     pCtx->metrics.pendingRelayCandidateNum--;
