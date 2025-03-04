@@ -424,8 +424,8 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
                     LogWarn( ( "The size of Ice server buffer has no space for more server info, current index: %lu, buffer size: %lu, skipped server URL: %.*s",
                                currentIceServerIndex,
                                *pOutputIceServersCount,
-                               ( int ) pIceServerConfigs[ i ].urisLength[ j ],
-                               pIceServerConfigs[ i ].uris[ j ] ) );
+                               ( int ) pIceServerConfigs[ i ].iceServerUris[ j ].uriLength,
+                               pIceServerConfigs[ i ].iceServerUris[ j ].uri ) );
                     break;
                 }
 
