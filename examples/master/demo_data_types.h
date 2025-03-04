@@ -14,11 +14,11 @@ extern "C" {
 #include "app_media_source.h"
 
 #define DEMO_SDP_BUFFER_MAX_LENGTH ( 10000 )
-
+#define REMOTE_ID_MAX_LENGTH    ( 256 )
 typedef struct DemoPeerConnectionSession
 {
     /* The remote client ID, representing the remote peer, from signaling message. */
-    char remoteClientId[ SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH ];
+    char remoteClientId[ REMOTE_ID_MAX_LENGTH ];
     size_t remoteClientIdLength;
 
     /* Configuration. */

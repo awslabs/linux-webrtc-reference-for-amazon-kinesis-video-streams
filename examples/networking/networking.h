@@ -11,8 +11,10 @@
 #include "logging.h"
 
 /* Config parameters. TODO aggarg - need to move to a central config file. */
-#define URI_HOST_BUFFER_LENGTH                      128
-#define URI_PATH_BUFFER_LENGTH                      2048
+#define HTTP_URI_HOST_BUFFER_LENGTH                 128
+#define WEBSOCKET_URI_HOST_BUFFER_LENGTH            128
+#define HTTP_URI_PATH_BUFFER_LENGTH                 256
+#define WEBSOCKET_URI_PATH_BUFFER_LENGTH            2048
 #define SIGV4_METADATA_BUFFER_LENGTH                4096
 #define SIGV4_AUTHORIZATION_HEADER_BUFFER_LENGTH    2048
 #define HTTP_RX_BUFFER_LENGTH                       2048
@@ -59,17 +61,20 @@ typedef struct AwsCredentials
     const char * pSecretAccessKey;
     size_t secretAccessKeyLen;
 
-    const char * pRegion;
-    size_t regionLen;
-
-    const char * pService;
-    size_t serviceLen;
-
     char * pSessionToken;
     size_t sessionTokenLength;
 
     uint64_t expirationSeconds;
 } AwsCredentials_t;
+
+typedef struct AwsConfig
+{
+    const char * pRegion;
+    size_t regionLen;
+
+    const char * pService;
+    size_t serviceLen;
+} AwsConfig_t;
 
 typedef struct HttpRequestHeader
 {
@@ -81,13 +86,13 @@ typedef struct HttpRequestHeader
 typedef struct HttpRequest
 {
     HttpVerb_t verb;
-    char * pUrl;
+    const char * pUrl;
     size_t urlLength;
     HttpRequestHeader_t * pHeaders;
     size_t numHeaders;
-    char * pUserAgent;
+    const char * pUserAgent;
     size_t userAgentLength;
-    char * pBody;
+    const char * pBody;
     size_t bodyLength;
 } HttpRequest_t;
 
@@ -108,42 +113,21 @@ typedef struct WebsocketConnectInfo
     void * pRxCallbackData;
 } WebsocketConnectInfo_t;
 
-typedef struct HttpContext
-{
-    HttpRequestHeader_t requiredHeaders[ NUM_REQUIRED_HEADERS ];
-    HttpRequest_t * pRequest;
-    HttpResponse_t * pResponse;
-    char rxBuffer[ HTTP_RX_BUFFER_LENGTH ];
-    uint8_t connectionClosed;
-} HttpContext_t;
-
-typedef struct WebsocketContext
-{
-    WebsocketMessageReceivedCallback_t rxCallback;
-    void * pRxCallbackData;
-    char rxBuffer[ WEBSOCKET_RX_BUFFER_LENGTH ];
-    size_t dataLengthInRxBuffer;
-    uint8_t connectionEstablished;
-    uint8_t connectionClosed;
-    RingBuffer_t ringBuffer;
-    struct lws * pWsi;
-} WebsocketContext_t;
-
-typedef struct NetworkingContext
+typedef struct NetworkingHttpContext
 {
     struct lws_context * pLwsContext;
-    struct lws_protocols protocols[ 3 ];
+    struct lws_protocols protocols[ 2 ];
 
     /* Current time in ISO8601 format. */
     char iso8601Time[ ISO8601_TIME_LENGTH ];
     size_t iso8601TimeLength;
 
     /* Host portion of the URI. */
-    char uriHost[ URI_HOST_BUFFER_LENGTH + 1 ];
+    char uriHost[ HTTP_URI_HOST_BUFFER_LENGTH + 1 ];
     size_t uriHostLength;
 
     /* Path portion of the URI. */
-    char uriPath[ URI_PATH_BUFFER_LENGTH + 1 ];
+    char uriPath[ HTTP_URI_PATH_BUFFER_LENGTH + 1 ];
     size_t uriPathLength;
 
     /* Authorization added to the request. */
@@ -153,28 +137,69 @@ typedef struct NetworkingContext
     /* Used in SigV4 calculation. */
     char sigV4Metadata[ SIGV4_METADATA_BUFFER_LENGTH ];
 
-    HttpContext_t httpContext;
-    WebsocketContext_t websocketContext;
-} NetworkingContext_t;
+    HttpRequestHeader_t requiredHeaders[ NUM_REQUIRED_HEADERS ];
+    HttpRequest_t * pRequest;
+    HttpResponse_t * pResponse;
+    char rxBuffer[ HTTP_RX_BUFFER_LENGTH ];
+    uint8_t connectionClosed;
+} NetworkingHttpContext_t;
+
+typedef struct NetworkingWebsocketContext
+{
+    struct lws_context * pLwsContext;
+    struct lws_protocols protocols[ 2 ];
+
+    /* Current time in ISO8601 format. */
+    char iso8601Time[ ISO8601_TIME_LENGTH ];
+    size_t iso8601TimeLength;
+
+    /* Host portion of the URI. */
+    char uriHost[ WEBSOCKET_URI_HOST_BUFFER_LENGTH + 1 ];
+    size_t uriHostLength;
+
+    /* Path portion of the URI. */
+    char uriPath[ WEBSOCKET_URI_PATH_BUFFER_LENGTH + 1 ];
+    size_t uriPathLength;
+
+    /* Authorization added to the request. */
+    char sigv4AuthorizationHeader[ SIGV4_AUTHORIZATION_HEADER_BUFFER_LENGTH ];
+    size_t sigv4AuthorizationHeaderLength;
+
+    /* Used in SigV4 calculation. */
+    char sigV4Metadata[ SIGV4_METADATA_BUFFER_LENGTH ];
+    WebsocketMessageReceivedCallback_t rxCallback;
+    void * pRxCallbackData;
+    char rxBuffer[ WEBSOCKET_RX_BUFFER_LENGTH ];
+    size_t dataLengthInRxBuffer;
+    uint8_t connectionEstablished;
+    uint8_t connectionClosed;
+    RingBuffer_t ringBuffer;
+    struct lws * pWsi;
+} NetworkingWebsocketContext_t;
 
 /*----------------------------------------------------------------------------*/
 
-NetworkingResult_t Networking_Init( NetworkingContext_t * pCtx,
-                                    const SSLCredentials_t * pCreds );
+NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
+                                        const SSLCredentials_t * pCreds );
 
-NetworkingResult_t Networking_HttpSend( NetworkingContext_t * pCtx,
+NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWebsocketCtx,
+                                             const SSLCredentials_t * pCreds );
+
+NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
                                         HttpRequest_t * pRequest,
                                         const AwsCredentials_t * pAwsCredentials,
+                                        const AwsConfig_t * pAwsConfig,
                                         HttpResponse_t * pResponse );
 
-NetworkingResult_t Networking_WebsocketConnect( NetworkingContext_t * pCtx,
+NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * pWebsocketCtx,
                                                 const WebsocketConnectInfo_t * pConnectInfo,
-                                                const AwsCredentials_t * pAwsCredentials );
+                                                const AwsCredentials_t * pAwsCredentials,
+                                                const AwsConfig_t * pAwsConfig );
 
-NetworkingResult_t Networking_WebsocketSend( NetworkingContext_t * pCtx,
+NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWebsocketCtx,
                                              const char * pMessage,
                                              size_t messageLength );
 
-NetworkingResult_t Networking_WebsocketSignal( NetworkingContext_t * pCtx );
+NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pWebsocketCtx );
 
 /*----------------------------------------------------------------------------*/
