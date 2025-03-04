@@ -15,6 +15,7 @@ extern "C" {
 
 PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
                                             PeerConnectionSessionConfiguration_t * pSessionConfig );
+PeerConnectionResult_t PeerConnection_Start( PeerConnectionSession_t * pSession );
 PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * pSession,
                                                       Transceiver_t * pTransceiver );
 PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSession_t * pSession,

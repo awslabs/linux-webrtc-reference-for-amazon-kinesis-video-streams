@@ -54,29 +54,25 @@
 #include "mbedtls/debug.h"
 #endif /* MBEDTLS_DTLS_DEBUG_C */
 
-/* MBedTLS Bio UDP sockets wrapper include. */
-#include "mbedtls_bio_udp_sockets_wrapper.h"
-
 /* DTLS transport header. */
 #include "transport_dtls_mbedtls.h"
 
 /* OS specific port header. */
 #include "transport_dtls_mbedtls_port.h"
 
-
 /*-----------------------------------------------------------*/
 
 /**  https://tools.ietf.org/html/rfc5764#section-4.1.2 */
 mbedtls_ssl_srtp_profile DTLS_SRTP_SUPPORTED_PROFILES[] = {
-#if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
+    #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
     MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80,
     MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32,
     MBEDTLS_TLS_SRTP_UNSET,
-#else
+    #else
     MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80,
     MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32,
     MBEDTLS_TLS_SRTP_UNSET
-#endif
+    #endif
 };
 
 /**
@@ -468,10 +464,10 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
     DtlsTransportStatus_t returnStatus = DTLS_SUCCESS;
     int32_t mbedtlsError = 0;
 
-#if defined( MBEDTLS_THREADING_ALT )
+    #if defined( MBEDTLS_THREADING_ALT )
     /* Set the mutex functions for mbed DTLS thread safety. */
     mbedtls_platform_threading_init();
-#endif
+    #endif
 
     /* Initialize contexts for random number generation. */
     mbedtls_entropy_init( pEntropyContext );
@@ -483,7 +479,7 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
         returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
     }
 
-#ifdef MBEDTLS_PSA_CRYPTO_C
+    #ifdef MBEDTLS_PSA_CRYPTO_C
     if( returnStatus == DTLS_SUCCESS )
     {
         mbedtlsError = psa_crypto_init();
@@ -494,7 +490,7 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
             returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
         }
     }
-#endif /* MBEDTLS_PSA_CRYPTO_C */
+    #endif /* MBEDTLS_PSA_CRYPTO_C */
 
     if( returnStatus == DTLS_SUCCESS )
     {
@@ -523,14 +519,14 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
 
 void DTLS_Disconnect( DtlsNetworkContext_t * pNetworkContext )
 {
-    DtlsTransportParams_t * pTlsTransportParams = NULL;
+    DtlsTransportParams_t * pDtlsTransportParams = NULL;
     int32_t dtlsStatus = 0;
 
     if( ( pNetworkContext != NULL ) && ( pNetworkContext->pParams != NULL ) )
     {
-        pTlsTransportParams = pNetworkContext->pParams;
+        pDtlsTransportParams = pNetworkContext->pParams;
         /* Attempting to terminate DTLS connection. */
-        dtlsStatus = ( int32_t )mbedtls_ssl_close_notify( &( pTlsTransportParams->dtlsSslContext.context ) );
+        dtlsStatus = ( int32_t )mbedtls_ssl_close_notify( &( pDtlsTransportParams->dtlsSslContext.context ) );
 
         /* Ignore the WANT_READ and WANT_WRITE return values. */
         if( ( dtlsStatus != ( int32_t )MBEDTLS_ERR_SSL_WANT_READ ) && ( dtlsStatus != ( int32_t )MBEDTLS_ERR_SSL_WANT_WRITE ) )
@@ -558,7 +554,7 @@ void DTLS_Disconnect( DtlsNetworkContext_t * pNetworkContext )
         }
 
         /* Free mbed DTLS contexts. */
-        DtlsSslContextFree( &( pTlsTransportParams->dtlsSslContext ) );
+        DtlsSslContextFree( &( pDtlsTransportParams->dtlsSslContext ) );
     }
 }
 /*-----------------------------------------------------------*/
@@ -813,12 +809,12 @@ int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
 
     TlsKeys * pKeys = NULL;
     uint8_t keyingMaterialBuffer[MAX_SRTP_MASTER_KEY_LEN * 2 + MAX_SRTP_SALT_KEY_LEN * 2];
-#if ( MBEDTLS_VERSION_NUMBER > 0x02100600 )
+    #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 )
 //#if ( MBEDTLS_VERSION_NUMBER ==  || MBEDTLS_VERSION_NUMBER == 0x03020100 )
     mbedtls_dtls_srtp_info negotiatedSRTPProfile;
-#else
+    #else
     mbedtls_ssl_srtp_profile negotiatedSRTPProfile;
-#endif
+    #endif
 
     if( ( pSslContext == NULL ) || ( pDtlsKeyingMaterial == NULL ) )
     {
@@ -874,26 +870,27 @@ int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
         memcpy( pDtlsKeyingMaterial->serverWriteKey + MAX_SRTP_MASTER_KEY_LEN,
                 &keyingMaterialBuffer[offset],
                 MAX_SRTP_SALT_KEY_LEN );
-#if ( MBEDTLS_VERSION_NUMBER > 0x02100600 )
+        #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 )
 //#if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
-        mbedtls_ssl_get_dtls_srtp_negotiation_result( &pSslContext->context, &negotiatedSRTPProfile );
+        mbedtls_ssl_get_dtls_srtp_negotiation_result( &pSslContext->context,
+                                                      &negotiatedSRTPProfile );
         switch( negotiatedSRTPProfile.chosen_dtls_srtp_profile )
         {
             case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80:
-#else
+        #else
         negotiatedSRTPProfile = mbedtls_ssl_get_dtls_srtp_protection_profile( &pSslContext->context );
         switch( negotiatedSRTPProfile )
         {
             case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80:
-#endif
+                #endif
                 pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_80;
                 break;
 
-#if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
+                #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
             case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
-#else
+                #else
             case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
-#endif
+                #endif
                 pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_32;
                 break;
             default:
@@ -1351,9 +1348,17 @@ DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext
                             mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
                             mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
             }
+            else if( mbedtlsError == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY )
+            {
+                LogInfo( ( "DTLS connection has been closed. mbedTLSError=-0x%x %s : %s.",
+                           -mbedtlsError,
+                           mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
+                           mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+                returnStatus = DTLS_CONNECTION_HAS_BEEN_CLOSED;
+            }
             else if( mbedtlsError < 0 )
             {
-                LogError( ( "Failed to read data: mbedTLSError=-0x%x %s : %s.", -mbedtlsError, mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+                LogWarn( ( "Failed to read data: mbedTLSError=-0x%x %s : %s.", -mbedtlsError, mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
                 returnStatus = DTLS_TRANSPORT_PROCESS_FAILURE;
             }
             else

@@ -11,8 +11,6 @@
 #define ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ( 50 )
 #define RX_BUFFER_SIZE ( 4096 )
 
-uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
-
 static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                                  IceControllerSocketContext_t * pChosenSocketContext )
 {
@@ -34,7 +32,8 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
             {
                 /* Release all unused socket contexts. */
                 LogDebug( ( "Closing socket: %d", pCtx->socketsContexts[i].socketFd ) );
-                IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
+                IceControllerNet_FreeSocketContext( pCtx,
+                                                    &pCtx->socketsContexts[i] );
             }
         }
     }
@@ -59,6 +58,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
     StunContext_t stunContext;
     StunHeader_t stunHeader;
     int32_t retPeerToPeerConnectionFound;
+    uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
 
     if( ( pCtx == NULL ) || ( pSocketContext == NULL ) )
     {
@@ -68,7 +68,12 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 
     while( !skipProcess )
     {
-        readBytes = recvfrom( pSocketContext->socketFd, receiveBuffer, RX_BUFFER_SIZE, 0, ( struct sockaddr * ) &srcAddress, &srcAddressLength );
+        readBytes = recvfrom( pSocketContext->socketFd,
+                              receiveBuffer,
+                              RX_BUFFER_SIZE,
+                              0,
+                              ( struct sockaddr * ) &srcAddress,
+                              &srcAddressLength );
         if( readBytes < 0 )
         {
             if( ( errno == EAGAIN ) || ( errno == EWOULDBLOCK ) )
@@ -100,7 +105,9 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 
             remoteIceEndpoint.transportAddress.family = STUN_ADDRESS_IPv4;
             remoteIceEndpoint.transportAddress.port = ntohs( pIpv4Address->sin_port );
-            memcpy( remoteIceEndpoint.transportAddress.address, &pIpv4Address->sin_addr, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( remoteIceEndpoint.transportAddress.address,
+                    &pIpv4Address->sin_addr,
+                    STUN_IPV4_ADDRESS_SIZE );
         }
         else if( srcAddress.ss_family == AF_INET6 )
         {
@@ -108,7 +115,9 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 
             remoteIceEndpoint.transportAddress.family = STUN_ADDRESS_IPv6;
             remoteIceEndpoint.transportAddress.port = ntohs( pIpv6Address->sin6_port );
-            memcpy( remoteIceEndpoint.transportAddress.address, &pIpv6Address->sin6_addr, STUN_IPV6_ADDRESS_SIZE );
+            memcpy( remoteIceEndpoint.transportAddress.address,
+                    &pIpv6Address->sin6_addr,
+                    STUN_IPV6_ADDRESS_SIZE );
         }
         else
         {
@@ -139,10 +148,6 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             if( onRecvNonStunPacketFunc )
             {
                 ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, readBytes );
-            }
-            else
-            {
-                LogError( ( "No callback function to handle DTLS/RTP/RTCP packets." ) );
             }
         }
         else
@@ -269,9 +274,12 @@ static void pollingSockets( IceControllerContext_t * pCtx )
             {
                 LogVerbose( ( "Detect packets on fd %d, idx: %d", fds[i], i ) );
 
-                HandleRxPacket( pCtx, &pCtx->socketsContexts[i],
-                                onRecvNonStunPacketFunc, pOnRecvNonStunPacketCallbackContext,
-                                onIceEventCallbackFunc, pOnIceEventCallbackCustomContext );
+                HandleRxPacket( pCtx,
+                                &pCtx->socketsContexts[i],
+                                onRecvNonStunPacketFunc,
+                                pOnRecvNonStunPacketCallbackContext,
+                                onIceEventCallbackFunc,
+                                pOnIceEventCallbackCustomContext );
             }
         }
     }

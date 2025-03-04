@@ -593,7 +593,7 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 ( pSession->pTransceivers[currentTransceiverIdx]->trackKind != trackKind ) ||
                 ( ( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap ) == 0 ) )
             {
-                LogDebug( ( "Skip transceiver index: %d, isTransceiverCodecSet[%d]: %d, pTransceivers[%d].trackKind: %d, pTransceivers[%d].codecBitMap: %x",
+                LogDebug( ( "Skip transceiver index: %d, isTransceiverCodecSet[%d]: %d, pTransceivers[%d]->trackKind: %d, pTransceivers[%d]->codecBitMap: %x",
                             currentTransceiverIdx,
                             currentTransceiverIdx, isTransceiverCodecSet[currentTransceiverIdx],
                             currentTransceiverIdx, pSession->pTransceivers[currentTransceiverIdx]->trackKind,

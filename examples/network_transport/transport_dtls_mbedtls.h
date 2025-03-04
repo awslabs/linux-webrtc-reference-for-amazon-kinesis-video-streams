@@ -59,12 +59,6 @@
 /* Include header that defines log levels. */
 #include "logging.h"
 
-/* UDP Sockets Wrapper include.*/
-#include "udp_sockets_wrapper.h"
-
-/* Transport interface include. */
-#include "transport_interface.h"
-
 /* SRTP */
 #define CERTIFICATE_FINGERPRINT_LENGTH 160
 #define MAX_SRTP_MASTER_KEY_LEN 16
@@ -152,7 +146,6 @@ typedef struct DtlsRetransmissionParams
  */
 typedef struct DtlsTransportParams
 {
-    Socket_t udpSocket;
     DtlsSSLContext_t dtlsSslContext;
     mbedtls_timing_delay_context mbedtlsTimer;
     OnTransportDtlsSendHook_t onDtlsSendHook;
@@ -273,6 +266,7 @@ typedef enum DtlsTransportStatus
     /* User info. */
     DTLS_HANDSHAKE_COMPLETE, /**< Just complete the DTLS handshaking. */
     DTLS_HANDSHAKE_ALREADY_COMPLETE, /**< DTLS handshaking is done before calling. */
+    DTLS_CONNECTION_HAS_BEEN_CLOSED, /**< The DTLS connection has been closed. */
 } DtlsTransportStatus_t;
 
 #define DTLS_RSA_F4 0x10001L

@@ -564,13 +564,87 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
     return ret;
 }
 
+PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSession )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    srtp_err_status_t errorStatus;
+
+    if( pSession == NULL )
+    {
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        return PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    /* Clean up SRTP sessions */
+    if( pSession->srtpReceiveSession != NULL )
+    {
+        errorStatus = srtp_dealloc( pSession->srtpReceiveSession );
+        if( errorStatus != srtp_err_status_ok )
+        {
+            LogError( ( "Fail to deallocate Rx SRTP session, errorStatus: %d", errorStatus ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_DECRYPT_SRTP_RTP_PACKET;
+        }
+        pSession->srtpReceiveSession = NULL;
+    }
+
+    if( pSession->srtpTransmitSession != NULL )
+    {
+        errorStatus = srtp_dealloc( pSession->srtpTransmitSession );
+        if( errorStatus != srtp_err_status_ok )
+        {
+            LogError( ( "Fail to deallocate Tx SRTP session, errorStatus: %d", errorStatus ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_ENCRYPT_SRTP_RTP_PACKET;
+        }
+        pSession->srtpTransmitSession = NULL;
+    }
+
+    /* Clean up Video SRTP Sender */
+    if( pthread_mutex_lock( &( pSession->videoSrtpSender.senderMutex ) ) == 0 )
+    {
+        PeerConnectionRollingBuffer_Free( &pSession->videoSrtpSender.txRollingBuffer );
+        pthread_mutex_unlock( &( pSession->videoSrtpSender.senderMutex ) );
+        pthread_mutex_destroy( &( pSession->videoSrtpSender.senderMutex ) );
+    }
+
+    /* Clean up Audio SRTP Sender */
+    if( pthread_mutex_lock( &( pSession->audioSrtpSender.senderMutex ) ) == 0 )
+    {
+        PeerConnectionRollingBuffer_Free( &pSession->audioSrtpSender.txRollingBuffer );
+        pthread_mutex_unlock( &( pSession->audioSrtpSender.senderMutex ) );
+        pthread_mutex_destroy( &( pSession->audioSrtpSender.senderMutex ) );
+    }
+
+    /* Clean up Video SRTP Receiver */
+    if( pSession->videoSrtpReceiver.frameBuffer != NULL )
+    {
+        memset( pSession->videoSrtpReceiver.frameBuffer, 0, PEER_CONNECTION_FRAME_BUFFER_SIZE );
+    }
+
+    PeerConnectionJitterBuffer_Free( &pSession->videoSrtpReceiver.rxJitterBuffer );
+
+    /* Clean up Audio SRTP Receiver */
+    if( pSession->audioSrtpReceiver.frameBuffer != NULL )
+    {
+        memset( pSession->audioSrtpReceiver.frameBuffer, 0, PEER_CONNECTION_FRAME_BUFFER_SIZE );
+    }
+    PeerConnectionJitterBuffer_Free( &pSession->audioSrtpReceiver.rxJitterBuffer );
+
+    /* Reset callback functions */
+    pSession->videoSrtpReceiver.onFrameReadyCallbackFunc = NULL;
+    pSession->videoSrtpReceiver.pOnFrameReadyCallbackCustomContext = NULL;
+    pSession->audioSrtpReceiver.onFrameReadyCallbackFunc = NULL;
+    pSession->audioSrtpReceiver.pOnFrameReadyCallbackCustomContext = NULL;
+
+    return ret;
+}
+
 PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSession_t * pSession,
                                                             uint8_t * pBuffer,
                                                             size_t bufferLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     srtp_err_status_t errorStatus;
-    static uint8_t rtpBuffer[ PEER_CONNECTION_SRTP_RTP_PACKET_MAX_LENGTH ];
+    uint8_t rtpBuffer[ PEER_CONNECTION_SRTP_RTP_PACKET_MAX_LENGTH ];
     size_t rtpBufferLength = PEER_CONNECTION_SRTP_RTP_PACKET_MAX_LENGTH;
     RtpResult_t resultRtp;
     RtpPacket_t rtpPacket;

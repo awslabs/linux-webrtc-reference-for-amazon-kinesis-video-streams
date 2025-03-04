@@ -183,7 +183,6 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
 void UDP_Sockets_Disconnect( Socket_t udpSocket )
 {
     ( void )shutdown( udpSocket->xFd, SHUT_RDWR );
-    ( void )close( udpSocket->xFd );
     free(udpSocket);
 }
 
