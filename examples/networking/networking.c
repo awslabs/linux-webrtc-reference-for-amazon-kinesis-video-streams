@@ -85,13 +85,13 @@ static int32_t Sha256Final( void * pHashContext,
 
 /*----------------------------------------------------------------------------*/
 
-static int GetHostFromUrl( char * pUrl,
+static int GetHostFromUrl( const char * pUrl,
                            size_t urlLength,
-                           char ** ppHost,
+                           const char ** ppHost,
                            size_t * pHostLength )
 {
     int ret = 0;
-    char * pStart = NULL, * pEnd = NULL, * pCurPtr;
+    const char * pStart = NULL, * pEnd = NULL, * pCurPtr;
     uint8_t foundEndMark = 0;
 
     pEnd = pUrl + urlLength;
@@ -149,13 +149,13 @@ static int GetHostFromUrl( char * pUrl,
 
 /*----------------------------------------------------------------------------*/
 
-static int GetPathFromUrl( char * pUrl,
+static int GetPathFromUrl( const char * pUrl,
                            size_t urlLength,
-                           char ** ppPath,
+                           const char ** ppPath,
                            size_t * pPathLength )
 {
     int ret = 0;
-    char * pHost = NULL, * pPathStart, * pPathEnd, * pQueryStart;
+    const char * pHost = NULL, * pPathStart, * pPathEnd, * pQueryStart;
     size_t hostLength = 0;
 
     /* Find out the host part. */
@@ -295,7 +295,8 @@ static int UriEncode( const char * pSrc,
 
 static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
                             HttpRequest_t * pRequest,
-                            const AwsCredentials_t * pAwsCredentials )
+                            const AwsCredentials_t * pAwsCredentials,
+                            const AwsConfig_t * pAwsConfig )
 {
     int ret = 0, snprintfRetVal;
     char * pSignature;
@@ -352,10 +353,10 @@ static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
         sigv4Params.pDateIso8601 = pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].pValue;
         sigv4Params.pAlgorithm = NULL;
         sigv4Params.algorithmLen = 0;
-        sigv4Params.pRegion = pAwsCredentials->pRegion;
-        sigv4Params.regionLen = pAwsCredentials->regionLen;
-        sigv4Params.pService = pAwsCredentials->pService;
-        sigv4Params.serviceLen = pAwsCredentials->serviceLen;
+        sigv4Params.pRegion = pAwsConfig->pRegion;
+        sigv4Params.regionLen = pAwsConfig->regionLen;
+        sigv4Params.pService = pAwsConfig->pService;
+        sigv4Params.serviceLen = pAwsConfig->serviceLen;
         sigv4Params.pCryptoInterface = &( sigv4CryptoInterface );
         sigv4Params.pHttpParameters = &( sigv4HttpParams );
 
@@ -388,10 +389,12 @@ static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
 
 static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                                  const WebsocketConnectInfo_t * pConnectInfo,
-                                 const AwsCredentials_t * pAwsCredentials )
+                                 const AwsCredentials_t * pAwsCredentials,
+                                 const AwsConfig_t * pAwsConfig )
 {
     int ret = 0, snprintfRetVal;
-    char * pPath, * pQueryStart, * pUrlEnd, * pEqualSign, * pChannelArnValue, * pSignature;
+    const char * pPath, * pQueryStart, * pUrlEnd, * pEqualSign, * pChannelArnValue;
+    char * pSignature;
     size_t pathLength, queryLength, remainingLength, writtenLength, signatureLength;
     size_t channelArnValueLength, encodedLength, canonicalQueryStringLength, canonicalHeadersLength;
     SigV4HttpParameters_t sigv4HttpParams;
@@ -606,8 +609,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         if( ret == 0 )
         {
             encodedLength = remainingLength;
-            ret = UriEncode( pAwsCredentials->pRegion,
-                             pAwsCredentials->regionLen,
+            ret = UriEncode( pAwsConfig->pRegion,
+                             pAwsConfig->regionLen,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
             if( ret == 0 )
@@ -644,8 +647,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         if( ret == 0 )
         {
             encodedLength = remainingLength;
-            ret = UriEncode( pAwsCredentials->pService,
-                             pAwsCredentials->serviceLen,
+            ret = UriEncode( pAwsConfig->pService,
+                             pAwsConfig->serviceLen,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
             if( ret == 0 )
@@ -839,10 +842,10 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         sigv4Params.pDateIso8601 = &( pWebsocketCtx->iso8601Time[ 0 ] );
         sigv4Params.pAlgorithm = NULL;
         sigv4Params.algorithmLen = 0;
-        sigv4Params.pRegion = pAwsCredentials->pRegion;
-        sigv4Params.regionLen = pAwsCredentials->regionLen;
-        sigv4Params.pService = pAwsCredentials->pService;
-        sigv4Params.serviceLen = pAwsCredentials->serviceLen;
+        sigv4Params.pRegion = pAwsConfig->pRegion;
+        sigv4Params.regionLen = pAwsConfig->regionLen;
+        sigv4Params.pService = pAwsConfig->pService;
+        sigv4Params.serviceLen = pAwsConfig->serviceLen;
         sigv4Params.pCryptoInterface = &( sigv4CryptoInterface );
         sigv4Params.pHttpParameters = &( sigv4HttpParams );
 
@@ -1418,10 +1421,11 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
 NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
                                         HttpRequest_t * pRequest,
                                         const AwsCredentials_t * pAwsCredentials,
+                                        const AwsConfig_t * pAwsConfig,
                                         HttpResponse_t * pResponse )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
-    char * pHost, * pPath;
+    const char * pHost, * pPath;
     size_t hostLength, pathLength;
     struct lws_client_connect_info connectInfo;
     struct lws * clientLws;
@@ -1537,7 +1541,8 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
     {
         if( SignHttpRequest( pHttpCtx,
                              pRequest,
-                             pAwsCredentials ) != 0 )
+                             pAwsCredentials,
+                             pAwsConfig ) != 0 )
         {
             LogError( ( "Failed to sign HTTP request!" ) );
             ret = NETWORKING_RESULT_FAIL;
@@ -1582,12 +1587,13 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
 
 NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * pWebsocketCtx,
                                                 const WebsocketConnectInfo_t * pConnectInfo,
-                                                const AwsCredentials_t * pAwsCredentials )
+                                                const AwsCredentials_t * pAwsCredentials,
+                                                const AwsConfig_t * pAwsConfig )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     struct lws_client_connect_info connectInfo;
     struct lws * clientLws;
-    char * pHost;
+    const char * pHost;
     size_t hostLength = 0;
 
     if( ( pWebsocketCtx == NULL ) ||
@@ -1641,7 +1647,8 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
     {
         if( SignWebsocketRequest( pWebsocketCtx,
                                   pConnectInfo,
-                                  pAwsCredentials ) != 0 )
+                                  pAwsCredentials,
+                                  pAwsConfig ) != 0 )
         {
             LogError( ( "Failed to sign Websocket request!" ) );
             ret = NETWORKING_RESULT_FAIL;

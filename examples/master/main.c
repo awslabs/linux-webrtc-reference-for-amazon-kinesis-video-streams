@@ -44,10 +44,12 @@
 #define ICE_SERVER_TYPE_TURNS "turns:"
 #define ICE_SERVER_TYPE_TURNS_LENGTH ( 6 )
 
+#define SIGNALING_CONNECT_STATE_TIMEOUT_SEC ( 15 )
+
 DemoContext_t demoContext;
 
-static int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t * pEvent,
-                                       void * pUserContext );
+static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
+                                       void * pUserData );
 static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
                                                 DemoPeerConnectionSession_t * pSession,
                                                 const char * pRemoteClientId,
@@ -58,21 +60,18 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
                                                                      size_t remoteClientIdLength,
                                                                      uint8_t allowCreate );
 static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
-                                   const SignalingControllerReceiveEvent_t * pEvent );
+                                   const SignalingMessage_t * pSignalingMessage );
 static void HandleIceServerReconnect( DemoContext_t * pDemoContext,
-                                      const SignalingControllerReceiveEvent_t * pEvent );
+                                      const SignalingMessage_t * pSignalingMessage );
 static void HandleLocalCandidateReady( void * pCustomContext,
                                        PeerConnectionIceLocalCandidate_t * pIceLocalCandidate );
 static void HandleSdpOffer( DemoContext_t * pDemoContext,
-                            const SignalingControllerReceiveEvent_t * pEvent );
+                            const SignalingMessage_t * pSignalingMessage );
 static const char * GetCandidateTypeString( IceCandidateType_t candidateType );
-static int32_t OnSendIceCandidateComplete( SignalingControllerEventStatus_t status,
-                                           void * pUserContext );
-
 
 static void terminateHandler( int sig )
 {
-    SignalingController_Deinit( &demoContext.signalingControllerContext );
+    //SignalingController_Deinit( &demoContext.signalingControllerContext );
     //IceController_Deinit( &demoContext.iceControllerContext );
     exit( 0 );
 }
@@ -303,7 +302,7 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
     int32_t skipProcess = 0;
     int32_t parseResult = 0;
     SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerIceServerConfig_t * pIceServerConfigs;
+    IceServerConfig_t * pIceServerConfigs;
     size_t iceServerConfigsCount;
     char * pStunUrlPostfix;
     int written;
@@ -416,12 +415,12 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
                 /* Do nothing, coverity happy. */
             }
 
-            for( j = 0; j < pIceServerConfigs[ i ].uriCount; j++ )
+            for( j = 0; j < pIceServerConfigs[ i ].iceServerUriCount; j++ )
             {
                 /* Parse each URI */
                 parseResult = ParseIceServerUri( &pOutputIceServers[ currentIceServerIndex ],
-                                                 pIceServerConfigs[ i ].uris[ j ],
-                                                 pIceServerConfigs[ i ].urisLength[ j ] );
+                                                 pIceServerConfigs[ i ].iceServerUris[ j ].uri,
+                                                 pIceServerConfigs[ i ].iceServerUris[ j ].uriLength );
                 if( parseResult != 0 )
                 {
                     continue;
@@ -466,7 +465,7 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
     PeerConnectionSessionConfiguration_t pcConfig;
     Transceiver_t * pTransceiver;
 
-    if( remoteClientIdLength > SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH )
+    if( remoteClientIdLength > REMOTE_ID_MAX_LENGTH )
     {
         LogWarn( ( "The remote client ID length(%lu) is too long to store.", remoteClientIdLength ) );
         ret = -1;
@@ -663,7 +662,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
 }
 
 static void HandleSdpOffer( DemoContext_t * pDemoContext,
-                            const SignalingControllerReceiveEvent_t * pEvent )
+                            const SignalingMessage_t * pSignalingMessage )
 {
     uint8_t skipProcess = 0;
     SignalingControllerResult_t signalingControllerReturn;
@@ -673,35 +672,30 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
     PeerConnectionBufferSessionDescription_t bufferSessionDescription;
     size_t formalSdpMessageLength = 0;
     size_t sdpAnswerMessageLength = 0;
-    SignalingControllerEventMessage_t eventMessage = {
-        .event = SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
-        .onCompleteCallback = NULL,
-        .pOnCompleteCallbackContext = NULL,
-    };
     DemoPeerConnectionSession_t * pPcSession = NULL;
+    SignalingMessage_t signalingMessageSdpAnswer;
 
     if( ( pDemoContext == NULL ) ||
-        ( pEvent == NULL ) )
+        ( pSignalingMessage == NULL ) )
     {
-        LogError( ( "Invalid input, pDemoContext: %p, pEvent: %p", pDemoContext, pEvent ) );
+        LogError( ( "Invalid input, pDemoContext: %p, pEvent: %p", pDemoContext, pSignalingMessage ) );
         skipProcess = 1;
     }
 
     if( skipProcess == 0 )
     {
         /* Get the SDP content in pSdpOfferMessage. */
-        signalingControllerReturn = SignalingController_GetSdpContentFromEventMsg( pEvent->pDecodeMessage,
-                                                                                   pEvent->decodeMessageLength,
-                                                                                   1U,
-                                                                                   &pSdpOfferMessage,
-                                                                                   &sdpOfferMessageLength );
+        signalingControllerReturn = SignalingController_ExtractSdpOfferFromSignalingMessage( pSignalingMessage->pMessage,
+                                                                                             pSignalingMessage->messageLength,
+                                                                                             &pSdpOfferMessage,
+                                                                                             &sdpOfferMessageLength );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to parse SDP offer content, result: %d, event message(%lu): %.*s.",
                         signalingControllerReturn,
-                        pEvent->decodeMessageLength,
-                        ( int ) pEvent->decodeMessageLength,
-                        pEvent->pDecodeMessage ) );
+                        pSignalingMessage->messageLength,
+                        ( int ) pSignalingMessage->messageLength,
+                        pSignalingMessage->pMessage ) );
             skipProcess = 1;
         }
     }
@@ -719,22 +713,22 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
         {
             LogError( ( "Fail to deserialize SDP offer newline, result: %d, event message(%lu): %.*s.",
                         signalingControllerReturn,
-                        pEvent->decodeMessageLength,
-                        ( int ) pEvent->decodeMessageLength,
-                        pEvent->pDecodeMessage ) );
+                        pSignalingMessage->messageLength,
+                        ( int ) pSignalingMessage->messageLength,
+                        pSignalingMessage->pMessage ) );
             skipProcess = 1;
         }
     }
 
     if( skipProcess == 0 )
     {
-        pPcSession = GetCreatePeerConnectionSession( pDemoContext, pEvent->pRemoteClientId, pEvent->remoteClientIdLength, 1U );
+        pPcSession = GetCreatePeerConnectionSession( pDemoContext, pSignalingMessage->pRemoteClientId, pSignalingMessage->remoteClientIdLength, 1U );
         if( pPcSession == NULL )
         {
             LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
-                       pEvent->remoteClientIdLength,
-                       ( int ) pEvent->remoteClientIdLength,
-                       pEvent->pRemoteClientId ) );
+                       pSignalingMessage->remoteClientIdLength,
+                       ( int ) pSignalingMessage->remoteClientIdLength,
+                       pSignalingMessage->pRemoteClientId ) );
             skipProcess = 1;
         }
     }
@@ -825,15 +819,15 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
 
     if( skipProcess == 0 )
     {
-        eventMessage.eventContent.correlationIdLength = 0U;
-        memset( eventMessage.eventContent.correlationId, 0, SIGNALING_CONTROLLER_CORRELATION_ID_MAX_LENGTH );
-        eventMessage.eventContent.messageType = SIGNALING_TYPE_MESSAGE_SDP_ANSWER;
-        eventMessage.eventContent.pDecodeMessage = pDemoContext->sdpBuffer;
-        eventMessage.eventContent.decodeMessageLength = sdpAnswerMessageLength;
-        memcpy( eventMessage.eventContent.remoteClientId, pEvent->pRemoteClientId, pEvent->remoteClientIdLength );
-        eventMessage.eventContent.remoteClientIdLength = pEvent->remoteClientIdLength;
+        signalingMessageSdpAnswer.correlationIdLength = 0U;
+        signalingMessageSdpAnswer.pCorrelationId = NULL;
+        signalingMessageSdpAnswer.messageType = SIGNALING_TYPE_MESSAGE_SDP_ANSWER;
+        signalingMessageSdpAnswer.pMessage = pDemoContext->sdpBuffer;
+        signalingMessageSdpAnswer.messageLength = sdpAnswerMessageLength;
+        signalingMessageSdpAnswer.pRemoteClientId = pSignalingMessage->pRemoteClientId;
+        signalingMessageSdpAnswer.remoteClientIdLength = pSignalingMessage->remoteClientIdLength;
 
-        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &eventMessage );
+        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &signalingMessageSdpAnswer );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             skipProcess = 1;
@@ -843,26 +837,27 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
 }
 
 static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
-                                   const SignalingControllerReceiveEvent_t * pEvent )
+                                   const SignalingMessage_t * pSignalingMessage )
 {
     uint8_t skipProcess = 0;
     PeerConnectionResult_t peerConnectionResult;
     DemoPeerConnectionSession_t * pPcSession = NULL;
 
-    pPcSession = GetCreatePeerConnectionSession( pDemoContext, pEvent->pRemoteClientId, pEvent->remoteClientIdLength, 1U );
+    pPcSession = GetCreatePeerConnectionSession( pDemoContext, pSignalingMessage->pRemoteClientId, pSignalingMessage->remoteClientIdLength, 1U );
     if( pPcSession == NULL )
     {
         LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
-                   pEvent->remoteClientIdLength,
-                   ( int ) pEvent->remoteClientIdLength,
-                   pEvent->pRemoteClientId ) );
+                   pSignalingMessage->remoteClientIdLength,
+                   ( int ) pSignalingMessage->remoteClientIdLength,
+                   pSignalingMessage->pRemoteClientId ) );
         skipProcess = 1;
     }
 
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_AddRemoteCandidate( &pPcSession->peerConnectionSession,
-                                                                  pEvent->pDecodeMessage, pEvent->decodeMessageLength );
+                                                                  pSignalingMessage->pMessage,
+                                                                  pSignalingMessage->messageLength );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_AddRemoteCandidate fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
@@ -871,7 +866,7 @@ static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
 }
 
 static void HandleIceServerReconnect( DemoContext_t * pDemoContext,
-                                      const SignalingControllerReceiveEvent_t * pEvent )
+                                      const SignalingMessage_t * pSignalingMessage )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     uint64_t initTimeSec = time( NULL );
@@ -879,7 +874,7 @@ static void HandleIceServerReconnect( DemoContext_t * pDemoContext,
 
     while( currTimeSec < initTimeSec + SIGNALING_CONNECT_STATE_TIMEOUT_SEC )
     {
-        ret = SignalingController_IceServerReconnection( &demoContext.signalingControllerContext );
+        ret = SignalingController_RefreshIceServerConfigs( &demoContext.signalingControllerContext );
 
         if( ret == SIGNALING_CONTROLLER_RESULT_OK )
         {
@@ -921,28 +916,15 @@ static const char * GetCandidateTypeString( IceCandidateType_t candidateType )
     return ret;
 }
 
-static int32_t OnSendIceCandidateComplete( SignalingControllerEventStatus_t status,
-                                           void * pUserContext )
-{
-    LogDebug( ( "Freeing buffer at %p", pUserContext ) );
-    free( pUserContext );
-
-    return 0;
-}
-
 static void HandleLocalCandidateReady( void * pCustomContext,
                                        PeerConnectionIceLocalCandidate_t * pIceLocalCandidate )
 {
     uint8_t skipProcess = 0;
     DemoPeerConnectionSession_t * pPcSession = ( DemoPeerConnectionSession_t * )pCustomContext;
     SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerEventMessage_t eventMessage = {
-        .event = SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
-        .onCompleteCallback = OnSendIceCandidateComplete,
-        .pOnCompleteCallbackContext = NULL,
-    };
+    SignalingMessage_t signalingMessage;
     int written;
-    char * pBuffer;
+    char buffer[ DEMO_JSON_CANDIDATE_MAX_LENGTH ];
     char candidateStringBuffer[ DEMO_JSON_CANDIDATE_MAX_LENGTH ];
 
     if( ( pPcSession == NULL ) ||
@@ -990,76 +972,69 @@ static void HandleLocalCandidateReady( void * pCustomContext,
     if( skipProcess == 0 )
     {
         /* Format this into candidate string. */
-        pBuffer = ( char * ) malloc( DEMO_JSON_CANDIDATE_MAX_LENGTH );
-        LogVerbose( ( "Allocating buffer at %p", pBuffer ) );
-        memset( pBuffer, 0, DEMO_JSON_CANDIDATE_MAX_LENGTH );
+        memset( &( buffer[ 0 ] ), 0, DEMO_JSON_CANDIDATE_MAX_LENGTH );
 
-        written = snprintf( pBuffer, DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_TEMPLATE,
+        written = snprintf( &( buffer[ 0 ] ), DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_TEMPLATE,
                             written, candidateStringBuffer );
 
         if( written < 0 )
         {
             LogError( ( "snprintf returns fail, error: %d", written ) );
             skipProcess = 1;
-            free( pBuffer );
         }
     }
 
     if( skipProcess == 0 )
     {
-        eventMessage.eventContent.correlationIdLength = 0U;
-        eventMessage.eventContent.messageType = SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE;
-        eventMessage.eventContent.pDecodeMessage = pBuffer;
-        eventMessage.eventContent.decodeMessageLength = written;
-        memcpy( eventMessage.eventContent.remoteClientId, pPcSession->remoteClientId, pPcSession->remoteClientIdLength );
-        eventMessage.eventContent.remoteClientIdLength = pPcSession->remoteClientIdLength;
+        signalingMessage.correlationIdLength = 0U;
+        signalingMessage.pCorrelationId = NULL;
+        signalingMessage.messageType = SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE;
+        signalingMessage.pMessage = &( buffer[ 0 ] );
+        signalingMessage.messageLength = written;
+        signalingMessage.pRemoteClientId = pPcSession->remoteClientId;
+        signalingMessage.remoteClientIdLength = pPcSession->remoteClientIdLength;
 
-        /* We dynamically allocate buffer for signaling controller to keep using it.
-         * callback it as context to free memory. */
-        eventMessage.pOnCompleteCallbackContext = pBuffer;
-
-        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &eventMessage );
+        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &signalingMessage );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Send signaling message fail, result: %d", signalingControllerReturn ) );
             skipProcess = 1;
-            free( pBuffer );
         }
         else
         {
             LogDebug( ( "Sent local candidate to remote peer, msg(%d): %.*s",
                         written,
                         written,
-                        pBuffer ) );
+                        &( buffer[ 0 ] ) ) );
         }
     }
 }
 
-static int32_t handleSignalingMessage( SignalingControllerReceiveEvent_t * pEvent,
-                                       void * pUserContext )
+static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
+                                       void * pUserData )
 {
-    ( void ) pUserContext;
+    ( void ) pUserData;
 
     LogDebug( ( "Received Message from websocket server!" ) );
-    LogDebug( ( "Message Type: %x", pEvent->messageType ) );
-    LogDebug( ( "Sender ID: %.*s", ( int ) pEvent->remoteClientIdLength, pEvent->pRemoteClientId ) );
-    LogDebug( ( "Correlation ID: %.*s", ( int ) pEvent->correlationIdLength, pEvent->pCorrelationId ) );
-    LogDebug( ( "Message Length: %lu, Message:", pEvent->decodeMessageLength ) );
-    LogDebug( ( "%.*s", ( int ) pEvent->decodeMessageLength, pEvent->pDecodeMessage ) );
+    LogDebug( ( "Message Type: %x", pSignalingMessage->messageType ) );
+    LogDebug( ( "Sender ID: %.*s", ( int ) pSignalingMessage->remoteClientIdLength, pSignalingMessage->pRemoteClientId ) );
+    LogDebug( ( "Correlation ID: %.*s", ( int ) pSignalingMessage->correlationIdLength, pSignalingMessage->pCorrelationId ) );
+    LogDebug( ( "Message Length: %lu, Message:", pSignalingMessage->messageLength ) );
+    LogDebug( ( "%.*s", ( int ) pSignalingMessage->messageLength, pSignalingMessage->pMessage ) );
 
-    switch( pEvent->messageType )
+    switch( pSignalingMessage->messageType )
     {
         case SIGNALING_TYPE_MESSAGE_SDP_OFFER:
             Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
-            HandleSdpOffer( &demoContext, pEvent );
+            HandleSdpOffer( &demoContext, pSignalingMessage );
             break;
         case SIGNALING_TYPE_MESSAGE_SDP_ANSWER:
             break;
         case SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE:
-            HandleRemoteCandidate( &demoContext, pEvent );
+            HandleRemoteCandidate( &demoContext, pSignalingMessage );
             break;
         case SIGNALING_TYPE_MESSAGE_RECONNECT_ICE_SERVER:
-            HandleIceServerReconnect( &demoContext, pEvent );
+            HandleIceServerReconnect( &demoContext, pSignalingMessage );
             break;
         case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
             break;
@@ -1074,50 +1049,61 @@ int main()
 {
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerCredentialInfo_t credentialInfo;
+    SignalingControllerConnectInfo_t connectInfo;
+    SSLCredentials_t sslCreds;
 
     srand( time( NULL ) );
 
     srtp_init();
 
     memset( &demoContext, 0, sizeof( DemoContext_t ) );
+    memset( &sslCreds, 0 , sizeof( SSLCredentials_t ) );
+    memset( &connectInfo, 0 , sizeof( SignalingControllerConnectInfo_t ) );
 
+    sslCreds.pCaCertPath = AWS_CA_CERT_PATH;
+    #if defined( AWS_IOT_THING_ROLE_ALIAS )
+        sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
+        sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
+    #else
+        sslCreds.pDeviceCertPath = NULL;
+        sslCreds.pDeviceKeyPath = NULL;
+    #endif
 
-    memset( &credentialInfo, 0, sizeof( SignalingControllerCredentialInfo_t ) );
-    credentialInfo.pRegion = AWS_REGION;
-    credentialInfo.regionLength = strlen( AWS_REGION );
-    credentialInfo.pChannelName = AWS_KVS_CHANNEL_NAME;
-    credentialInfo.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
-    credentialInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
-    credentialInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
-    credentialInfo.pCaCertPath = AWS_CA_CERT_PATH;
-    credentialInfo.caCertPathLength = strlen( AWS_CA_CERT_PATH );
+    connectInfo.awsConfig.pRegion = AWS_REGION;
+    connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
+    connectInfo.awsConfig.pService = "kinesisvideo";
+    connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
+
+    connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
+    connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
+
+    connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
+    connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
+
+    connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
+    connectInfo.pMessageReceivedCallbackData = NULL;
 
     #if defined( AWS_ACCESS_KEY_ID )
-    credentialInfo.pAccessKeyId = AWS_ACCESS_KEY_ID;
-    credentialInfo.accessKeyIdLength = strlen( AWS_ACCESS_KEY_ID );
-    credentialInfo.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-    credentialInfo.secretAccessKeyLength = strlen( AWS_SECRET_ACCESS_KEY );
-    #if defined( AWS_SESSION_TOKEN )
-    credentialInfo.pSessionToken = AWS_SESSION_TOKEN;
-    credentialInfo.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
-    #endif /* #if defined( AWS_SESSION_TOKEN ) */
+        connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
+        connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
+        connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+        connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
+        #if defined( AWS_SESSION_TOKEN )
+            connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
+            connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
+        #endif /* #if defined( AWS_SESSION_TOKEN ) */
     #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
 
     #if defined( AWS_IOT_THING_ROLE_ALIAS )
-    credentialInfo.pCredEndpoint = AWS_CREDENTIALS_ENDPOINT;
-    credentialInfo.credEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
-    credentialInfo.pIotThingName = AWS_IOT_THING_NAME;
-    credentialInfo.iotThingNameLength = strlen( AWS_IOT_THING_NAME );
-    credentialInfo.pIotThingRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
-    credentialInfo.iotThingRoleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
-    credentialInfo.pIotThingCertPath = AWS_IOT_THING_CERT_PATH;
-    credentialInfo.iotThingCertPathLength = strlen( AWS_IOT_THING_CERT_PATH );
-    credentialInfo.pIotThingPrivateKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
-    credentialInfo.iotThingPrivateKeyPathLength = strlen( AWS_IOT_THING_PRIVATE_KEY_PATH );
+        connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
+        connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
+        connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
+        connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
+        connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
+        connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
     #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
 
-    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &credentialInfo, handleSignalingMessage, NULL );
+    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &sslCreds );
 
     if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
     {
@@ -1142,7 +1128,8 @@ int main()
     if( ret == 0 )
     {
         /* This should never return unless exception happens. */
-        signalingControllerReturn = SignalingController_ProcessLoop( &demoContext.signalingControllerContext );
+        signalingControllerReturn = SignalingController_StartListening( &demoContext.signalingControllerContext,
+                                                                        &connectInfo );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to keep processing signaling controller." ) );

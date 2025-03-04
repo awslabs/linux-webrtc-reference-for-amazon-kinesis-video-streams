@@ -61,17 +61,20 @@ typedef struct AwsCredentials
     const char * pSecretAccessKey;
     size_t secretAccessKeyLen;
 
-    const char * pRegion;
-    size_t regionLen;
-
-    const char * pService;
-    size_t serviceLen;
-
     char * pSessionToken;
     size_t sessionTokenLength;
 
     uint64_t expirationSeconds;
 } AwsCredentials_t;
+
+typedef struct AwsConfig
+{
+    const char * pRegion;
+    size_t regionLen;
+
+    const char * pService;
+    size_t serviceLen;
+} AwsConfig_t;
 
 typedef struct HttpRequestHeader
 {
@@ -83,13 +86,13 @@ typedef struct HttpRequestHeader
 typedef struct HttpRequest
 {
     HttpVerb_t verb;
-    char * pUrl;
+    const char * pUrl;
     size_t urlLength;
     HttpRequestHeader_t * pHeaders;
     size_t numHeaders;
-    char * pUserAgent;
+    const char * pUserAgent;
     size_t userAgentLength;
-    char * pBody;
+    const char * pBody;
     size_t bodyLength;
 } HttpRequest_t;
 
@@ -185,11 +188,13 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
 NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
                                         HttpRequest_t * pRequest,
                                         const AwsCredentials_t * pAwsCredentials,
+                                        const AwsConfig_t * pAwsConfig,
                                         HttpResponse_t * pResponse );
 
 NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * pWebsocketCtx,
                                                 const WebsocketConnectInfo_t * pConnectInfo,
-                                                const AwsCredentials_t * pAwsCredentials );
+                                                const AwsCredentials_t * pAwsCredentials,
+                                                const AwsConfig_t * pAwsConfig );
 
 NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWebsocketCtx,
                                              const char * pMessage,
