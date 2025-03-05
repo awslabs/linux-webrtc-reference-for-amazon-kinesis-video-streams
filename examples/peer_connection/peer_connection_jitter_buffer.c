@@ -29,7 +29,7 @@ static void DiscardPackets( PeerConnectionJitterBuffer_t * pJitterBuffer,
     if( pJitterBuffer != NULL )
     {
         /* Free from start sequence to end sequence number. */
-        for( i = startSeq; i != endSeq + 1; i++ )
+        for( i = startSeq; i != ( uint16_t )( endSeq + 1 ); i++ )
         {
             index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
             pPacket = &pJitterBuffer->rtpPackets[index];
@@ -75,7 +75,7 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
         earliestBufferTimestamp = pJitterBuffer->newestReceivedTimestamp - pJitterBuffer->tolerenceRtpTimeStamp;
         /* Note that newest sequence is probably less than oldest sequence due to wrapping. */
         prev = pJitterBuffer->oldestReceivedSequenceNumber;
-        for( i = pJitterBuffer->oldestReceivedSequenceNumber; i != pJitterBuffer->newestReceivedSequenceNumber + 1; i++ )
+        for( i = pJitterBuffer->oldestReceivedSequenceNumber; i != ( uint16_t )( pJitterBuffer->newestReceivedSequenceNumber + 1 ); i++ )
         {
             index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
             pPacket = &pJitterBuffer->rtpPackets[ index ];

@@ -285,6 +285,28 @@ static int32_t OnIceEventPeriodicConnectionCheck( PeerConnectionSession_t * pSes
     return ret;
 }
 
+static int32_t HandleDtlsTermination( PeerConnectionSession_t * pSession )
+{
+    int32_t ret = 0;
+
+    if( pSession == NULL )
+    {
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        ret = -10;
+    }
+
+    if( ret == 0 )
+    {
+        DTLS_Disconnect( &pSession->dtlsSession.xNetworkContext );
+        LogInfo( ( "DTLS_Disconnect called successfully" ) );
+
+        /* Close the socket context to avoid any input packets triggering unexpected RTP/RTCP handling. */
+        PeerConnection_CloseSession( pSession );
+    }
+
+    return ret;
+}
+
 static int32_t OnDtlsSendHook( void * pCustomContext,
                                const uint8_t * pBuffer,
                                size_t bufferLength )
@@ -567,8 +589,8 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     }
     else if( xNetworkStatus != DTLS_SUCCESS )
     {
-        LogError( ( "Error happens when process the DTLS packet, return %d", xNetworkStatus ) );
-        ret = -3;
+        LogInfo( ( "Error happens when process the DTLS packet, return %d", xNetworkStatus ) );
+        ret = HandleDtlsTermination( pSession );
     }
     else
     {
@@ -671,12 +693,10 @@ static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t *
     IceControllerIceServerConfig_t iceServerConfig;
     IceControllerInitConfig_t initConfig;
 
-    if( ( pSession == NULL ) ||
-        ( pSessionConfig == NULL ) )
+    if( pSession == NULL )
     {
-        LogError( ( "Invalid input, pSession: %p, pSessionConfig: %p",
-                    pSession,
-                    pSessionConfig ) );
+        LogError( ( "Invalid input, pSession: %p",
+                    pSession ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -756,9 +776,10 @@ static PeerConnectionResult_t AllocateTransceiver( PeerConnectionSession_t * pSe
     {
         if( pSession->transceiverCount < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT )
         {
-            pSession->pTransceivers[ pSession->transceiverCount++ ] = pTransceiver;
             pTransceiver->ssrc = ( uint32_t ) rand();
             pTransceiver->rtxSsrc = ( uint32_t ) rand();
+            pSession->pTransceivers[ pSession->transceiverCount ] = pTransceiver;
+            pSession->transceiverCount++;
         }
         else
         {
@@ -904,9 +925,9 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     DtlsSession_t * pDtlsSession = NULL;
     static uint8_t initSeq = 0;
 
-    if( pSession == NULL )
+    if( ( pSession == NULL ) || ( pSessionConfig == NULL ) )
     {
-        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        LogError( ( "Invalid input, pSession: %p, pSessionConfig: %p", pSession, pSessionConfig ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -984,10 +1005,9 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        pthread_t thread;
         ( void ) snprintf( tempName, sizeof( tempName ), "%s%02d", PEER_CONNECTION_SESSION_RX_TASK_NAME, initSeq++ );
 
-        if( pthread_create( &( thread ),
+        if( pthread_create( &( pSession->pSocketListener ),
                             NULL,
                             IceControllerSocketListener_Task,
                             &( pSession->iceControllerContext ) ) != 0 )
@@ -995,8 +1015,30 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
             LogError( ( "xTaskCreate(%s) failed", tempName ) );
             ret = PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_SOCK_LISTENER;
         }
+    }
 
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pSession->state = PEER_CONNECTION_SESSION_STATE_INITED;
         pSession->pCtx = &peerConnectionContext;
+    }
+
+    return ret;
+}
+
+PeerConnectionResult_t PeerConnection_Start( PeerConnectionSession_t * pSession )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( pSession == NULL )
+    {
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pSession->state = PEER_CONNECTION_SESSION_STATE_START;
     }
 
     return ret;
@@ -1248,7 +1290,8 @@ PeerConnectionResult_t PeerConnection_AddRemoteCandidate( PeerConnectionSession_
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        ret = SendRemoteCandidateRequest( pSession, &candidate );
+        ret = SendRemoteCandidateRequest( pSession,
+                                          &candidate );
     }
 
     return ret;
@@ -1310,6 +1353,7 @@ PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSess
 PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pSession )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    int i;
 
     if( pSession == NULL )
     {
@@ -1317,10 +1361,45 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
-    /* TODO: close corresponding resources. */
+    /* Update session state and notify transceivers. */
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pSession->state = PEER_CONNECTION_SESSION_STATE_CLOSING;
+
+        for( i = 0; i < pSession->transceiverCount; i++ )
+        {
+            if( pSession->pTransceivers[i]->onPcEventCallbackFunc )
+            {
+                pSession->pTransceivers[i]->onPcEventCallbackFunc( pSession->pTransceivers[i]->pOnPcEventCustomContext,
+                                                                   TRANSCEIVER_CB_EVENT_REMOTE_PEER_CLOSED,
+                                                                   NULL );
+            }
+        }
+    }
+
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = DestroyIceController( pSession );
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        ret = PeerConnectionSrtp_DeInit( pSession );
+        if( ret != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "PeerConnectionSrtp_DeInit fail, result: %d", ret ) );
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        // Free each transceiver in the array
+        memset( pSession->pTransceivers, 0, sizeof( pSession->pTransceivers ) );
+        pSession->transceiverCount = 0;
+        pSession->mLinesTransceiverCount = 0;
+
+        /* Reset the state to inited for user to re-use. */
+        pSession->state = PEER_CONNECTION_SESSION_STATE_INITED;
     }
 
     return ret;

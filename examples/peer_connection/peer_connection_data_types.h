@@ -218,6 +218,8 @@ typedef struct PeerConnectionSessionRequestMessage
 typedef enum PeerConnectionSessionState
 {
     PEER_CONNECTION_SESSION_STATE_NONE = 0,
+    PEER_CONNECTION_SESSION_STATE_CLOSING,
+    PEER_CONNECTION_SESSION_STATE_INITED,
     PEER_CONNECTION_SESSION_STATE_START,
     PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND,
     PEER_CONNECTION_SESSION_STATE_CONNECTION_READY,
@@ -269,6 +271,7 @@ typedef struct PeerConnectionSession
     volatile PeerConnectionSessionState_t state;
 
     pthread_t pTaskHandler;
+    pthread_t pSocketListener;
 
     /* The remote user name, representing the remote peer, from SDP message. */
     char remoteUserName[ PEER_CONNECTION_USER_NAME_LENGTH + 1 ];

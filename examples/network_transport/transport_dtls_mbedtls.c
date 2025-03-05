@@ -54,9 +54,6 @@
 #include "mbedtls/debug.h"
 #endif /* MBEDTLS_DTLS_DEBUG_C */
 
-/* MBedTLS Bio UDP sockets wrapper include. */
-#include "mbedtls_bio_udp_sockets_wrapper.h"
-
 /* DTLS transport header. */
 #include "transport_dtls_mbedtls.h"
 
@@ -484,7 +481,7 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
         returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
     }
 
-#ifdef MBEDTLS_PSA_CRYPTO_C
+    #ifdef MBEDTLS_PSA_CRYPTO_C
     if( returnStatus == DTLS_SUCCESS )
     {
         mbedtlsError = psa_crypto_init();
@@ -495,7 +492,7 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
             returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
         }
     }
-#endif /* MBEDTLS_PSA_CRYPTO_C */
+    #endif /* MBEDTLS_PSA_CRYPTO_C */
 
     if( returnStatus == DTLS_SUCCESS )
     {
@@ -524,14 +521,14 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
 
 void DTLS_Disconnect( DtlsNetworkContext_t * pNetworkContext )
 {
-    DtlsTransportParams_t * pTlsTransportParams = NULL;
+    DtlsTransportParams_t * pDtlsTransportParams = NULL;
     int32_t dtlsStatus = 0;
 
     if( ( pNetworkContext != NULL ) && ( pNetworkContext->pParams != NULL ) )
     {
-        pTlsTransportParams = pNetworkContext->pParams;
+        pDtlsTransportParams = pNetworkContext->pParams;
         /* Attempting to terminate DTLS connection. */
-        dtlsStatus = ( int32_t )mbedtls_ssl_close_notify( &( pTlsTransportParams->dtlsSslContext.context ) );
+        dtlsStatus = ( int32_t )mbedtls_ssl_close_notify( &( pDtlsTransportParams->dtlsSslContext.context ) );
 
         /* Ignore the WANT_READ and WANT_WRITE return values. */
         if( ( dtlsStatus != ( int32_t )MBEDTLS_ERR_SSL_WANT_READ ) && ( dtlsStatus != ( int32_t )MBEDTLS_ERR_SSL_WANT_WRITE ) )
@@ -559,7 +556,7 @@ void DTLS_Disconnect( DtlsNetworkContext_t * pNetworkContext )
         }
 
         /* Free mbed DTLS contexts. */
-        DtlsSslContextFree( &( pTlsTransportParams->dtlsSslContext ) );
+        DtlsSslContextFree( &( pDtlsTransportParams->dtlsSslContext ) );
     }
 }
 /*-----------------------------------------------------------*/
@@ -1351,9 +1348,17 @@ DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext
                             mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
                             mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
             }
+            else if( mbedtlsError == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY )
+            {
+                LogInfo( ( "DTLS connection has been closed. mbedTLSError=-0x%x %s : %s.",
+                           -mbedtlsError,
+                           mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
+                           mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+                returnStatus = DTLS_CONNECTION_HAS_BEEN_CLOSED;
+            }
             else if( mbedtlsError < 0 )
             {
-                LogError( ( "Failed to read data: mbedTLSError=-0x%x %s : %s.", -mbedtlsError, mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+                LogWarn( ( "Failed to read data: mbedTLSError=-0x%x %s : %s.", -mbedtlsError, mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
                 returnStatus = DTLS_TRANSPORT_PROCESS_FAILURE;
             }
             else

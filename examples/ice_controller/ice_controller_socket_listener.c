@@ -12,8 +12,6 @@
 #define ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ( 50 )
 #define RX_BUFFER_SIZE ( 4096 )
 
-uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
-
 static int32_t RecvPacketUdp( IceControllerSocketContext_t * pSocketContext,
                               uint8_t * pBuffer,
                               size_t bufferSize,
@@ -156,6 +154,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
     int32_t retPeerToPeerConnectionFound;
     IceResult_t iceResult;
     IceCandidatePair_t * pCandidatePair = NULL;
+    uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
 
     if( ( pCtx == NULL ) || ( pSocketContext == NULL ) )
     {
@@ -234,10 +233,6 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             if( onRecvNonStunPacketFunc )
             {
                 ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, uReadBytes );
-            }
-            else
-            {
-                LogError( ( "No callback function to handle DTLS/RTP/RTCP packets." ) );
             }
         }
         else
@@ -372,9 +367,12 @@ static void pollingSockets( IceControllerContext_t * pCtx )
             {
                 LogVerbose( ( "Detect packets on fd %d, idx: %d", fds[i], i ) );
 
-                HandleRxPacket( pCtx, &pCtx->socketsContexts[i],
-                                onRecvNonStunPacketFunc, pOnRecvNonStunPacketCallbackContext,
-                                onIceEventCallbackFunc, pOnIceEventCallbackCustomContext );
+                HandleRxPacket( pCtx,
+                                &pCtx->socketsContexts[i],
+                                onRecvNonStunPacketFunc,
+                                pOnRecvNonStunPacketCallbackContext,
+                                onIceEventCallbackFunc,
+                                pOnIceEventCallbackCustomContext );
             }
         }
     }

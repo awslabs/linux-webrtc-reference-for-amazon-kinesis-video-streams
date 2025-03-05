@@ -51,10 +51,11 @@ DemoContext_t demoContext;
 static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                                        void * pUserData );
 static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
-                                                DemoPeerConnectionSession_t * pSession,
-                                                const char * pRemoteClientId,
-                                                size_t remoteClientIdLength );
-
+                                                DemoPeerConnectionSession_t * pDemoSession );
+static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
+                                           DemoPeerConnectionSession_t * pDemoSession,
+                                           const char * pRemoteClientId,
+                                           size_t remoteClientIdLength );
 static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext_t * pDemoContext,
                                                                      const char * pRemoteClientId,
                                                                      size_t remoteClientIdLength,
@@ -94,23 +95,6 @@ static int32_t OnMediaSinkHook( void * pCustom,
 
     if( ret == 0 )
     {
-        if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
-        {
-            ret = AppMediaSource_GetVideoTransceiver( &pDemoContext->appMediaSourcesContext, &pTransceiver );
-        }
-        else if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
-        {
-            ret = AppMediaSource_GetAudioTransceiver( &pDemoContext->appMediaSourcesContext, &pTransceiver );
-        }
-        else
-        {
-            LogError( ( "Unknown track kind: %d", pFrame->trackKind ) );
-            ret = -2;
-        }
-    }
-
-    if( ret == 0 )
-    {
         peerConnectionFrame.version = PEER_CONNECTION_FRAME_CURRENT_VERSION;
         peerConnectionFrame.presentationUs = pFrame->timestampUs;
         peerConnectionFrame.pData = pFrame->pData;
@@ -118,16 +102,32 @@ static int32_t OnMediaSinkHook( void * pCustom,
 
         for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
         {
-            if( pDemoContext->peerConnectionSessions[i].isInUse != 0 )
+            if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
+            {
+                pTransceiver = &pDemoContext->peerConnectionSessions[ i ].transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
+            }
+            else if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
+            {
+                pTransceiver = &pDemoContext->peerConnectionSessions[ i ].transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
+            }
+            else
+            {
+                /* Unknown kind, skip that. */
+                LogWarn( ( "Unknown track kind: %d", pFrame->trackKind ) );
+                break;
+            }
+
+            if( pDemoContext->peerConnectionSessions[ i ].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
             {
                 peerConnectionResult = PeerConnection_WriteFrame( &pDemoContext->peerConnectionSessions[ i ].peerConnectionSession,
                                                                   pTransceiver,
                                                                   &peerConnectionFrame );
+
                 if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
                 {
-                    LogError( ( "Fail to write frame, result: %d", peerConnectionResult ) );
+                    LogError( ( "Fail to write %s frame, result: %d", ( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) ? "video" : "audio",
+                                peerConnectionResult ) );
                     ret = -3;
-                    break;
                 }
             }
         }
@@ -148,7 +148,9 @@ static int32_t InitializeAppMediaSource( DemoContext_t * pDemoContext )
 
     if( ret == 0 )
     {
-        ret = AppMediaSource_Init( &pDemoContext->appMediaSourcesContext, OnMediaSinkHook, pDemoContext );
+        ret = AppMediaSource_Init( &pDemoContext->appMediaSourcesContext,
+                                   OnMediaSinkHook,
+                                   pDemoContext );
     }
 
     return ret;
@@ -460,14 +462,35 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
 }
 
 static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
-                                                DemoPeerConnectionSession_t * pSession,
-                                                const char * pRemoteClientId,
-                                                size_t remoteClientIdLength )
+                                                DemoPeerConnectionSession_t * pDemoSession )
 {
     int32_t ret = 0;
     PeerConnectionResult_t peerConnectionResult;
     PeerConnectionSessionConfiguration_t pcConfig;
-    Transceiver_t * pTransceiver;
+
+    memset( &pcConfig, 0, sizeof( PeerConnectionSessionConfiguration_t ) );
+    pcConfig.canTrickleIce = 1U;
+    pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
+
+    peerConnectionResult = PeerConnection_Init( &pDemoSession->peerConnectionSession, &pcConfig );
+    if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+    {
+        LogWarn( ( "PeerConnection_Init fail, result: %d", peerConnectionResult ) );
+        ret = -1;
+    }
+
+    return ret;
+}
+
+static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
+                                           DemoPeerConnectionSession_t * pDemoSession,
+                                           const char * pRemoteClientId,
+                                           size_t remoteClientIdLength )
+{
+    int32_t ret = 0;
+    PeerConnectionResult_t peerConnectionResult;
+    PeerConnectionSessionConfiguration_t pcConfig;
+    Transceiver_t * pTransceiver = NULL;
 
     if( remoteClientIdLength > REMOTE_ID_MAX_LENGTH )
     {
@@ -478,7 +501,6 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
     if( ret == 0 )
     {
         memset( &pcConfig, 0, sizeof( PeerConnectionSessionConfiguration_t ) );
-        pcConfig.canTrickleIce = 1U;
         pcConfig.iceServersCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
         #if defined( AWS_CA_CERT_PATH )
             pcConfig.pRootCaPath = AWS_CA_CERT_PATH;
@@ -497,21 +519,21 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
 
     if( ret == 0 )
     {
-        pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
-        peerConnectionResult = PeerConnection_Init( &pSession->peerConnectionSession,
-                                                    &pcConfig );
+        peerConnectionResult = PeerConnection_AddIceServerConfig( &pDemoSession->peerConnectionSession,
+                                                                  pcConfig.iceServers,
+                                                                  pcConfig.iceServersCount );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
-            LogWarn( ( "PeerConnection_Init fail, result: %d", peerConnectionResult ) );
+            LogWarn( ( "PeerConnection_AddIceServerConfig fail, result: %d", peerConnectionResult ) );
             ret = -1;
         }
     }
 
     if( ret == 0 )
     {
-        peerConnectionResult = PeerConnection_SetOnLocalCandidateReady( &pSession->peerConnectionSession,
+        peerConnectionResult = PeerConnection_SetOnLocalCandidateReady( &pDemoSession->peerConnectionSession,
                                                                         HandleLocalCandidateReady,
-                                                                        pSession );
+                                                                        pDemoSession );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_SetOnLocalCandidateReady fail, result: %d", peerConnectionResult ) );
@@ -522,14 +544,15 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
     /* Add video transceiver */
     if( ret == 0 )
     {
-        ret = AppMediaSource_GetVideoTransceiver( &pDemoContext->appMediaSourcesContext, &pTransceiver );
+        pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
+        ret = AppMediaSource_InitVideoTransceiver( &pDemoContext->appMediaSourcesContext, pTransceiver );
         if( ret != 0 )
         {
             LogError( ( "Fail to get video transceiver." ) );
         }
         else
         {
-            peerConnectionResult = PeerConnection_AddTransceiver( &pSession->peerConnectionSession, pTransceiver );
+            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession, pTransceiver );
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
                 LogError( ( "Fail to add video transceiver, result = %d.", peerConnectionResult ) );
@@ -541,14 +564,15 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
     /* Add audio transceiver */
     if( ret == 0 )
     {
-        ret = AppMediaSource_GetAudioTransceiver( &pDemoContext->appMediaSourcesContext, &pTransceiver );
+        pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
+        ret = AppMediaSource_InitAudioTransceiver( &pDemoContext->appMediaSourcesContext, pTransceiver );
         if( ret != 0 )
         {
             LogError( ( "Fail to get audio transceiver." ) );
         }
         else
         {
-            peerConnectionResult = PeerConnection_AddTransceiver( &pSession->peerConnectionSession, pTransceiver );
+            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession, pTransceiver );
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
                 LogError( ( "Fail to add audio transceiver, result = %d.", peerConnectionResult ) );
@@ -559,9 +583,14 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
 
     if( ret == 0 )
     {
-        pSession->isInUse = 1U;
-        pSession->remoteClientIdLength = remoteClientIdLength;
-        memcpy( pSession->remoteClientId, pRemoteClientId, remoteClientIdLength );
+        pDemoSession->remoteClientIdLength = remoteClientIdLength;
+        memcpy( pDemoSession->remoteClientId, pRemoteClientId, remoteClientIdLength );
+        peerConnectionResult = PeerConnection_Start( &pDemoSession->peerConnectionSession );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to start peer connection, result = %d.", peerConnectionResult ) );
+            ret = -1;
+        }
     }
 
     return ret;
@@ -586,7 +615,8 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
             break;
         }
         else if( ( allowCreate != 0 ) &&
-                 ( pDemoContext->peerConnectionSessions[i].isInUse == 0 ) )
+                 ( pRet == NULL ) &&
+                 ( pDemoContext->peerConnectionSessions[i].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
         {
             /* Found free session, keep looping to find existing one. */
             pRet = &pDemoContext->peerConnectionSessions[i];
@@ -597,15 +627,15 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
         }
     }
 
-    if( ( pRet != NULL ) && ( pRet->isInUse == 0 ) )
+    if( ( pRet != NULL ) && ( pRet->peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
     {
         /* Initialize Peer Connection. */
-        LogDebug( ( "Initialize peer connection on idx: %d for client ID(%lu): %.*s",
+        LogDebug( ( "Start peer connection on idx: %d for client ID(%lu): %.*s",
                     i,
                     remoteClientIdLength,
                     ( int ) remoteClientIdLength,
                     pRemoteClientId ) );
-        initResult = InitializePeerConnectionSession( pDemoContext, pRet, pRemoteClientId, remoteClientIdLength );
+        initResult = StartPeerConnectionSession( pDemoContext, pRet, pRemoteClientId, remoteClientIdLength );
         if( initResult != 0 )
         {
             pRet = NULL;
@@ -1065,6 +1095,7 @@ int main()
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerConnectInfo_t connectInfo;
     SSLCredentials_t sslCreds;
+    int i;
 
     srand( time( NULL ) );
 
@@ -1137,6 +1168,20 @@ int main()
     if( ret == 0 )
     {
         ret = InitializeAppMediaSource( &demoContext );
+    }
+
+    if( ret == 0 )
+    {
+        for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
+        {
+            ret = InitializePeerConnectionSession( &demoContext,
+                                                   &demoContext.peerConnectionSessions[i] );
+            if( ret != 0 )
+            {
+                LogError( ( "Fail to initialize peer connection sessions." ) );
+                break;
+            }
+        }
     }
 
     if( ret == 0 )

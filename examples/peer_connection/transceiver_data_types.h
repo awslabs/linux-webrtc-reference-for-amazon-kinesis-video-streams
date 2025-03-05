@@ -21,6 +21,7 @@ typedef enum TransceiverCallbackEvent
 {
     TRANSCEIVER_CB_EVENT_NONE = 0,
     TRANSCEIVER_CB_EVENT_REMOTE_PEER_READY,
+    TRANSCEIVER_CB_EVENT_REMOTE_PEER_CLOSED,
     TRANSCEIVER_CB_EVENT_MAX,
 } TransceiverCallbackEvent_t;
 

@@ -816,6 +816,13 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
+    /* Stop polling */
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        LogInfo( ( "Stopping polling for Ice controller." ) );
+        ret = IceControllerSocketListener_StopPolling( pCtx );
+    }
+
     /* Reset socket contexts. */
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
@@ -827,11 +834,8 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
                                                     &pCtx->socketsContexts[i] );
             }
         }
-    }
-
-    if( ret == ICE_CONTROLLER_RESULT_OK )
-    {
-        pthread_mutex_destroy( &( pCtx->socketMutex ) );
+        pCtx->socketsContextsCount = 0;
+        pCtx->pNominatedSocketContext = NULL;
     }
 
     return ret;
@@ -842,7 +846,6 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TimerControllerResult_t retTimer;
-    int i;
 
     if( ( pCtx == NULL ) || ( pInitConfig == NULL ) )
     {
@@ -878,15 +881,6 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
         {
             LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_TIMER_INIT;
-        }
-    }
-
-    /* Initialize socket contexts. */
-    if( ret == ICE_CONTROLLER_RESULT_OK )
-    {
-        for( i = 0; i < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT; i++ )
-        {
-            pCtx->socketsContexts[i].socketFd = -1;
         }
     }
 
@@ -1108,6 +1102,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
     IceInitInfo_t iceInitInfo;
+    int i;
 
     if( ( pCtx == NULL ) ||
         ( pLocalUserName == NULL ) || ( pLocalPassword == NULL ) ||
@@ -1161,6 +1156,15 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         {
             LogError( ( "Fail to create ICE agent, result: %d", iceResult ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_ICE_AGENT;
+        }
+    }
+
+    /* Initialize socket contexts. */
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT; i++ )
+        {
+            pCtx->socketsContexts[i].socketFd = -1;
         }
     }
 

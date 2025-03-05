@@ -187,5 +187,6 @@ void Metric_PrintMetrics( void )
         fflush( stdout );
 
         pthread_mutex_unlock( &( context.mutex ) );
+        fflush( stdout );
     }
 }
