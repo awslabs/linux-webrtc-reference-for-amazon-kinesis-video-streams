@@ -6,7 +6,7 @@
 
 static void generalTimerCallback( union sigval sv )
 {
-    TimerHandler_t *pTimerHandler = (TimerHandler_t *) sv.sival_ptr;
+    TimerHandler_t * pTimerHandler = ( TimerHandler_t * ) sv.sival_ptr;
 
     if( pTimerHandler == NULL )
     {
@@ -18,12 +18,14 @@ static void generalTimerCallback( union sigval sv )
     }
 }
 
-TimerControllerResult_t TimerController_Create( TimerHandler_t *pTimerHandler, TimerControllerTimerExpireCallback onTimerExpire, void *pUserContext )
+TimerControllerResult_t TimerController_Create( TimerHandler_t * pTimerHandler,
+                                                TimerControllerTimerExpireCallback onTimerExpire,
+                                                void * pUserContext )
 {
     TimerControllerResult_t ret = TIMER_CONTROLLER_RESULT_OK;
     struct sigevent sigEvent;
 
-    if( pTimerHandler == NULL || onTimerExpire == NULL )
+    if( ( pTimerHandler == NULL ) || ( onTimerExpire == NULL ) )
     {
         ret = TIMER_CONTROLLER_RESULT_BAD_PARAMETER;
     }
@@ -51,7 +53,9 @@ TimerControllerResult_t TimerController_Create( TimerHandler_t *pTimerHandler, T
     return ret;
 }
 
-TimerControllerResult_t TimerController_SetTimer( TimerHandler_t *pTimerHandler, uint32_t initialTimeMs, uint32_t repeatTimeMs )
+TimerControllerResult_t TimerController_SetTimer( TimerHandler_t * pTimerHandler,
+                                                  uint32_t initialTimeMs,
+                                                  uint32_t repeatTimeMs )
 {
     TimerControllerResult_t ret = TIMER_CONTROLLER_RESULT_OK;
     struct itimerspec its;
@@ -80,19 +84,19 @@ TimerControllerResult_t TimerController_SetTimer( TimerHandler_t *pTimerHandler,
     return ret;
 }
 
-void TimerController_ResetTimer( TimerHandler_t *pTimerHandler )
+void TimerController_ResetTimer( TimerHandler_t * pTimerHandler )
 {
     if( pTimerHandler != NULL )
     {
         // Cancel the timer
         if( TimerController_SetTimer( pTimerHandler, 0U, 0U ) != TIMER_CONTROLLER_RESULT_OK )
         {
-            LogError( ("Fail to reset time, errno: %s", strerror( errno ) ) );
+            LogError( ( "Fail to reset time, errno: %s", strerror( errno ) ) );
         }
     }
 }
 
-TimerControllerResult_t TimerController_IsTimerSet( TimerHandler_t *pTimerHandler )
+TimerControllerResult_t TimerController_IsTimerSet( TimerHandler_t * pTimerHandler )
 {
     TimerControllerResult_t ret = TIMER_CONTROLLER_RESULT_OK;
     struct itimerspec its;
@@ -108,7 +112,7 @@ TimerControllerResult_t TimerController_IsTimerSet( TimerHandler_t *pTimerHandle
         ret = TIMER_CONTROLLER_RESULT_FAIL_GETTIME;
     }
 
-    if( its.it_value.tv_sec == 0 && its.it_value.tv_nsec == 0 )
+    if( ( its.it_value.tv_sec == 0 ) && ( its.it_value.tv_nsec == 0 ) )
     {
         ret = TIMER_CONTROLLER_RESULT_NOT_SET;
     }

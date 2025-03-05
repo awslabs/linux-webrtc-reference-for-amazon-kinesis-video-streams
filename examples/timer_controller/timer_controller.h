@@ -23,19 +23,23 @@ typedef enum TimerControllerResult
     TIMER_CONTROLLER_RESULT_FAIL_GETTIME,
 } TimerControllerResult_t;
 
-typedef void (*TimerControllerTimerExpireCallback)( void *pUserContext );
+typedef void (* TimerControllerTimerExpireCallback)( void * pUserContext );
 
 typedef struct TimerHandler
 {
     timer_t timerId;
     TimerControllerTimerExpireCallback onTimerExpire;
-    void *pUserContext;
+    void * pUserContext;
 } TimerHandler_t;
 
-TimerControllerResult_t TimerController_Create( TimerHandler_t *pTimerHandler, TimerControllerTimerExpireCallback onTimerExpire, void *pUserContext );
-TimerControllerResult_t TimerController_SetTimer( TimerHandler_t *pTimerHandler, uint32_t initialTimeMs, uint32_t repeatTimeMs );
-void TimerController_ResetTimer( TimerHandler_t *pTimerHandler );
-TimerControllerResult_t TimerController_IsTimerSet( TimerHandler_t *pTimerHandler );
+TimerControllerResult_t TimerController_Create( TimerHandler_t * pTimerHandler,
+                                                TimerControllerTimerExpireCallback onTimerExpire,
+                                                void * pUserContext );
+TimerControllerResult_t TimerController_SetTimer( TimerHandler_t * pTimerHandler,
+                                                  uint32_t initialTimeMs,
+                                                  uint32_t repeatTimeMs );
+void TimerController_ResetTimer( TimerHandler_t * pTimerHandler );
+TimerControllerResult_t TimerController_IsTimerSet( TimerHandler_t * pTimerHandler );
 
 #ifdef __cplusplus
 }

@@ -3,7 +3,7 @@
 #include "g711_depacketizer.h"
 
 PeerConnectionResult_t GetG711PacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
-                                                     uint8_t * pIsStartPacket )
+                                              uint8_t * pIsStartPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     G711Result_t resultG711;
@@ -39,11 +39,11 @@ PeerConnectionResult_t GetG711PacketProperty( PeerConnectionJitterBufferPacket_t
 }
 
 PeerConnectionResult_t FillFrameG711( PeerConnectionJitterBuffer_t * pJitterBuffer,
-                                             uint16_t rtpSeqStart,
-                                             uint16_t rtpSeqEnd,
-                                             uint8_t * pOutBuffer,
-                                             size_t * pOutBufferLength,
-                                             uint32_t * pRtpTimestamp )
+                                      uint16_t rtpSeqStart,
+                                      uint16_t rtpSeqEnd,
+                                      uint8_t * pOutBuffer,
+                                      size_t * pOutBufferLength,
+                                      uint32_t * pRtpTimestamp )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     uint16_t i, index;
@@ -91,7 +91,7 @@ PeerConnectionResult_t FillFrameG711( PeerConnectionJitterBuffer_t * pJitterBuff
                                                      &g711Packet );
             if( resultG711 != G711_RESULT_OK )
             {
-                LogError( ( "Fail to add G711 depacketizer packet, result: %d", resultG711) );
+                LogError( ( "Fail to add G711 depacketizer packet, result: %d", resultG711 ) );
                 ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_ADD_PACKET;
                 break;
             }
@@ -155,16 +155,16 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
 
     if( pTransceiver->trackKind != TRANSCEIVER_TRACK_KIND_AUDIO )
     {
-        LogError(( "Invalid track kind."));
+        LogError( ( "Invalid track kind." ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
-     if( ret == PEER_CONNECTION_RESULT_OK )
+    if( ret == PEER_CONNECTION_RESULT_OK )
     {
         g711Frame.pFrameData = pFrame->pData;
         g711Frame.frameDataLength = pFrame->dataLength;
         resultG711 = G711Packetizer_Init( &g711PacketizerContext,
-                                          &g711Frame);
+                                          &g711Frame );
         if( resultG711 != G711_RESULT_OK )
         {
             LogError( ( "Fail to init G711 packetizer, result: %d", resultG711 ) );
@@ -172,7 +172,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
         }
     }
 
-    if(ret == PEER_CONNECTION_RESULT_OK )
+    if( ret == PEER_CONNECTION_RESULT_OK )
     {
         pSsrc = &pTransceiver->ssrc;
         pSrtpSender = &pSession->audioSrtpSender;
@@ -270,9 +270,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
 
             /* PeerConnectionSrtp_ConstructSrtpPacket() serializes RTP packet and encrypt it. */
             ret = PeerConnectionSrtp_ConstructSrtpPacket( pSession,
-                                    &pRollingBufferPacket->rtpPacket,
-                                    pSrtpPacket,
-                                    &srtpPacketLength );
+                                                          &pRollingBufferPacket->rtpPacket,
+                                                          pSrtpPacket,
+                                                          &srtpPacketLength );
         }
         else
         {

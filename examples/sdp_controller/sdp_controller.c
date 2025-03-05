@@ -90,7 +90,7 @@
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS "minptime=10;useinbandfec=1"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265 "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
-    "AIAAAAMAAAMAAAMAAAMAALUCQA==;sprop-sps=QgEBAIAAAAMAAAMAAAMAAAMAAKACgIAtH+W1kkbQzkkktySqSfKSyA==;sprop-pps=RAHBpVgeSA=="
+                                                       "AIAAAAMAAAMAAAMAAAMAALUCQA==;sprop-sps=QgEBAIAAAAMAAAMAAAMAAAMAAKACgIAtH+W1kkbQzkkktySqSfKSyA==;sprop-pps=RAHBpVgeSA=="
 
 #define SDP_CONTROLLER_H264_PACKETIZATION_MODE "packetization-mode=1"
 #define SDP_CONTROLLER_H264_PACKETIZATION_MODE_LENGTH ( 20 )
@@ -104,6 +104,12 @@
 #define SDP_CONTROLLER_GET_APT_CODEC_FROM_PAYLOAD( payload ) ( payload & 0xFF )
 #define SDP_CONTROLLER_GET_RTX_CODEC_FROM_PAYLOAD( payload ) ( payload >> 16 )
 #define SDP_CONTROLLER_SET_PAYLOAD( rtxPayload, aptPayload ) ( rtxPayload << 16 | aptPayload )
+
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME "application 9 UDP/DTLS/SCTP webrtc-datachannel"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT "sctp-port"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT_LENGTH ( 9 )
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT "5000"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT_LENGTH ( 4 )
 
 // profile-level-id:
 //   A base16 [7] (hexadecimal) representation of the following
@@ -2587,7 +2593,8 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
                                                          SdpControllerMediaDescription_t * pLocalMediaDescription,
                                                          uint32_t currentMediaIdx,
                                                          char ** ppBuffer,
-                                                         size_t * pBufferLength )
+                                                         size_t * pBufferLength,
+                                                         TransceiverTrackKind_t trackKind )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     char * pCurBuffer = NULL;
@@ -2611,7 +2618,8 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     else if( ( populateConfiguration.pCname == NULL ) ||
              ( populateConfiguration.pLocalFingerprint == NULL ) ||
              ( populateConfiguration.pPassword == NULL ) ||
-             ( populateConfiguration.pTransceiver == NULL ) ||
+             ( trackKind == TRANSCEIVER_TRACK_KIND_UNKNOWN ) ||
+             ( ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) && ( populateConfiguration.pTransceiver == NULL ) ) ||
              ( populateConfiguration.pUserName == NULL ) )
     {
         LogError( ( "Invalid input, pCname: %p, pLocalFingerprint: %p, pPassword: %p, pTransceiver: %p, pUserName: %p",
@@ -2639,7 +2647,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* We support only one payload type, so only one payload type printed in media name. */
-        if( populateConfiguration.pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
+        if( trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
         {
             if( populateConfiguration.rtxPayloadType == 0 )
             {
@@ -2650,7 +2658,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
                 written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
             }
         }
-        else
+        else if( trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
         {
             if( populateConfiguration.rtxPayloadType == 0 )
             {
@@ -2660,6 +2668,10 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
             {
                 written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
             }
+        }
+        else if( trackKind == TRANSCEIVER_TRACK_KIND_DATA_CHANNEL )
+        {
+            written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
         }
 
         if( written < 0 )
@@ -2696,7 +2708,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     }
 
     /* msid */
-    if( ret == SDP_CONTROLLER_RESULT_OK )
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) )
     {
         pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID;
@@ -2737,7 +2749,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     }
 
     /* For RTX: ssrc-group */
-    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( populateConfiguration.rtxPayloadType != 0 ) )
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) && ( populateConfiguration.rtxPayloadType != 0 ) )
     {
         /* msid */
         pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
@@ -2770,7 +2782,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     }
 
     /* ssrc */
-    if( ret == SDP_CONTROLLER_RESULT_OK )
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) )
     {
         ret = PopulateTransceiverSsrc( &pCurBuffer, &remainSize, pLocalMediaDescription, populateConfiguration.pTransceiver, populateConfiguration.pCname, populateConfiguration.cnameLength, populateConfiguration.rtxPayloadType == 0 ? 0 : 1 );
     }
@@ -2914,7 +2926,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     }
 
     /* send/recv */
-    if( ret == SDP_CONTROLLER_RESULT_OK )
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) )
     {
         TransceiverDirection_t targetDirection = TRANSCEIVER_TRACK_DIRECTION_UNKNOWN;
 
@@ -2992,7 +3004,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     }
 
     /* rtcp-mux, rtcp-rsize */
-    if( ret == SDP_CONTROLLER_RESULT_OK )
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) )
     {
         pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX;
@@ -3012,13 +3024,24 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     }
 
     /* Popupate codec relevant attributes. */
-    if( ret == SDP_CONTROLLER_RESULT_OK )
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) )
     {
         ret = PopulateCodecAttributes( pRemoteMediaDescription,
                                        populateConfiguration,
                                        &pCurBuffer,
                                        &remainSize,
                                        pLocalMediaDescription );
+    }
+
+    /* sctp port */
+    if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( trackKind == TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) )
+    {
+        pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
+        pTargetAttribute->pAttributeName = SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT;
+        pTargetAttribute->attributeNameLength = SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT_LENGTH;
+        pTargetAttribute->pAttributeValue = SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT;
+        pTargetAttribute->attributeValueLength = SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT_LENGTH;
+        *pTargetAttributeCount += 1;
     }
 
     if( ret == SDP_CONTROLLER_RESULT_OK )

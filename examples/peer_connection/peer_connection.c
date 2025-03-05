@@ -15,6 +15,10 @@
 #include "peer_connection_opus_helper.h"
 #include "peer_connection_g711_helper.h"
 
+#if ENABLE_SCTP_DATA_CHANNEL
+#include "peer_connection_sctp.h"
+#endif
+
 #define PEER_CONNECTION_SESSION_TASK_NAME "PcSessionTsk"
 #define PEER_CONNECTION_SESSION_RX_TASK_NAME "PcRxTsk" // For Ice controller to monitor socket Rx path
 #define PEER_CONNECTION_MESSAGE_QUEUE_NAME "/PcSessionMq"
@@ -494,6 +498,22 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
         }
     }
 
+    #if ENABLE_SCTP_DATA_CHANNEL
+    if( ret == 0 )
+    {
+        /* Initialize SCTP sessions. */
+        if( pSession->ucEnableDataChannelRemote == 1 )
+        {
+            retPc = PeerConnectionSCTP_AllocateSCTP( pSession );
+            if( retPc != PEER_CONNECTION_RESULT_OK )
+            {
+                LogError( ( "Fail to create SCTP sessions, ret: %d", retPc ) );
+                ret = -0x1004;
+            }
+        }
+    }
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
+
     if( ret == 0 )
     {
         pSession->state = PEER_CONNECTION_SESSION_STATE_CONNECTION_READY;
@@ -529,6 +549,17 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     if( xNetworkStatus == DTLS_HANDSHAKE_COMPLETE )
     {
         ret = OnDtlsHandshakeComplete( pSession );
+    }
+    else if( xNetworkStatus == DTLS_SUCCESS )
+    {
+        #if ENABLE_SCTP_DATA_CHANNEL
+        {
+            if( pSession->state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
+            {
+                PeerConnectionSCTP_ProcessSCTPData( pSession, dtlsDecryptBuffer, dtlsDecryptBufferLength );
+            }
+        }
+        #endif /* ENABLE_SCTP_DATA_CHANNEL */
     }
     else if( xNetworkStatus != DTLS_SUCCESS )
     {
@@ -590,7 +621,9 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
         }
         else if( ( pBuffer[0] > 19 ) && ( pBuffer[0] < 64 ) )
         {
-            /* Trigger the DTLS handshaking to send client hello if necessary. */
+            /* Trigger the DTLS handshaking to send client hello if necessary
+             * and process incoming DTLS data by forwarding to respective
+             * libraries to process. */
             ret = ProcessDtlsPacket( pSession, pBuffer, bufferLength );
         }
         else
@@ -1236,6 +1269,15 @@ PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * 
     return ret;
 }
 
+#if ENABLE_SCTP_DATA_CHANNEL
+PeerConnectionResult_t PeerConnection_AddDataChannel( PeerConnectionSession_t * pSession )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    pSession->ucEnableDataChannelLocal = 1;
+    return ret;
+}
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
+
 PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSession_t * pSession,
                                                               uint32_t ssrc,
                                                               const Transceiver_t ** ppTransceiver )
@@ -1296,6 +1338,25 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
                                                                    NULL );
             }
         }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        #if ENABLE_SCTP_DATA_CHANNEL
+        PeerConnectionResult_t xSCTPRet;
+        /* Close and deallocate all data channels along with terminating
+         * SCTP session. */
+        xSCTPRet = PeerConnectionSCTP_DeallocateSCTP( pSession );
+        if( xSCTPRet == PEER_CONNECTION_RESULT_OK )
+        {
+            LogDebug( ( "Closed SCTP session. \r\n" ) );
+        }
+        else
+        {
+            LogError( ( "Fail to close SCTP session, result: %d", xSCTPRet ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE;
+        }
+        #endif /* #if ENABLE_SCTP_DATA_CHANNEL */
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )

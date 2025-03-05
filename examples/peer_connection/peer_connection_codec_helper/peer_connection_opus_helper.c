@@ -154,18 +154,18 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
-     if( pTransceiver->trackKind != TRANSCEIVER_TRACK_KIND_AUDIO )
+    if( pTransceiver->trackKind != TRANSCEIVER_TRACK_KIND_AUDIO )
     {
-        LogError(( "Invalid track kind."));
+        LogError( ( "Invalid track kind." ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
-     if( ret == PEER_CONNECTION_RESULT_OK )
+    if( ret == PEER_CONNECTION_RESULT_OK )
     {
         opusFrame.pFrameData = pFrame->pData;
         opusFrame.frameDataLength = pFrame->dataLength;
         resultOpus = OpusPacketizer_Init( &opusPacketizerContext,
-                                          &opusFrame);
+                                          &opusFrame );
         if( resultOpus != OPUS_RESULT_OK )
         {
             LogError( ( "Fail to init Opus packetizer, result: %d", resultOpus ) );
@@ -173,7 +173,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         }
     }
 
-    if(ret == PEER_CONNECTION_RESULT_OK )
+    if( ret == PEER_CONNECTION_RESULT_OK )
     {
         pSsrc = &pTransceiver->ssrc;
         pSrtpSender = &pSession->audioSrtpSender;
@@ -196,7 +196,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         }
     }
 
-     while( ret == PEER_CONNECTION_RESULT_OK )
+    while( ret == PEER_CONNECTION_RESULT_OK )
     {
         /* Get buffer from sender for later use.
          * PeerConnectionRollingBuffer_GetRtpSequenceBuffer() returns the buffer with its size.
@@ -271,9 +271,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
 
             /* PeerConnectionSrtp_ConstructSrtpPacket() serializes RTP packet and encrypt it. */
             ret = PeerConnectionSrtp_ConstructSrtpPacket( pSession,
-                                    &pRollingBufferPacket->rtpPacket,
-                                    pSrtpPacket,
-                                    &srtpPacketLength );
+                                                          &pRollingBufferPacket->rtpPacket,
+                                                          pSrtpPacket,
+                                                          &srtpPacketLength );
         }
         else
         {

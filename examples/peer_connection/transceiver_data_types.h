@@ -71,6 +71,7 @@ typedef enum TransceiverTrackKind
     TRANSCEIVER_TRACK_KIND_UNKNOWN = 0,
     TRANSCEIVER_TRACK_KIND_AUDIO, //!< Audio track. Track information is set before add transceiver
     TRANSCEIVER_TRACK_KIND_VIDEO, //!< Video track. Track information is set before add transceiver
+    TRANSCEIVER_TRACK_KIND_DATA_CHANNEL,
 } TransceiverTrackKind_t;
 
 typedef enum TransceiverDirection

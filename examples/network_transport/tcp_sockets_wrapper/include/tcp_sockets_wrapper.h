@@ -72,10 +72,10 @@ typedef struct xSOCKET * Socket_t;     /**< @brief Socket handle data type. */
  * @return Non-zero value on error, 0 on success.
  */
 int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
-                                const char * pHostName,
-                                uint16_t port,
-                                uint32_t receiveTimeoutMs,
-                                uint32_t sendTimeoutMs );
+                             const char * pHostName,
+                             uint16_t port,
+                             uint32_t receiveTimeoutMs,
+                             uint32_t sendTimeoutMs );
 
 /**
  * @brief End connection to server.

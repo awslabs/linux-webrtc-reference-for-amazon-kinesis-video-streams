@@ -18,6 +18,11 @@ extern "C" {
 #include "sdp_controller_data_types.h"
 
 #include "srtp.h"
+
+#if ENABLE_SCTP_DATA_CHANNEL
+#include "sctp_utils.h"
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
+
 #include "rtp_data_types.h"
 #include "rtp_pkt_queue.h"
 #include "rtcp_data_types.h"
@@ -33,6 +38,11 @@ extern "C" {
 #define PEER_CONNECTION_FRAME_CURRENT_VERSION ( 0 )
 
 #define PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH ( 10000 )
+
+#define PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ( 2048 )
+
+#define MAX_SCTP_DATA_CHANNELS          4
+#define PEER_CONNECTION_MAX_SCTP_DATA_CHANNELS_PER_PEER 2
 
 typedef enum PeerConnectionResult
 {
@@ -92,6 +102,9 @@ typedef enum PeerConnectionResult
     PEER_CONNECTION_RESULT_UNKNOWN_CODEC,
     PEER_CONNECTION_RESULT_UNKNOWN_TRANSCEIVER,
     PEER_CONNECTION_RESULT_PACKET_OUTDATED,
+    PEER_CONNECTION_RESULT_FAIL_SCTP_WRITE,
+    PEER_CONNECTION_RESULT_FAIL_SCTP_READ,
+    PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE,
 } PeerConnectionResult_t;
 
 /*
@@ -264,7 +277,29 @@ typedef struct PeerConnectionSrtpReceiver
 } PeerConnectionSrtpReceiver_t;
 
 typedef struct PeerConnectionContext PeerConnectionContext_t;
+typedef struct PeerConnectionSession PeerConnectionSession_t;
+typedef struct PeerConnectionDataChannel PeerConnectionDataChannel_t;
 
+typedef void (* OnDataChannelMessageReceived_t)( PeerConnectionDataChannel_t * pDataChannel,
+                                                 uint8_t isBinary,
+                                                 uint8_t * pMessage,
+                                                 uint32_t pMessageLen );
+
+#if ENABLE_SCTP_DATA_CHANNEL
+typedef struct PeerConnectionDataChannel
+{
+    uint8_t ucChannelActive;
+    char ucDataChannelName[MAX_DATA_CHANNEL_NAME_LEN + 1];
+    PeerConnectionSession_t * pPeerConnection;
+    DataChannelInit_t dataChannelInit;
+    uint32_t channelId;
+    void * onMessageCustomData;
+    void * onOpenCustomData;
+    OnDataChannelMessageReceived_t onDataChannelMessage;
+    struct PeerConnectionDataChannel * pxNext;
+} PeerConnectionDataChannel_t;
+
+#endif
 typedef struct PeerConnectionSession
 {
     volatile PeerConnectionSessionState_t state;
@@ -306,6 +341,16 @@ typedef struct PeerConnectionSession
     /* Remote SDP description. */
     char remoteSdpBuffer[ PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH ];
     PeerConnectionBufferSessionDescription_t remoteSessionDescription;
+
+    #if ENABLE_SCTP_DATA_CHANNEL
+    uint8_t ucEnableDataChannelLocal;
+    uint8_t ucEnableDataChannelRemote;
+    /* SCTP Session */
+    SCTPSession_t sctpSession;
+    /* Data channel configs */
+    PeerConnectionDataChannel_t * pDataChannels;
+    uint32_t uKvsDataChannelCount;
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     PeerConnectionSrtpSender_t videoSrtpSender;
     PeerConnectionSrtpSender_t audioSrtpSender;
@@ -357,3 +402,4 @@ typedef struct PeerConnectionContext
 #endif
 
 #endif /* PEER_CONNECTION_DATA_TYPES_H */
+

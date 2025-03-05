@@ -9,6 +9,8 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+# Option to control linking with usrsctp
+option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" OFF)
 
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtp/rtpFilePaths.cmake)
@@ -45,6 +47,9 @@ file(
   "examples/message_queue/linux/*.c"
   "examples/timer_controller/*.c"
   "examples/string_utils/*.c"
+  if(BUILD_USRSCTP_LIBRARY)
+    "examples/libusrsctp/*.c"
+  endif()
   "examples/peer_connection/*.c"
   "examples/peer_connection/peer_connection_codec_helper/*.c"
   "examples/network_transport/*.c"
@@ -70,6 +75,9 @@ set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
      "examples/app_media_source"
      "examples/metric"
      "examples/libsrtp"
+     if(BUILD_USRSCTP_LIBRARY)
+       "examples/libusrsctp"
+     endif()
      "examples/logging"
      "examples/base64" )
 
@@ -235,8 +243,33 @@ include( ${CMAKE_ROOT_DIRECTORY}/CMake/ice.cmake )
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${ICE_INCLUDE_PUBLIC_DIRS} )
 
+if(BUILD_USRSCTP_LIBRARY)
+  ## Include usrsctp
+  include( ${CMAKE_ROOT_DIRECTORY}/CMake/libusrsctp.cmake )
+endif()
+
+# usrsctp library public include directories.
+set( SCTP_INCLUDE_PUBLIC_DIRS
+     "${CMAKE_ROOT_DIRECTORY}/libraries/protocols/usrsctp/usrsctplib" )
+target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                            ${SCTP_INCLUDE_PUBLIC_DIRS} )
+
+
 # link application with dependencies, note that rt is librt providing message queue's APIs
 message(STATUS "linking websockets to WebRTCLinuxApplication")
-target_link_libraries(WebRTCLinuxApplicationMaster websockets sigv4 signaling corejson sdp ice rt pthread)
+target_link_libraries(WebRTCLinuxApplicationMaster
+    websockets
+    sigv4
+    signaling
+    corejson
+    sdp
+    ice
+    rt
+    pthread
+)
 
-target_compile_options(WebRTCLinuxApplicationMaster PRIVATE -Wall -Werror)
+if(BUILD_USRSCTP_LIBRARY)
+  target_link_libraries(WebRTCLinuxApplicationMaster usrsctp)
+endif()
+
+target_compile_options(WebRTCLinuxApplicationMaster PRIVATE -Wall)

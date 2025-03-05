@@ -13,6 +13,10 @@
 #include "string_utils.h"
 #include "metric.h"
 
+#if ENABLE_SCTP_DATA_CHANNEL
+#include "peer_connection_sctp.h"
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
+
 #define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX "amazonaws.com"
 #define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX_CN "amazonaws.com.cn"
 #define AWS_DEFAULT_STUN_SERVER_URL "stun.kinesisvideo.%s.%s"
@@ -1075,9 +1079,62 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
     return 0;
 }
 
+#if ENABLE_SCTP_DATA_CHANNEL
+
+#if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
+
+static void onDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
+                                  uint8_t isBinary,
+                                  uint8_t * pMessage,
+                                  uint32_t pMessageLen )
+{
+#define OP_BUFFER_SIZE      512
+    char ucSendMessage[OP_BUFFER_SIZE];
+    PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
+    if( ( pMessage == NULL ) || ( pDataChannel == NULL ) )
+    {
+        LogError( ( "No message or pDataChannel received in onDataChannelMessage" ) );
+        return;
+    }
+
+    if( isBinary )
+    {
+        LogWarn( ( "[VIEWER] [Channel Name: %s ID: %d] >>> DataChannel Binary Message", pDataChannel->ucDataChannelName, ( int ) pDataChannel->channelId ) );
+    }
+    else {
+        LogWarn( ( "[VIEWER] [Channel Name: %s ID: %d] >>> DataChannel String Message: %.*s\n", pDataChannel->ucDataChannelName, ( int ) pDataChannel->channelId, ( int ) pMessageLen, pMessage ) );
+        sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( OP_BUFFER_SIZE - 128 ) ? ( OP_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
+        retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
+    }
+
+    if( retStatus != PEER_CONNECTION_RESULT_OK )
+    {
+        LogInfo( ( "[KVS Master] onDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
+    }
+
+}
+
+OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOneMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
+                                                                                    uint32_t ulChannelId,
+                                                                                    uint8_t * pucName,
+                                                                                    uint32_t ulNameLen )
+{
+    ( void ) pPeerConnectionSession;
+    ( void ) ulChannelId;
+    ( void ) pucName;
+    ( void ) ulNameLen;
+
+    return onDataChannelMessage;
+}
+
+#endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
+
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
+
 int main()
 {
     int ret = 0;
+    int i;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerConnectInfo_t connectInfo;
     SSLCredentials_t sslCreds;
@@ -1087,17 +1144,21 @@ int main()
 
     srtp_init();
 
+    #if ENABLE_SCTP_DATA_CHANNEL
+    SCTP_InitSCTPSession();
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
+
     memset( &demoContext, 0, sizeof( DemoContext_t ) );
-    memset( &sslCreds, 0 , sizeof( SSLCredentials_t ) );
-    memset( &connectInfo, 0 , sizeof( SignalingControllerConnectInfo_t ) );
+    memset( &sslCreds, 0, sizeof( SSLCredentials_t ) );
+    memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
 
     sslCreds.pCaCertPath = AWS_CA_CERT_PATH;
     #if defined( AWS_IOT_THING_ROLE_ALIAS )
-        sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
-        sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
+    sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
+    sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
     #else
-        sslCreds.pDeviceCertPath = NULL;
-        sslCreds.pDeviceKeyPath = NULL;
+    sslCreds.pDeviceCertPath = NULL;
+    sslCreds.pDeviceKeyPath = NULL;
     #endif
 
     connectInfo.awsConfig.pRegion = AWS_REGION;
@@ -1115,23 +1176,23 @@ int main()
     connectInfo.pMessageReceivedCallbackData = NULL;
 
     #if defined( AWS_ACCESS_KEY_ID )
-        connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
-        connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
-        connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-        connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
-        #if defined( AWS_SESSION_TOKEN )
-            connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
-            connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
-        #endif /* #if defined( AWS_SESSION_TOKEN ) */
+    connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
+    connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
+    connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+    connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
+    #if defined( AWS_SESSION_TOKEN )
+    connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
+    connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
+    #endif     /* #if defined( AWS_SESSION_TOKEN ) */
     #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
 
     #if defined( AWS_IOT_THING_ROLE_ALIAS )
-        connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
-        connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
-        connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
-        connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
-        connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
-        connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
+    connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
+    connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
+    connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
+    connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
+    connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
+    connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
     #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
 
     signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &sslCreds );
@@ -1181,6 +1242,11 @@ int main()
             ret = -1;
         }
     }
+
+    #if ENABLE_SCTP_DATA_CHANNEL
+    /* TODO_SCTP: Move to a common shutdown function? */
+    SCTP_DeInitSCTPSession();
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     return 0;
 }

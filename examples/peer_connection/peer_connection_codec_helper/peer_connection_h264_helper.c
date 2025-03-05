@@ -3,7 +3,7 @@
 #include "h264_depacketizer.h"
 
 PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
-                                                     uint8_t * pIsStartPacket )
+                                              uint8_t * pIsStartPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     H264Result_t resultH264;
@@ -39,11 +39,11 @@ PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferPacket_t
 }
 
 PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuffer,
-                                             uint16_t rtpSeqStart,
-                                             uint16_t rtpSeqEnd,
-                                             uint8_t * pOutBuffer,
-                                             size_t * pOutBufferLength,
-                                             uint32_t * pRtpTimestamp )
+                                      uint16_t rtpSeqStart,
+                                      uint16_t rtpSeqEnd,
+                                      uint8_t * pOutBuffer,
+                                      size_t * pOutBufferLength,
+                                      uint32_t * pRtpTimestamp )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     uint16_t i, index;
@@ -156,7 +156,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
 
     if( pTransceiver->trackKind != TRANSCEIVER_TRACK_KIND_VIDEO )
     {
-        LogError(( "Invalid track kind."));
+        LogError( ( "Invalid track kind." ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -285,9 +285,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
 
             /* PeerConnectionSrtp_ConstructSrtpPacket() serializes RTP packet and encrypt it. */
             ret = PeerConnectionSrtp_ConstructSrtpPacket( pSession,
-                                       &pRollingBufferPacket->rtpPacket,
-                                       pSrtpPacket,
-                                       &srtpPacketLength );
+                                                          &pRollingBufferPacket->rtpPacket,
+                                                          pSrtpPacket,
+                                                          &srtpPacketLength );
         }
         else
         {

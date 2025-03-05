@@ -114,11 +114,11 @@
 #define HAVE_INLINE 1
 /* #undef HAVE___INLINE */
 #ifndef HAVE_INLINE
-  #ifdef HAVE___INLINE
-    #define inline __inline
-  #else
-    #define inline
-  #endif
+#ifdef HAVE___INLINE
+#define inline __inline
+#else
+#define inline
+#endif
 #endif
 
 /* Remove debugging. */

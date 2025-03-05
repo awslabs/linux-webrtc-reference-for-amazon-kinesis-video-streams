@@ -573,6 +573,15 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
             pIsTargetCodecPayloadSet = &pSession->rtpConfig.isAudioCodecPayloadSet;
             LogDebug( ( "Appending audio tranceiver" ) );
         }
+        #if ENABLE_SCTP_DATA_CHANNEL
+        else if( ( pMediaDescription->mediaNameLength >= 11 ) &&
+                 ( strncmp( pMediaDescription->pMediaName, "application", 11 ) == 0 ) )
+        {
+            trackKind = TRANSCEIVER_TRACK_KIND_DATA_CHANNEL;
+            pSession->ucEnableDataChannelRemote = 1;
+            LogDebug( ( "Appending data channel" ) );
+        }
+        #endif
         else
         {
             /* Ignore unknown media type. */
@@ -583,7 +592,7 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
         }
     }
 
-    if( ret == PEER_CONNECTION_RESULT_OK )
+    if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) )
     {
         LogDebug( ( "Total transceiverCount: %u", pSession->transceiverCount ) );
         for( currentTransceiverIdx = 0; currentTransceiverIdx < pSession->transceiverCount; currentTransceiverIdx++ )
@@ -765,7 +774,8 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
                                                                   &pLocalBufferSessionDescription->sdpDescription.mediaDescriptions[ i ],
                                                                   i,
                                                                   ppBuffer,
-                                                                  pBufferLength );
+                                                                  pBufferLength,
+                                                                  populateConfiguration.pTransceiver->trackKind );
             if( retSdpController != SDP_CONTROLLER_RESULT_OK )
             {
                 LogError( ( "Fail to populate single media description, result: %d", retSdpController ) );
@@ -777,6 +787,31 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
                 pLocalBufferSessionDescription->sdpDescription.mediaCount++;
             }
         }
+        #if ENABLE_SCTP_DATA_CHANNEL
+        {
+
+            if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( pSession->ucEnableDataChannelLocal != 0 ) && ( i < SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ) )
+            {
+                populateConfiguration.pTransceiver = NULL;
+                retSdpController = SdpController_PopulateSingleMedia( NULL,
+                                                                      populateConfiguration,
+                                                                      &pLocalBufferSessionDescription->sdpDescription.mediaDescriptions[ i ],
+                                                                      i,
+                                                                      ppBuffer,
+                                                                      pBufferLength,
+                                                                      TRANSCEIVER_TRACK_KIND_DATA_CHANNEL );
+                if( retSdpController != SDP_CONTROLLER_RESULT_OK )
+                {
+                    LogError( ( "Fail to populate single media data channel description, result: %d", retSdpController ) );
+                    ret = PEER_CONNECTION_RESULT_FAIL_SDP_POPULATE_SINGLE_MEDIA_DESCRIPTION;
+                }
+                else
+                {
+                    pLocalBufferSessionDescription->sdpDescription.mediaCount++;
+                }
+            }
+        }
+        #endif /* ENABLE_SCTP_DATA_CHANNEL */
     }
     else
     {
@@ -803,7 +838,8 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
                                                                   &pLocalBufferSessionDescription->sdpDescription.mediaDescriptions[ i ],
                                                                   i,
                                                                   ppBuffer,
-                                                                  pBufferLength );
+                                                                  pBufferLength,
+                                                                  populateConfiguration.pTransceiver->trackKind );
             if( retSdpController != SDP_CONTROLLER_RESULT_OK )
             {
                 LogError( ( "Fail to populate single media description, result: %d", retSdpController ) );
@@ -815,6 +851,32 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
                 pLocalBufferSessionDescription->sdpDescription.mediaCount++;
             }
         }
+
+        #if ENABLE_SCTP_DATA_CHANNEL
+        {
+
+            if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( pSession->ucEnableDataChannelRemote == 1 ) && ( i < SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ) )
+            {
+                populateConfiguration.pTransceiver = NULL;
+                retSdpController = SdpController_PopulateSingleMedia( &pRemoteBufferSessionDescription->sdpDescription.mediaDescriptions[ i ],
+                                                                      populateConfiguration,
+                                                                      &pLocalBufferSessionDescription->sdpDescription.mediaDescriptions[ i ],
+                                                                      i,
+                                                                      ppBuffer,
+                                                                      pBufferLength,
+                                                                      TRANSCEIVER_TRACK_KIND_DATA_CHANNEL );
+                if( retSdpController != SDP_CONTROLLER_RESULT_OK )
+                {
+                    LogError( ( "Fail to populate single media data channel description, result: %d", retSdpController ) );
+                    ret = PEER_CONNECTION_RESULT_FAIL_SDP_POPULATE_SINGLE_MEDIA_DESCRIPTION;
+                }
+                else
+                {
+                    pLocalBufferSessionDescription->sdpDescription.mediaCount++;
+                }
+            }
+        }
+        #endif /* ENABLE_SCTP_DATA_CHANNEL */
     }
 
     return ret;

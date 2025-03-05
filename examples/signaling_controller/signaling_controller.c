@@ -8,7 +8,7 @@
 /*----------------------------------------------------------------------------*/
 
 #ifndef MIN
-    #define MIN( a,b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+#define MIN( a,b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -147,11 +147,11 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
 
     for( i = 0; i < SIGNALING_CONTROLLER_HTTP_NUM_RETRIES; i++ )
     {
-       networkingResult = Networking_HttpSend( &( pCtx->httpContext ),
-                                               pRequest,
-                                               &( awsCreds ),
-                                               &( pCtx->awsConfig ),
-                                               pResponse );
+        networkingResult = Networking_HttpSend( &( pCtx->httpContext ),
+                                                pRequest,
+                                                &( awsCreds ),
+                                                &( pCtx->awsConfig ),
+                                                pResponse );
 
         if( networkingResult == NETWORKING_RESULT_OK )
         {
@@ -345,9 +345,9 @@ static SignalingControllerResult_t DescribeSignalingChannel( SignalingController
         if( signalingResult != SIGNALING_RESULT_OK )
         {
             LogError( ( "Fail to parse describe signaling channel response, return=0x%x, response(%lu): %.*s",
-                      signalingResult,
-                      httpResponse.bufferLength,
-                      ( int ) httpResponse.bufferLength, httpResponse.pBuffer ) );
+                        signalingResult,
+                        httpResponse.bufferLength,
+                        ( int ) httpResponse.bufferLength, httpResponse.pBuffer ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
         }
     }
@@ -1201,10 +1201,10 @@ SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( co
             if( *pFormalSdpMessageLength < outputLength + lineLength + 2 )
             {
                 LogError( ( "Buffer space is not enough to store formal SDP message, buffer size: %lu, SDP message(%lu): %.*s",
-                          *pFormalSdpMessageLength,
-                          sdpMessageLength,
-                          ( int ) sdpMessageLength,
-                          pSdpMessage ) );
+                            *pFormalSdpMessageLength,
+                            sdpMessageLength,
+                            ( int ) sdpMessageLength,
+                            pSdpMessage ) );
 
                 ret = SIGNALING_CONTROLLER_RESULT_FAIL;
                 break;

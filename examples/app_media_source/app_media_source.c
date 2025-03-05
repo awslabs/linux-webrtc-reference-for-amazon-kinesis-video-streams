@@ -58,7 +58,7 @@ static void * VideoTx_Task( void * pParameter )
 
         while( 1 )
         {
-        #ifndef ENABLE_STREAMING_LOOPBACK
+            #ifndef ENABLE_STREAMING_LOOPBACK
             if( pVideoContext->numReadyPeer != 0 )
             {
                 fileIndex = fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
@@ -105,7 +105,7 @@ static void * VideoTx_Task( void * pParameter )
                     fclose( fp );
                 }
             }
-        #endif
+            #endif
             usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
     }
@@ -133,7 +133,7 @@ static void * AudioTx_Task( void * pParameter )
 
         while( 1 )
         {
-        #ifndef ENABLE_STREAMING_LOOPBACK
+            #ifndef ENABLE_STREAMING_LOOPBACK
             if( pAudioContext->numReadyPeer != 0 )
             {
                 fileIndex = fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
@@ -180,7 +180,7 @@ static void * AudioTx_Task( void * pParameter )
                     fclose( fp );
                 }
             }
-        #endif
+            #endif
             usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
     }
