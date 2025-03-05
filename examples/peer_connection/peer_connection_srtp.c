@@ -11,6 +11,7 @@
 #include "rtcp_api.h"
 #include "peer_connection_g711_helper.h"
 #include "peer_connection_h264_helper.h"
+#include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
 #include "ice_controller.h"
 
@@ -30,6 +31,7 @@
 #define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES ( 2 )
 
 #define PEER_CONNECTION_SRTP_H264_MAX_NALUS_IN_A_FRAME        ( 64 )
+#define PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME        ( 256 )
 #define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH      ( 1200 )
 
 #define PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE ( uint32_t ) 90000

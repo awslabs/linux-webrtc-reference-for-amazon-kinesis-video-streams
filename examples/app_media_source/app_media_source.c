@@ -26,6 +26,7 @@
 #define DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM ( 10 )
 
 #define NUMBER_OF_H264_FRAME_SAMPLE_FILES   1500
+#define NUMBER_OF_H265_FRAME_SAMPLE_FILES   1500
 #define NUMBER_OF_OPUS_FRAME_SAMPLE_FILES   618
 #define MAX_PATH_LEN                        255
 
@@ -61,8 +62,17 @@ static void * VideoTx_Task( void * pParameter )
             #ifndef ENABLE_STREAMING_LOOPBACK
             if( pVideoContext->numReadyPeer != 0 )
             {
-                fileIndex = fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
-                snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", fileIndex );
+                #if(pVideoContext == h265)
+                {
+                    fileIndex = fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", fileIndex );
+                }
+                #else
+                {
+                    fileIndex = fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", fileIndex );
+                }
+                #endif
 
                 fp = fopen( filePath, "rb" );
 
@@ -450,7 +460,15 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
         memset( pVideoTranceiver, 0, sizeof( Transceiver_t ) );
         pVideoTranceiver->trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
         pVideoTranceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
-        TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
+        #if(pVideoTranceiver == h265)
+        {
+            TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT);
+        }
+        #else
+        {
+            TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
+        }
+        #endif
         pVideoTranceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND;
         pVideoTranceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE;
         strncpy( pVideoTranceiver->streamId, DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID, sizeof( pVideoTranceiver->streamId ) );

@@ -1138,7 +1138,6 @@ int main()
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerConnectInfo_t connectInfo;
     SSLCredentials_t sslCreds;
-    int i;
 
     srand( time( NULL ) );
 

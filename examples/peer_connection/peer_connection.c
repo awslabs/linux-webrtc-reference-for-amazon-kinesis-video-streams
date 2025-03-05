@@ -12,6 +12,7 @@
 #include "metric.h"
 
 #include "peer_connection_h264_helper.h"
+#include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
 #include "peer_connection_g711_helper.h"
 
@@ -1431,7 +1432,7 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
-
+            ret = PeerConnectionSrtp_WriteH265Frame( pSession, pTransceiver, pFrame );
         }
         else
         {
