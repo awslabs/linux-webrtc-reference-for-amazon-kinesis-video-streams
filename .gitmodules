@@ -34,3 +34,6 @@
 [submodule "libraries/components/amazon-kinesis-video-streams-rtp"]
 	path = libraries/components/amazon-kinesis-video-streams-rtp
 	url = https://github.com/awslabs/amazon-kinesis-video-streams-rtp.git
+[submodule "libraries/protocols/usrsctp"]
+	path = libraries/protocols/usrsctp
+	url = https://github.com/sctplab/usrsctp

@@ -29,7 +29,8 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
                                                          SdpControllerMediaDescription_t * pLocalMediaDescription,
                                                          uint32_t currentMediaIdx,
                                                          char ** ppBuffer,
-                                                         size_t * pBufferLength );
+                                                         size_t * pBufferLength,
+                                                         TransceiverTrackKind_t trackKind );
 SdpControllerResult_t SdpController_PopulateSessionDescription( SdpControllerSdpDescription_t * pRemoteSessionDescription,
                                                                 SdpControllerPopulateSessionConfiguration_t populateConfiguration,
                                                                 SdpControllerSdpDescription_t * pLocalSessionDescription,

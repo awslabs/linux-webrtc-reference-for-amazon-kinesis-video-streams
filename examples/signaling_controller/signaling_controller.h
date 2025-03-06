@@ -97,9 +97,9 @@ typedef struct SignalingControllerContext
     char signalingChannelArn[ SIGNALING_CONTROLLER_ARN_BUFFER_LENGTH + 1 ];
     size_t signalingChannelArnLength;
 
-    char wssEndpoint[ SIGNALING_CONTROLLER_ENDPOINT_BUFFER_LENGTH  + 1 ];
+    char wssEndpoint[ SIGNALING_CONTROLLER_ENDPOINT_BUFFER_LENGTH + 1 ];
     size_t wssEndpointLength;
-    char httpsEndpoint[ SIGNALING_CONTROLLER_ENDPOINT_BUFFER_LENGTH  + 1 ];
+    char httpsEndpoint[ SIGNALING_CONTROLLER_ENDPOINT_BUFFER_LENGTH + 1 ];
     size_t httpsEndpointLength;
     char webrtcEndpoint[ SIGNALING_CONTROLLER_ENDPOINT_BUFFER_LENGTH + 1 ];
     size_t webrtcEndpointLength;

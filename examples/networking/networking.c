@@ -8,11 +8,11 @@
 
 #define STATIC_CRED_EXPIRES_SECONDS ( 604800 )
 #ifndef MIN
-    #define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+#define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 #ifndef MAX
-    #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+#define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -1327,6 +1327,7 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
         creationInfo.ka_probes = 1;
         creationInfo.ka_interval = 1;
         creationInfo.retry_and_idle_policy = &( retryPolicy );
+        creationInfo.fd_limit_per_thread = 3;
 
         if( ( pCreds->pDeviceCertPath != NULL ) && ( pCreds->pDeviceKeyPath != NULL ) )
         {
@@ -1396,6 +1397,7 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
         creationInfo.ka_probes = 1;
         creationInfo.ka_interval = 1;
         creationInfo.retry_and_idle_policy = &( retryPolicy );
+        creationInfo.fd_limit_per_thread = 3;
 
         if( ( pCreds->pDeviceCertPath != NULL ) && ( pCreds->pDeviceKeyPath != NULL ) )
         {

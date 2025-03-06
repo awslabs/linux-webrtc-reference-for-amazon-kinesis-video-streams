@@ -1430,7 +1430,10 @@ DtlsTransportStatus_t DTLS_ExecuteHandshake( DtlsNetworkContext_t * pNetworkCont
         }
         else if( mbedtlsError < 0 )
         {
-            LogError( ( "Unexpected error during DTLS handshaking, error= %s : %s.", mbedtlsHighLevelCodeOrDefault( mbedtlsError ), mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+            LogError( ( "Unexpected error during DTLS handshaking, error=-0x%x %s : %s.",
+                        -mbedtlsError,
+                        mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
+                        mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
             returnStatus = DTLS_TRANSPORT_HANDSHAKE_FAILED;
         }
         else

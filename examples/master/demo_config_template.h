@@ -9,6 +9,10 @@
 
 #define AWS_CA_CERT_PATH "cert/cert.pem"
 
+#ifndef ENABLE_SCTP_DATA_CHANNEL
+#define ENABLE_SCTP_DATA_CHANNEL 0U
+#endif
+
 /* Uncomment to use fetching credentials by IoT Role-alias for Authentication */
 // #define AWS_CREDENTIALS_ENDPOINT ""
 // #define AWS_IOT_THING_NAME ""

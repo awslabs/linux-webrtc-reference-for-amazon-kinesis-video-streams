@@ -18,6 +18,10 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
 PeerConnectionResult_t PeerConnection_Start( PeerConnectionSession_t * pSession );
 PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * pSession,
                                                       Transceiver_t * pTransceiver );
+#if ENABLE_SCTP_DATA_CHANNEL
+/* Enable data channel to be included in the SDP offer. */
+PeerConnectionResult_t PeerConnection_AddDataChannel( PeerConnectionSession_t * pSession );
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
 PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSession_t * pSession,
                                                               uint32_t ssrc,
                                                               const Transceiver_t ** ppTransceiver );
