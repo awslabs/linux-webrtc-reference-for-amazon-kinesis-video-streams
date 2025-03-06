@@ -13,6 +13,7 @@ extern "C" {
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           IceControllerInitConfig_t * pInitConfig );
 IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx );
+IceControllerResult_t IceController_AddressClosing( IceControllerContext_t * pCtx );
 IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecodeMessage,
                                                              size_t decodeMessageLength,
                                                              IceControllerCandidate_t * pCandidate );

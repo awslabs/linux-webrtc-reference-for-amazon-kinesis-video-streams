@@ -50,8 +50,7 @@ PeerConnectionResult_t PeerConnection_SetOnLocalCandidateReady( PeerConnectionSe
                                                                 OnIceCandidateReadyCallback_t onLocalCandidateReadyCallbackFunc,
                                                                 void * pOnLocalCandidateReadyCallbackCustomContext );
 PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_t * pSession,
-                                                          IceControllerIceServer_t * pIceServers,
-                                                          size_t iceServersCount );
+                                                          PeerConnectionSessionConfiguration_t * pSessionConfig );
 
 #ifdef __cplusplus
 }

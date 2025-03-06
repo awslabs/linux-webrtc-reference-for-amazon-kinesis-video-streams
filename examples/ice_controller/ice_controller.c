@@ -70,7 +70,10 @@ static void OnTimerExpire( void * pContext )
                                               ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK,
                                               NULL );
                 break;
-            case ICE_CONTROLLER_STATE_DISCONNECTED:
+            case ICE_CONTROLLER_STATE_CLOSING:
+                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                              ICE_CONTROLLER_CB_EVENT_CLOSING,
+                                              NULL );
                 break;
             default:
                 LogError( ( "Unexpected state: %d.", pCtx->state ) );
@@ -295,7 +298,7 @@ static IceControllerResult_t ProcessLocalCandidates( IceControllerContext_t * pC
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipFromBuffer[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
 
     iceResult = Ice_GetLocalCandidateCount( &pCtx->iceContext,
                                             &count );
@@ -676,6 +679,49 @@ IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_
     return ret;
 }
 
+IceControllerResult_t IceController_AddressClosing( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    int i;
+    uint8_t isAnySocketAlive = 0U;
+
+    for( i = 0; i < pCtx->socketsContextsCount; i++ )
+    {
+        if( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE )
+        {
+            isAnySocketAlive = 1U;
+            break;
+        }
+    }
+
+    /* Send request for local candidates. */
+    if( isAnySocketAlive != 0U )
+    {
+        ret = ProcessLocalCandidates( pCtx );
+
+        IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+    }
+    else
+    {
+        LogInfo( ( "Stopping polling for Ice controller." ) );
+        ret = IceControllerSocketListener_StopPolling( pCtx );
+
+        /* All sockets have been closed, notify peer connection. */
+        if( pCtx->onIceEventCallbackFunc )
+        {
+            pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                          ICE_CONTROLLER_CB_EVENT_CLOSED,
+                                          NULL );
+        }
+        else
+        {
+            LogError( ( "There is no ICE event callback function set." ) );
+        }
+    }
+
+    return ret;
+}
+
 IceControllerResult_t IceController_SendTurnRefreshAllocation( IceControllerContext_t * pCtx,
                                                                IceCandidate_t * pTargetCandidate )
 {
@@ -810,32 +856,85 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     int i;
+    uint8_t needReleaseTurnResource = 0U;
 
     if( pCtx == NULL )
     {
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
-    /* Stop polling */
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        LogInfo( ( "Stopping polling for Ice controller." ) );
-        ret = IceControllerSocketListener_StopPolling( pCtx );
+        switch( pCtx->state )
+        {
+            case ICE_CONTROLLER_STATE_NEW:
+                IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_NONE );
+                break;
+            case ICE_CONTROLLER_STATE_READY:
+            case ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS:
+                IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_CLOSING );
+                break;
+            case ICE_CONTROLLER_STATE_NONE:
+            case ICE_CONTROLLER_STATE_CLOSING:
+            default:
+                ret = ICE_CONTROLLER_RESULT_CONTEXT_ALREADY_CLOSED;
+                break;
+        }
     }
 
     /* Reset socket contexts. */
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        for( i = 0; i < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT; i++ )
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
-            if( pCtx->socketsContexts[i].state > ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE )
+            if( ( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE ) &&
+                ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) &&
+                ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
+            {
+                /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
+                 * Thus keep the socket alive until it's terminated. */
+                Ice_CloseCandidate( &pCtx->iceContext,
+                                    pCtx->socketsContexts[i].pLocalCandidate );
+                needReleaseTurnResource = 1U;
+            }
+            else if( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE )
             {
                 IceControllerNet_FreeSocketContext( pCtx,
                                                     &pCtx->socketsContexts[i] );
             }
+            else
+            {
+                /* Empty else marker. */
+            }
         }
-        pCtx->socketsContextsCount = 0;
-        pCtx->pNominatedSocketContext = NULL;
+    }
+
+    /* Stop polling */
+    if( ( ret == ICE_CONTROLLER_RESULT_OK ) && ( needReleaseTurnResource == 0U ) )
+    {
+        LogInfo( ( "Stopping polling for Ice controller." ) );
+        ret = IceControllerSocketListener_StopPolling( pCtx );
+
+        /* All sockets have been closed, notify peer connection. */
+        if( pCtx->onIceEventCallbackFunc )
+        {
+            pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                          ICE_CONTROLLER_CB_EVENT_CLOSED,
+                                          NULL );
+        }
+        else
+        {
+            LogError( ( "There is no ICE event callback function set." ) );
+        }
+    }
+    else if( ( ret == ICE_CONTROLLER_RESULT_OK ) && ( needReleaseTurnResource == 1U ) )
+    {
+        LogInfo( ( "Waiting for TURN session to be released." ) );
+        IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     return ret;
@@ -1166,6 +1265,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         {
             pCtx->socketsContexts[i].socketFd = -1;
         }
+        pCtx->socketsContextsCount = 0;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -1279,6 +1379,9 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
             pCtx->rootCaPemLength = pIceServersConfig->rootCaPemLength;
             pCtx->rootCaPem[ pIceServersConfig->rootCaPemLength ] = '\0';
         }
+
+        memset( pCtx->iceServers, 0, sizeof( pCtx->iceServers ) );
+        pCtx->iceServersCount = 0;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )

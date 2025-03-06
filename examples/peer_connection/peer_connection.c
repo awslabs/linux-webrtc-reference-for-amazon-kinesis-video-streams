@@ -36,6 +36,10 @@ static PeerConnectionResult_t HandleProcessIceCandidatesAndPairs( PeerConnection
                                                                   PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t HandlePeriodConnectionCheck( PeerConnectionSession_t * pSession,
                                                            PeerConnectionSessionRequestMessage_t * pRequestMessage );
+static PeerConnectionResult_t HandleIceClosing( PeerConnectionSession_t * pSession,
+                                                PeerConnectionSessionRequestMessage_t * pRequestMessage );
+static PeerConnectionResult_t HandleIceClosed( PeerConnectionSession_t * pSession,
+                                               PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession );
@@ -117,6 +121,14 @@ static void HandleRequest( PeerConnectionSession_t * pSession,
                 ( void ) HandlePeriodConnectionCheck( pSession,
                                                       &requestMsg );
                 break;
+            case PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSING:
+                ( void ) HandleIceClosing( pSession,
+                                           &requestMsg );
+                break;
+            case PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSED:
+                ( void ) HandleIceClosed( pSession,
+                                          &requestMsg );
+                break;
             default:
                 /* Unknown request, drop it. */
                 LogDebug( ( "Dropping unknown request %d", requestMsg.requestType ) );
@@ -193,6 +205,46 @@ static PeerConnectionResult_t HandlePeriodConnectionCheck( PeerConnectionSession
     return ret;
 }
 
+static PeerConnectionResult_t HandleIceClosing( PeerConnectionSession_t * pSession,
+                                                PeerConnectionSessionRequestMessage_t * pRequestMessage )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    IceControllerResult_t iceControllerResult;
+
+    ( void ) pRequestMessage;
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        iceControllerResult = IceController_AddressClosing( &pSession->iceControllerContext );
+        if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to close ICE context." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADDRESS_CLOSING;
+        }
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t HandleIceClosed( PeerConnectionSession_t * pSession,
+                                               PeerConnectionSessionRequestMessage_t * pRequestMessage )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    ( void ) pRequestMessage;
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( pSession->state == PEER_CONNECTION_SESSION_STATE_CLOSING )
+        {
+            /* Reset the state to inited for user to re-use. */
+            pSession->state = PEER_CONNECTION_SESSION_STATE_INITED;
+        }
+    }
+
+    return ret;
+}
+
 static PeerConnectionResult_t SendRemoteCandidateRequest( PeerConnectionSession_t * pSession,
                                                           IceControllerCandidate_t * pRemoteCandidate )
 {
@@ -263,6 +315,62 @@ static int32_t OnIceEventPeriodicConnectionCheck( PeerConnectionSession_t * pSes
     MessageQueueResult_t retMessageQueue;
     PeerConnectionSessionRequestMessage_t requestMessage = {
         .requestType = PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK,
+    };
+
+    if( pSession == NULL )
+    {
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        ret = -10;
+    }
+
+    if( ret == 0 )
+    {
+        retMessageQueue = MessageQueue_Send( &pSession->requestQueue,
+                                             &requestMessage,
+                                             sizeof( PeerConnectionSessionRequestMessage_t ) );
+        if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+        {
+            ret = -11;
+        }
+    }
+
+    return ret;
+}
+
+static int32_t OnIceEventClosing( PeerConnectionSession_t * pSession )
+{
+    int32_t ret = 0;
+    MessageQueueResult_t retMessageQueue;
+    PeerConnectionSessionRequestMessage_t requestMessage = {
+        .requestType = PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSING,
+    };
+
+    if( pSession == NULL )
+    {
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        ret = -10;
+    }
+
+    if( ret == 0 )
+    {
+        retMessageQueue = MessageQueue_Send( &pSession->requestQueue,
+                                             &requestMessage,
+                                             sizeof( PeerConnectionSessionRequestMessage_t ) );
+        if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+        {
+            ret = -11;
+        }
+    }
+
+    return ret;
+}
+
+static int32_t OnIceEventClosed( PeerConnectionSession_t * pSession )
+{
+    int32_t ret = 0;
+    MessageQueueResult_t retMessageQueue;
+    PeerConnectionSessionRequestMessage_t requestMessage = {
+        .requestType = PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSED,
     };
 
     if( pSession == NULL )
@@ -386,6 +494,12 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 break;
             case ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK:
                 ret = OnIceEventPeriodicConnectionCheck( pSession );
+                break;
+            case ICE_CONTROLLER_CB_EVENT_CLOSING:
+                ret = OnIceEventClosing( pSession );
+                break;
+            case ICE_CONTROLLER_CB_EVENT_CLOSED:
+                ret = OnIceEventClosed( pSession );
                 break;
             default:
                 LogError( ( "Unknown event: %d", event ) );
@@ -1397,9 +1511,6 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
         memset( pSession->pTransceivers, 0, sizeof( pSession->pTransceivers ) );
         pSession->transceiverCount = 0;
         pSession->mLinesTransceiverCount = 0;
-
-        /* Reset the state to inited for user to re-use. */
-        pSession->state = PEER_CONNECTION_SESSION_STATE_INITED;
     }
 
     return ret;
@@ -1569,26 +1680,29 @@ PeerConnectionResult_t PeerConnection_SetOnLocalCandidateReady( PeerConnectionSe
 }
 
 PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_t * pSession,
-                                                          IceControllerIceServer_t * pIceServers,
-                                                          size_t iceServersCount )
+                                                          PeerConnectionSessionConfiguration_t * pSessionConfig )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
     IceControllerIceServerConfig_t iceServerConfig;
 
     if( ( pSession == NULL ) ||
-        ( pIceServers == NULL ) )
+        ( pSessionConfig == NULL ) )
     {
-        LogError( ( "Invalid input, pSession: %p, pIceServers: %p",
-                    pSession, pIceServers ) );
+        LogError( ( "Invalid input, pSession: %p, pSessionConfig: %p",
+                    pSession, pSessionConfig ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &iceServerConfig, 0, sizeof( IceControllerIceServerConfig_t ) );
-        iceServerConfig.pIceServers = pIceServers;
-        iceServerConfig.iceServersCount = iceServersCount;
+        iceServerConfig.pIceServers = pSessionConfig->iceServers;
+        iceServerConfig.iceServersCount = pSessionConfig->iceServersCount;
+        iceServerConfig.pRootCaPath = pSessionConfig->pRootCaPath;
+        iceServerConfig.rootCaPathLength = pSessionConfig->rootCaPathLength;
+        iceServerConfig.pRootCaPem = pSessionConfig->pRootCaPem;
+        iceServerConfig.rootCaPemLength = pSessionConfig->rootCaPemLength;
         iceControllerResult = IceController_AddIceServerConfig( &pSession->iceControllerContext,
                                                                 &iceServerConfig );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )

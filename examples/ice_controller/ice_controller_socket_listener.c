@@ -119,6 +119,8 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                 {
                     /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
                      * Thus keep the socket alive until it's terminated. */
+                    Ice_CloseCandidate( &pCtx->iceContext,
+                                        pCtx->socketsContexts[i].pLocalCandidate );
                 }
                 else
                 {

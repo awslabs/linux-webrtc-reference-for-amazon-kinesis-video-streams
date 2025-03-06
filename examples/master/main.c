@@ -512,6 +512,9 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
             pcConfig.rootCaPemLength = sizeof( AWS_CA_CERT_PEM );
         #endif /* #if defined( AWS_CA_CERT_PEM ) */
 
+        pcConfig.canTrickleIce = 1U;
+        pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
+
         ret = GetIceServerList( pDemoContext,
                                 pcConfig.iceServers,
                                 &pcConfig.iceServersCount );
@@ -520,8 +523,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
     if( ret == 0 )
     {
         peerConnectionResult = PeerConnection_AddIceServerConfig( &pDemoSession->peerConnectionSession,
-                                                                  pcConfig.iceServers,
-                                                                  pcConfig.iceServersCount );
+                                                                  &pcConfig );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_AddIceServerConfig fail, result: %d", peerConnectionResult ) );
