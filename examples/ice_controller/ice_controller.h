@@ -28,7 +28,6 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
                                            size_t remotePasswordLength,
                                            const char * pCombinedName,
                                            size_t combinedNameLength );
-IceControllerResult_t IceController_ProcessLoop( IceControllerContext_t * pCtx );
 IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t * pCtx,
                                                         IceRemoteCandidateInfo_t * pRemoteCandidate );
 IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerContext_t * pCtx );
