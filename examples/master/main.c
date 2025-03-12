@@ -1134,7 +1134,6 @@ OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOneMessageCallbackHo
 int main()
 {
     int ret = 0;
-    int i;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerConnectInfo_t connectInfo;
     SSLCredentials_t sslCreds;
