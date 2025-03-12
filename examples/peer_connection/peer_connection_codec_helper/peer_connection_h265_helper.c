@@ -110,7 +110,6 @@ PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuff
             LogError( ( "Fail to get h265 depacketizer frame, result: %d", resultH265 ) );
             ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
         }
-
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -166,8 +165,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
         resulth265 = H265Packetizer_Init(&h265PacketizerContext,
             nalusArray,
             PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME,
-            DEFAULT_SPROP_MAX_DON_DIFF,
-            PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH);
+            DEFAULT_SPROP_MAX_DON_DIFF);
         if( resulth265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to init h265 packetizer, result: %d", resulth265 ) );
@@ -210,7 +208,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
             ret = PEER_CONNECTION_RESULT_FAIL_TAKE_SENDER_MUTEX;
         }
     }
-
+    // int count=0;
     while( ret == PEER_CONNECTION_RESULT_OK )
     {
         /* Get buffer from sender for later use.
@@ -232,6 +230,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
         {
             packeth265.pPacketData = pRollingBufferPacket->pPacketBuffer + PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES;
             packeth265.packetDataLength = pRollingBufferPacket->packetBufferLength - PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES;
+            packeth265.maxPacketSize = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
 
             /* Using local buffer for SRTP packet, use the entire packet length. */
             pSrtpPacket = rtpBuffer;
@@ -242,6 +241,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
             /* Using local buffer for RTP payload only, set RTP payload length. */
             packeth265.pPacketData = rtpBuffer;
             packeth265.packetDataLength = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
+            packeth265.maxPacketSize = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
 
             pSrtpPacket = pRollingBufferPacket->pPacketBuffer;
             srtpPacketLength = pRollingBufferPacket->packetBufferLength;
@@ -249,11 +249,17 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
 
         resulth265 = H265Packetizer_GetPacket( &h265PacketizerContext,
                                                &packeth265 );
-        if( resulth265 == H265_RESULT_NO_MORE_PACKETS )
+
+                                            //    printf("***********************************************************");     
+                                            //    printf("H265 Result: %d, times :%d \n", resulth265, count);   
+                                            //    count++; 
+                                            //    printf("***********************************************************");  
+                                                               
+        if( resulth265 == H265_RESULT_NO_MORE_NALUS )
         {
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
                                                                   pRollingBufferPacket );
-            /* Eraly break because no packet available. */
+            /* Early break because no packet available. */
             break;
         }
         else if( resulth265 == H265_RESULT_OK )
