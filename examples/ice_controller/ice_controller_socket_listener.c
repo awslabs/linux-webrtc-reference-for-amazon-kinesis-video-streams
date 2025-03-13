@@ -236,6 +236,10 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             {
                 ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, uReadBytes );
             }
+            else
+            {
+                LogError( ( "No callback function to handle DTLS/RTP/RTCP packets." ) );
+            }
         }
         else
         {
