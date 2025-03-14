@@ -75,6 +75,11 @@ static void OnTimerExpire( void * pContext )
                                               ICE_CONTROLLER_CB_EVENT_CLOSING,
                                               NULL );
                 break;
+            case ICE_CONTROLLER_STATE_CLOSED:
+                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                              ICE_CONTROLLER_CB_EVENT_CLOSED,
+                                              NULL );
+                break;
             default:
                 LogError( ( "Unexpected state: %d.", pCtx->state ) );
                 break;
@@ -717,6 +722,8 @@ IceControllerResult_t IceController_AddressClosing( IceControllerContext_t * pCt
         {
             LogError( ( "There is no ICE event callback function set." ) );
         }
+
+        IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_CLOSED );
     }
 
     return ret;
@@ -872,10 +879,11 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
                 break;
             case ICE_CONTROLLER_STATE_READY:
             case ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS:
+            case ICE_CONTROLLER_STATE_CLOSING:
                 IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_CLOSING );
                 break;
             case ICE_CONTROLLER_STATE_NONE:
-            case ICE_CONTROLLER_STATE_CLOSING:
+            case ICE_CONTROLLER_STATE_CLOSED:
             default:
                 ret = ICE_CONTROLLER_RESULT_CONTEXT_ALREADY_CLOSED;
                 break;
@@ -926,8 +934,10 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
         {
             LogError( ( "There is no ICE event callback function set." ) );
         }
+
+        IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_CLOSED );
     }
-    else if( ( ret == ICE_CONTROLLER_RESULT_OK ) && ( needReleaseTurnResource == 1U ) )
+    else if( ( ret == ICE_CONTROLLER_RESULT_OK ) && ( needReleaseTurnResource != 0U ) )
     {
         LogInfo( ( "Waiting for TURN session to be released." ) );
         IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_CLOSING_INTERVAL_MS );
@@ -945,6 +955,7 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TimerControllerResult_t retTimer;
+    int i;
 
     if( ( pCtx == NULL ) || ( pInitConfig == NULL ) )
     {
@@ -980,6 +991,15 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
         {
             LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_TIMER_INIT;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT; i++ )
+        {
+            pCtx->socketsContexts[i].socketFd = -1;
+            pCtx->socketsContexts[i].state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE;
         }
     }
 
@@ -1263,7 +1283,12 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
     {
         for( i = 0; i < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT; i++ )
         {
-            pCtx->socketsContexts[i].socketFd = -1;
+            if( pCtx->socketsContexts[i].socketFd >= 0 )
+            {
+                /* Force close socket before next round. */
+                IceControllerNet_FreeSocketContext( pCtx,
+                                                    &pCtx->socketsContexts[i] );
+            }
         }
         pCtx->socketsContextsCount = 0;
     }
@@ -1379,13 +1404,13 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
             pCtx->rootCaPemLength = pIceServersConfig->rootCaPemLength;
             pCtx->rootCaPem[ pIceServersConfig->rootCaPemLength ] = '\0';
         }
-
-        memset( pCtx->iceServers, 0, sizeof( pCtx->iceServers ) );
-        pCtx->iceServersCount = 0;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
+        memset( pCtx->iceServers, 0, sizeof( pCtx->iceServers ) );
+        pCtx->iceServersCount = 0;
+
         for( i = 0; i < pIceServersConfig->iceServersCount; i++ )
         {
             if( pCtx->iceServersCount >= ICE_CONTROLLER_MAX_ICE_SERVER_COUNT )

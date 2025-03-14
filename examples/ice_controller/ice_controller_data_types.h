@@ -267,6 +267,7 @@ typedef enum IceControllerState
     ICE_CONTROLLER_STATE_NOMINATING,
     ICE_CONTROLLER_STATE_READY,
     ICE_CONTROLLER_STATE_CLOSING,
+    ICE_CONTROLLER_STATE_CLOSED,
 } IceControllerState_t;
 
 typedef enum IceControllerNatTraversalConfig
