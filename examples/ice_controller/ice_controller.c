@@ -470,6 +470,7 @@ static IceControllerResult_t ProcessCandidatePairs( IceControllerContext_t * pCt
                        pCtx->iceContext.pCandidatePairs[i].state,
                        pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->candidateId,
                        pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->candidateId ) );
+
             IceControllerNet_LogStunPacket( stunBuffer,
                                             stunBufferLength );
 
@@ -597,6 +598,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
                                                              ipBuffer,
                                                              sizeof( ipBuffer ) ),
                           pRemoteCandidate->pEndpoint->transportAddress.port ) );
+
             LogInfo( ( "Added new remote candidate with ID: 0x%04x", pCtx->iceContext.pRemoteCandidates[ pCtx->iceContext.numRemoteCandidates - 1 ].candidateId ) );
         }
     }

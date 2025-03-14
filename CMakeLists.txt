@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Option to control linking with usrsctp
-option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" ON)
+option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" OFF)
 
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtp/rtpFilePaths.cmake)

@@ -184,7 +184,6 @@ void Metric_PrintMetrics( void )
         // vTaskGetRunTimeStats( runTimeStatsBuffer );
         // LogInfo( ( " == Run Time Stat Start ==\n%s\n == Run Time Stat End ==", runTimeStatsBuffer ) );
         LogInfo( ( "================================ Print Metrics End ================================" ) );
-        fflush( stdout );
 
         pthread_mutex_unlock( &( context.mutex ) );
         fflush( stdout );

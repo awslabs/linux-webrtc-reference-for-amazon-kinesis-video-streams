@@ -1345,7 +1345,7 @@ const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoi
 
     return ret;
 }
-#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
+#endif /* #if LIBRARY_LOG_LEVEL >= LOG_INFO */
 
 #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
 
@@ -1461,35 +1461,14 @@ void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
     }
     else
     {
-        if( ( pStunPacket[0] >= 0x40 ) && ( pStunPacket[0] <= 0x4F ) )
-        {
-            pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) ( pStunPacket + 4 );
-            if( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) + 4 )
-            {
-                // invalid channel data message, ignore it
-            }
-            else
-            {
-                LogVerbose( ( "Channel number: 0x%02x%02x, message length: 0x%02x%02x", pStunPacket[0], pStunPacket[1], pStunPacket[2], pStunPacket[3] ) );
-                LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-                              convertStunMsgTypeToString( pStunMsgHeader->msgType ),
-                              pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
-                              pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
-                              pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
-                              pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
-            }
-        }
-        else
-        {
-            LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-                          convertStunMsgTypeToString( pStunMsgHeader->msgType ),
-                          pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
-                          pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
-                          pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
-                          pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
-        }
+        LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                      convertStunMsgTypeToString( pStunMsgHeader->msgType ),
+                      pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
+                      pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
+                      pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
+                      pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
     }
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_DEBUG  */
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     ( void ) pStunPacket;
     ( void ) stunPacketSize;
