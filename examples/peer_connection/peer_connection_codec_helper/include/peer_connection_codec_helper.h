@@ -35,8 +35,8 @@
 #define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES ( 2 )
 
 #define PEER_CONNECTION_SRTP_H264_MAX_NALUS_IN_A_FRAME        ( 64 )
-#define PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME        ( 512 )                            // --> cross-verify
-#define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH      ( 1200 )
+#define PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME        ( 1024 )                                                                                        // --> cross-verify
+#define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH      ( 1100 )
 
 #define PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE ( uint32_t ) 90000
 #define PEER_CONNECTION_SRTP_OPUS_CLOCKRATE  ( uint32_t ) 48000
@@ -47,9 +47,6 @@
 #define PEER_CONNECTION_SRTP_CONVERT_RTP_TIMESTAMP_TO_TIME_US( clockRate, rtpTimestamp ) ( ( uint64_t )( rtpTimestamp ) * PEER_CONNECTION_SRTP_US_IN_A_SECOND / ( clockRate ) )
 
 #define PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND ( 2 )
-
-#define DEFAULT_SPROP_MAX_DON_DIFF ( 32767 )                               // --> cross-verify
-#define DEFAULT_DON_PRESENT ( 0 )                                        // --> cross-verify
 
 /*
  *

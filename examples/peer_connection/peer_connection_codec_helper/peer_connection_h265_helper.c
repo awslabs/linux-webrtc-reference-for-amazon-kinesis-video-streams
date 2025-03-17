@@ -68,8 +68,7 @@ PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuff
     {
         resultH265 = H265Depacketizer_Init(&h265DepacketizerContext,
             h265Packets,
-            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME,
-            DEFAULT_DON_PRESENT);
+            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME);
         if( resultH265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to initialize H265 depacketizer, result: %d", resultH265 ) );
@@ -164,8 +163,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
     {
         resulth265 = H265Packetizer_Init(&h265PacketizerContext,
             nalusArray,
-            PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME,
-            DEFAULT_SPROP_MAX_DON_DIFF);
+            PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME);
         if( resulth265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to init h265 packetizer, result: %d", resulth265 ) );
@@ -248,12 +246,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
         }
 
         resulth265 = H265Packetizer_GetPacket( &h265PacketizerContext,
-                                               &packeth265 );
-
-                                            //    printf("***********************************************************");     
-                                            //    printf("H265 Result: %d, times :%d \n", resulth265, count);   
-                                            //    count++; 
-                                            //    printf("***********************************************************");  
+                                               &packeth265 ); 
                                                                
         if( resulth265 == H265_RESULT_NO_MORE_NALUS )
         {
