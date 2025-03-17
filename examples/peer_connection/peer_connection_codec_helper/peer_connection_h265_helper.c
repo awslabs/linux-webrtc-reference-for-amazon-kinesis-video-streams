@@ -228,7 +228,6 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
         {
             packeth265.pPacketData = pRollingBufferPacket->pPacketBuffer + PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES;
             packeth265.packetDataLength = pRollingBufferPacket->packetBufferLength - PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES;
-            packeth265.maxPacketSize = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
 
             /* Using local buffer for SRTP packet, use the entire packet length. */
             pSrtpPacket = rtpBuffer;
@@ -239,7 +238,6 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
             /* Using local buffer for RTP payload only, set RTP payload length. */
             packeth265.pPacketData = rtpBuffer;
             packeth265.packetDataLength = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
-            packeth265.maxPacketSize = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
 
             pSrtpPacket = pRollingBufferPacket->pPacketBuffer;
             srtpPacketLength = pRollingBufferPacket->packetBufferLength;
