@@ -7,8 +7,6 @@
 #include "stun_deserializer.h"
 #include "transport_mbedtls.h"
 
-#define ICE_CONTROLLER_SOCKET_LISTENER_QUEUE_NAME "/WebrtcApplicationIceControllerSocketListener"
-#define MAX_QUEUE_MSG_NUM ( 10 )
 #define ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ( 50 )
 #define RX_BUFFER_SIZE ( 4096 )
 

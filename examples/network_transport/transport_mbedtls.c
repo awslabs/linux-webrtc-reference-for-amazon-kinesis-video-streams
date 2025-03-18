@@ -282,6 +282,7 @@ static int32_t setRootCaPath( SSLContext_t * pSslContext,
                               size_t rootCaPathLength )
 {
     int32_t mbedtlsError = -1;
+    /* Allocate one extra space for NULL terminator. */
     static char caFilePath[ TRANSPORT_MBEDTLS_MAX_FILE_PATH_LENGTH + 1 ];
 
     assert( pSslContext != NULL );

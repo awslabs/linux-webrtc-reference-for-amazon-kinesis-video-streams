@@ -689,7 +689,7 @@ IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_
 IceControllerResult_t IceController_AddressClosing( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    int i;
+    uint32_t i;
     uint8_t isAnySocketAlive = 0U;
 
     for( i = 0; i < pCtx->socketsContextsCount; i++ )

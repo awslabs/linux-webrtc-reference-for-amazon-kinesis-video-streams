@@ -640,9 +640,11 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
             UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE, &pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ], NULL, &pCtx->iceServers[ i ].iceEndpoint );
+
             LogInfo( ( "Created srflx candidate with fd %d, ID: 0x%04x",
                        pSocketContext->socketFd,
                        pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+
             LogVerbose( ( "srflx candidate's local IP/port: %s/%d",
                           IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
                           pLocalIceEndpoint->transportAddress.port ) );
