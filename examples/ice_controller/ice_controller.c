@@ -1302,7 +1302,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        ( void ) IceControllerNet_AddLocalCandidates( pCtx );
+        IceControllerNet_AddLocalCandidates( pCtx );
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )

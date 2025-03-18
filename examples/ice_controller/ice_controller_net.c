@@ -953,7 +953,7 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
     return ret;
 }
 
-IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx )
+void IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     uint32_t i;
@@ -993,8 +993,6 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
             AddRelayCandidates( pCtx );
         }
     }
-
-    return ret;
 }
 
 IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t * pCtx,

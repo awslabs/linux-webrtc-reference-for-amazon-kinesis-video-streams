@@ -22,7 +22,7 @@ IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
                                                         IceEndpoint_t * pDestinationIceEndpoint );
 IceControllerResult_t IceControllerNet_Htons( uint16_t port,
                                               uint16_t * pOutPort );
-IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx );
+void IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx );
 IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t * pCtx,
                                                          IceControllerSocketContext_t * pSocketContext,
                                                          uint8_t * pReceiveBuffer,
