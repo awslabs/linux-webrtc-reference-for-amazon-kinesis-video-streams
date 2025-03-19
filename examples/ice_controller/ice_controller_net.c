@@ -1267,6 +1267,9 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
             case ICE_HANDLE_STUN_PACKET_RESULT_OK:
                 LogVerbose( ( "ICE_HANDLE_STUN_PACKET_RESULT_OK" ) );
                 break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_NOT_STUN_PACKET:
+                ret = ICE_CONTROLLER_RESULT_NOT_STUN_PACKET;
+                break;
             default:
                 LogWarn( ( "Unknown case: %d", iceHandleStunResult ) );
                 break;

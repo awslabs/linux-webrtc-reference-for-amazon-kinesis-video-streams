@@ -145,16 +145,16 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 {
     uint8_t skipProcess = 0;
     int32_t readBytes;
-    size_t uReadBytes;
     IceEndpoint_t remoteIceEndpoint;
     IceControllerResult_t ret;
-    StunResult_t retStun;
-    StunContext_t stunContext;
-    StunHeader_t stunHeader;
     int32_t retPeerToPeerConnectionFound;
     IceResult_t iceResult;
     IceCandidatePair_t * pCandidatePair = NULL;
+    uint8_t * pTurnPayloadBuffer = NULL;
+    uint16_t turnPayloadBufferLength = 0;
     uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
+    uint8_t * pProcessingBuffer = receiveBuffer;
+    size_t processingBufferLength = 0;
 
     if( ( pCtx == NULL ) || ( pSocketContext == NULL ) )
     {
@@ -166,11 +166,11 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
     {
         if( pSocketContext->socketType == ICE_CONTROLLER_SOCKET_TYPE_UDP )
         {
-            readBytes = RecvPacketUdp( pSocketContext, receiveBuffer, RX_BUFFER_SIZE, 0, &remoteIceEndpoint );
+            readBytes = RecvPacketUdp( pSocketContext, pProcessingBuffer, RX_BUFFER_SIZE, 0, &remoteIceEndpoint );
         }
         else if( pSocketContext->socketType == ICE_CONTROLLER_SOCKET_TYPE_TLS )
         {
-            readBytes = RecvPacketTls( pSocketContext, receiveBuffer, RX_BUFFER_SIZE, &remoteIceEndpoint );
+            readBytes = RecvPacketTls( pSocketContext, pProcessingBuffer, RX_BUFFER_SIZE, &remoteIceEndpoint );
         }
         else
         {
@@ -193,22 +193,32 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
         {
             /* Received valid data, keep addressing. */
             LogDebug( ( "Receiving %d btyes from network.", readBytes ) );
-            uReadBytes = ( size_t ) readBytes;
+            processingBufferLength = ( size_t ) readBytes;
         }
 
         if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
         {
-            iceResult = Ice_RemoveTurnChannelHeader( &pCtx->iceContext,
-                                                     pSocketContext->pLocalCandidate,
-                                                     receiveBuffer,
-                                                     uReadBytes,
-                                                     receiveBuffer,
-                                                     &uReadBytes,
-                                                     &pCandidatePair );
+            iceResult = Ice_HandleTurnPacket( &pCtx->iceContext,
+                                              pSocketContext->pLocalCandidate,
+                                              pProcessingBuffer,
+                                              processingBufferLength,
+                                              ( const uint8_t ** ) &pTurnPayloadBuffer,
+                                              &turnPayloadBufferLength,
+                                              &pCandidatePair );
             if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
             {
-                LogError( ( "Fail to remove TURN channel header, iceResult: %d", iceResult ) );
+                LogError( ( "Ice_HandleTurnPacket detects failure, iceResult: %d", iceResult ) );
                 break;
+            }
+            else if( iceResult == ICE_RESULT_OK )
+            {
+                /* Received TURN buffer, replace buffer pointer for further processing. */
+                pProcessingBuffer = pTurnPayloadBuffer;
+                processingBufferLength = turnPayloadBufferLength;
+            }
+            else
+            {
+                /* TURN prefix not required, keep original buffer. */
             }
         }
 
@@ -223,67 +233,60 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
          * |       B < 2   -+--> forward to STUN
          * +----------------+
          */
-        retStun = StunDeserializer_Init( &stunContext,
-                                         receiveBuffer,
-                                         uReadBytes,
-                                         &stunHeader );
-        if( retStun != STUN_RESULT_OK )
+        ret = IceControllerNet_HandleStunPacket( pCtx,
+                                                 pSocketContext,
+                                                 pProcessingBuffer,
+                                                 processingBufferLength,
+                                                 &remoteIceEndpoint,
+                                                 pCandidatePair );
+        if( ret == ICE_CONTROLLER_RESULT_NOT_STUN_PACKET )
         {
             /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
             if( onRecvNonStunPacketFunc )
             {
-                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, uReadBytes );
+                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, pProcessingBuffer, processingBufferLength );
             }
             else
             {
                 LogError( ( "No callback function to handle DTLS/RTP/RTCP packets." ) );
             }
         }
-        else
+        else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) && ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
         {
-            ret = IceControllerNet_HandleStunPacket( pCtx,
-                                                     pSocketContext,
-                                                     receiveBuffer,
-                                                     uReadBytes,
-                                                     &remoteIceEndpoint,
-                                                     pCandidatePair );
-            if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) && ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
-            {
-                /* Set state to selected and release other un-selected sockets. */
-                IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_READY );
-                IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
-                pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
+            /* Set state to selected and release other un-selected sockets. */
+            IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_READY );
+            IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
+            pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
 
-                ReleaseOtherSockets( pCtx, pSocketContext );
-                LogDebug( ( "Released all other socket contexts" ) );
+            ReleaseOtherSockets( pCtx, pSocketContext );
+            LogDebug( ( "Released all other socket contexts" ) );
 
-                /* Found nominated pair, execute DTLS handshake and release all other resources. */
-                if( onIceEventCallbackFunc )
-                {
-                    retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, NULL );
-                    if( retPeerToPeerConnectionFound != 0 )
-                    {
-                        LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
-                    }
-                }
-                else
-                {
-                    LogWarn( ( "No callback function to handle P2P connection found event." ) );
-                }
-            }
-            else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
+            /* Found nominated pair, execute DTLS handshake and release all other resources. */
+            if( onIceEventCallbackFunc )
             {
-                /* Handle STUN packet successfully, keep processing. */
-            }
-            else if( ret == ICE_CONTROLLER_RESULT_CONNECTION_CLOSED )
-            {
-                /* Socket has been closed, skip the next recv loop. */
-                break;
+                retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, NULL );
+                if( retPeerToPeerConnectionFound != 0 )
+                {
+                    LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
+                }
             }
             else
             {
-                LogError( ( "Fail to handle this RX packet, ret: %d, readBytes: %lu", ret, uReadBytes ) );
+                LogWarn( ( "No callback function to handle P2P connection found event." ) );
             }
+        }
+        else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
+        {
+            /* Handle STUN packet successfully, keep processing. */
+        }
+        else if( ret == ICE_CONTROLLER_RESULT_CONNECTION_CLOSED )
+        {
+            /* Socket has been closed, skip the next recv loop. */
+            break;
+        }
+        else
+        {
+            LogError( ( "Fail to handle this RX packet, ret: %d, readBytes: %lu", ret, processingBufferLength ) );
         }
     }
 }
