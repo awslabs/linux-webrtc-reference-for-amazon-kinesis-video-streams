@@ -289,6 +289,7 @@ typedef void (* OnDataChannelMessageReceived_t)( PeerConnectionDataChannel_t * p
 typedef struct PeerConnectionDataChannel
 {
     uint8_t ucChannelActive;
+    uint8_t ucChannelOpen;
     char ucDataChannelName[MAX_DATA_CHANNEL_NAME_LEN + 1];
     PeerConnectionSession_t * pPeerConnection;
     DataChannelInit_t dataChannelInit;

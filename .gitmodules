@@ -37,3 +37,6 @@
 [submodule "libraries/protocols/usrsctp"]
 	path = libraries/protocols/usrsctp
 	url = https://github.com/sctplab/usrsctp.git
+[submodule "libraries/components/amazon-kinesis-video-streams-dcep"]
+	path = libraries/components/amazon-kinesis-video-streams-dcep
+	url = https://github.com/awslabs/amazon-kinesis-video-streams-dcep.git
