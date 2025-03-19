@@ -213,6 +213,9 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             else if( iceResult == ICE_RESULT_OK )
             {
                 /* Received TURN buffer, replace buffer pointer for further processing. */
+                LogInfo( ( "Removed TURN channel header, number: 0x%02x%02x, length: 0x%02x%02x",
+                           pProcessingBuffer[0], pProcessingBuffer[1],
+                           pProcessingBuffer[2], pProcessingBuffer[3] ) );
                 pProcessingBuffer = pTurnPayloadBuffer;
                 processingBufferLength = turnPayloadBufferLength;
             }
