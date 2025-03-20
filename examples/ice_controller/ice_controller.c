@@ -1144,6 +1144,8 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         iceInitInfo.remoteCandidatesArrayLength = ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT;
         iceInitInfo.pCandidatePairsArray = pCtx->candidatePairsBuffer;
         iceInitInfo.candidatePairsArrayLength = ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT;
+        iceInitInfo.pRelayExtensionsArray = pCtx->relayExtensionsBuffer;
+        iceInitInfo.relayExtensionsArrayLength = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
         iceInitInfo.cryptoFunctions.randomFxn = IceController_CalculateRandom;
         iceInitInfo.cryptoFunctions.crc32Fxn = IceController_CalculateCrc32;
         iceInitInfo.cryptoFunctions.hmacFxn = IceController_MbedtlsHmac;
