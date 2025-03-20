@@ -179,7 +179,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
                                               &h265Frame );
         if( resulth265 != H265_RESULT_OK )
         {
-            LogError( ( "Fail to init h265 packetizer, result: %d", resulth265 ) );
+            LogError( ( "Fail to add frame in  h265 packetizer, result: %d", resulth265 ) );
             ret = PEER_CONNECTION_RESULT_FAIL_PACKETIZER_ADD_FRAME;
         }
     }
@@ -206,7 +206,6 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
             ret = PEER_CONNECTION_RESULT_FAIL_TAKE_SENDER_MUTEX;
         }
     }
-    // int count=0;
     while( ret == PEER_CONNECTION_RESULT_OK )
     {
         /* Get buffer from sender for later use.

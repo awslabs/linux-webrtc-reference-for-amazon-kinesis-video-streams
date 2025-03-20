@@ -40,6 +40,6 @@
 #endif
 
 /* Video format setting. */
-#define USE_H265 0
+#define c 1
 
 #endif /* DEMO_CONFIG_H */
