@@ -818,7 +818,6 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        LogDebug( ( "Sending STUN bind response back to remote" ) );
         IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
 
         if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
@@ -837,7 +836,7 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
         }
         else
         {
-            LogDebug( ( "Sending STUN bind response back to remote, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
+            LogDebug( ( "Sending STUN bind response back to remote, local/remote candidate ID: 0x%04x / 0x%04x",
                         pCandidatePair->pLocalCandidate->candidateId,
                         pCandidatePair->pRemoteCandidate->candidateId ) );
         }
@@ -1088,13 +1087,14 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        if( pCandidatePair != NULL )
+        if( ( pCandidatePair != NULL ) &&
+            ( iceHandleStunResult != ICE_HANDLE_STUN_PACKET_RESULT_NOT_STUN_PACKET ) )
         {
-            LogInfo( ( "Receiving STUN packet, local/remote candidate ID: 0x%04x/0x%04x",
-                       pCandidatePair->pLocalCandidate->candidateId,
-                       pCandidatePair->pRemoteCandidate->candidateId ) );
+            LogDebug( ( "Receiving STUN packet, local/remote candidate ID: 0x%04x / 0x%04x",
+                        pCandidatePair->pLocalCandidate->candidateId,
+                        pCandidatePair->pRemoteCandidate->candidateId ) );
         }
-        LogDebug( ( "Ice_HandleStunPacket return %d", iceHandleStunResult ) );
+        LogVerbose( ( "Ice_HandleStunPacket return %d", iceHandleStunResult ) );
 
         switch( iceHandleStunResult )
         {
@@ -1167,7 +1167,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     ( iceHandleStunResult == ICE_HANDLE_STUN_PACKET_RESULT_SEND_RESPONSE_FOR_NOMINATION ) )
                 {
                     Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
-                    LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x/0x%04x",
+                    LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x / 0x%04x",
                                pCandidatePair->pLocalCandidate->candidateId,
                                pCandidatePair->pRemoteCandidate->candidateId ) );
 
@@ -1204,7 +1204,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     }
                     else
                     {
-                        LogDebug( ( "Sending channel binding request, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
+                        LogDebug( ( "Sending channel binding request, local/remote candidate ID: 0x%04x / 0x%04x",
                                     pCandidatePair->pLocalCandidate->candidateId,
                                     pCandidatePair->pRemoteCandidate->candidateId ) );
                         IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
@@ -1236,7 +1236,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     }
                     else
                     {
-                        LogDebug( ( "Sending STUN binding request, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
+                        LogDebug( ( "Sending STUN binding request, local/remote candidate ID: 0x%04x / 0x%04x",
                                     pCandidatePair->pLocalCandidate->candidateId,
                                     pCandidatePair->pRemoteCandidate->candidateId ) );
                         IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
@@ -1515,7 +1515,8 @@ void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
                                      size_t stunPacketSize )
 {
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    IceControllerStunMsgHeader_t * pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunPacket;
+    const uint8_t * pStunMsgContent = pStunPacket;
+    IceControllerStunMsgHeader_t * pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunMsgContent;
 
     if( ( pStunPacket == NULL ) || ( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) ) )
     {
@@ -1528,22 +1529,38 @@ void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
             if( ( pStunPacket[0] & 0xF0 ) == 0x40 )
             {
                 LogVerbose( ( "TURN channel number: 0x%02x%02x, TURN application data length: 0x%02x%02x",
-                              pStunPacket[0], pStunPacket[1],
-                              pStunPacket[2], pStunPacket[3] ) );
-                pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) &pStunPacket[ ICE_TURN_CHANNEL_DATA_HEADER_LENGTH ];
+                              pStunPacket[ 0 ], pStunPacket[ 1 ],
+                              pStunPacket[ 2 ], pStunPacket[ 3 ] ) );
+                pStunMsgContent = &pStunPacket[ ICE_TURN_CHANNEL_DATA_HEADER_LENGTH ];
+                pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunMsgContent;
                 if( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) + ICE_TURN_CHANNEL_DATA_HEADER_LENGTH )
                 {
-                    // invalid STUN packet, ignore it
+                    // invalid STUN packet, ignore it.
+                    LogWarn( ( "Invalid TURN packet, packet size: %lu", stunPacketSize ) );
                     break;
                 }
             }
 
-            LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-                          convertStunMsgTypeToString( pStunMsgHeader->msgType ),
-                          pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
-                          pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
-                          pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
-                          pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
+            /*
+             * demux each packet off of its first byte
+             * https://tools.ietf.org/html/rfc5764#section-5.1.2
+             * +----------------+
+             * | 127 < B < 192 -+--> forward to RTP/RTCP
+             * |                |
+             * |  19 < B < 64  -+--> forward to DTLS
+             * |                |
+             * |       B < 2   -+--> forward to STUN
+             * +----------------+
+             */
+            if( pStunMsgContent[ 0 ] < 2 )
+            {
+                LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                              convertStunMsgTypeToString( pStunMsgHeader->msgType ),
+                              pStunMsgHeader->contentLength[ 0 ], pStunMsgHeader->contentLength[ 1 ],
+                              pStunMsgHeader->transactionId[ 0 ], pStunMsgHeader->transactionId[ 1 ], pStunMsgHeader->transactionId[ 2 ], pStunMsgHeader->transactionId[ 3 ],
+                              pStunMsgHeader->transactionId[ 4 ], pStunMsgHeader->transactionId[ 5 ], pStunMsgHeader->transactionId[ 6 ], pStunMsgHeader->transactionId[ 7 ],
+                              pStunMsgHeader->transactionId[ 8 ], pStunMsgHeader->transactionId[ 9 ], pStunMsgHeader->transactionId[ 10 ], pStunMsgHeader->transactionId[ 11 ] ) );
+            }
         } while( 0U );
     }
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */

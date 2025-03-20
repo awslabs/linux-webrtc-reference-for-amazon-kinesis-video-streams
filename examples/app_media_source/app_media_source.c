@@ -91,7 +91,7 @@ static void * VideoTx_Task( void * pParameter )
                     fseek( fp, 0, SEEK_SET );
                     if( fread( frame.pData, frameLength, 1, fp ) == 1 )
                     {
-                        LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
+                        LogVerbose( ( "Sending video frame of length %lu.", frameLength ) );
                         if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
                         {
                             ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
@@ -166,7 +166,7 @@ static void * AudioTx_Task( void * pParameter )
                     fseek( fp, 0, SEEK_SET );
                     if( fread( frame.pData, frameLength, 1, fp ) == 1 )
                     {
-                        LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
+                        LogVerbose( ( "Sending audio frame of length %lu.", frameLength ) );
                         if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
                         {
                             ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );

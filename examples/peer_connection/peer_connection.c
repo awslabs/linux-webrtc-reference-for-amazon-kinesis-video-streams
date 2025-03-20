@@ -553,11 +553,9 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
         else
         {
             /* Assign local cert to the DTLS session. */
-            LogDebug( ( "setting pDtlsSession->xNetworkCredentials.pClientCert" ) );
             pDtlsSession->xNetworkCredentials.pClientCert = &pSession->pCtx->dtlsContext.localCert;
 
             // /* Assign local key to the DTLS session. */
-            LogDebug( ( "setting pDtlsSession->xNetworkCredentials.pPrivateKey" ) );
             pDtlsSession->xNetworkCredentials.pPrivateKey = &pSession->pCtx->dtlsContext.localKey;
 
             /* Attempt to create a DTLS connection. */

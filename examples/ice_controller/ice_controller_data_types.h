@@ -52,6 +52,8 @@ extern "C" {
 #define ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT      ( 100 )
 #define ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT     ( 100 )
 
+#define ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS ( 500 )
+
 #define ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS ( 100 )
 #define ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS ( 1000 )
 #define ICE_CONTROLLER_CLOSING_INTERVAL_MS ( 100 )
@@ -203,6 +205,8 @@ typedef struct IceControllerMetrics
     uint32_t pendingSrflxCandidateNum;
     uint32_t pendingRelayCandidateNum;
     uint32_t isFirstConnectivityRequest;
+
+    uint64_t printCandidatePairsStatusMs;
 } IceControllerMetrics_t;
 
 typedef struct IceControllerCandidate

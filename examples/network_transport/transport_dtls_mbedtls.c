@@ -318,7 +318,6 @@ int dtlsSessionKeyDerivationCallback( void * customData,
 static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
                                DtlsNetworkCredentials_t * pNetworkCredentials )
 {
-    LogDebug( ( "setCredentials" ) );
     int32_t mbedtlsError = 0;
 
     assert( pSslContext != NULL );
@@ -331,11 +330,9 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
     /* Set SSL authmode and the RNG context. */
     mbedtls_ssl_conf_authmode( &( pSslContext->config ),
                                MBEDTLS_SSL_VERIFY_OPTIONAL );
-    LogDebug( ( "before mbedtls_ssl_conf_rng" ) );
     mbedtls_ssl_conf_rng( &( pSslContext->config ),
                           mbedtls_ctr_drbg_random,
                           &( pSslContext->ctrDrbgContext ) );
-    LogDebug( ( "before mbedtls_ssl_conf_cert_profile" ) );
     mbedtls_ssl_conf_cert_profile( &( pSslContext->config ),
                                    &( pSslContext->certProfile ) );
 
@@ -345,7 +342,6 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
         {
             if( mbedtlsError == 0 )
             {
-                LogInfo( ( "Before mbedtls_ssl_conf_own_cert." ) );
                 mbedtlsError = mbedtls_ssl_conf_own_cert( &( pSslContext->config ),
                                                           pNetworkCredentials->pClientCert,
                                                           pNetworkCredentials->pPrivateKey );
@@ -353,7 +349,6 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
 
             if( mbedtlsError == 0 )
             {
-                LogInfo( ( "Before mbedtls_ssl_conf_dtls_cookies." ) );
                 mbedtls_ssl_conf_dtls_cookies( &( pSslContext->config ),
                                                NULL,
                                                NULL,
@@ -362,7 +357,6 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
 
             if( mbedtlsError == 0 )
             {
-                LogInfo( ( "Before mbedtls_ssl_conf_dtls_srtp_protection_profiles." ) );
                 mbedtlsError = mbedtls_ssl_conf_dtls_srtp_protection_profiles( &pSslContext->config,
                                                                                DTLS_SRTP_SUPPORTED_PROFILES );
                 if( mbedtlsError != 0 )
@@ -373,8 +367,6 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
             }
             if( mbedtlsError == 0 )
             {
-                LogInfo( ( "Before mbedtls_ssl_conf_export_keys_ext_cb." ) );
-
                 mbedtls_ssl_conf_export_keys_ext_cb( &pSslContext->config,
                                                      dtlsSessionKeyDerivationCallback,
                                                      pSslContext );
@@ -428,7 +420,6 @@ static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pNetworkContext,
 
     if( returnStatus == DTLS_SUCCESS )
     {
-        LogInfo( ( "Before setCredentials." ) );
         mbedtlsError = setCredentials( &( pDtlsTransportParams->dtlsSslContext ),
                                        pNetworkCredentials );
 

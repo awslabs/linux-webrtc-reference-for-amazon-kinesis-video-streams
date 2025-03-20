@@ -108,7 +108,7 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
 
     if( skipProcess == 0 )
     {
-        LogDebug( ( "Closing sockets other than: %d", pChosenSocketContext->socketFd ) );
+        LogDebug( ( "Closing sockets other than local candidate ID: 0x%04x", pChosenSocketContext->pLocalCandidate->candidateId ) );
         for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
             if( pCtx->socketsContexts[i].socketFd != pChosenSocketContext->socketFd )
@@ -122,6 +122,7 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                         Ice_CloseCandidate( &pCtx->iceContext,
                                             pCtx->socketsContexts[i].pLocalCandidate );
                         pthread_mutex_unlock( &( pCtx->iceMutex ) );
+                        LogDebug( ( "Keep socket of local relay candidate ID: 0x%04x for terminating TURN resource", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
                     }
                     else
                     {
@@ -131,7 +132,7 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                 else
                 {
                     /* Release all unused socket contexts. */
-                    LogDebug( ( "Closing socket: %d", pCtx->socketsContexts[i].socketFd ) );
+                    LogDebug( ( "Closing socket for local candidate ID: 0x%04x", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
                     IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
                 }
             }
@@ -200,7 +201,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
         else
         {
             /* Received valid data, keep addressing. */
-            LogDebug( ( "Receiving %d btyes from network.", readBytes ) );
+            LogVerbose( ( "Receiving %d btyes on local candidate ID: 0x%04x", readBytes, pSocketContext->pLocalCandidate->candidateId ) );
             processingBufferLength = ( size_t ) readBytes;
         }
 
@@ -224,10 +225,13 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                 }
                 else if( iceResult == ICE_RESULT_OK )
                 {
+                    LogVerbose( ( "Removed TURN channel header for local/remote candidate ID 0x%04x / 0x%04x, number: 0x%02x%02x, length: 0x%02x%02x",
+                                  pCandidatePair->pLocalCandidate->candidateId,
+                                  pCandidatePair->pRemoteCandidate->candidateId,
+                                  pProcessingBuffer[ 0 ], pProcessingBuffer[ 1 ],
+                                  pProcessingBuffer[ 2 ], pProcessingBuffer[ 3 ] ) );
+
                     /* Received TURN buffer, replace buffer pointer for further processing. */
-                    LogInfo( ( "Removed TURN channel header, number: 0x%02x%02x, length: 0x%02x%02x",
-                               pProcessingBuffer[0], pProcessingBuffer[1],
-                               pProcessingBuffer[2], pProcessingBuffer[3] ) );
                     pProcessingBuffer = pTurnPayloadBuffer;
                     processingBufferLength = turnPayloadBufferLength;
                 }
@@ -393,8 +397,6 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         {
             if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
             {
-                LogVerbose( ( "Detect packets on fd %d, idx: %d", fds[i], i ) );
-
                 HandleRxPacket( pCtx,
                                 &pCtx->socketsContexts[i],
                                 onRecvNonStunPacketFunc,

@@ -428,7 +428,7 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
              * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
              * has no pending operations and can be skipped for this iteration
              */
-            LogVerbose( ( "No next action for candidate pair local/remote candidate ID 0x%x/0x%x",
+            LogVerbose( ( "No next action for candidate pair local/remote candidate ID 0x%x / 0x%x",
                           pTargetCandidatePair->pLocalCandidate->candidateId,
                           pTargetCandidatePair->pRemoteCandidate->candidateId ) );
             break;
@@ -478,7 +478,7 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
                                                          ipToBuffer,
                                                          sizeof( ipToBuffer ) ),
                       pDestEndpoint->transportAddress.port ) );
-        LogInfo( ( "Sending STUN packet to candidate pair, pair state: %d, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
+        LogInfo( ( "Sending STUN packet to candidate pair, pair state: %d, local/remote candidate ID: 0x%04x / 0x%04x",
                    pTargetCandidatePair->state,
                    pTargetCandidatePair->pLocalCandidate->candidateId,
                    pTargetCandidatePair->pRemoteCandidate->candidateId ) );
@@ -554,6 +554,97 @@ static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
                                                  pSocketContext,
                                                  &pCtx->iceContext.pCandidatePairs[i] );
 
+        }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+    }
+}
+
+static void PrintCandidatesStatus( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint32_t i;
+    size_t candidatesCount;
+    uint8_t isLocked = 0U;
+
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    {
+        isLocked = 1U;
+    }
+    else
+    {
+        LogError( ( "Failed to lock ice mutex." ) );
+        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        iceResult = Ice_GetLocalCandidateCount( &pCtx->iceContext,
+                                                &candidatesCount );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate count, result: %d", iceResult ) );
+            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_LOCAL_CANDIDATE_COUNT;
+        }
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < candidatesCount; i++ )
+        {
+            LogInfo( ( "Local candidate ID: 0x%04x, state is %d",
+                       pCtx->iceContext.pLocalCandidates[ i ].candidateId,
+                       pCtx->iceContext.pLocalCandidates[ i ].state ) );
+        }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+    }
+}
+
+static void PrintCandidatePairsStatus( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint32_t i;
+    size_t candidatePairsCount;
+    uint8_t isLocked = 0U;
+
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    {
+        isLocked = 1U;
+    }
+    else
+    {
+        LogError( ( "Failed to lock ice mutex." ) );
+        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
+                                               &candidatePairsCount );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate count, result: %d", iceResult ) );
+            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_LOCAL_CANDIDATE_COUNT;
+        }
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < candidatePairsCount; i++ )
+        {
+            LogInfo( ( "Local/Remote candidate ID: 0x%04x / 0x%04x, state is %d",
+                       pCtx->iceContext.pCandidatePairs[ i ].pLocalCandidate->candidateId,
+                       pCtx->iceContext.pCandidatePairs[ i ].pRemoteCandidate->candidateId,
+                       pCtx->iceContext.pCandidatePairs[ i ].state ) );
         }
     }
 
@@ -697,6 +788,19 @@ IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerC
 
         /* Re-set the timer. */
         IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( NetworkingUtils_GetCurrentTimeUs( NULL ) >= pCtx->metrics.printCandidatePairsStatusMs )
+        {
+            LogInfo( ( "========== Print Candidates / Pairs States ==========" ) );
+            PrintCandidatesStatus( pCtx );
+            PrintCandidatePairsStatus( pCtx );
+            LogInfo( ( "========== Print Candidates / Pairs States ==========" ) );
+
+            pCtx->metrics.printCandidatePairsStatusMs = NetworkingUtils_GetCurrentTimeUs( NULL ) + ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS;
+        }
     }
 
     return ret;
@@ -1257,6 +1361,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS );
+        pCtx->metrics.printCandidatePairsStatusMs = NetworkingUtils_GetCurrentTimeUs( NULL ) + ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )

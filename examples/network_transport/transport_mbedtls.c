@@ -934,7 +934,7 @@ int32_t TLS_FreeRTOS_send( NetworkContext_t * pNetworkContext,
         }
         else
         {
-            LogDebug( ( "Sending %d bytes over TLS connection.", tlsStatus ) );
+            /* Sent data successfully. */
         }
     }
 
