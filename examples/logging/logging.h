@@ -20,7 +20,7 @@ extern "C" {
 #define LOG_VERBOSE  5
 
 #ifndef LIBRARY_LOG_LEVEL
-#define LIBRARY_LOG_LEVEL LOG_VERBOSE
+#define LIBRARY_LOG_LEVEL LOG_INFO
 #endif
 
 /* Metadata information to prepend to every log message. */
