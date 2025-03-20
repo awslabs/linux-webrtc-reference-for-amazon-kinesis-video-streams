@@ -14,8 +14,8 @@
 // Considering 4 Mbps for 720p (which is what our samples use). This is for H.264.
 // The value could be different for other codecs.
 
-#define DEFAULT_TRANSCEIVER_H264_VIDEO_BIT_RATE ( 1.4 * 1024 * 1024 )
-#define DEFAULT_TRANSCEIVER_H265_VIDEO_BIT_RATE ( 462 * 1024 )
+#define DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE ( 1.4 * 1024 * 1024 )
+#define TRANSCEIVER_H265_VIDEO_BIT_RATE ( 462 * 1024 )
 
 // For opus, the bitrate could be between 6 Kbps to 510 Kbps
 #define DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE ( 1000 * 1024 )
@@ -68,7 +68,7 @@ static void * VideoTx_Task( void * pParameter )
                 #if USE_H265
                 {
                     fileIndex = fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", fileIndex );  
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", fileIndex );
                 }
                 #else
                 {
@@ -467,7 +467,7 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
         #if USE_H265
         {
             TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT);
-            pVideoTranceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_H265_VIDEO_BIT_RATE;
+            pVideoTranceiver->rollingbufferBitRate = TRANSCEIVER_H265_VIDEO_BIT_RATE;
         }
         #else
         {
@@ -477,7 +477,6 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
         #endif
         
         pVideoTranceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND;
-        pVideoTranceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_H265_VIDEO_BIT_RATE;
         strncpy( pVideoTranceiver->streamId, DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID, sizeof( pVideoTranceiver->streamId ) );
         pVideoTranceiver->streamIdLength = strlen( DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID );
         strncpy( pVideoTranceiver->trackId, DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID, sizeof( pVideoTranceiver->trackId ) );
