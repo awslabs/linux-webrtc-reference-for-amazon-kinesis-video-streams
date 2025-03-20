@@ -486,8 +486,6 @@ static IceControllerResult_t SendSocketPacket( IceControllerSocketContext_t * pS
         }
     }
 
-    LogDebug( ( "Sent %d bytes to remote peer.", sendTotalBytes ) );
-
     return ret;
 }
 
@@ -601,8 +599,6 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
     IceResult_t iceResult;
     uint32_t i;
     IceControllerSocketContext_t * pSocketContext;
-    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
-    size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
@@ -639,8 +635,7 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
             if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
             {
                 iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext,
-                                                             pLocalIceEndpoint,
-                                                             stunBuffer, &stunBufferLength );
+                                                             pLocalIceEndpoint );
                 pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
                 if( iceResult != ICE_RESULT_OK )
@@ -671,9 +666,6 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
                           IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
                           pLocalIceEndpoint->transportAddress.port ) );
             pCtx->metrics.pendingSrflxCandidateNum++;
-
-            /* Send binding request to STUN server to query external address. */
-            ret = IceControllerNet_SendPacket( pCtx, pSocketContext, &pCtx->iceServers[ i ].iceEndpoint, stunBuffer, stunBufferLength );
         }
     }
 }
@@ -744,9 +736,10 @@ static void AddRelayCandidates( IceControllerContext_t * pCtx )
             }
             else
             {
-                LogInfo( ( "Creating connection with TURN server %.*s.",
+                LogInfo( ( "Creating connection with TURN server %.*s, protocol: %s.",
                            ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url ) );
+                           pCtx->iceServers[i].url,
+                           pCtx->iceServers[i].protocol == ICE_SOCKET_PROTOCOL_UDP ? "UDP" : "TLS" ) );
             }
 
             ret = CreateSocketContext( pCtx, STUN_ADDRESS_IPv4, NULL, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].protocol, &pSocketContext );
