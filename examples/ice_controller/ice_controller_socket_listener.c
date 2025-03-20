@@ -115,10 +115,18 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
             {
                 if( ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) && ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
                 {
-                    /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
-                     * Thus keep the socket alive until it's terminated. */
-                    Ice_CloseCandidate( &pCtx->iceContext,
-                                        pCtx->socketsContexts[i].pLocalCandidate );
+                    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+                    {
+                        /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
+                         * Thus keep the socket alive until it's terminated. */
+                        Ice_CloseCandidate( &pCtx->iceContext,
+                                            pCtx->socketsContexts[i].pLocalCandidate );
+                        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+                    }
+                    else
+                    {
+                        LogError( ( "Failed to lock ice mutex." ) );
+                    }
                 }
                 else
                 {
@@ -198,30 +206,40 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 
         if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
         {
-            iceResult = Ice_HandleTurnPacket( &pCtx->iceContext,
-                                              pSocketContext->pLocalCandidate,
-                                              pProcessingBuffer,
-                                              processingBufferLength,
-                                              ( const uint8_t ** ) &pTurnPayloadBuffer,
-                                              &turnPayloadBufferLength,
-                                              &pCandidatePair );
-            if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+            if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
             {
-                LogError( ( "Ice_HandleTurnPacket detects failure, iceResult: %d", iceResult ) );
-                break;
-            }
-            else if( iceResult == ICE_RESULT_OK )
-            {
-                /* Received TURN buffer, replace buffer pointer for further processing. */
-                LogInfo( ( "Removed TURN channel header, number: 0x%02x%02x, length: 0x%02x%02x",
-                           pProcessingBuffer[0], pProcessingBuffer[1],
-                           pProcessingBuffer[2], pProcessingBuffer[3] ) );
-                pProcessingBuffer = pTurnPayloadBuffer;
-                processingBufferLength = turnPayloadBufferLength;
+                iceResult = Ice_HandleTurnPacket( &pCtx->iceContext,
+                                                  pSocketContext->pLocalCandidate,
+                                                  pProcessingBuffer,
+                                                  processingBufferLength,
+                                                  ( const uint8_t ** ) &pTurnPayloadBuffer,
+                                                  &turnPayloadBufferLength,
+                                                  &pCandidatePair );
+                pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+                {
+                    LogError( ( "Ice_HandleTurnPacket detects failure, iceResult: %d", iceResult ) );
+                    break;
+                }
+                else if( iceResult == ICE_RESULT_OK )
+                {
+                    /* Received TURN buffer, replace buffer pointer for further processing. */
+                    LogInfo( ( "Removed TURN channel header, number: 0x%02x%02x, length: 0x%02x%02x",
+                               pProcessingBuffer[0], pProcessingBuffer[1],
+                               pProcessingBuffer[2], pProcessingBuffer[3] ) );
+                    pProcessingBuffer = pTurnPayloadBuffer;
+                    processingBufferLength = turnPayloadBufferLength;
+                }
+                else
+                {
+                    /* TURN prefix not required, keep original buffer. */
+                }
             }
             else
             {
-                /* TURN prefix not required, keep original buffer. */
+                LogError( ( "Failed to lock ice mutex." ) );
+                break;
             }
         }
 

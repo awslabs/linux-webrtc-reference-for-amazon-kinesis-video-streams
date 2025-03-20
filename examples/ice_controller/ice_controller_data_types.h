@@ -339,6 +339,8 @@ typedef struct IceControllerContext
 
     /* Mutex to protect global variables shared between Ice controller and socket listener. */
     pthread_mutex_t socketMutex;
+    /* Mutex to ice context while invoking APIs of ICE library. */
+    pthread_mutex_t iceMutex;
 } IceControllerContext_t;
 
 #ifdef __cplusplus

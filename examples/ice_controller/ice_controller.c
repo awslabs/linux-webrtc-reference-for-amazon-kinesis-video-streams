@@ -304,13 +304,27 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipFromBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
+    uint8_t isLocked = 0U;
 
-    iceResult = Ice_GetLocalCandidateCount( &pCtx->iceContext,
-                                            &count );
-    if( iceResult != ICE_RESULT_OK )
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
     {
-        LogError( ( "Fail to query valid candidate count, result: %d", iceResult ) );
-        result = ICE_CONTROLLER_RESULT_FAIL_QUERY_LOCAL_CANDIDATE_COUNT;
+        isLocked = 1U;
+    }
+    else
+    {
+        LogError( ( "Failed to lock ice mutex." ) );
+        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        iceResult = Ice_GetLocalCandidateCount( &pCtx->iceContext,
+                                                &count );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate count, result: %d", iceResult ) );
+            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_LOCAL_CANDIDATE_COUNT;
+        }
     }
 
     if( result == ICE_CONTROLLER_RESULT_OK )
@@ -372,6 +386,11 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
                 continue;
             }
         }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
     }
 }
 
@@ -489,20 +508,34 @@ static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
     uint32_t i;
     size_t count;
     IceControllerSocketContext_t * pSocketContext = NULL;
+    uint8_t isLocked = 0U;
 
-    /* Set the metric for first connectivity check request. */
-    if( pCtx->metrics.isFirstConnectivityRequest == 1 )
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
     {
-        pCtx->metrics.isFirstConnectivityRequest = 0;
-        Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+        isLocked = 1U;
+    }
+    else
+    {
+        LogError( ( "Failed to lock ice mutex." ) );
+        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
     }
 
-    iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
-                                           &count );
-    if( iceResult != ICE_RESULT_OK )
+    if( result == ICE_CONTROLLER_RESULT_OK )
     {
-        LogError( ( "Fail to query valid candidate pair count, result: %d", iceResult ) );
-        result = ICE_CONTROLLER_RESULT_FAIL_QUERY_CANDIDATE_PAIR_COUNT;
+        /* Set the metric for first connectivity check request. */
+        if( pCtx->metrics.isFirstConnectivityRequest == 1 )
+        {
+            pCtx->metrics.isFirstConnectivityRequest = 0;
+            Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+        }
+
+        iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
+                                               &count );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate pair count, result: %d", iceResult ) );
+            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_CANDIDATE_PAIR_COUNT;
+        }
     }
 
     if( result == ICE_CONTROLLER_RESULT_OK )
@@ -522,6 +555,11 @@ static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
                                                  &pCtx->iceContext.pCandidatePairs[i] );
 
         }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
     }
 }
 
@@ -677,7 +715,15 @@ IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         /* Check nominated candidated pair lifetime by calling Ice_CreateNextPairRequest. */
-        ( void ) HandleCandidatePairRequest( pCtx, pCtx->pNominatedSocketContext, pCtx->pNominatedSocketContext->pCandidatePair );
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+        {
+            ( void ) HandleCandidatePairRequest( pCtx, pCtx->pNominatedSocketContext, pCtx->pNominatedSocketContext->pCandidatePair );
+            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+        }
+        else
+        {
+            LogError( ( "Failed to lock ice mutex." ) );
+        }
 
         /* Check local candidates to make sure all unused TURN session are released correctly. */
         ProcessLocalCandidates( pCtx );
@@ -783,11 +829,20 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
                 ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) &&
                 ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
             {
-                /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
-                 * Thus keep the socket alive until it's terminated. */
-                Ice_CloseCandidate( &pCtx->iceContext,
-                                    pCtx->socketsContexts[i].pLocalCandidate );
-                needReleaseTurnResource = 1U;
+                if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+                {
+                    /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
+                     * Thus keep the socket alive until it's terminated. */
+                    Ice_CloseCandidate( &pCtx->iceContext,
+                                        pCtx->socketsContexts[i].pLocalCandidate );
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                    needReleaseTurnResource = 1U;
+                }
+                else
+                {
+                    LogError( ( "Failed to lock ice mutex." ) );
+                }
             }
             else if( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE )
             {
@@ -893,7 +948,18 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
         if( pthread_mutex_init( &( pCtx->socketMutex ),
                                 NULL ) != 0 )
         {
-            LogError( ( "Fail to create mutex for Ice controller." ) );
+            LogError( ( "Fail to create socket mutex for Ice controller." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_CREATE;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Mutex can only be created in executing scheduler. */
+        if( pthread_mutex_init( &( pCtx->iceMutex ),
+                                NULL ) != 0 )
+        {
+            LogError( ( "Fail to create ICE mutex for Ice controller." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_CREATE;
         }
     }
@@ -1154,13 +1220,22 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         iceInitInfo.isControlling = 0;
         iceInitInfo.pStunBindingRequestTransactionIdStore = &pCtx->transactionIdStore;
 
-        iceResult = Ice_Init( &pCtx->iceContext,
-                              &iceInitInfo );
-
-        if( iceResult != ICE_RESULT_OK )
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
         {
-            LogError( ( "Fail to create ICE agent, result: %d", iceResult ) );
-            ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_ICE_AGENT;
+            iceResult = Ice_Init( &pCtx->iceContext,
+                                  &iceInitInfo );
+            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+            if( iceResult != ICE_RESULT_OK )
+            {
+                LogError( ( "Fail to create ICE agent, result: %d", iceResult ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_ICE_AGENT;
+            }
+        }
+        else
+        {
+            LogError( ( "Failed to lock ice mutex." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
         }
     }
 
@@ -1264,28 +1339,39 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
             {
                 pTurnBuffer = turnSendBuffer;
                 turnBufferLength = ICE_CONTROLLER_MAX_MTU;
-                iceResult = Ice_CreateTurnChannelDataMessage( &pCtx->iceContext,
-                                                              pCtx->pNominatedSocketContext->pCandidatePair,
-                                                              pBuffer,
-                                                              bufferLength,
-                                                              pTurnBuffer,
-                                                              &turnBufferLength );
-                if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+
+                if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
-                    LogError( ( "Fail to append TURN channel data, result: %d", iceResult ) );
-                    ret = ICE_CONTROLLER_RESULT_FAIL_APPEND_TURN_CHANNEL_HEADER;
+                    iceResult = Ice_CreateTurnChannelDataMessage( &pCtx->iceContext,
+                                                                  pCtx->pNominatedSocketContext->pCandidatePair,
+                                                                  pBuffer,
+                                                                  bufferLength,
+                                                                  pTurnBuffer,
+                                                                  &turnBufferLength );
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                    if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+                    {
+                        LogError( ( "Fail to append TURN channel data, result: %d", iceResult ) );
+                        ret = ICE_CONTROLLER_RESULT_FAIL_APPEND_TURN_CHANNEL_HEADER;
+                    }
+                    else
+                    {
+                        /* Redirect the output to the TURN server instead of remote endpoint. */
+                        pDestEndpoint = pCtx->pNominatedSocketContext->pIceServerEndpoint;
+
+                        if( iceResult == ICE_RESULT_OK )
+                        {
+                            /* Set sending buffer/length to turn buffer since TURN channel header has been appended successfully. */
+                            pSendingBuffer = pTurnBuffer;
+                            sendingBufferLength = turnBufferLength;
+                        }
+                    }
                 }
                 else
                 {
-                    /* Redirect the output to the TURN server instead of remote endpoint. */
-                    pDestEndpoint = pCtx->pNominatedSocketContext->pIceServerEndpoint;
-
-                    if( iceResult == ICE_RESULT_OK )
-                    {
-                        /* Set sending buffer/length to turn buffer since TURN channel header has been appended successfully. */
-                        pSendingBuffer = pTurnBuffer;
-                        sendingBufferLength = turnBufferLength;
-                    }
+                    LogError( ( "Failed to lock ice mutex." ) );
+                    ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
             }
         }
@@ -1381,6 +1467,7 @@ void IceController_CloseOtherCandidatePairs( IceControllerContext_t * pCtx,
                                              IceCandidatePair_t * pCandidatePair )
 {
     uint8_t skipProcess = 0;
+    uint8_t isLocked = 0U;
     size_t i;
     IceResult_t iceResult;
     size_t count;
@@ -1389,6 +1476,19 @@ void IceController_CloseOtherCandidatePairs( IceControllerContext_t * pCtx,
     {
         LogError( ( "Invalid input, pCtx: %p, pCandidatePair: %p", pCtx, pCandidatePair ) );
         skipProcess = 1;
+    }
+
+    if( skipProcess == 0 )
+    {
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+        {
+            isLocked = 1U;
+        }
+        else
+        {
+            LogError( ( "Failed to lock ice mutex." ) );
+            skipProcess = 1;
+        }
     }
 
     if( skipProcess == 0 )
@@ -1416,6 +1516,11 @@ void IceController_CloseOtherCandidatePairs( IceControllerContext_t * pCtx,
                 }
             }
         }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
     }
 }
 

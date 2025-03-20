@@ -539,13 +539,23 @@ static void AddHostCandidate( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        iceResult = Ice_AddHostCandidate( &pCtx->iceContext, pLocalIceEndpoint );
-        if( iceResult != ICE_RESULT_OK )
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
         {
-            /* Free resource that already created. */
-            LogError( ( "Ice_AddHostCandidate fail, result: %d", iceResult ) );
-            IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-            ret = ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE;
+            iceResult = Ice_AddHostCandidate( &pCtx->iceContext, pLocalIceEndpoint );
+            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+            if( iceResult != ICE_RESULT_OK )
+            {
+                /* Free resource that already created. */
+                LogError( ( "Ice_AddHostCandidate fail, result: %d", iceResult ) );
+                IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                ret = ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE;
+            }
+        }
+        else
+        {
+            LogError( ( "Failed to lock ice mutex." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
         }
     }
 
@@ -626,16 +636,26 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext,
-                                                         pLocalIceEndpoint,
-                                                         stunBuffer, &stunBufferLength );
-            if( iceResult != ICE_RESULT_OK )
+            if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
             {
-                /* Free resource that already created. */
-                LogError( ( "Ice_AddServerReflexiveCandidate fail, result: %d", iceResult ) );
-                IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                ret = ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE;
-                break;
+                iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext,
+                                                             pLocalIceEndpoint,
+                                                             stunBuffer, &stunBufferLength );
+                pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                if( iceResult != ICE_RESULT_OK )
+                {
+                    /* Free resource that already created. */
+                    LogError( ( "Ice_AddServerReflexiveCandidate fail, result: %d", iceResult ) );
+                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                    ret = ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE;
+                    break;
+                }
+            }
+            else
+            {
+                LogError( ( "Failed to lock ice mutex." ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
             }
         }
 
@@ -733,14 +753,24 @@ static void AddRelayCandidates( IceControllerContext_t * pCtx )
 
             if( ret == ICE_CONTROLLER_RESULT_OK )
             {
-                iceResult = Ice_AddRelayCandidate( &pCtx->iceContext, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].userName, pCtx->iceServers[i].userNameLength, pCtx->iceServers[i].password, pCtx->iceServers[i].passwordLength );
-                if( iceResult != ICE_RESULT_OK )
+                if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
-                    /* Free resource that already created. */
-                    LogError( ( "Ice_AddRelayCandidate fail, result: %d", iceResult ) );
-                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                    ret = ICE_CONTROLLER_RESULT_FAIL_ADD_RELAY_CANDIDATE;
-                    break;
+                    iceResult = Ice_AddRelayCandidate( &pCtx->iceContext, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].userName, pCtx->iceServers[i].userNameLength, pCtx->iceServers[i].password, pCtx->iceServers[i].passwordLength );
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                    if( iceResult != ICE_RESULT_OK )
+                    {
+                        /* Free resource that already created. */
+                        LogError( ( "Ice_AddRelayCandidate fail, result: %d", iceResult ) );
+                        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                        ret = ICE_CONTROLLER_RESULT_FAIL_ADD_RELAY_CANDIDATE;
+                        break;
+                    }
+                }
+                else
+                {
+                    LogError( ( "Failed to lock ice mutex." ) );
+                    ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
             }
 
@@ -772,15 +802,25 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
     size_t sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceEndpoint_t * pDestEndpoint = NULL;
 
-    iceResult = Ice_CreateResponseForRequest( &pCtx->iceContext,
-                                              pCandidatePair,
-                                              pTransactionIdBuffer,
-                                              sentStunBuffer,
-                                              &sentStunBufferLength );
-    if( iceResult != ICE_RESULT_OK )
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
     {
-        LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
-        ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
+        iceResult = Ice_CreateResponseForRequest( &pCtx->iceContext,
+                                                  pCandidatePair,
+                                                  pTransactionIdBuffer,
+                                                  sentStunBuffer,
+                                                  &sentStunBufferLength );
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
+        }
+    }
+    else
+    {
+        LogError( ( "Failed to lock ice mutex." ) );
+        ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -1035,16 +1075,29 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                       pRemoteIceEndpoint->transportAddress.port ) );
         IceControllerNet_LogStunPacket( pReceiveBuffer, receiveBufferLength );
 
-        iceHandleStunResult = Ice_HandleStunPacket( &pCtx->iceContext,
-                                                    pReceiveBuffer,
-                                                    ( size_t ) receiveBufferLength,
-                                                    pSocketContext->pLocalCandidate,
-                                                    pRemoteIceEndpoint,
-                                                    &pTransactionIdBuffer,
-                                                    &pCandidatePair );
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+        {
+            iceHandleStunResult = Ice_HandleStunPacket( &pCtx->iceContext,
+                                                        pReceiveBuffer,
+                                                        ( size_t ) receiveBufferLength,
+                                                        pSocketContext->pLocalCandidate,
+                                                        pRemoteIceEndpoint,
+                                                        &pTransactionIdBuffer,
+                                                        &pCandidatePair );
+            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+        }
+        else
+        {
+            LogError( ( "Failed to lock ice mutex." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
         if( pCandidatePair != NULL )
         {
-            LogInfo( ( "Receiving STUN packet, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
+            LogInfo( ( "Receiving STUN packet, local/remote candidate ID: 0x%04x/0x%04x",
                        pCandidatePair->pLocalCandidate->candidateId,
                        pCandidatePair->pRemoteCandidate->candidateId ) );
         }
@@ -1144,47 +1197,67 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 }
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_CHANNEL_BIND_REQUEST:
-                iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
-                                                       pCandidatePair,
-                                                       sentStunBuffer,
-                                                       &sentStunBufferLength );
-                if( iceResult != ICE_RESULT_OK )
+                if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
-                    LogWarn( ( "Unable to create channel binding message, result: %d", iceResult ) );
+                    iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
+                                                           pCandidatePair,
+                                                           sentStunBuffer,
+                                                           &sentStunBufferLength );
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                    if( iceResult != ICE_RESULT_OK )
+                    {
+                        LogWarn( ( "Unable to create channel binding message, result: %d", iceResult ) );
+                    }
+                    else
+                    {
+                        LogDebug( ( "Sending channel binding request, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
+                                    pCandidatePair->pLocalCandidate->candidateId,
+                                    pCandidatePair->pRemoteCandidate->candidateId ) );
+                        IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+
+                        if( IceControllerNet_SendPacket( pCtx, pSocketContext, pSocketContext->pIceServerEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                        {
+                            LogWarn( ( "Unable to send channel binding message" ) );
+                        }
+                    }
                 }
                 else
                 {
-                    LogDebug( ( "Sending channel binding request, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
-                                pCandidatePair->pLocalCandidate->candidateId,
-                                pCandidatePair->pRemoteCandidate->candidateId ) );
-                    IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
-
-                    if( IceControllerNet_SendPacket( pCtx, pSocketContext, pSocketContext->pIceServerEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
-                    {
-                        LogWarn( ( "Unable to send channel binding message" ) );
-                    }
+                    LogError( ( "Failed to lock ice mutex." ) );
+                    ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_CONNECTIVITY_BINDING_REQUEST:
-                iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
-                                                       pCandidatePair,
-                                                       sentStunBuffer,
-                                                       &sentStunBufferLength );
-                if( iceResult != ICE_RESULT_OK )
+                if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
-                    LogWarn( ( "Unable to STUN binding request  message, result: %d", iceResult ) );
+                    iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
+                                                           pCandidatePair,
+                                                           sentStunBuffer,
+                                                           &sentStunBufferLength );
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                    if( iceResult != ICE_RESULT_OK )
+                    {
+                        LogWarn( ( "Unable to STUN binding request  message, result: %d", iceResult ) );
+                    }
+                    else
+                    {
+                        LogDebug( ( "Sending STUN binding request, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
+                                    pCandidatePair->pLocalCandidate->candidateId,
+                                    pCandidatePair->pRemoteCandidate->candidateId ) );
+                        IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+
+                        if( IceControllerNet_SendPacket( pCtx, pSocketContext, pSocketContext->pIceServerEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                        {
+                            LogWarn( ( "Unable to send STUN binding request message" ) );
+                        }
+                    }
                 }
                 else
                 {
-                    LogDebug( ( "Sending STUN binding request, local candidate ID: 0x%04x, remote candidate ID: 0x%04x",
-                                pCandidatePair->pLocalCandidate->candidateId,
-                                pCandidatePair->pRemoteCandidate->candidateId ) );
-                    IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
-
-                    if( IceControllerNet_SendPacket( pCtx, pSocketContext, pSocketContext->pIceServerEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
-                    {
-                        LogWarn( ( "Unable to send STUN binding request message" ) );
-                    }
+                    LogError( ( "Failed to lock ice mutex." ) );
+                    ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_START_NOMINATION:
@@ -1214,26 +1287,37 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_ALLOCATION_REQUEST:
                 /* Received TURN allocation error response, get the nonce/realm from the message.
                  * Send the TURN allocation request again. */
-                sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
-                iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
-                                                            pSocketContext->pLocalCandidate,
-                                                            sentStunBuffer,
-                                                            &sentStunBufferLength );
-                if( iceResult == ICE_RESULT_OK )
+                if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
-                    LogDebug( ( "Sending TURN allocation request, local candidate ID: 0x%04x",
-                                pSocketContext->pLocalCandidate->candidateId ) );
-                    IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+                    sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+                    iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
+                                                                pSocketContext->pLocalCandidate,
+                                                                sentStunBuffer,
+                                                                &sentStunBufferLength );
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
-                    if( IceControllerNet_SendPacket( pCtx, pSocketContext, pSocketContext->pIceServerEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                    if( iceResult == ICE_RESULT_OK )
                     {
-                        LogWarn( ( "Unable to send STUN allocation request" ) );
+                        LogDebug( ( "Sending TURN allocation request, local candidate ID: 0x%04x",
+                                    pSocketContext->pLocalCandidate->candidateId ) );
+                        IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+
+                        if( IceControllerNet_SendPacket( pCtx, pSocketContext, pSocketContext->pIceServerEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                        {
+                            LogWarn( ( "Unable to send STUN allocation request" ) );
+                        }
+                    }
+                    else
+                    {
+                        LogWarn( ( "Not able to create candidate request with return: %d", iceResult ) );
                     }
                 }
                 else
                 {
-                    LogWarn( ( "Not able to create candidate request with return: %d", iceResult ) );
+                    LogError( ( "Failed to lock ice mutex." ) );
+                    ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
+
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_FRESH_COMPLETE:
                 LogInfo( ( "TURN session is refreshed." ) );
@@ -1258,7 +1342,6 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 break;
         }
     }
-
 
     return ret;
 }
