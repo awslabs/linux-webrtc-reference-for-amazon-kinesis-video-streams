@@ -49,7 +49,9 @@ static void getLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
             pLocalIpAddresses[ localIpAddressesNum ].transportAddress.family = STUN_ADDRESS_IPv4;
             pLocalIpAddresses[ localIpAddressesNum ].transportAddress.port = 0;
             pIpv4Addr = ( struct sockaddr_in * ) pIfAddr->ifa_addr;
-            memcpy( pLocalIpAddresses[ localIpAddressesNum ].transportAddress.address, &pIpv4Addr->sin_addr, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( pLocalIpAddresses[ localIpAddressesNum ].transportAddress.address,
+                    &pIpv4Addr->sin_addr,
+                    STUN_IPV4_ADDRESS_SIZE );
             pLocalIpAddresses[ localIpAddressesNum ].isPointToPoint = ( ( pIfAddr->ifa_flags & IFF_POINTOPOINT ) != 0 );
             localIpAddressesNum++;
         }
@@ -160,7 +162,9 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
             memset( &ipv4Address, 0, sizeof( ipv4Address ) );
             ipv4Address.sin_family = AF_INET;
             ipv4Address.sin_port = 0; // use next available port
-            memcpy( &ipv4Address.sin_addr, pIceEndpoint->transportAddress.address, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( &ipv4Address.sin_addr,
+                    pIceEndpoint->transportAddress.address,
+                    STUN_IPV4_ADDRESS_SIZE );
             sockAddress = ( struct sockaddr * ) &ipv4Address;
             addressLength = sizeof( struct sockaddr_in );
         }
@@ -292,9 +296,7 @@ static void IceControllerNet_AddSrflxCandidate( IceControllerContext_t * pCtx,
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext,
-                                                         pLocalIceEndpoint,
-                                                         stunBuffer, &stunBufferLength );
+            iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext, pLocalIceEndpoint, stunBuffer, &stunBufferLength );
             if( iceResult != ICE_RESULT_OK )
             {
                 /* Free resource that already created. */
@@ -800,8 +802,8 @@ const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoi
 #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
 
 #define SWAP_BYTES_16( value )          \
-    ( ( ( ( value ) >> 8 ) & 0xFF ) |   \
-      ( ( ( value ) & 0xFF ) << 8 ) )
+        ( ( ( ( value ) >> 8 ) & 0xFF ) |   \
+          ( ( ( value ) & 0xFF ) << 8 ) )
 
 static uint16_t ReadUint16Swap( const uint8_t * pSrc )
 {

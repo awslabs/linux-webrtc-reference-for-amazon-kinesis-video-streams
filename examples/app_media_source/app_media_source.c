@@ -81,7 +81,7 @@ static void * VideoTx_Task( void * pParameter )
 
                 if( fp == NULL )
                 {
-                    LogError( ( "Failed to open %s. Error: %s", filePath, strerror(errno) ) );
+                    LogError( ( "Failed to open %s. Error: %s", filePath, strerror( errno ) ) );
                 }
                 else
                 {
@@ -466,7 +466,7 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
 
         #if USE_H265
         {
-            TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT);
+            TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT );
             pVideoTranceiver->rollingbufferBitRate = TRANSCEIVER_H265_VIDEO_BIT_RATE;
         }
         #else
@@ -475,7 +475,7 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
             pVideoTranceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE;
         }
         #endif
-        
+
         pVideoTranceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND;
         strncpy( pVideoTranceiver->streamId, DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID, sizeof( pVideoTranceiver->streamId ) );
         pVideoTranceiver->streamIdLength = strlen( DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID );
