@@ -56,7 +56,9 @@ PeerConnectionResult_t PeerConnection_SetOnLocalCandidateReady( PeerConnectionSe
 PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_t * pSession,
                                                           IceControllerIceServer_t * pIceServers,
                                                           size_t iceServersCount );
-
+PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConnectionSession_t* pSession,
+                                                                        OnPictureLossIndicationCallback_t onPictureLossIndicationCallback,
+                                                                        void* pUserContext );
 #ifdef __cplusplus
 }
 #endif

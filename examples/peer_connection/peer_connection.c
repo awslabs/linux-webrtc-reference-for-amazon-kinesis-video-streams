@@ -5,12 +5,15 @@
 #include "logging.h"
 #include "peer_connection.h"
 #include "peer_connection_srtp.h"
+#include "peer_connection_srtcp.h"
 #include "peer_connection_sdp.h"
 #include "rtp_api.h"
 #include "rtcp_api.h"
 #include "peer_connection_rolling_buffer.h"
 #include "metric.h"
+#include "networking_utils.h"
 
+#include "peer_connection_codec_helper.h"
 #include "peer_connection_h264_helper.h"
 #include "peer_connection_opus_helper.h"
 #include "peer_connection_g711_helper.h"
@@ -22,10 +25,43 @@
 #define PEER_CONNECTION_SESSION_TASK_NAME "PcSessionTsk"
 #define PEER_CONNECTION_SESSION_RX_TASK_NAME "PcRxTsk" // For Ice controller to monitor socket Rx path
 #define PEER_CONNECTION_MESSAGE_QUEUE_NAME "/PcSessionMq"
+#define PEER_CONNECTION_AUDIO_TIMER_NAME "RtcpAudioSenderReportTimer"
+#define PEER_CONNECTION_VIDEO_TIMER_NAME "RtcpVideoSenderReportTimer"
 
 #define PEER_CONNECTION_MAX_QUEUE_MSG_NUM ( 10 )
+#define PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS ( 5000 )
 
 #define PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ( 2048 )
+
+#define PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US        1000 * 10000  //1,000,000 microseconds.
+#define PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS                     512     // Unit kilobits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS                     2048000 // Unit kilobits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS                      4000    // Unit bits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS                      650000  // Unit bits/sec. Value could change based on codec.
+
+/**
+ * EMA (Exponential Moving Average) alpha value and 1-alpha value - over appx 20 samples
+ */
+#define EMA_ALPHA_VALUE           ( ( double ) 0.05 )
+#define ONE_MINUS_EMA_ALPHA_VALUE ( ( double ) ( 1 - EMA_ALPHA_VALUE ) )
+
+/**
+ * Calculates the EMA (Exponential Moving Average) accumulator value
+ *
+ * a - Accumulator value
+ * v - Next sample point
+ *
+ * @return the new Accumulator value
+ */
+#define EMA_ACCUMULATOR_GET_NEXT( a, v ) ( double )( EMA_ALPHA_VALUE * ( v ) + ONE_MINUS_EMA_ALPHA_VALUE * ( a ) )
+
+#ifndef MIN
+#define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+#endif
+
+#ifndef MAX
+#define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+#endif
 
 PeerConnectionContext_t peerConnectionContext = { 0 };
 
@@ -38,9 +74,17 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
                                                                PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t HandleConnectivityCheckRequest( PeerConnectionSession_t * pSession,
                                                               PeerConnectionSessionRequestMessage_t * pRequestMessage );
+
+static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerConnectionSession_t * pSession,
+                                                                         PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession );
+static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t * pSession );
+#if ENABLE_TWCC_SUPPORT
+    static void PeerConnection_SampleSenderBandwidthEstimationHandler( void * pCustomContext,
+                                                                       TwccBandwidthInfo_t * pTwccBandwidthInfo );
+#endif
 
 static void * PeerConnection_SessionTask( void * pParameter )
 {
@@ -89,6 +133,101 @@ static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession )
     }
 }
 
+PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConnectionSession_t * pSession,
+                                                                        OnPictureLossIndicationCallback_t onPictureLossIndicationCallback,
+                                                                        void * pUserContext )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( ( pSession == NULL ) || ( onPictureLossIndicationCallback == NULL ) )
+    {
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    pSession->onPictureLossIndicationCallback = onPictureLossIndicationCallback;
+    pSession->pPictureLossIndicationUserContext = pUserContext;
+
+    return ret;
+}
+
+#if ENABLE_TWCC_SUPPORT
+    static PeerConnectionResult_t PeerConnection_SetSenderBandwidthEstimationCallback( PeerConnectionSession_t * pSession,
+                                                                                       OnBandwidthEstimationCallback_t onBandwidthEstimationCallback,
+                                                                                       void * pUserContext )
+    {
+        PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+        if( ( pSession == NULL ) || ( onBandwidthEstimationCallback == NULL ) )
+        {
+            ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+        }
+
+        pSession->pCtx->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
+        pSession->pCtx->pOnBandwidthEstimationCallbackContext = pUserContext;
+
+        return ret;
+    }
+#endif
+
+static void OnRtcpSenderReportAudioTimerExpire( void * pParameter )
+{
+    PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pParameter;
+    MessageQueueResult_t retMessageQueue;
+    PeerConnectionSessionRequestMessage_t requestMessage = {
+        .requestType = PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
+    };
+    uint8_t i;
+    uint64_t currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
+
+    for(i = 0 ; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ; i++ )
+    {
+        if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
+        {
+            requestMessage.peerConnectionSessionRequestContent.rtcpContent.currentTimeUs = currentTimeUs;
+            requestMessage.peerConnectionSessionRequestContent.rtcpContent.pTransceiver = pSession->pTransceivers[ i ];
+
+            retMessageQueue = MessageQueue_Send( &pSession->requestQueue,
+                                                 &requestMessage,
+                                                 sizeof( PeerConnectionSessionRequestMessage_t ) );
+            if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+            {
+                LogError( ( "Fail to send message queue, error: %d", retMessageQueue ) );
+            }
+            break;
+        }
+    }
+}
+
+static void OnRtcpSenderReportVideoTimerExpire( void * pParameter )
+{
+    PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pParameter;
+    MessageQueueResult_t retMessageQueue;
+    PeerConnectionSessionRequestMessage_t requestMessage = {
+        .requestType = PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
+    };
+    uint8_t i;
+    uint64_t currentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
+
+    for(i = 0 ; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ; i++ )
+    {
+        if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
+        {
+            requestMessage.peerConnectionSessionRequestContent.rtcpContent.currentTimeUs = currentTime;
+            requestMessage.peerConnectionSessionRequestContent.rtcpContent.pTransceiver = pSession->pTransceivers[ i ];
+
+            retMessageQueue = MessageQueue_Send( &pSession->requestQueue,
+                                                 &requestMessage,
+                                                 sizeof( PeerConnectionSessionRequestMessage_t ) );
+            if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+            {
+                LogError( ( "Fail to send message queue, error: %d", retMessageQueue ) );
+            }
+            break;
+        }
+    }
+
+}
+
 static void HandleRequest( PeerConnectionSession_t * pSession,
                            MessageQueueHandler_t * pRequestQueue )
 {
@@ -115,6 +254,10 @@ static void HandleRequest( PeerConnectionSession_t * pSession,
                 ( void ) HandleConnectivityCheckRequest( pSession,
                                                          &requestMsg );
                 break;
+            case PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT:
+                ( void ) PeerConnection_OnRtcpSenderReportCallback( pSession,
+                                                                    &requestMsg );
+                break;
             default:
                 /* Unknown request, drop it. */
                 LogDebug( ( "Dropping unknown request %d", requestMsg.requestType ) );
@@ -138,7 +281,8 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
         remoteCandidateInfo.priority = pRemoteCandidate->priority;
         remoteCandidateInfo.remoteProtocol = pRemoteCandidate->protocol;
 
-        iceControllerResult = IceController_AddRemoteCandidate( &pSession->iceControllerContext, &remoteCandidateInfo );
+        iceControllerResult = IceController_AddRemoteCandidate( &pSession->iceControllerContext,
+                                                                &remoteCandidateInfo );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to add remote candidate." ) );
@@ -310,7 +454,8 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                     if( pSession->onIceCandidateReadyCallbackFunc != NULL )
                     {
                         pLocalCandidateReadyMsg = ( PeerConnectionIceLocalCandidate_t * ) &pEventMsg->iceControllerCallbackContent.localCandidateReadyMsg;
-                        pSession->onIceCandidateReadyCallbackFunc( pSession->pOnLocalCandidateReadyCallbackCustomContext, pLocalCandidateReadyMsg );
+                        pSession->onIceCandidateReadyCallbackFunc( pSession->pOnLocalCandidateReadyCallbackCustomContext,
+                                                                   pLocalCandidateReadyMsg );
                     }
                     else
                     {
@@ -353,6 +498,7 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_SUCCESS;
     DtlsSession_t * pDtlsSession = NULL;
+    TimerControllerResult_t retTimer;
 
     if( pSession == NULL )
     {
@@ -408,6 +554,16 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
         ret = ExecuteDtlsHandshake( pSession );
     }
 
+    if( ret == 0 )
+    {
+        retTimer = PeerConnection_SetTimer( pSession );
+
+        if( retTimer != TIMER_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to start RTCP Sender Report timer, result: %d", retTimer ) );
+        }
+    }
+
     return ret;
 }
 
@@ -449,6 +605,54 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession )
     return ret;
 }
 
+static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t * pSession )
+{
+    uint8_t i;
+    TimerControllerResult_t retTimer;
+
+    for(i = 0 ; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ; i++ )
+    {
+        if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
+        {
+            retTimer = TimerController_IsTimerSet( &pSession->rtcpAudioSenderReportTimer );
+            if( retTimer == TIMER_CONTROLLER_RESULT_NOT_SET )
+            {
+                /* The timer is not set before, send the request immendiately and start rtcp audio Sender Report timer. */
+                LogDebug( ( "Trigger rtcp audio Sender Report timer." ) );
+                OnRtcpSenderReportAudioTimerExpire( pSession );
+                retTimer = TimerController_SetTimer( &pSession->rtcpAudioSenderReportTimer,
+                                                     PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ),
+                                                     PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ) );
+                if( retTimer != TIMER_CONTROLLER_RESULT_OK )
+                {
+                    LogError( ( "Fail to start RTCP Audio Sender Report timer, result: %d", retTimer ) );
+                }
+            }
+        }
+        else if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
+        {
+            retTimer = TimerController_IsTimerSet( &pSession->rtcpVideoSenderReportTimer );
+            if( retTimer == TIMER_CONTROLLER_RESULT_NOT_SET )
+            {
+                /* The timer is not set before, send the request immendiately and start rtcp video Sender Report timer. */
+                LogDebug( ( "Trigger rtcp video Sender Report timer." ) );
+                OnRtcpSenderReportVideoTimerExpire( pSession );
+                retTimer = TimerController_SetTimer( &pSession->rtcpVideoSenderReportTimer,
+                                                     PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ),
+                                                     PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ) );
+                if( retTimer != TIMER_CONTROLLER_RESULT_OK )
+                {
+                    LogError( ( "Fail to start RTCP Video Sender Report timer, result: %d", retTimer ) );
+                }
+            }
+        }
+        else
+        {
+            /* Do Nothing, Coverity Happy. */
+        }
+    }
+    return retTimer;
+}
 static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
 {
     int32_t ret = 0;
@@ -499,19 +703,19 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     }
 
     #if ENABLE_SCTP_DATA_CHANNEL
-    if( ret == 0 )
-    {
-        /* Initialize SCTP sessions. */
-        if( pSession->ucEnableDataChannelRemote == 1 )
+        if( ret == 0 )
         {
-            retPc = PeerConnectionSCTP_AllocateSCTP( pSession );
-            if( retPc != PEER_CONNECTION_RESULT_OK )
+            /* Initialize SCTP sessions. */
+            if( pSession->ucEnableDataChannelRemote == 1 )
             {
-                LogError( ( "Fail to create SCTP sessions, ret: %d", retPc ) );
-                ret = -0x1004;
+                retPc = PeerConnectionSCTP_AllocateSCTP( pSession );
+                if( retPc != PEER_CONNECTION_RESULT_OK )
+                {
+                    LogError( ( "Fail to create SCTP sessions, ret: %d", retPc ) );
+                    ret = -0x1004;
+                }
             }
         }
-    }
     #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     if( ret == 0 )
@@ -553,12 +757,14 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     else if( xNetworkStatus == DTLS_SUCCESS )
     {
         #if ENABLE_SCTP_DATA_CHANNEL
-        {
-            if( pSession->state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
             {
-                PeerConnectionSCTP_ProcessSCTPData( pSession, dtlsDecryptBuffer, dtlsDecryptBufferLength );
+                if( pSession->state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
+                {
+                    PeerConnectionSCTP_ProcessSCTPData( pSession,
+                                                        dtlsDecryptBuffer,
+                                                        dtlsDecryptBufferLength );
+                }
             }
-        }
         #endif /* ENABLE_SCTP_DATA_CHANNEL */
     }
     else if( xNetworkStatus != DTLS_SUCCESS )
@@ -601,7 +807,9 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
             if( ( pBuffer[1] >= 192 ) && ( pBuffer[1] <= 223 ) )
             {
                 /* RTCP packet */
-                resultPeerConnection = PeerConnectionSrtp_HandleSrtcpPacket( pSession, pBuffer, bufferLength );
+                resultPeerConnection = PeerConnectionSrtp_HandleSrtcpPacket( pSession,
+                                                                             pBuffer,
+                                                                             bufferLength );
                 if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
                 {
                     LogWarn( ( "Failed to handle SRTCP packets, result: %d", resultPeerConnection ) );
@@ -611,7 +819,9 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
             else
             {
                 /* RTP packet */
-                resultPeerConnection = PeerConnectionSrtp_HandleSrtpPacket( pSession, pBuffer, bufferLength );
+                resultPeerConnection = PeerConnectionSrtp_HandleSrtpPacket( pSession,
+                                                                            pBuffer,
+                                                                            bufferLength );
                 if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
                 {
                     LogWarn( ( "Failed to handle SRTP packets, result: %d", resultPeerConnection ) );
@@ -706,6 +916,60 @@ static PeerConnectionResult_t DestroyIceController( PeerConnectionSession_t * pS
         {
             LogError( ( "Fail to destroy Ice Controller." ) );
             ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_DESTROY;
+        }
+    }
+
+    return ret;
+}
+
+static PeerConnectionResult_t PeerConnection_ResetTimer( PeerConnectionSession_t * pSession )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    TimerControllerResult_t timerControllerResult = TIMER_CONTROLLER_RESULT_OK;
+
+    if( pSession == NULL )
+    {
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        timerControllerResult = TimerController_IsTimerSet( &pSession->rtcpAudioSenderReportTimer );
+
+        if( timerControllerResult == TIMER_CONTROLLER_RESULT_SET )
+        {
+            TimerController_ResetTimer( &pSession->rtcpAudioSenderReportTimer );
+            LogDebug( ( "Reset RTCP Audio sender report timer." ) );
+        }
+        else if( timerControllerResult == TIMER_CONTROLLER_RESULT_NOT_SET )
+        {
+            /* Do Nothing */
+        }
+        else
+        {
+            LogError( ( "Fail to reset RTCP Audio sender report timer." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TIMER_RESET;
+        }
+
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        timerControllerResult = TimerController_IsTimerSet( &pSession->rtcpVideoSenderReportTimer );
+
+        if( timerControllerResult == TIMER_CONTROLLER_RESULT_SET )
+        {
+            TimerController_ResetTimer( &pSession->rtcpVideoSenderReportTimer );
+            LogDebug( ( "Reset RTCP Video sender report timer." ) );
+        }
+        else if( timerControllerResult == TIMER_CONTROLLER_RESULT_NOT_SET )
+        {
+            /* Do Nothing */
+        }
+        else
+        {
+            LogError( ( "Fail to reset RTCP Video sender report timer." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TIMER_RESET;
         }
     }
 
@@ -852,7 +1116,8 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
             pSession->rtpConfig.videoCodecRtxPayload = 0;
             pSession->rtpConfig.videoRtxSequenceNumber = 0;
             pSession->rtpConfig.videoSequenceNumber = 0;
-            ret = GetDefaultCodec( pTransceiver->codecBitMap, &pSession->rtpConfig.videoCodecPayload );
+            ret = GetDefaultCodec( pTransceiver->codecBitMap,
+                                   &pSession->rtpConfig.videoCodecPayload );
         }
         else
         {
@@ -860,7 +1125,8 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
             pSession->rtpConfig.audioCodecRtxPayload = 0;
             pSession->rtpConfig.audioRtxSequenceNumber = 0;
             pSession->rtpConfig.audioSequenceNumber = 0;
-            ret = GetDefaultCodec( pTransceiver->codecBitMap, &pSession->rtpConfig.audioCodecPayload );
+            ret = GetDefaultCodec( pTransceiver->codecBitMap,
+                                   &pSession->rtpConfig.audioCodecPayload );
         }
     }
 
@@ -871,7 +1137,11 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
                                             PeerConnectionSessionConfiguration_t * pSessionConfig )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    #if ENABLE_TWCC_SUPPORT
+    RtcpTwccManagerResult_t resultRtcpTwccManager = RTCP_TWCC_MANAGER_RESULT_OK;
+    #endif
     MessageQueueResult_t retMessageQueue;
+    TimerControllerResult_t retTimer;
     char tempName[ 20 ];
     DtlsSession_t * pDtlsSession = NULL;
     static uint8_t initSeq = 0;
@@ -977,6 +1247,68 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
         pSession->pCtx = &peerConnectionContext;
     }
 
+    #if ENABLE_TWCC_SUPPORT
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            resultRtcpTwccManager = RtcpTwccManager_Init( &pSession->pCtx->rtcpTwccManager,
+                                                          pSession->pCtx->twccPacketInfo,
+                                                          PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
+            if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
+            {
+                LogError( ( "Fail to Initialize RTCP TWCC Manager, result: %d", resultRtcpTwccManager ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT;
+            }
+        }
+
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            if( pthread_mutex_init( &( pSession->twccMetaData.twccBitrateMutex ),
+                                    NULL ) != 0 )
+            {
+                LogError( ( "Fail to create mutex for TWCC." ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_CREATE_TWCC_MUTEX;
+            }
+        }
+
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            /* In case you want to set a different callback based on your business logic, you could replace PeerConnection_SampleSenderBandwidthEstimationHandler() with your Handler. */
+            ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
+                                                                       PeerConnection_SampleSenderBandwidthEstimationHandler,
+                                                                       &pSession->twccMetaData );
+            if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
+            {
+                LogError( ( "Fail to Initialize RTCP TWCC Manager, result: %d", resultRtcpTwccManager ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT;
+            }
+        }
+    #endif
+
+    /* Initialize timer for audio Sender Reports. */
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        retTimer = TimerController_Create( &pSession->rtcpAudioSenderReportTimer,
+                                           OnRtcpSenderReportAudioTimerExpire,
+                                           pSession );
+        if( retTimer != TIMER_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TIMER_INIT;
+        }
+    }
+    /* Initialize timer for video Sender Reports. */
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        retTimer = TimerController_Create( &pSession->rtcpVideoSenderReportTimer,
+                                           OnRtcpSenderReportVideoTimerExpire,
+                                           pSession );
+        if( retTimer != TIMER_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TIMER_INIT;
+        }
+    }
+
     return ret;
 }
 
@@ -1062,7 +1394,8 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         /* Update codec information based on transceivers. */
-        ret = PeerConnectionSdp_SetPayloadTypes( pSession, pTargetRemoteSdp );
+        ret = PeerConnectionSdp_SetPayloadTypes( pSession,
+                                                 pTargetRemoteSdp );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -1234,7 +1567,9 @@ PeerConnectionResult_t PeerConnection_AddRemoteCandidate( PeerConnectionSession_
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        iceControllerResult = IceController_DeserializeIceCandidate( pDecodeMessage, decodeMessageLength, &candidate );
+        iceControllerResult = IceController_DeserializeIceCandidate( pDecodeMessage,
+                                                                     decodeMessageLength,
+                                                                     &candidate );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogWarn( ( "IceController_DeserializeIceCandidate fail, result: %d, dropping ICE candidate.", iceControllerResult ) );
@@ -1263,19 +1598,20 @@ PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * 
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        ret = AllocateTransceiver( pSession, pTransceiver );
+        ret = AllocateTransceiver( pSession,
+                                   pTransceiver );
     }
 
     return ret;
 }
 
 #if ENABLE_SCTP_DATA_CHANNEL
-PeerConnectionResult_t PeerConnection_AddDataChannel( PeerConnectionSession_t * pSession )
-{
-    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-    pSession->ucEnableDataChannelLocal = 1;
-    return ret;
-}
+    PeerConnectionResult_t PeerConnection_AddDataChannel( PeerConnectionSession_t * pSession )
+    {
+        PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+        pSession->ucEnableDataChannelLocal = 1;
+        return ret;
+    }
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSession_t * pSession,
@@ -1296,7 +1632,7 @@ PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSess
         *ppTransceiver = NULL;
         for( i = 0; i < pSession->transceiverCount; i++ )
         {
-            if( ssrc == pSession->pTransceivers[i]->ssrc )
+            if( ( ssrc == pSession->pTransceivers[i]->ssrc ) || ( ssrc == pSession->pTransceivers[i]->rtxSsrc ) )
             {
                 *ppTransceiver = pSession->pTransceivers[i];
                 break;
@@ -1343,19 +1679,19 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         #if ENABLE_SCTP_DATA_CHANNEL
-        PeerConnectionResult_t xSCTPRet;
-        /* Close and deallocate all data channels along with terminating
-         * SCTP session. */
-        xSCTPRet = PeerConnectionSCTP_DeallocateSCTP( pSession );
-        if( xSCTPRet == PEER_CONNECTION_RESULT_OK )
-        {
-            LogDebug( ( "Closed SCTP session. \r\n" ) );
-        }
-        else
-        {
-            LogError( ( "Fail to close SCTP session, result: %d", xSCTPRet ) );
-            ret = PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE;
-        }
+            PeerConnectionResult_t xSCTPRet;
+            /* Close and deallocate all data channels along with terminating
+             * SCTP session. */
+            xSCTPRet = PeerConnectionSCTP_DeallocateSCTP( pSession );
+            if( xSCTPRet == PEER_CONNECTION_RESULT_OK )
+            {
+                LogDebug( ( "Closed SCTP session. \r\n" ) );
+            }
+            else
+            {
+                LogError( ( "Fail to close SCTP session, result: %d", xSCTPRet ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE;
+            }
         #endif /* #if ENABLE_SCTP_DATA_CHANNEL */
     }
 
@@ -1370,6 +1706,15 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogError( ( "PeerConnectionSrtp_DeInit fail, result: %d", ret ) );
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        ret = PeerConnection_ResetTimer( pSession );
+        if( ret != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "PeerConnection_ResetTimer fail, result: %d", ret ) );
         }
     }
 
@@ -1415,7 +1760,9 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
         {
-            ret = PeerConnectionSrtp_WriteOpusFrame( pSession, pTransceiver, pFrame );
+            ret = PeerConnectionSrtp_WriteOpusFrame( pSession,
+                                                     pTransceiver,
+                                                     pFrame );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {
@@ -1579,3 +1926,190 @@ PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_
 
     return ret;
 }
+
+static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerConnectionSession_t * pSession,
+                                                                         PeerConnectionSessionRequestMessage_t * pRequestMessage )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    IceControllerResult_t iceControllerResult;
+    RtcpSenderReport_t rtcpSenderReport = { 0 };
+    uint8_t srtcpPacket[ PEER_CONNECTION_SRTCP_RTCP_PACKET_MIN_LENGTH ];
+    uint8_t readyToSend = 0;
+    size_t srtcpPacketLength = sizeof( srtcpPacket );
+    uint64_t currentTimeUs = pRequestMessage->peerConnectionSessionRequestContent.rtcpContent.currentTimeUs;
+    const Transceiver_t * pTransceiver = pRequestMessage->peerConnectionSessionRequestContent.rtcpContent.pTransceiver;
+
+    if( ( pSession == NULL ) ||
+        ( pTransceiver == NULL ) )
+    {
+        LogError( ( "Invalid input, pSession: %p, pTransceiver: %p",
+                    pSession, pTransceiver ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( pSession->srtpTransmitSession != NULL ) && ( currentTimeUs - pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs >= 2500 * 1000 ) )
+    {
+        readyToSend = 1;
+    }
+
+    if( !readyToSend )
+    {
+        LogVerbose( ( "Send Report No Frames are sent to SSRC :  %u",
+                      pTransceiver->ssrc ) );
+    }
+    else
+    {
+        if( pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
+        {
+            rtcpSenderReport.senderInfo.rtpTime = pTransceiver->rtpSender.rtpTimeOffset + PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( pSession->audioSrtpReceiver.rxJitterBuffer.clockRate,
+                                                                                                                                                 currentTimeUs - pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs );
+        }
+        else
+        {
+            rtcpSenderReport.senderInfo.rtpTime = pTransceiver->rtpSender.rtpTimeOffset + PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( pSession->videoSrtpReceiver.rxJitterBuffer.clockRate,
+                                                                                                                                                 currentTimeUs - pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs );
+        }
+        rtcpSenderReport.senderSsrc = pTransceiver->ssrc;
+        rtcpSenderReport.senderInfo.ntpTime = NetworkingUtils_GetNTPTimeFromUnixTimeUs( currentTimeUs );
+        rtcpSenderReport.senderInfo.packetCount = pTransceiver->rtcpStats.rtpPacketsTransmitted;
+        rtcpSenderReport.senderInfo.octetCount = pTransceiver->rtcpStats.rtpBytesTransmitted;
+
+        /* Since the Master isn't processing the received RTP Packets. We don't have any reception reports.*/
+        rtcpSenderReport.pReceptionReports = NULL;
+        rtcpSenderReport.numReceptionReports = 0;
+
+        ret = PeerConnectionSrtcp_ConstructSenderReportPacket( ( pSession ),
+                                                               &( rtcpSenderReport ),
+                                                               &( srtcpPacket[ 0 ] ),
+                                                               &( srtcpPacketLength ) );
+        if( ret != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to serialize and encrypt RTCP Sender Report." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_RTCP_SERIALIZE_SENDER_REPORT;
+        }
+
+        /* Send the constructed RTCP packets through network. */
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            iceControllerResult = IceController_SendToRemotePeer( &( pSession->iceControllerContext ),
+                                                                  ( srtcpPacket ),
+                                                                  srtcpPacketLength );
+
+            if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
+            {
+                LogWarn( ( "Fail to send RTCP packet, ret: %d", iceControllerResult ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_SEND_RTCP_PACKET;
+            }
+            else
+            {
+                LogInfo( ( "Send RTCP Sender Report with Status : %u  to SSRC :  %u, NTP Time :  %lu, RTP Time:  %u,  PacketCount : %u, OctetCount : %u",ret,
+                           rtcpSenderReport.senderSsrc, rtcpSenderReport.senderInfo.ntpTime, rtcpSenderReport.senderInfo.rtpTime, rtcpSenderReport.senderInfo.packetCount, rtcpSenderReport.senderInfo.octetCount ) );
+            }
+        }
+
+    }
+
+    return ret;
+}
+
+#if ENABLE_TWCC_SUPPORT
+/* Sample callback for TWCC. The average packet loss is tracked using an exponential moving average (EMA).
+   - If packet loss stays at or below 5%, the bitrate increases by 5%.
+   - If packet loss exceeds 5%, the bitrate decreases by the same percentage as the loss.
+   The bitrate is adjusted once per second, ensuring it stays within predefined limits. */
+    static void PeerConnection_SampleSenderBandwidthEstimationHandler( void * pCustomContext,
+                                                                       TwccBandwidthInfo_t * pTwccBandwidthInfo )
+    {
+        PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+        PeerConnectionTwccMetaData_t * pTwccMetaData = NULL;
+        uint64_t videoBitrate = 0;
+        uint64_t audioBitrate = 0;
+        uint64_t currentTimeUs = 0;
+        uint64_t timeDifference = 0;
+        uint32_t lostPacketCount = 0;
+        uint8_t isLocked = 0;
+        double percentLost = 0.0;
+
+        if( ( pCustomContext == NULL ) ||
+            ( pTwccBandwidthInfo == NULL ) )
+        {
+            LogError( ( "Invalid input, pCustomContext: %p, pTwccBandwidthInfo: %p",
+                        pCustomContext, pTwccBandwidthInfo ) );
+            ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+        }
+
+        // Calculate packet loss
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            pTwccMetaData = ( PeerConnectionTwccMetaData_t * ) pCustomContext;
+
+            pTwccMetaData->averagePacketLoss = EMA_ACCUMULATOR_GET_NEXT( pTwccMetaData->averagePacketLoss,
+                                                                         ( ( double ) percentLost ) );
+
+            currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
+            lostPacketCount = pTwccBandwidthInfo->sentPackets - pTwccBandwidthInfo->receivedPackets;
+            percentLost = ( double ) ( ( pTwccBandwidthInfo->sentPackets > 0 ) ? ( ( double ) ( lostPacketCount * 100 ) / ( double )pTwccBandwidthInfo->sentPackets ) : 0.0 );
+            timeDifference = currentTimeUs - pTwccMetaData->lastAdjustmentTimeUs;
+
+            if( timeDifference < PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US )
+            {
+                // Too soon for another adjustment
+                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT;
+            }
+        }
+
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            if( pthread_mutex_lock( &( pTwccMetaData->twccBitrateMutex ) ) == 0 )
+            {
+                isLocked = 1;
+            }
+            else
+            {
+                LogError( ( "Failed to lock Twcc mutex." ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_TAKE_TWCC_MUTEX;
+            }
+        }
+
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            videoBitrate = pTwccMetaData->currentVideoBitrate;
+            audioBitrate = pTwccMetaData->currentAudioBitrate;
+
+            if( pTwccMetaData->averagePacketLoss <= 5 )
+            {
+                // Increase encoder bitrates by 5 percent with cap at MAX_BITRATE
+                videoBitrate = ( uint64_t ) MIN( videoBitrate * 1.05,
+                                                 PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS );
+                audioBitrate = ( uint64_t ) MIN( audioBitrate * 1.05,
+                                                 PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS );
+            }
+            else
+            {
+                // Decrease encoder bitrate by average packet loss percent, with a cap at MIN_BITRATE
+                videoBitrate = ( uint64_t ) MAX( videoBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
+                                                 PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS );
+                audioBitrate = ( uint64_t ) MAX( audioBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
+                                                 PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS );
+            }
+
+            pTwccMetaData->updatedVideoBitrate = videoBitrate;
+            pTwccMetaData->updatedAudioBitrate = audioBitrate;
+        }
+
+        if( isLocked != 0 )
+        {
+            pthread_mutex_unlock( &( pTwccMetaData->twccBitrateMutex ) );
+
+        }
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            pTwccMetaData->lastAdjustmentTimeUs = currentTimeUs;
+
+            LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pTwccMetaData->averagePacketLoss, timeDifference  ) );
+            LogInfo( ( "Suggested video bitrate: %lu kbps, suggested audio bitrate: %lu bps, sent: %lu bytes, %lu packets,   received: %lu bytes, %lu packets, in %llu msec ",
+                       videoBitrate, audioBitrate, pTwccBandwidthInfo->sentBytes, pTwccBandwidthInfo->sentPackets, pTwccBandwidthInfo->receivedBytes, pTwccBandwidthInfo->receivedPackets, pTwccBandwidthInfo->duration / 10000ULL ) );
+        }
+
+    }
+#endif

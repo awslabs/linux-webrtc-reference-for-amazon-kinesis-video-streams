@@ -15,7 +15,6 @@
 #include "metric.h"
 
 #define ICE_CONTROLLER_MESSAGE_QUEUE_NAME "/WebrtcApplicationIceController"
-#define ICE_CONTROLLER_TIMER_NAME "IceControllerTimer"
 #define ICE_CONTROLLER_CANDIDATE_TYPE_HOST_STRING "host"
 #define ICE_CONTROLLER_CANDIDATE_TYPE_SRFLX_STRING "srflx"
 #define ICE_CONTROLLER_CANDIDATE_TYPE_PRFLX_STRING "prflx"

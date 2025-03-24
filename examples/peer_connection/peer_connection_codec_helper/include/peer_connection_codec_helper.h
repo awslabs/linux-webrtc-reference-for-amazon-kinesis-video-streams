@@ -11,6 +11,7 @@
 #include "metric.h"
 
 #include "ice_controller.h"
+#include "networking_utils.h"
 
 #define PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME ( 32 )
 #define PEER_CONNECTION_JITTER_BUFFER_SEQ_WRAPPER_THRESHOLD ( 10 )
