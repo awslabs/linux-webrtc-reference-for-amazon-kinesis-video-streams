@@ -25,7 +25,7 @@ PeerConnectionResult_t PeerConnectionSCTP_DeallocateDataChannel( PeerConnectionD
 
 PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSession_t * pSession,
                                                              char * pcDataChannelName,
-                                                             DataChannelInit_t * pDataChannelInit,
+                                                             SctpDataChannelInitInfo_t * pDataChannelInitInfo,
                                                              PeerConnectionDataChannel_t ** ppChannel );
 
 PeerConnectionResult_t PeerConnectionSCTP_CloseDataChannel( PeerConnectionDataChannel_t * pChannel );
@@ -44,7 +44,7 @@ void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
                                          int readBytes );
 
 #if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
-OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOneMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
+OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
                                                                                     uint32_t ulChannelId,
                                                                                     const uint8_t * pucName,
                                                                                     uint32_t ulNameLen );

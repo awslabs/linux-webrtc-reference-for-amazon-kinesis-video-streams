@@ -15,16 +15,16 @@ static void onSCTPSessionOutboundPacket( void * customData,
                                          uint8_t * pPacket,
                                          uint32_t packetLen );
 static void onSCTPSessionDataChannelOpen( void * customData,
-                                          uint32_t channelId,
+                                          uint16_t channelId,
                                           const uint8_t * pName,
-                                          uint32_t nameLen );
+                                          uint16_t nameLen );
 static void onSCTPSessionDataChannelMessage( void * customData,
-                                             uint32_t channelId,
+                                             uint16_t channelId,
                                              uint8_t isBinary,
                                              uint8_t * pMessage,
                                              uint32_t pMessageLen );
 static SctpUtilsResult_t onSCTPSessionDataChannelAckOpen( void * customData,
-                                                          uint32_t channelId );
+                                                          uint16_t channelId );
 
 /*-----------------------------------------------------------*/
 
@@ -83,7 +83,7 @@ PeerConnectionResult_t PeerConnectionSCTP_DeallocateDataChannel( PeerConnectionD
  * SCTP session is active. */
 PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSession_t * pSession,
                                                              char * pcDataChannelName,
-                                                             DataChannelInit_t * pDataChannelInit,
+                                                             SctpDataChannelInitInfo_t * pDataChannelInitInfo,
                                                              PeerConnectionDataChannel_t ** ppChannel )
 {
 
@@ -110,18 +110,17 @@ PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSessi
             strncpy( pChannel->ucDataChannelName, pcDataChannelName, MAX_DATA_CHANNEL_NAME_LEN );
 
             /* Set channel settings */
-            if( pDataChannelInit != NULL )
+            if( pDataChannelInitInfo != NULL )
             {
-                pChannel->dataChannelInit.negotiated = 0;
-                memcpy( &( pChannel->dataChannelInit ), pDataChannelInit, sizeof( DataChannelInit_t ) );
+                memcpy( &( pChannel->dataChannelInitInfo ), pDataChannelInitInfo, sizeof( SctpDataChannelInitInfo_t ) );
             }
             else
             {
-                memset( &( pChannel->dataChannelInit ), 0, sizeof( DataChannelInit_t ) );
-                /* Use default */
-                pChannel->dataChannelInit.ordered = 1;
-                pChannel->dataChannelInit.maxPacketLifeTime.isNull = 1;
-                pChannel->dataChannelInit.maxRetransmits.isNull = 1;
+                memset( &( pChannel->dataChannelInitInfo ), 0, sizeof( SctpDataChannelInitInfo_t ) );
+                /* Use default. */
+                pChannel->dataChannelInitInfo.channelType = DCEP_DATA_CHANNEL_RELIABLE;
+                pChannel->dataChannelInitInfo.maxLifetimeInMilliseconds = 0;
+                pChannel->dataChannelInitInfo.numRetransmissions = 0;
             }
             pChannel->pPeerConnection = pSession;
 
@@ -175,7 +174,7 @@ PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataCha
                                                            uint32_t pMessageLen )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-    SCTPSession_t * pSctpSession;
+    SctpSession_t * pSctpSession;
 
 
     if( ( pMessage == NULL ) || ( pChannel == NULL ) )
@@ -188,7 +187,7 @@ PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataCha
 
         pSctpSession = &( pChannel->pPeerConnection->sctpSession );
 
-        if( SCTP_WriteMessageSCTPSession( pSctpSession, pChannel->channelId, isBinary, pMessage, pMessageLen ) != SCTP_UTILS_RESULT_OK )
+        if( Sctp_SendMessage( pSctpSession, &( pChannel->dataChannel ), isBinary, pMessage, pMessageLen ) != SCTP_UTILS_RESULT_OK )
         {
             LogError( ( "SCTP_WriteMessageSCTPSession error" ) );
             ret = PEER_CONNECTION_RESULT_FAIL_SCTP_WRITE;
@@ -244,37 +243,28 @@ PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t 
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
 
     /* Create the SCTP Session */
-    pSession->sctpSession.sctpSessionCallbacks.outboundPacketFunc = onSCTPSessionOutboundPacket;
-    pSession->sctpSession.sctpSessionCallbacks.dataChannelMessageFunc = onSCTPSessionDataChannelMessage;
-    pSession->sctpSession.sctpSessionCallbacks.dataChannelOpenFunc = onSCTPSessionDataChannelOpen;
-    pSession->sctpSession.sctpSessionCallbacks.dataChannelOpenAckFunc = onSCTPSessionDataChannelAckOpen;
-    pSession->sctpSession.sctpSessionCallbacks.customData = ( void * ) pSession;
+    pSession->sctpSession.sctpSessionCallbacks.outboundPacketCallback = onSCTPSessionOutboundPacket;
+    pSession->sctpSession.sctpSessionCallbacks.dataChannelMessageCallback = onSCTPSessionDataChannelMessage;
+    pSession->sctpSession.sctpSessionCallbacks.dataChannelOpenCallback = onSCTPSessionDataChannelOpen;
+    pSession->sctpSession.sctpSessionCallbacks.dataChannelOpenAckCallback = onSCTPSessionDataChannelAckOpen;
+    pSession->sctpSession.sctpSessionCallbacks.pUserData = ( void * ) pSession;
 
-    if( SCTP_CreateSCTPSession( &( pSession->sctpSession ) ) == SCTP_UTILS_RESULT_OK )
+    /* TODO: As viewer is not supported currently this side is always DTLS
+     * client. */
+    if( Sctp_CreateSession( &( pSession->sctpSession ), 0 ) == SCTP_UTILS_RESULT_OK )
     {
         uint32_t ulChannelsCreateFailed = 0;
         PeerConnectionDataChannel_t * pxIterator = pSession->pDataChannels;
 
-        /* TODO: As viewer is not supported currently this side is always DTLS
-         * client, as per RFC 8832 DTLS client MUST use streams with even stream identifiers.
-         * https://datatracker.ietf.org/doc/html/rfc8832#section-4
-         *
-         * When viewer is fully supported check if peer is acting as a DTLS server
-         * and assign the ulCurrentDataChannelId accordingly.
-         */
-        pSession->sctpSession.ulCurrentDataChannelId = 0;
-
         /* Create the data channels initialized by the application, if any */
         while( pxIterator != NULL )
         {
-            pxIterator->channelId = pSession->sctpSession.ulCurrentDataChannelId;
-            pSession->sctpSession.ulCurrentDataChannelId += 2;
+            pxIterator->dataChannelInitInfo.pChannelName = &( pxIterator->ucDataChannelName[ 0 ] );
+            pxIterator->dataChannelInitInfo.channelNameLen = strlen( pxIterator->ucDataChannelName );
 
-            if( SCTP_SendDcepOpenDataChannel( &( pSession->sctpSession ), \
-                                              pxIterator->channelId, \
-                                              pxIterator->ucDataChannelName, \
-                                              ( uint32_t ) strlen( pxIterator->ucDataChannelName ), \
-                                              &( pxIterator->dataChannelInit ) ) != SCTP_UTILS_RESULT_OK )
+            if( Sctp_OpenDataChannel( &( pSession->sctpSession ),
+                                      &( pxIterator->dataChannelInitInfo ),
+                                      &( pxIterator->dataChannel ) ) != SCTP_UTILS_RESULT_OK )
             {
                 LogError( ( "Error creating data channel." ) );
                 ulChannelsCreateFailed = 1;
@@ -283,8 +273,8 @@ PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t 
             {
                 #if DATACHANNEL_CUSTOM_CALLBACK_HOOK
                 {
-                    pxIterator->onDataChannelMessage = PeerConnectionSCTP_SetChannelOneMessageCallbackHook( \
-                        pSession, pxIterator->channelId, ( uint8_t * )pxIterator->ucDataChannelName, \
+                    pxIterator->onDataChannelMessage = PeerConnectionSCTP_SetChannelOnMessageCallbackHook( \
+                        pSession, pxIterator->dataChannel.channelId, ( uint8_t * )pxIterator->ucDataChannelName, \
                         ( uint32_t ) strlen( pxIterator->ucDataChannelName ) );
                 }
                 #else
@@ -315,9 +305,9 @@ void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
                                          int readBytes )
 {
 
-    if( SCTP_PutSCTPPacket( &( pSession->sctpSession ), receiveBuffer, readBytes ) != SCTP_UTILS_RESULT_OK )
+    if( Sctp_ProcessMessage( &( pSession->sctpSession ), receiveBuffer, readBytes ) != SCTP_UTILS_RESULT_OK )
     {
-        LogWarn( ( "Failed to put SCTP packet" ) );
+        LogWarn( ( "Failed to process SCTP packet" ) );
     }
 
 }
@@ -332,7 +322,7 @@ PeerConnectionDataChannel_t * pxGetDataChannelWithID( PeerConnectionSession_t * 
     pxIterator = pSession->pDataChannels;
     while( pxIterator != NULL )
     {
-        if( pxIterator->channelId == channelId )
+        if( pxIterator->dataChannel.channelId == channelId )
         {
             break;
         }
@@ -373,7 +363,7 @@ static void onSCTPSessionOutboundPacket( void * customData,
  * to which its destined to and call the target application provided callback
  * of the channel with the incoming data. */
 static void onSCTPSessionDataChannelMessage( void * customData,
-                                             uint32_t channelId,
+                                             uint16_t channelId,
                                              uint8_t isBinary,
                                              uint8_t * pMessage,
                                              uint32_t pMessageLen )
@@ -404,7 +394,7 @@ static void onSCTPSessionDataChannelMessage( void * customData,
 /* Callback function sets data channel to open when there is a valid
  * incoming DCEP DATA_CHANNEL_ACK Message from the remote. */
 static SctpUtilsResult_t onSCTPSessionDataChannelAckOpen( void * customData,
-                                                          uint32_t channelId )
+                                                          uint16_t channelId )
 {
     SctpUtilsResult_t ret = SCTP_UTILS_RESULT_OK;
     PeerConnectionSession_t * pPeerConnectionSession = ( PeerConnectionSession_t * ) customData;
@@ -429,9 +419,9 @@ static SctpUtilsResult_t onSCTPSessionDataChannelAckOpen( void * customData,
 /* Callback to allocate and initialise a data channel when there is a valid
  * incoming DCEP DATA_CHANNEL_OPEN Message from the remote. */
 static void onSCTPSessionDataChannelOpen( void * customData,
-                                          uint32_t channelId,
+                                          uint16_t channelId,
                                           const uint8_t * pName,
-                                          uint32_t nameLen )
+                                          uint16_t nameLen )
 {
     PeerConnectionSession_t * pPeerConnectionSession = ( PeerConnectionSession_t * ) customData;
     PeerConnectionDataChannel_t * pChannel = NULL;
@@ -449,11 +439,11 @@ static void onSCTPSessionDataChannelOpen( void * customData,
 
         strncpy( ( pChannel->ucDataChannelName ), ( char * ) pName, nameLen );
         pChannel->pPeerConnection = pPeerConnectionSession;
-        pChannel->channelId = channelId;
+        pChannel->dataChannel.channelId = channelId;
 
         #if DATACHANNEL_CUSTOM_CALLBACK_HOOK
         {
-            pChannel->onDataChannelMessage = PeerConnectionSCTP_SetChannelOneMessageCallbackHook( pPeerConnectionSession, channelId, pName, nameLen );
+            pChannel->onDataChannelMessage = PeerConnectionSCTP_SetChannelOnMessageCallbackHook( pPeerConnectionSession, channelId, pName, nameLen );
         }
         #else
         {
@@ -507,7 +497,7 @@ PeerConnectionResult_t PeerConnectionSCTP_CloseDataChannel( PeerConnectionDataCh
     PeerConnectionSession_t * pPeerConnectionSession = pChannel->pPeerConnection;
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
-    if( SCTP_StreamReset( &( pPeerConnectionSession->sctpSession ), pChannel->channelId ) != SCTP_UTILS_RESULT_OK )
+    if( Sctp_CloseDataChannel( &( pPeerConnectionSession->sctpSession ), &( pChannel->dataChannel  ) ) != SCTP_UTILS_RESULT_OK )
     {
         ret = PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE;
     }
@@ -559,14 +549,14 @@ PeerConnectionResult_t PeerConnectionSCTP_DeallocateSCTP( PeerConnectionSession_
 
     while( pxIterator != NULL )
     {
-        SCTP_StreamReset( &( pSession->sctpSession ), pxIterator->channelId );
+        Sctp_CloseDataChannel( &( pSession->sctpSession ), &( pxIterator->dataChannel ) );
         PeerConnectionSCTP_DeallocateDataChannel( pxIterator );
         pxIterator = pxIterator->pxNext;
     }
 
     pSession->pDataChannels = NULL;
 
-    if( SCTP_FreeSCTPSession( &( pSession->sctpSession ) ) != SCTP_UTILS_RESULT_OK )
+    if( Sctp_FreeSession( &( pSession->sctpSession ) ) != SCTP_UTILS_RESULT_OK )
     {
         ret = PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE;
     }

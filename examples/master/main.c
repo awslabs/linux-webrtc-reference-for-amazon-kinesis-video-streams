@@ -1099,15 +1099,14 @@ static void onDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
 
     if( isBinary )
     {
-        LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s ID: %d] >>> DataChannel Binary Message",
+        LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel Binary Message",
                    pDataChannel->pPeerConnection->combinedName,
-                   pDataChannel->ucDataChannelName,
-                   ( int ) pDataChannel->channelId ) );
+                   pDataChannel->ucDataChannelName ) );
     }
     else {
-        LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s ID: %d] >>> DataChannel String Message: %.*s\n",
+        LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel String Message: %.*s\n",
                    pDataChannel->pPeerConnection->combinedName,
-                   pDataChannel->ucDataChannelName, ( int ) pDataChannel->channelId,
+                   pDataChannel->ucDataChannelName,
                    ( int ) pMessageLen, pMessage ) );
 
         sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( OP_BUFFER_SIZE - 128 ) ? ( OP_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
@@ -1121,7 +1120,7 @@ static void onDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
 
 }
 
-OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOneMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
+OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
                                                                                     uint32_t ulChannelId,
                                                                                     const uint8_t * pucName,
                                                                                     uint32_t ulNameLen )
@@ -1151,7 +1150,7 @@ int main()
     srtp_init();
 
     #if ENABLE_SCTP_DATA_CHANNEL
-    SCTP_InitSCTPSession();
+    Sctp_Init();
     #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     memset( &demoContext, 0, sizeof( DemoContext_t ) );
@@ -1251,7 +1250,7 @@ int main()
 
     #if ENABLE_SCTP_DATA_CHANNEL
     /* TODO_SCTP: Move to a common shutdown function? */
-    SCTP_DeInitSCTPSession();
+    Sctp_DeInit();
     #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     return 0;
