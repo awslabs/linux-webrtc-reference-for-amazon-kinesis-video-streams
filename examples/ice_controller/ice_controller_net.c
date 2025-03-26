@@ -674,7 +674,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
                             if( TIMER_CONTROLLER_RESULT_SET == TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
                             {
-                                TimerController_ResetTimer( &pCtx->connectivityCheckTimer );
+                                TimerController_Reset( &pCtx->connectivityCheckTimer );
                                 Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
                             }
 
