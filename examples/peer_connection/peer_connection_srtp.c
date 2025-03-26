@@ -615,18 +615,13 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
     }
 
     /* Clean up Video SRTP Receiver */
-    if( pSession->videoSrtpReceiver.frameBuffer != NULL )
-    {
-        memset( pSession->videoSrtpReceiver.frameBuffer, 0, PEER_CONNECTION_FRAME_BUFFER_SIZE );
-    }
+    memset( pSession->videoSrtpReceiver.frameBuffer, 0, PEER_CONNECTION_FRAME_BUFFER_SIZE );
 
     PeerConnectionJitterBuffer_Free( &pSession->videoSrtpReceiver.rxJitterBuffer );
 
     /* Clean up Audio SRTP Receiver */
-    if( pSession->audioSrtpReceiver.frameBuffer != NULL )
-    {
-        memset( pSession->audioSrtpReceiver.frameBuffer, 0, PEER_CONNECTION_FRAME_BUFFER_SIZE );
-    }
+    memset( pSession->audioSrtpReceiver.frameBuffer, 0, PEER_CONNECTION_FRAME_BUFFER_SIZE );
+    
     PeerConnectionJitterBuffer_Free( &pSession->audioSrtpReceiver.rxJitterBuffer );
 
     /* Reset callback functions */
