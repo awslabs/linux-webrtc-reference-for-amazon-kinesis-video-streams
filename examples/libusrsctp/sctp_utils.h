@@ -13,15 +13,14 @@ extern "C" {
 #define INET6 1
 #include <usrsctp.h>
 
+#include "dcep_api.h"
+
 #define SCTP_STATUS_ERR_FAIL 1U
 
 /* 1200 - 12 (SCTP header Size) */
 #define SCTP_MTU                         1188
 #define SCTP_ASSOCIATION_DEFAULT_PORT    5000
-#define SCTP_DCEP_HEADER_LENGTH          12
-#define SCTP_DCEP_LABEL_LEN_OFFSET       8
-#define SCTP_DCEP_LABEL_OFFSET           12
-#define SCTP_MAX_ALLOWABLE_PACKET_LENGTH ( SCTP_DCEP_HEADER_LENGTH + MAX_DATA_CHANNEL_NAME_LEN + MAX_DATA_CHANNEL_PROTOCOL_LEN + 2 )
+#define SCTP_MAX_ALLOWABLE_PACKET_LENGTH ( DCEP_HEADER_LENGTH + MAX_DATA_CHANNEL_NAME_LEN + MAX_DATA_CHANNEL_PROTOCOL_LEN + 2 )
 
 #define SCTP_SESSION_ACTIVE             0
 #define SCTP_SESSION_SHUTDOWN_INITIATED 1
@@ -37,29 +36,36 @@ extern "C" {
 
 enum { SCTP_PPID_DCEP = 50, SCTP_PPID_STRING = 51, SCTP_PPID_BINARY = 53, SCTP_PPID_STRING_EMPTY = 56, SCTP_PPID_BINARY_EMPTY = 57 };
 
-enum {
-    DCEP_DATA_CHANNEL_OPEN = 0x03,
-};
-
-typedef enum {
-    DCEP_DATA_CHANNEL_RELIABLE_ORDERED = ( uint8_t ) 0x00,
-    DCEP_DATA_CHANNEL_RELIABLE_UNORDERED = ( uint8_t ) 0x80,
-    DCEP_DATA_CHANNEL_REXMIT = ( uint8_t ) 0x01,
-    DCEP_DATA_CHANNEL_TIMED = ( uint8_t ) 0x02
-} DATA_CHANNEL_TYPE;
+typedef enum SctpUtilsResult
+{
+    SCTP_UTILS_RESULT_OK = 0,
+    SCTP_UTILS_RESULT_FAIL,
+    SCTP_UTILS_RESULT_FAIL_BAD_PARAMETER,
+    SCTP_UTILS_RESULT_FAIL_DCEP_LIB_FAIL,
+    SCTP_UTILS_RESULT_FAIL_SET_SOCKET_OPTIONS,
+    SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET,
+    SCTP_UTILS_RESULT_FAIL_CLOSE_DATA_CHANNEL,
+    SCTP_UTILS_RESULT_FAIL_SCTP_SEND_FAIL,
+} SctpUtilsResult_t;
 
 /* Callback that is fired when SCTP Association wishes to send packet */
 typedef void (* SCTPSessionOutboundPacket_t)( void *,
                                               uint8_t *,
                                               uint32_t );
 
-/* Callback that is fired when SCTP has a new DataChannel
+/* Callback that is fired when SCTP has a valid DATA_CHANNEL_OPEN Message
  * Argument is ChannelID and ChannelName + Len
  */
 typedef void (* SCTPSessionDataChannelOpen_t)( void *,
                                                uint32_t,
-                                               uint8_t *,
+                                               const uint8_t *,
                                                uint32_t );
+
+/* Callback that is fired when SCTP has a received a DATA_CHANNEL_ACK Message
+ * Argument is ChannelID and ChannelName + Len
+ */
+typedef SctpUtilsResult_t (* SCTPSessionDataChannelAck_t)( void *,
+                                                           uint32_t );
 
 /* Callback that is fired when SCTP has a DataChannel Message.
  * Argument is ChannelID and Message + Len
@@ -79,20 +85,12 @@ typedef void (* RtcOnMessage)( void *,
 typedef void (* RtcOnOpen)( void *,
                             uint32_t );
 
-typedef enum SctpUtilsResult
-{
-    SCTP_UTILS_RESULT_OK = 0,
-    SCTP_UTILS_RESULT_FAIL,
-    SCTP_UTILS_RESULT_BAD_PARAMETER,
-    SCTP_UTILS_RESULT_FAIL_SET_SOCKET_OPTIONS,
-    SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET,
-    SCTP_UTILS_RESULT_FAIL_CLOSE_DATA_CHANNEL,
-} SctpUtilsResult_t;
 
 typedef struct {
     void * customData;
     SCTPSessionOutboundPacket_t outboundPacketFunc;
     SCTPSessionDataChannelOpen_t dataChannelOpenFunc;
+    SCTPSessionDataChannelAck_t dataChannelOpenAckFunc;
     SCTPSessionDataChannelMessage_t dataChannelMessageFunc;
 } SCTPSessionCallbacks_t;
 
@@ -101,8 +99,9 @@ typedef struct {
     struct socket * socket;
     struct sctp_sendv_spa spa;
     uint8_t packet[SCTP_MAX_ALLOWABLE_PACKET_LENGTH];
-    uint32_t packetSize;
+    size_t packetSize;
     SCTPSessionCallbacks_t sctpSessionCallbacks;
+    uint32_t ulCurrentDataChannelId;
 } SCTPSession_t;
 
 typedef struct {
@@ -134,11 +133,11 @@ SctpUtilsResult_t SCTP_WriteMessageSCTPSession( SCTPSession_t *,
                                                 uint8_t,
                                                 uint8_t *,
                                                 uint32_t );
-SctpUtilsResult_t SCTP_WriteDCEPSCTPSession( SCTPSession_t *,
-                                             uint32_t,
-                                             char *,
-                                             uint32_t,
-                                             DataChannelInit_t * );
+SctpUtilsResult_t SCTP_SendDcepOpenDataChannel( SCTPSession_t *,
+                                                uint32_t,
+                                                char *,
+                                                uint32_t,
+                                                DataChannelInit_t * );
 SctpUtilsResult_t SCTP_StreamReset( SCTPSession_t *,
                                     uint32_t );
 

@@ -31,6 +31,8 @@ cmake -S . -B build
 make -C build
 ```
 
+**Note**: `BUILD_USRSCTP_LIBRARY` flag can be used to disable data channel and the build of `usrsctp` library. It can be used like: `cmake -S . -B build -DBUILD_USRSCTP_LIBRARY=OFF`
+
 ## execute
 ```
 ./build/WebRTCLinuxApplicationMaster

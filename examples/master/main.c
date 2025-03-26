@@ -1115,24 +1115,31 @@ static void onDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
 
     if( isBinary )
     {
-        LogWarn( ( "[VIEWER] [Channel Name: %s ID: %d] >>> DataChannel Binary Message", pDataChannel->ucDataChannelName, ( int ) pDataChannel->channelId ) );
+        LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s ID: %d] >>> DataChannel Binary Message",
+                   pDataChannel->pPeerConnection->combinedName,
+                   pDataChannel->ucDataChannelName,
+                   ( int ) pDataChannel->channelId ) );
     }
     else {
-        LogWarn( ( "[VIEWER] [Channel Name: %s ID: %d] >>> DataChannel String Message: %.*s\n", pDataChannel->ucDataChannelName, ( int ) pDataChannel->channelId, ( int ) pMessageLen, pMessage ) );
+        LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s ID: %d] >>> DataChannel String Message: %.*s\n",
+                   pDataChannel->pPeerConnection->combinedName,
+                   pDataChannel->ucDataChannelName, ( int ) pDataChannel->channelId,
+                   ( int ) pMessageLen, pMessage ) );
+
         sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( OP_BUFFER_SIZE - 128 ) ? ( OP_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
         retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
     }
 
     if( retStatus != PEER_CONNECTION_RESULT_OK )
     {
-        LogInfo( ( "[KVS Master] onDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
+        LogWarn( ( "[KVS Master] onDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
     }
 
 }
 
 OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOneMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
                                                                                     uint32_t ulChannelId,
-                                                                                    uint8_t * pucName,
+                                                                                    const uint8_t * pucName,
                                                                                     uint32_t ulNameLen )
 {
     ( void ) pPeerConnectionSession;

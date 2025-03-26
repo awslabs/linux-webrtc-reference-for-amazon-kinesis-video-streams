@@ -4,34 +4,11 @@
 #include <assert.h>
 #include <unistd.h>
 
+#if ENABLE_SCTP_DATA_CHANNEL
+
 #include "peer_connection.h"
 #include "networking_utils.h"
 #include "peer_connection_sctp.h"
-
-#if ENABLE_SCTP_DATA_CHANNEL
-
-#define LOW_BYTE( x )   ( ( uint8_t ) ( x ) )
-#define HIGH_BYTE( x )  ( ( uint8_t ) ( ( ( uint16_t ) ( x ) >> 8 ) & 0xFF ) )
-
-#define LOW_INT16( x )  ( ( int16_t ) ( x ) )
-#define HIGH_INT16( x ) ( ( int16_t ) ( ( ( int16_t ) ( x ) >> 16 ) & 0xFFFF ) )
-
-#define LOW_UINT16( x )  ( ( uint16_t ) ( x ) )
-#define HIGH_UINT16( x ) ( ( uint16_t ) ( ( ( uint16_t ) ( x ) >> 16 ) & 0xFFFF ) )
-
-#define MAKE_INT16( a, b ) ( ( int16_t ) ( ( ( uint8_t ) ( ( uint16_t ) ( a ) & 0xff ) ) | ( ( uint16_t ) ( ( uint8_t ) ( ( uint16_t ) ( b ) & 0xff ) ) ) << 8 ) )
-#define MAKE_INT32( a, b ) ( ( int32_t ) ( ( ( uint16_t ) ( ( uint32_t ) ( a ) & 0xffff ) ) | ( ( uint32_t ) ( ( uint16_t ) ( ( uint32_t ) ( b ) & 0xffff ) ) ) << 16 ) )
-#define MAKE_UINT32( a, b ) ( ( uint32_t ) ( ( ( uint16_t ) ( ( uint32_t ) ( a ) & 0xffff ) ) | ( ( uint32_t ) ( ( uint16_t ) ( ( uint32_t ) ( b ) & 0xffff ) ) ) << 16 ) )
-
-#define MAKE_UINT16( a, b ) ( ( uint16_t ) ( ( ( uint8_t ) ( ( uint16_t ) ( a ) & 0xff ) ) | ( ( uint16_t ) ( ( uint8_t ) ( ( uint16_t ) ( b ) & 0xff ) ) ) << 8 ) )
-
-#define SWAP_INT16( x ) MAKE_INT16( HIGH_BYTE( x ), LOW_BYTE( x ) )
-
-#define SWAP_UINT16( x ) MAKE_UINT16( HIGH_BYTE( x ), LOW_BYTE( x ) )
-
-#define SWAP_INT32( x ) MAKE_INT32( SWAP_INT16( HIGH_INT16( x ) ), SWAP_INT16( LOW_INT16( x ) ) )
-
-#define SWAP_UINT32( x ) MAKE_UINT32( SWAP_UINT16( HIGH_UINT16( x ) ), SWAP_UINT16( LOW_UINT16( x ) ) )
 
 /* Callbacks used by usrsctp */
 static int SCTP_OnSCTPOutboundPacket( void * addr,
@@ -48,154 +25,25 @@ static int SCTP_OnSCTPInboundPacket( struct socket * sock,
                                      void * ulp_info );
 /*-----------------------------------------------------------*/
 
-typedef void (* putInt16Func)( int16_t *,
-                               int16_t );
-typedef void (* putInt32Func)( int32_t *,
-                               int32_t );
-typedef void (* putUInt32Func)( uint32_t *,
-                                uint32_t );
-typedef int32_t (* getUnalignedInt32Func)( void * );
-typedef void (* putUnalignedInt32Func)( void *,
-                                        int32_t );
-typedef void (* putUnalignedInt16Func)( void *,
-                                        int16_t );
-/*-----------------------------------------------------------*/
-
-static void vPutInt16NoSwap( int16_t * px,
-                             int16_t x )
-{
-    *px = x;
-}
-
-static void vPutInt16Swap( int16_t * px,
-                           int16_t x )
-{
-    *px = SWAP_INT16( x );
-}
-
-static void vPutInt32Swap( int32_t * px,
-                           int32_t x )
-{
-    *px = SWAP_INT32( x );
-}
-
-static void vPutInt32NoSwap( int32_t * px,
-                             int32_t x )
-{
-    *px = x;
-}
-
-static void vPutUInt32Swap( uint32_t * px,
-                            uint32_t x )
-{
-    *px = SWAP_UINT32( x );
-}
-
-static void vPutUInt32NoSwap( uint32_t * px,
-                              uint32_t x )
-{
-    *px = x;
-}
-
-static int32_t getUnalignedInt32Be( void * pVal )
-{
-    uint8_t * pSrc = ( uint8_t * ) pVal;
-    return MAKE_INT32( MAKE_INT16( *( pSrc + 3 ), *( pSrc + 2 ) ), MAKE_INT16( *( pSrc + 1 ), *pSrc ) );
-}
-
-static int32_t getUnalignedInt32Le( void * pVal )
-{
-    uint8_t * pSrc = ( uint8_t * ) pVal;
-    return MAKE_INT32( MAKE_INT16( *pSrc, *( pSrc + 1 ) ), MAKE_INT16( *( pSrc + 2 ), *( pSrc + 3 ) ) );
-}
-
-static void vPutUnalignedInt32Le( void * pVal,
-                                  int32_t val )
-{
-    uint8_t * pDst = ( uint8_t * ) pVal;
-    pDst[0] = ( int8_t ) val;
-    pDst[1] = ( int8_t ) ( val >> 8 );
-    pDst[2] = ( int8_t ) ( val >> 16 );
-    pDst[3] = ( int8_t ) ( val >> 24 );
-}
-
-static void vPutUnalignedInt32Be( void * pVal,
-                                  int32_t val )
-{
-    uint8_t * pDst = ( uint8_t * ) pVal;
-    pDst[3] = ( int8_t ) val;
-    pDst[2] = ( int8_t ) ( val >> 8 );
-    pDst[1] = ( int8_t ) ( val >> 16 );
-    pDst[0] = ( int8_t ) ( val >> 24 );
-}
-
-static void vPutUnalignedInt16Be( void * pVal,
-                                  int16_t val )
-{
-    uint8_t * pDst = ( uint8_t * ) pVal;
-    pDst[1] = ( int8_t ) val;
-    pDst[0] = ( int8_t ) ( val >> 8 );
-}
-
-putInt16Func putInt16 = vPutInt16NoSwap;
-putInt32Func putInt32 = vPutInt32NoSwap;
-putUInt32Func putUInt32 = vPutUInt32NoSwap;
-getUnalignedInt32Func getUnalignedInt32BigEndian = getUnalignedInt32Be;
-getUnalignedInt32Func getUnalignedInt32 = getUnalignedInt32Be;
-putUnalignedInt32Func putUnalignedInt32 = vPutUnalignedInt32Be;
-putUnalignedInt16Func putUnalignedInt16BigEndian = vPutUnalignedInt16Be;
-/*-----------------------------------------------------------*/
-
-static uint8_t isBigEndian( void )
-{
-    union {
-        uint8_t c[4];
-        int32_t i;
-    } u;
-
-    u.i = 0x01020304;
-
-    return( 0x01 == u.c[0] );
-}
-/*-----------------------------------------------------------*/
-
-static void vInitializeEndianness( void )
-{
-    if( isBigEndian() )
-    {
-
-        putInt16 = vPutInt16NoSwap;
-        putInt32 = vPutInt32NoSwap;
-        putUInt32 = vPutUInt32NoSwap;
-        getUnalignedInt32 = getUnalignedInt32Be;
-        putUnalignedInt32 = vPutUnalignedInt32Be;
-
-    }
-    else {
-
-        putInt16 = vPutInt16Swap;
-        putInt32 = vPutInt32Swap;
-        putUInt32 = vPutUInt32Swap;
-        getUnalignedInt32 = getUnalignedInt32Le;
-        putUnalignedInt32 = vPutUnalignedInt32Le;
-
-    }
-}
-
-/*-----------------------------------------------------------*/
-
 /* Initialise SCTP socket address with SCTP_ASSOCIATION_DEFAULT_PORT
  * and AF_CONN address family. */
 static SctpUtilsResult_t ulInitSctpAddrConn( SCTPSession_t * pSctpSession,
                                              struct sockaddr_conn * sconn )
 {
 
-    SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
+    SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_FAIL_DCEP_LIB_FAIL;
+    DcepContext_t dcepCtx;
+    DcepResult_t dcepResult = DCEP_RESULT_OK;
 
-    sconn->sconn_family = AF_CONN;
-    putInt16( ( int16_t * ) &sconn->sconn_port, SCTP_ASSOCIATION_DEFAULT_PORT );
-    sconn->sconn_addr = pSctpSession;
+    dcepResult = Dcep_Init( &dcepCtx );
 
+    if( dcepResult == DCEP_RESULT_OK )
+    {
+        sconn->sconn_family = AF_CONN;
+        dcepCtx.readWriteFunctions.writeUint16Fn( ( uint8_t * ) &sconn->sconn_port, SCTP_ASSOCIATION_DEFAULT_PORT );
+        sconn->sconn_addr = pSctpSession;
+        retStatus = SCTP_UTILS_RESULT_OK;
+    }
 
     return retStatus;
 }
@@ -267,8 +115,6 @@ static SctpUtilsResult_t ulConfigureSctpSocket( struct socket * socket )
 SctpUtilsResult_t SCTP_InitSCTPSession( void )
 {
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
-
-    vInitializeEndianness();
 
     usrsctp_init_nothreads( 0, &SCTP_OnSCTPOutboundPacket, NULL );
 
@@ -385,40 +231,42 @@ SctpUtilsResult_t SCTP_WriteMessageSCTPSession( SCTPSession_t * pSctpSession,
 {
 
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
+    DcepContext_t dcepCtx;
 
-    if( ( pMessage == NULL ) || ( pSctpSession == NULL ) )
+    if( ( pMessage == NULL ) || ( pSctpSession == NULL ) || ( Dcep_Init( &dcepCtx ) != DCEP_RESULT_OK ) )
     {
         LogError( ( "No message or pDataChannel received in onDataChannelMessage" ) );
-        return 1;
+        retStatus = SCTP_UTILS_RESULT_FAIL_BAD_PARAMETER;
     }
-
-    memset( &pSctpSession->spa, 0x00, sizeof( struct sctp_sendv_spa ) );
-
-    pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
-    pSctpSession->spa.sendv_sndinfo.snd_sid = streamId;
-
-    if( ( pSctpSession->packet[1] & DCEP_DATA_CHANNEL_RELIABLE_UNORDERED ) != 0 )
+    else
     {
-        pSctpSession->spa.sendv_sndinfo.snd_flags |= SCTP_UNORDERED;
-    }
-    if( ( pSctpSession->packet[1] & DCEP_DATA_CHANNEL_REXMIT ) != 0 )
-    {
-        pSctpSession->spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
-        pSctpSession->spa.sendv_prinfo.pr_value = getUnalignedInt32BigEndian( ( void * ) ( pSctpSession->packet + sizeof( uint32_t ) ) );
-    }
-    if( ( pSctpSession->packet[1] & DCEP_DATA_CHANNEL_TIMED ) != 0 )
-    {
-        pSctpSession->spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
-        pSctpSession->spa.sendv_prinfo.pr_value = getUnalignedInt32BigEndian( ( void * ) ( pSctpSession->packet + sizeof( uint32_t ) ) );
-    }
+        memset( &pSctpSession->spa, 0x00, sizeof( struct sctp_sendv_spa ) );
 
-    putInt32( ( int32_t * ) &pSctpSession->spa.sendv_sndinfo.snd_ppid, isBinary ? SCTP_PPID_BINARY : SCTP_PPID_STRING );
-    if( usrsctp_sendv( pSctpSession->socket, pMessage, pMessageLen, NULL, 0, &pSctpSession->spa, sizeof( pSctpSession->spa ), SCTP_SENDV_SPA, 0 ) <= 0 )
-    {
-        LogError( ( "usrsctp_sendv internal error" ) );
-        retStatus = SCTP_UTILS_RESULT_FAIL;
-    }
+        pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
+        pSctpSession->spa.sendv_sndinfo.snd_sid = streamId;
 
+        if( ( pSctpSession->packet[1] & DCEP_DATA_CHANNEL_RELIABLE_UNORDERED ) != 0 )
+        {
+            pSctpSession->spa.sendv_sndinfo.snd_flags |= SCTP_UNORDERED;
+        }
+        if( ( pSctpSession->packet[1] & DCEP_DATA_CHANNEL_PARTIAL_RELIABLE_REXMIT ) != 0 )
+        {
+            pSctpSession->spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
+            pSctpSession->spa.sendv_prinfo.pr_value = dcepCtx.readWriteFunctions.readUint32Fn( ( const uint8_t * ) ( pSctpSession->packet + sizeof( uint32_t ) ) );
+        }
+        if( ( pSctpSession->packet[1] & DCEP_DATA_CHANNEL_PARTIAL_RELIABLE_TIMED ) != 0 )
+        {
+            pSctpSession->spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
+            pSctpSession->spa.sendv_prinfo.pr_value = dcepCtx.readWriteFunctions.readUint32Fn( ( const uint8_t * ) ( pSctpSession->packet + sizeof( uint32_t ) ) );
+        }
+
+        dcepCtx.readWriteFunctions.writeUint32Fn( ( uint8_t * ) &pSctpSession->spa.sendv_sndinfo.snd_ppid, isBinary ? SCTP_PPID_BINARY : SCTP_PPID_STRING );
+        if( usrsctp_sendv( pSctpSession->socket, pMessage, pMessageLen, NULL, 0, &pSctpSession->spa, sizeof( pSctpSession->spa ), SCTP_SENDV_SPA, 0 ) <= 0 )
+        {
+            LogError( ( "usrsctp_sendv internal error" ) );
+            retStatus = SCTP_UTILS_RESULT_FAIL_SCTP_SEND_FAIL;
+        }
+    }
 
     return retStatus;
 }
@@ -445,68 +293,160 @@ SctpUtilsResult_t SCTP_WriteMessageSCTPSession( SCTPSession_t * pSctpSession,
  *     /                                                               \
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-SctpUtilsResult_t SCTP_WriteDCEPSCTPSession( SCTPSession_t * pSctpSession,
-                                             uint32_t streamId,
-                                             char * pChannelName,
-                                             uint32_t pChannelNameLen,
-                                             DataChannelInit_t * pDataChannelInit )
+SctpUtilsResult_t SCTP_SendDcepOpenDataChannel( SCTPSession_t * pSctpSession,
+                                                uint32_t streamId,
+                                                char * pChannelName,
+                                                uint32_t pChannelNameLen,
+                                                DataChannelInit_t * pDataChannelInit )
 {
 
-    SctpUtilsResult_t retStatus = 0;
+    SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
 
     if( !( ( pSctpSession != NULL ) && ( pChannelName != NULL ) ) )
     {
-        retStatus = SCTP_UTILS_RESULT_BAD_PARAMETER;
+        retStatus = SCTP_UTILS_RESULT_FAIL_BAD_PARAMETER;
     }
     else
     {
-        memset( &pSctpSession->spa, 0x00, sizeof( struct sctp_sendv_spa ) );
-        memset( pSctpSession->packet, 0x00, sizeof( pSctpSession->packet ) );
-        pSctpSession->packetSize = SCTP_DCEP_HEADER_LENGTH + pChannelNameLen;
 
-        /* Setting the fields of DATA_CHANNEL_OPEN message */
-        pSctpSession->packet[0] = DCEP_DATA_CHANNEL_OPEN; /* message type */
+        DcepContext_t dcepCtx;
+        DcepResult_t dcepResult = DCEP_RESULT_OK;
 
-        /* Set Channel type based on supplied parameters */
-        pSctpSession->packet[1] = DCEP_DATA_CHANNEL_RELIABLE_ORDERED;
+        dcepResult = Dcep_Init( &dcepCtx );
 
-        /*
-         *   Set channel type and reliability parameters based on input
-         *   SCTP allows fine tuning the channel robustness:
-         *      1. Ordering: The data packets can be sent out in an ordered/unordered fashion
-         *      2. Reliability: This determines how the retransmission of packets is handled.
-         *   There are 2 parameters that can be fine tuned to achieve this:
-         *      a. Number of retransmits
-         *      b. Packet lifetime
-         *   Default values for the parameters is 0. This falls back to reliable channel
-         */
-
-        if( !pDataChannelInit->ordered )
+        if( dcepResult == DCEP_RESULT_OK )
         {
-            pSctpSession->packet[1] |= DCEP_DATA_CHANNEL_RELIABLE_UNORDERED;
+
+            DcepChannelOpenMessage_t dcepChannelOpenMessage;
+
+            /* Clear dcepChannelOpenMessage */
+            memset( &dcepChannelOpenMessage, 0, sizeof( DcepChannelOpenMessage_t ) );
+
+            /*
+             *   Set channel type and reliability parameters based on input
+             *   SCTP allows fine tuning the channel robustness:
+             *      1. Ordering: The data packets can be sent out in an ordered/unordered fashion
+             *      2. Reliability: This determines how the retransmission of packets is handled.
+             *   There are 2 parameters that can be fine tuned to achieve this:
+             *      a. Number of retransmits
+             *      b. Packet lifetime
+             *   Default values for the parameters is 0. This falls back to reliable channel
+             */
+
+            dcepChannelOpenMessage.channelType = DCEP_DATA_CHANNEL_RELIABLE;
+
+            if( !pDataChannelInit->ordered )
+            {
+                dcepChannelOpenMessage.channelType |= DCEP_DATA_CHANNEL_RELIABLE_UNORDERED;
+            }
+            if( ( pDataChannelInit->maxRetransmits.value >= 0 ) && ( pDataChannelInit->maxRetransmits.isNull == 0U ) )
+            {
+                dcepChannelOpenMessage.channelType |= DCEP_DATA_CHANNEL_PARTIAL_RELIABLE_REXMIT;
+                dcepChannelOpenMessage.numRetransmissions = pDataChannelInit->maxRetransmits.value;
+            }
+            else if( ( pDataChannelInit->maxPacketLifeTime.value >= 0 ) && ( pDataChannelInit->maxPacketLifeTime.isNull == 0U ) )
+            {
+                dcepChannelOpenMessage.channelType |= DCEP_DATA_CHANNEL_PARTIAL_RELIABLE_TIMED;
+                dcepChannelOpenMessage.numRetransmissions = pDataChannelInit->maxPacketLifeTime.value;
+            }
+
+            dcepChannelOpenMessage.pChannelName = ( const uint8_t * ) pChannelName;
+            dcepChannelOpenMessage.channelNameLength = pChannelNameLen;
+            dcepChannelOpenMessage.protocolLength = 0;
+
+            memset( pSctpSession->packet, 0x00, sizeof( pSctpSession->packet ) );
+            pSctpSession->packetSize = sizeof( pSctpSession->packet );
+
+            dcepResult = Dcep_SerializeChannelOpenMessage( &dcepCtx, &dcepChannelOpenMessage, pSctpSession->packet, &pSctpSession->packetSize );
+
+            if( dcepResult == DCEP_RESULT_OK )
+            {
+                memset( &pSctpSession->spa, 0x00, sizeof( struct sctp_sendv_spa ) );
+                pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
+                pSctpSession->spa.sendv_sndinfo.snd_sid = streamId;
+
+                dcepCtx.readWriteFunctions.writeUint32Fn( ( uint8_t * ) &pSctpSession->spa.sendv_sndinfo.snd_ppid, SCTP_PPID_DCEP );
+
+                if( usrsctp_sendv( pSctpSession->socket, pSctpSession->packet, pSctpSession->packetSize,
+                                   NULL, 0, &pSctpSession->spa, sizeof( pSctpSession->spa ), SCTP_SENDV_SPA, 0 ) <= 0 )
+                {
+                    retStatus = SCTP_UTILS_RESULT_FAIL_SCTP_SEND_FAIL;
+                }
+            }
+            else
+            {
+                retStatus = SCTP_UTILS_RESULT_FAIL_DCEP_LIB_FAIL;
+            }
         }
-        if( ( pDataChannelInit->maxRetransmits.value >= 0 ) && ( pDataChannelInit->maxRetransmits.isNull == 0U ) )
+        else
         {
-            pSctpSession->packet[1] |= DCEP_DATA_CHANNEL_REXMIT;
-            vPutUnalignedInt32Be( pSctpSession->packet + sizeof( uint32_t ), pDataChannelInit->maxRetransmits.value );
+            retStatus = SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET;
         }
-        else if( ( pDataChannelInit->maxPacketLifeTime.value >= 0 ) && ( pDataChannelInit->maxPacketLifeTime.isNull == 0U ) )
+    }
+
+    return retStatus;
+}
+/*-----------------------------------------------------------*/
+
+/* Create and send DATA_CHANNEL_ACK Message */
+/*
+ * https://datatracker.ietf.org/doc/html/rfc8832#section-5.2
+ *
+ *  This message is sent in response to a DATA_CHANNEL_OPEN_RESPONSE
+ *  message.  It is sent on the stream used for user messages using the
+ *  data channel.  Reception of this message tells the opener that the
+ *  data channel setup handshake is complete.
+ *
+ *     0                   1                   2                   3
+ *     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |  Message Type |
+ *    +-+-+-+-+-+-+-+-+
+ *
+ */
+SctpUtilsResult_t SCTP_SendDcepOpenDataChannelAck( SCTPSession_t * pSctpSession,
+                                                   uint32_t streamId )
+{
+
+    SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
+
+    if( pSctpSession == NULL )
+    {
+        retStatus = SCTP_UTILS_RESULT_FAIL_BAD_PARAMETER;
+    }
+    else
+    {
+        DcepContext_t dcepCtx;
+        DcepResult_t dcepResult = DCEP_RESULT_OK;
+
+        dcepResult = Dcep_Init( &dcepCtx );
+
+        if( dcepResult == DCEP_RESULT_OK )
         {
-            pSctpSession->packet[1] |= DCEP_DATA_CHANNEL_TIMED;
-            vPutUnalignedInt32Be( pSctpSession->packet + sizeof( uint32_t ), pDataChannelInit->maxPacketLifeTime.value );
+            dcepResult = Dcep_SerializeChannelAckMessage( &dcepCtx, pSctpSession->packet, &pSctpSession->packetSize );
+
+            if( dcepResult == DCEP_RESULT_OK )
+            {
+                memset( &pSctpSession->spa, 0x00, sizeof( struct sctp_sendv_spa ) );
+                pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
+                pSctpSession->spa.sendv_sndinfo.snd_sid = streamId;
+
+                dcepCtx.readWriteFunctions.writeUint32Fn( ( uint8_t * ) &pSctpSession->spa.sendv_sndinfo.snd_ppid, SCTP_PPID_DCEP );
+
+                if( usrsctp_sendv( pSctpSession->socket, pSctpSession->packet, pSctpSession->packetSize,
+                                   NULL, 0, &pSctpSession->spa, sizeof( pSctpSession->spa ), SCTP_SENDV_SPA, 0 ) <= 0 )
+                {
+                    retStatus = SCTP_UTILS_RESULT_FAIL_SCTP_SEND_FAIL;
+                }
+            }
+            else
+            {
+                retStatus = SCTP_UTILS_RESULT_FAIL_DCEP_LIB_FAIL;
+            }
         }
-
-        putUnalignedInt16BigEndian( pSctpSession->packet + SCTP_DCEP_LABEL_LEN_OFFSET, pChannelNameLen );
-        memcpy( pSctpSession->packet + SCTP_DCEP_LABEL_OFFSET, pChannelName, pChannelNameLen );
-        pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
-        pSctpSession->spa.sendv_sndinfo.snd_sid = streamId;
-
-        putUInt32( ( uint32_t * ) &pSctpSession->spa.sendv_sndinfo.snd_ppid, SCTP_PPID_DCEP );
-
-        if( usrsctp_sendv( pSctpSession->socket, pSctpSession->packet, pSctpSession->packetSize,
-                           NULL, 0, &pSctpSession->spa, sizeof( pSctpSession->spa ), SCTP_SENDV_SPA, 0 ) > 0 )
+        else
         {
-            retStatus = SCTP_UTILS_RESULT_FAIL;
+            retStatus = SCTP_UTILS_RESULT_FAIL_DCEP_LIB_FAIL;
         }
     }
 
@@ -567,36 +507,74 @@ static SctpUtilsResult_t ulHandleDCEPPacket( SCTPSession_t * pSctpSession,
 {
 
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
-    uint16_t labelLength = 0;
-    uint16_t protocolLength = 0;
+    DcepContext_t dcepCtx;
+    DcepResult_t dcepResult = DCEP_RESULT_OK;
 
-    /* Assert that is DCEP of type DataChannelOpen */
-    if( ( length <= SCTP_DCEP_HEADER_LENGTH ) && ( data[0] != DCEP_DATA_CHANNEL_OPEN ) )
+    dcepResult = Dcep_Init( &dcepCtx );
+
+    if( dcepResult == DCEP_RESULT_OK )
     {
-        retStatus = SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET;
+        DcepMessageType_t dcepMessageType;
+        dcepResult = Dcep_GetMessageType( &dcepCtx, data, length, &dcepMessageType );
+
+        if( dcepResult == DCEP_RESULT_OK )
+        {
+            switch( dcepMessageType )
+            {
+                case DCEP_MESSAGE_DATA_CHANNEL_ACK:
+                    /* On valid DCEP DATA_CHANNEL_OPEN Message call peer connection configured
+                     * callback to allocate and open the data channel */
+                    if( pSctpSession->sctpSessionCallbacks.dataChannelOpenAckFunc(
+                            pSctpSession->sctpSessionCallbacks.customData,
+                            streamId ) == SCTP_UTILS_RESULT_OK )
+                    {
+                        LogInfo( ( "Successfully opened data channel ID: %u", ( unsigned int ) streamId ) );
+                    }
+                    else
+                    {
+                        LogWarn( ( " Failed to open data channel for which DCEP_MESSAGE_DATA_CHANNEL_ACK was received " ) );
+                    }
+                    break;
+
+                case DCEP_MESSAGE_DATA_CHANNEL_OPEN:
+                {
+                    DcepChannelOpenMessage_t channelOpenMessage;
+                    dcepResult = Dcep_DeserializeChannelOpenMessage( &dcepCtx, data, length, &channelOpenMessage );
+
+                    if( dcepResult == DCEP_RESULT_OK )
+                    {
+                        /* On valid DCEP DATA_CHANNEL_OPEN Message call peer connection configured
+                         * callback to allocate and open the data channel */
+                        pSctpSession->sctpSessionCallbacks.dataChannelOpenFunc( pSctpSession->sctpSessionCallbacks.customData,
+                                                                                streamId, channelOpenMessage.pChannelName,
+                                                                                channelOpenMessage.channelNameLength );
+
+                        /* Send DATA_CHANNEL_ACK Message */
+                        if( SCTP_SendDcepOpenDataChannelAck( pSctpSession, streamId ) != SCTP_UTILS_RESULT_OK )
+                        {
+                            LogWarn( ( " Failed to sending DCEP_MESSAGE_DATA_CHANNEL_ACK " ) );
+                        }
+                    }
+                    else
+                    {
+                        retStatus = SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET;
+                    }
+                    break;
+                }
+                default:
+                    LogInfo( ( "Unknown SCTP DCEP message type: %d", ( int ) dcepMessageType ) );
+                    retStatus = SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET;
+                    break;
+            }
+        }
+        else
+        {
+            retStatus = SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET;
+        }
     }
-
-    memcpy( &labelLength, data + 8, sizeof( uint16_t ) );
-    memcpy( &protocolLength, data + 10, sizeof( uint16_t ) );
-    putInt16( ( int16_t * ) &labelLength, labelLength );
-    putInt16( ( int16_t * ) &protocolLength, protocolLength );
-
-    if( ( !( labelLength + protocolLength + SCTP_DCEP_HEADER_LENGTH ) ) >= length )
+    else
     {
-        retStatus = SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET;
-    }
-
-    if( !( SCTP_MAX_ALLOWABLE_PACKET_LENGTH >= length ) )
-    {
-        retStatus = SCTP_UTILS_RESULT_FAIL_INVALID_DCEP_PACKET;
-    }
-
-    if( retStatus == SCTP_UTILS_RESULT_OK )
-    {
-        /* On valid DCEP DATA_CHANNEL_OPEN Message call peer connection configured
-         * callback to allocate and open the data channel */
-        pSctpSession->sctpSessionCallbacks.dataChannelOpenFunc( pSctpSession->sctpSessionCallbacks.customData, streamId, data + SCTP_DCEP_HEADER_LENGTH,
-                                                                labelLength );
+        retStatus = SCTP_UTILS_RESULT_FAIL_DCEP_LIB_FAIL;
     }
 
     return retStatus;

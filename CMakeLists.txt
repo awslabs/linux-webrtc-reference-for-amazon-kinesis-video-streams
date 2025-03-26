@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Option to control linking with usrsctp
-option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" OFF)
+option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" ON)
 
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtp/rtpFilePaths.cmake)
@@ -246,6 +246,14 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
 if(BUILD_USRSCTP_LIBRARY)
   ## Include usrsctp
   include( ${CMAKE_ROOT_DIRECTORY}/CMake/libusrsctp.cmake )
+  target_compile_definitions(WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1)
+
+  ## Include DCEP
+  include( ${CMAKE_ROOT_DIRECTORY}/CMake/dcep.cmake )
+
+  ## Set DCEP include directories
+  target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                              ${DCEP_INCLUDE_PUBLIC_DIRS} )
 endif()
 
 # usrsctp library public include directories.
@@ -269,8 +277,11 @@ target_link_libraries(WebRTCLinuxApplicationMaster
 )
 
 if(BUILD_USRSCTP_LIBRARY)
-  target_link_libraries(WebRTCLinuxApplicationMaster usrsctp)
-  target_compile_definitions(WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1)
+    target_link_libraries(WebRTCLinuxApplicationMaster 
+        usrsctp
+        dcep
+    )
+    target_compile_definitions(WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1)
 endif()
 
 target_compile_options(WebRTCLinuxApplicationMaster PRIVATE -Wall -Werror)
