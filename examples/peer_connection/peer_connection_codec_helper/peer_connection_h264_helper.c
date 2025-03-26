@@ -180,7 +180,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
                                               &h264Frame );
         if( resultH264 != H264_RESULT_OK )
         {
-            LogError( ( "Fail to init H264 packetizer, result: %d", resultH264 ) );
+            LogError( ( "Fail to add H264 packetizer, result: %d", resultH264 ) );
             ret = PEER_CONNECTION_RESULT_FAIL_PACKETIZER_ADD_FRAME;
         }
     }

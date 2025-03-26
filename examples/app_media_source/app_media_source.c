@@ -106,7 +106,7 @@ static void * VideoTx_Task( void * pParameter )
                 }
             }
             #endif
-            usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
+            usleep( SAMPLE_VIDEO_FRAME_DURATION_IN_US );
         }
     }
 
