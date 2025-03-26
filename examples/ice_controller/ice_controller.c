@@ -204,7 +204,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
     #if LIBRARY_LOG_LEVEL >= LOG_INFO
-    char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( ( pCtx == NULL ) || ( pRemoteCandidate == NULL ) )
@@ -294,8 +294,8 @@ IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipFromBuffer[ INET_ADDRSTRLEN ];
-    char ipToBuffer[ INET_ADDRSTRLEN ];
+        char ipFromBuffer[ INET_ADDRSTRLEN ];
+        char ipToBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( pCtx->metrics.isFirstConnectivityRequest == 1 )

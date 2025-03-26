@@ -202,11 +202,11 @@ int32_t TLS_FreeRTOS_GetSocketFd( NetworkContext_t * pNetworkContext );
  *
  * @return void
  */
-void mbedtls_string_printf( void * sslContext,
-                            int level,
-                            const char * file,
-                            int line,
-                            const char * str );
+    void mbedtls_string_printf( void * sslContext,
+                                int level,
+                                const char * file,
+                                int line,
+                                const char * str );
 #endif /* MBEDTLS_DEBUG_C */
 
 #endif /* ifndef USING_MBEDTLS */

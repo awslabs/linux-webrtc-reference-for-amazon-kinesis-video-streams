@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -28,8 +30,10 @@ const char * StringUtils_StrStr( const char * pStr,
                                  const char * pPattern,
                                  size_t patternLength );
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* STRING_UTILS_H */

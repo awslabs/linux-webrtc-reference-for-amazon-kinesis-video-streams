@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include <stdio.h>
 #include "message_queue.h"
@@ -52,8 +54,10 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
 int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTranceiver );
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* APP_MEDIA_SOURCE_H */

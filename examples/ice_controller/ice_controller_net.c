@@ -256,7 +256,7 @@ static void IceControllerNet_AddSrflxCandidate( IceControllerContext_t * pCtx,
     uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     for( i = 0; i < pCtx->iceServersCount; i++ )
@@ -497,7 +497,7 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
     int32_t retLocalCandidateReady;
     IceControllerCallbackContent_t localCandidateReadyContent;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( pCtx == NULL )
@@ -584,8 +584,8 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
     uint8_t * pTransactionIdBuffer;
     IceCandidatePair_t * pCandidatePair = NULL;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipBuffer[ INET_ADDRSTRLEN ];
-    char ipBuffer2[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer2[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
     int32_t retLocalCandidateReady;
     IceControllerCallbackContent_t localCandidateReadyContent;
@@ -782,100 +782,100 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
 }
 
 #if LIBRARY_LOG_LEVEL >= LOG_INFO
-const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoint,
-                                                char * pIpBuffer,
-                                                size_t ipBufferLength )
-{
-    const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
-
-    if( ( pIceEndpoint != NULL ) && ( pIpBuffer != NULL ) && ( ipBufferLength >= INET_ADDRSTRLEN ) )
+    const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoint,
+                                                    char * pIpBuffer,
+                                                    size_t ipBufferLength )
     {
-        ret = inet_ntop( AF_INET, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
-    }
+        const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
 
-    return ret;
-}
+        if( ( pIceEndpoint != NULL ) && ( pIpBuffer != NULL ) && ( ipBufferLength >= INET_ADDRSTRLEN ) )
+        {
+            ret = inet_ntop( AF_INET, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
+        }
+
+        return ret;
+    }
 #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
 
 #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
 
-#define SWAP_BYTES_16( value )          \
-    ( ( ( ( value ) >> 8 ) & 0xFF ) |   \
+#define SWAP_BYTES_16( value )        \
+    ( ( ( ( value ) >> 8 ) & 0xFF ) | \
       ( ( ( value ) & 0xFF ) << 8 ) )
 
-static uint16_t ReadUint16Swap( const uint8_t * pSrc )
-{
-    return SWAP_BYTES_16( *( ( uint16_t * )( pSrc ) ) );
-}
-
-static uint16_t ReadUint16NoSwap( const uint8_t * pSrc )
-{
-    return *( ( uint16_t * )( pSrc ) );
-}
-
-static const char * convertStunMsgTypeToString( uint16_t stunMsgType )
-{
-    const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
-    static ReadUint16_t readUint16Fn;
-    static uint8_t isFirst = 1;
-    uint8_t isLittleEndian;
-    uint16_t msgType;
-
-    if( isFirst )
+    static uint16_t ReadUint16Swap( const uint8_t * pSrc )
     {
-        isFirst = 0;
-        isLittleEndian = ( *( uint8_t * )( &( uint16_t ) { 1 } ) == 1 );
-
-        if( isLittleEndian != 0 )
-        {
-            readUint16Fn = ReadUint16Swap;
-        }
-        else
-        {
-            readUint16Fn = ReadUint16NoSwap;
-        }
+        return SWAP_BYTES_16( *( ( uint16_t * )( pSrc ) ) );
     }
 
-    msgType = readUint16Fn( ( uint8_t * ) &stunMsgType );
-    switch( msgType )
+    static uint16_t ReadUint16NoSwap( const uint8_t * pSrc )
     {
-        case STUN_MESSAGE_TYPE_BINDING_REQUEST:
-            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_REQUEST;
-            break;
-        case STUN_MESSAGE_TYPE_BINDING_SUCCESS_RESPONSE:
-            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_SUCCESS;
-            break;
-        case STUN_MESSAGE_TYPE_BINDING_FAILURE_RESPONSE:
-            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_FAILURE;
-            break;
-        case STUN_MESSAGE_TYPE_BINDING_INDICATION:
-            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_INDICATION;
-            break;
+        return *( ( uint16_t * )( pSrc ) );
     }
 
-    return ret;
-}
+    static const char * convertStunMsgTypeToString( uint16_t stunMsgType )
+    {
+        const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
+        static ReadUint16_t readUint16Fn;
+        static uint8_t isFirst = 1;
+        uint8_t isLittleEndian;
+        uint16_t msgType;
+
+        if( isFirst )
+        {
+            isFirst = 0;
+            isLittleEndian = ( *( uint8_t * )( &( uint16_t ) { 1 } ) == 1 );
+
+            if( isLittleEndian != 0 )
+            {
+                readUint16Fn = ReadUint16Swap;
+            }
+            else
+            {
+                readUint16Fn = ReadUint16NoSwap;
+            }
+        }
+
+        msgType = readUint16Fn( ( uint8_t * ) &stunMsgType );
+        switch( msgType )
+        {
+            case STUN_MESSAGE_TYPE_BINDING_REQUEST:
+                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_REQUEST;
+                break;
+            case STUN_MESSAGE_TYPE_BINDING_SUCCESS_RESPONSE:
+                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_SUCCESS;
+                break;
+            case STUN_MESSAGE_TYPE_BINDING_FAILURE_RESPONSE:
+                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_FAILURE;
+                break;
+            case STUN_MESSAGE_TYPE_BINDING_INDICATION:
+                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_INDICATION;
+                break;
+        }
+
+        return ret;
+    }
 #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
 
 void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
                                      size_t stunPacketSize )
 {
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    IceControllerStunMsgHeader_t * pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunPacket;
+        IceControllerStunMsgHeader_t * pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunPacket;
 
-    if( ( pStunPacket == NULL ) || ( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) ) )
-    {
-        // invalid STUN packet, ignore it
-    }
-    else
-    {
-        LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-                      convertStunMsgTypeToString( pStunMsgHeader->msgType ),
-                      pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
-                      pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
-                      pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
-                      pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
-    }
+        if( ( pStunPacket == NULL ) || ( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) ) )
+        {
+            // invalid STUN packet, ignore it
+        }
+        else
+        {
+            LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                          convertStunMsgTypeToString( pStunMsgHeader->msgType ),
+                          pStunMsgHeader->contentLength[0], pStunMsgHeader->contentLength[1],
+                          pStunMsgHeader->transactionId[0], pStunMsgHeader->transactionId[1], pStunMsgHeader->transactionId[2], pStunMsgHeader->transactionId[3],
+                          pStunMsgHeader->transactionId[4], pStunMsgHeader->transactionId[5], pStunMsgHeader->transactionId[6], pStunMsgHeader->transactionId[7],
+                          pStunMsgHeader->transactionId[8], pStunMsgHeader->transactionId[9], pStunMsgHeader->transactionId[10], pStunMsgHeader->transactionId[11] ) );
+        }
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_DEBUG  */
 
     ( void ) pStunPacket;

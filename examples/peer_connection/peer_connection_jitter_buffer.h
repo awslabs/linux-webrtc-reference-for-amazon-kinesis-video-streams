@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 /* Standard includes. */
 #include <stdint.h>
@@ -45,8 +47,10 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_FillFrame( PeerConnectionJitte
                                                              size_t * pOutBufferLength,
                                                              uint32_t * pRtpTimestamp );
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* PEER_CONNECTION_JITTER_BUFFER_H */
