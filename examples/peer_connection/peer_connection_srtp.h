@@ -19,9 +19,6 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
 PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSession_t * pSession,
                                                             uint8_t * pBuffer,
                                                             size_t bufferLength );
-PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSession_t * pSession,
-                                                             uint8_t * pBuffer,
-                                                             size_t bufferLength );
 PeerConnectionResult_t PeerConnectionSrtp_ConstructSrtpPacket( PeerConnectionSession_t * pSession,
                                                                RtpPacket_t * pPacketRtp,
                                                                uint8_t * pOutputSrtpPacket,

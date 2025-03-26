@@ -83,6 +83,20 @@ typedef enum TransceiverDirection
     TRANSCEIVER_TRACK_DIRECTION_INACTIVE,
 } TransceiverDirection_t;
 
+typedef struct TransceiverRtcpStats
+{
+    /* RTCP Sender Report Stats. */
+    uint64_t rtpPacketsTransmitted;    // Total number of bytes sent for this SSRC. Calculated as defined in [RFC3550] section 6.4.1.
+    uint64_t rtpBytesTransmitted;      // The total number of payload octets (i.e., not including header or padding )
+} TransceiverRtcpStats_t;
+
+typedef struct TransceiverRtpSender
+{
+    /* RTCP Sender Report Stats. */
+    uint64_t rtpTimeOffset;
+    uint64_t rtpFirstFrameWallClockTimeUs;
+} TransceiverRtpSender_t;
+
 typedef struct Transceiver
 {
     TransceiverTrackKind_t trackKind;
@@ -99,6 +113,9 @@ typedef struct Transceiver
 
     OnPcEventCallback_t onPcEventCallbackFunc;
     void * pOnPcEventCustomContext;
+
+    TransceiverRtcpStats_t rtcpStats;
+    TransceiverRtpSender_t rtpSender;
 } Transceiver_t;
 
 #ifdef __cplusplus
