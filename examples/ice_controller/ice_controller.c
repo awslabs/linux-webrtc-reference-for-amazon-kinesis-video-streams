@@ -478,10 +478,10 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
                                                          ipToBuffer,
                                                          sizeof( ipToBuffer ) ),
                       pDestEndpoint->transportAddress.port ) );
-        LogInfo( ( "Sending STUN packet to candidate pair, pair state: %d, local/remote candidate ID: 0x%04x / 0x%04x",
-                   pTargetCandidatePair->state,
-                   pTargetCandidatePair->pLocalCandidate->candidateId,
-                   pTargetCandidatePair->pRemoteCandidate->candidateId ) );
+        LogDebug( ( "Sending STUN packet to candidate pair, pair state: %d, local/remote candidate ID: 0x%04x / 0x%04x",
+                    pTargetCandidatePair->state,
+                    pTargetCandidatePair->pLocalCandidate->candidateId,
+                    pTargetCandidatePair->pRemoteCandidate->candidateId ) );
 
         IceControllerNet_LogStunPacket( stunBuffer,
                                         stunBufferLength );
@@ -792,14 +792,14 @@ IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerC
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        if( NetworkingUtils_GetCurrentTimeUs( NULL ) >= pCtx->metrics.printCandidatePairsStatusMs )
+        if( ( NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 ) >= pCtx->metrics.printCandidatePairsStatusMs )
         {
             LogInfo( ( "========== Print Candidates / Pairs States ==========" ) );
             PrintCandidatesStatus( pCtx );
             PrintCandidatePairsStatus( pCtx );
             LogInfo( ( "========== Print Candidates / Pairs States ==========" ) );
 
-            pCtx->metrics.printCandidatePairsStatusMs = NetworkingUtils_GetCurrentTimeUs( NULL ) + ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS;
+            pCtx->metrics.printCandidatePairsStatusMs = NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 + ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS;
         }
     }
 
@@ -818,17 +818,29 @@ IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        /* Check nominated candidated pair lifetime by calling Ice_CreateNextPairRequest. */
-        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+        if( ( pCtx->pNominatedSocketContext != NULL ) &&
+            ( pCtx->pNominatedSocketContext->pLocalCandidate != NULL ) )
         {
-            ( void ) HandleCandidatePairRequest( pCtx, pCtx->pNominatedSocketContext, pCtx->pNominatedSocketContext->pCandidatePair );
-            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+            /* Check nominated candidated pair lifetime by calling Ice_CreateNextPairRequest. */
+            if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+            {
+                ( void ) HandleCandidatePairRequest( pCtx, pCtx->pNominatedSocketContext, pCtx->pNominatedSocketContext->pCandidatePair );
+                pthread_mutex_unlock( &( pCtx->iceMutex ) );
+            }
+            else
+            {
+                LogError( ( "Failed to lock ice mutex." ) );
+            }
         }
         else
         {
-            LogError( ( "Failed to lock ice mutex." ) );
+            LogError( ( "Unexpected behavior, nominated pair must be set before entering ready state. pNominatedSocketContext: %p", pCtx->pNominatedSocketContext ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_FIND_NOMINATED_CONTEXT;
         }
+    }
 
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
         /* Check local candidates to make sure all unused TURN session are released correctly. */
         ProcessLocalCandidates( pCtx );
 
@@ -1356,12 +1368,13 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
             }
         }
         pCtx->socketsContextsCount = 0;
+        pCtx->pNominatedSocketContext = NULL;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS );
-        pCtx->metrics.printCandidatePairsStatusMs = NetworkingUtils_GetCurrentTimeUs( NULL ) + ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS;
+        pCtx->metrics.printCandidatePairsStatusMs = NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 + ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -1457,8 +1470,8 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
 
                     if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
                     {
-                        LogError( ( "Fail to append TURN channel data, result: %d", iceResult ) );
-                        ret = ICE_CONTROLLER_RESULT_FAIL_APPEND_TURN_CHANNEL_HEADER;
+                        LogError( ( "Fail to create TURN channel data, result: %d", iceResult ) );
+                        ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_TURN_CHANNEL_DATA;
                     }
                     else
                     {

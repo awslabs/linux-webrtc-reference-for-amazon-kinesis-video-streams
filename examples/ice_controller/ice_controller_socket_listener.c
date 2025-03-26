@@ -258,60 +258,81 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
          * |       B < 2   -+--> forward to STUN
          * +----------------+
          */
-        ret = IceControllerNet_HandleStunPacket( pCtx,
-                                                 pSocketContext,
-                                                 pProcessingBuffer,
-                                                 processingBufferLength,
-                                                 &remoteIceEndpoint,
-                                                 pCandidatePair );
-        if( ret == ICE_CONTROLLER_RESULT_NOT_STUN_PACKET )
+        if( processingBufferLength > 0 )
         {
-            /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
-            if( onRecvNonStunPacketFunc )
+            if( ( ( pProcessingBuffer[ 0 ] > 127 ) && ( pProcessingBuffer[ 0 ] < 192 ) ) ||
+                ( ( pProcessingBuffer[ 0 ] > 19 ) && ( pProcessingBuffer[ 0 ] < 64 ) ) )
             {
-                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, pProcessingBuffer, processingBufferLength );
-            }
-            else
-            {
-                LogError( ( "No callback function to handle DTLS/RTP/RTCP packets." ) );
-            }
-        }
-        else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) && ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
-        {
-            /* Set state to selected and release other un-selected sockets. */
-            IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_READY );
-            IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
-            pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
-
-            ReleaseOtherSockets( pCtx, pSocketContext );
-            LogDebug( ( "Released all other socket contexts" ) );
-
-            /* Found nominated pair, execute DTLS handshake and release all other resources. */
-            if( onIceEventCallbackFunc )
-            {
-                retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, NULL );
-                if( retPeerToPeerConnectionFound != 0 )
+                /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
+                if( onRecvNonStunPacketFunc )
                 {
-                    LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
+                    ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext,
+                                                      pProcessingBuffer,
+                                                      processingBufferLength );
+                }
+                else
+                {
+                    LogError( ( "No callback function to handle DTLS/RTP/RTCP packets." ) );
+                }
+            }
+            else if( pProcessingBuffer[ 0 ] < 2 )
+            {
+                /* STUN packet. */
+                ret = IceControllerNet_HandleStunPacket( pCtx,
+                                                         pSocketContext,
+                                                         pProcessingBuffer,
+                                                         processingBufferLength,
+                                                         &remoteIceEndpoint,
+                                                         pCandidatePair );
+                if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) &&
+                    ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
+                {
+                    /* Set state to selected and release other un-selected sockets. */
+                    IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_READY );
+                    IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
+                    pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
+
+                    ReleaseOtherSockets( pCtx, pSocketContext );
+                    LogDebug( ( "Released all other socket contexts" ) );
+
+                    /* Found nominated pair, execute DTLS handshake and release all other resources. */
+                    if( onIceEventCallbackFunc )
+                    {
+                        retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext,
+                                                                               ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
+                                                                               NULL );
+                        if( retPeerToPeerConnectionFound != 0 )
+                        {
+                            LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
+                        }
+                    }
+                    else
+                    {
+                        LogWarn( ( "No callback function to handle P2P connection found event." ) );
+                    }
+                    LogDebug( ( "Released all other socket contexts" ) );
+                }
+                else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
+                {
+                    /* Handle STUN packet successfully, keep processing. */
+                }
+                else if( ret == ICE_CONTROLLER_RESULT_CONNECTION_CLOSED )
+                {
+                    /* Socket has been closed, skip the next recv loop. */
+                    break;
+                }
+                else
+                {
+                    LogError( ( "Fail to handle this RX packet, ret: %d, readBytes: %lu", ret, processingBufferLength ) );
                 }
             }
             else
             {
-                LogWarn( ( "No callback function to handle P2P connection found event." ) );
+                /* Unknown packet. */
+                LogWarn( ( "drop unknown packet, length=%lu, first byte=0x%02x",
+                           processingBufferLength,
+                           pProcessingBuffer[ 0 ] ) );
             }
-        }
-        else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
-        {
-            /* Handle STUN packet successfully, keep processing. */
-        }
-        else if( ret == ICE_CONTROLLER_RESULT_CONNECTION_CLOSED )
-        {
-            /* Socket has been closed, skip the next recv loop. */
-            break;
-        }
-        else
-        {
-            LogError( ( "Fail to handle this RX packet, ret: %d, readBytes: %lu", ret, processingBufferLength ) );
         }
     }
 }

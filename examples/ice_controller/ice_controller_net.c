@@ -1062,11 +1062,6 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        LogVerbose( ( "Receiving %lu bytes from IP/port: %s/%d", receiveBufferLength,
-                      IceControllerNet_LogIpAddressInfo( pRemoteIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
-                      pRemoteIceEndpoint->transportAddress.port ) );
-        IceControllerNet_LogStunPacket( pReceiveBuffer, receiveBufferLength );
-
         if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
         {
             iceHandleStunResult = Ice_HandleStunPacket( &pCtx->iceContext,
@@ -1087,13 +1082,18 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        if( ( pCandidatePair != NULL ) &&
-            ( iceHandleStunResult != ICE_HANDLE_STUN_PACKET_RESULT_NOT_STUN_PACKET ) )
+        if( iceHandleStunResult != ICE_HANDLE_STUN_PACKET_RESULT_NOT_STUN_PACKET )
         {
-            LogDebug( ( "Receiving STUN packet, local/remote candidate ID: 0x%04x / 0x%04x",
-                        pCandidatePair->pLocalCandidate->candidateId,
-                        pCandidatePair->pRemoteCandidate->candidateId ) );
+            IceControllerNet_LogStunPacket( pReceiveBuffer, receiveBufferLength );
+
+            if( pCandidatePair != NULL )
+            {
+                LogDebug( ( "Receiving STUN packet, local/renite candidate ID: 0x%04x / 0x%04x",
+                            pCandidatePair->pLocalCandidate->candidateId,
+                            pCandidatePair->pRemoteCandidate->candidateId ) );
+            }
         }
+
         LogVerbose( ( "Ice_HandleStunPacket return %d", iceHandleStunResult ) );
 
         switch( iceHandleStunResult )
@@ -1272,10 +1272,16 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 LogWarn( ( "Invalid Type of Packet received" ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_PAIR_NOT_FOUND:
-                LogError( ( "Error : Valid Candidate Pair is not found" ) );
+                LogInfo( ( "Valid Candidate Pair is not found, it might be a duplicate response, local candidate ID: 0x%04x",
+                           pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_NOT_FOUND:
-                LogError( ( "Error : Valid Server Reflexive Candidate is not found" ) );
+                LogError( ( "Error : Valid Server Reflexive Candidate is not found, local candidate ID: 0x%04x",
+                            pSocketContext->pLocalCandidate->candidateId ) );
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_DROP_PACKET:
+                LogInfo( ( "Drop the packet of local candidate ID: 0x%04x.",
+                           pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_ALLOCATION_REQUEST:
                 /* Received TURN allocation error response, get the nonce/realm from the message.
@@ -1313,16 +1319,27 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
 
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_FRESH_COMPLETE:
-                LogInfo( ( "TURN session is refreshed." ) );
+                LogInfo( ( "TURN session of local candidate ID: 0x%04x is refreshed.",
+                           pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_TURN_SESSION_TERMINATED:
-                LogInfo( ( "TURN session is terminated." ) );
+                LogInfo( ( "TURN session of local candidate ID: 0x%04x is terminated.",
+                           pSocketContext->pLocalCandidate->candidateId ) );
 
                 /* Close the socket as the TURN session is terminated. */
-                LogDebug( ( "Closing socket: %d", pSocketContext->socketFd ) );
                 IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
 
                 ret = ICE_CONTROLLER_RESULT_CONNECTION_CLOSED;
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_RELAY_CANDIDATE_PAIR_NOT_CREATING_PERMISSION:
+                LogDebug( ( "candidate pair not creating permission. pair state is %d, local candidate ID: 0x%04x",
+                             pCandidatePair->state,
+                             pSocketContext->pLocalCandidate->candidateId ) );
+                break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_RELAY_CANDIDATE_PAIR_NOT_CHANNEL_BINDING:
+                LogDebug( ( "candidate pair not binding channel. pair state is %d, local candidate ID: 0x%04x",
+                             pCandidatePair->state,
+                             pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_OK:
                 LogVerbose( ( "ICE_HANDLE_STUN_PACKET_RESULT_OK" ) );
@@ -1554,7 +1571,7 @@ void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
              */
             if( pStunMsgContent[ 0 ] < 2 )
             {
-                LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
                               convertStunMsgTypeToString( pStunMsgHeader->msgType ),
                               pStunMsgHeader->contentLength[ 0 ], pStunMsgHeader->contentLength[ 1 ],
                               pStunMsgHeader->transactionId[ 0 ], pStunMsgHeader->transactionId[ 1 ], pStunMsgHeader->transactionId[ 2 ], pStunMsgHeader->transactionId[ 3 ],

@@ -797,7 +797,9 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
         }
         else
         {
-            LogWarn( ( "drop unknown DTLS packet, length=%lu, first byte=%u", bufferLength, pBuffer[0] ) );
+            LogWarn( ( "drop unknown DTLS packet, length=%u, first byte=0x%02x",
+                       bufferLength,
+                       pBuffer[0] ) );
         }
     }
 
