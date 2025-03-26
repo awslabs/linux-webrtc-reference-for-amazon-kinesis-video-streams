@@ -85,13 +85,6 @@ static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession )
     {
         HandleRequest( pSession,
                        &pSession->requestQueue );
-
-        /* If a P2P connection is found and DTLS handshaking is in progress,
-         * invoke the handshake here to retry and prevent packet loss in transit. */
-        if( pSession->state == PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND )
-        {
-            ( void ) ExecuteDtlsHandshake( pSession );
-        }
     }
 }
 
@@ -124,6 +117,13 @@ static void HandleRequest( PeerConnectionSession_t * pSession,
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK:
                 ( void ) HandlePeriodConnectionCheck( pSession,
                                                       &requestMsg );
+
+                /* If a P2P connection is found and DTLS handshaking is in progress,
+                 * invoke the handshake here to retry and prevent packet loss in transit. */
+                if( pSession->state == PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND )
+                {
+                    ( void ) ExecuteDtlsHandshake( pSession );
+                }
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSING:
                 ( void ) HandleIceClosing( pSession,
@@ -797,9 +797,9 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
         }
         else
         {
-            LogWarn( ( "drop unknown DTLS packet, length=%u, first byte=0x%02x",
+            LogWarn( ( "drop unknown DTLS packet, length=%lu, first byte=0x%02x",
                        bufferLength,
-                       pBuffer[0] ) );
+                       pBuffer[ 0 ] ) );
         }
     }
 
