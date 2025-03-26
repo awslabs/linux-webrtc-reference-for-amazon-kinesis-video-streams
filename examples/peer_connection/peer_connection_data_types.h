@@ -342,8 +342,8 @@ typedef struct PeerConnectionDataChannel
     uint8_t ucChannelOpen;
     char ucDataChannelName[MAX_DATA_CHANNEL_NAME_LEN + 1];
     PeerConnectionSession_t * pPeerConnection;
-    DataChannelInit_t dataChannelInit;
-    uint32_t channelId;
+    SctpDataChannel_t dataChannel;
+    SctpDataChannelInitInfo_t dataChannelInitInfo;
     void * onMessageCustomData;
     void * onOpenCustomData;
     OnDataChannelMessageReceived_t onDataChannelMessage;
@@ -401,7 +401,7 @@ typedef struct PeerConnectionSession
     uint8_t ucEnableDataChannelLocal;
     uint8_t ucEnableDataChannelRemote;
     /* SCTP Session */
-    SCTPSession_t sctpSession;
+    SctpSession_t sctpSession;
     /* Data channel configs */
     PeerConnectionDataChannel_t * pDataChannels;
     uint32_t uKvsDataChannelCount;
