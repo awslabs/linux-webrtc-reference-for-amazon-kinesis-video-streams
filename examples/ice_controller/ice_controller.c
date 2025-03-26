@@ -1671,7 +1671,7 @@ void IceController_UpdateTimerInterval( IceControllerContext_t * pCtx,
         retTimer = TimerController_IsTimerSet( &pCtx->timerHandler );
         if( retTimer == TIMER_CONTROLLER_RESULT_SET )
         {
-            TimerController_ResetTimer( &pCtx->timerHandler );
+            TimerController_Reset( &pCtx->timerHandler );
         }
     }
 

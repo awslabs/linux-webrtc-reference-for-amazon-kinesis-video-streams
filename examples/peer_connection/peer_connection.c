@@ -1133,7 +1133,7 @@ static PeerConnectionResult_t PeerConnection_ResetTimer( PeerConnectionSession_t
 
         if( timerControllerResult == TIMER_CONTROLLER_RESULT_SET )
         {
-            TimerController_ResetTimer( &pSession->rtcpAudioSenderReportTimer );
+            TimerController_Reset( &pSession->rtcpAudioSenderReportTimer );
             LogDebug( ( "Reset RTCP Audio sender report timer." ) );
         }
         else if( timerControllerResult == TIMER_CONTROLLER_RESULT_NOT_SET )
@@ -1154,7 +1154,7 @@ static PeerConnectionResult_t PeerConnection_ResetTimer( PeerConnectionSession_t
 
         if( timerControllerResult == TIMER_CONTROLLER_RESULT_SET )
         {
-            TimerController_ResetTimer( &pSession->rtcpVideoSenderReportTimer );
+            TimerController_Reset( &pSession->rtcpVideoSenderReportTimer );
             LogDebug( ( "Reset RTCP Video sender report timer." ) );
         }
         else if( timerControllerResult == TIMER_CONTROLLER_RESULT_NOT_SET )
