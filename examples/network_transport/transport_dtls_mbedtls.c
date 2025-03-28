@@ -65,13 +65,13 @@
 /**  https://tools.ietf.org/html/rfc5764#section-4.1.2 */
 mbedtls_ssl_srtp_profile DTLS_SRTP_SUPPORTED_PROFILES[] = {
     #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
-    MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80,
-    MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32,
-    MBEDTLS_TLS_SRTP_UNSET,
+        MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80,
+        MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32,
+        MBEDTLS_TLS_SRTP_UNSET,
     #else
-    MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80,
-    MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32,
-    MBEDTLS_TLS_SRTP_UNSET
+        MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80,
+        MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32,
+        MBEDTLS_TLS_SRTP_UNSET
     #endif
 };
 
@@ -150,17 +150,17 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
 /*-----------------------------------------------------------*/
 
 #ifdef MBEDTLS_DEBUG_C
-void dtls_mbedtls_string_printf( void * sslContext,
-                                 int level,
-                                 const char * file,
-                                 int line,
-                                 const char * str )
-{
-    if( ( str != NULL ) && ( file != NULL ) )
+    void dtls_mbedtls_string_printf( void * sslContext,
+                                     int level,
+                                     const char * file,
+                                     int line,
+                                     const char * str )
     {
-        LogDebug( ( "%s:%d: [%d] %s", file, line, level, str ) );
+        if( ( str != NULL ) && ( file != NULL ) )
+        {
+            LogDebug( ( "%s:%d: [%d] %s", file, line, level, str ) );
+        }
     }
-}
 #endif /* MBEDTLS_DEBUG_C */
 
 /*-----------------------------------------------------------*/
@@ -264,10 +264,10 @@ static void DtlsSslContextInit( DtlsSSLContext_t * pSslContext )
     mbedtls_ssl_config_init( &( pSslContext->config ) );
     mbedtls_ssl_init( &( pSslContext->context ) );
     #ifdef MBEDTLS_DEBUG_C
-    mbedtls_debug_set_threshold( 1 );
-    mbedtls_ssl_conf_dbg( &( pSslContext->config ),
-                          dtls_mbedtls_string_printf,
-                          NULL );
+        mbedtls_debug_set_threshold( 1 );
+        mbedtls_ssl_conf_dbg( &( pSslContext->config ),
+                              dtls_mbedtls_string_printf,
+                              NULL );
     #endif /* MBEDTLS_DEBUG_C */
 }
 /*-----------------------------------------------------------*/
@@ -458,8 +458,8 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
     int32_t mbedtlsError = 0;
 
     #if defined( MBEDTLS_THREADING_ALT )
-    /* Set the mutex functions for mbed DTLS thread safety. */
-    mbedtls_platform_threading_init();
+        /* Set the mutex functions for mbed DTLS thread safety. */
+        mbedtls_platform_threading_init();
     #endif
 
     /* Initialize contexts for random number generation. */
@@ -473,16 +473,16 @@ static DtlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyCont
     }
 
     #ifdef MBEDTLS_PSA_CRYPTO_C
-    if( returnStatus == DTLS_SUCCESS )
-    {
-        mbedtlsError = psa_crypto_init();
-
-        if( mbedtlsError != PSA_SUCCESS )
+        if( returnStatus == DTLS_SUCCESS )
         {
-            LogError( ( "Failed to initialize PSA Crypto implementation: %d", ( int )mbedtlsError ) );
-            returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
+            mbedtlsError = psa_crypto_init();
+
+            if( mbedtlsError != PSA_SUCCESS )
+            {
+                LogError( ( "Failed to initialize PSA Crypto implementation: %d", ( int )mbedtlsError ) );
+                returnStatus = DTLS_TRANSPORT_INTERNAL_ERROR;
+            }
         }
-    }
     #endif /* MBEDTLS_PSA_CRYPTO_C */
 
     if( returnStatus == DTLS_SUCCESS )
@@ -803,9 +803,9 @@ int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
     TlsKeys * pKeys = NULL;
     uint8_t keyingMaterialBuffer[MAX_SRTP_MASTER_KEY_LEN * 2 + MAX_SRTP_SALT_KEY_LEN * 2];
     #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 )
-    mbedtls_dtls_srtp_info negotiatedSRTPProfile;
+        mbedtls_dtls_srtp_info negotiatedSRTPProfile;
     #else /* #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 ) */
-    mbedtls_ssl_srtp_profile negotiatedSRTPProfile;
+        mbedtls_ssl_srtp_profile negotiatedSRTPProfile;
     #endif /* #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 ) */
 
     if( ( pSslContext == NULL ) || ( pDtlsKeyingMaterial == NULL ) )
@@ -864,30 +864,30 @@ int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
                 MAX_SRTP_SALT_KEY_LEN );
 
         #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 )
-        mbedtls_ssl_get_dtls_srtp_negotiation_result( &pSslContext->context, &negotiatedSRTPProfile );
-        switch( negotiatedSRTPProfile.chosen_dtls_srtp_profile )
-        {
-            case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80:
+            mbedtls_ssl_get_dtls_srtp_negotiation_result( &pSslContext->context, &negotiatedSRTPProfile );
+            switch( negotiatedSRTPProfile.chosen_dtls_srtp_profile )
+            {
+                case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80:
         #else /* #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 ) */
-        negotiatedSRTPProfile = mbedtls_ssl_get_dtls_srtp_protection_profile( &pSslContext->context );
-        switch( negotiatedSRTPProfile )
-        {
-            case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80:
-                #endif /* #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 ) */
-                pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_80;
-                break;
+            negotiatedSRTPProfile = mbedtls_ssl_get_dtls_srtp_protection_profile( &pSslContext->context );
+            switch( negotiatedSRTPProfile )
+            {
+                case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80:
+                    #endif /* #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 ) */
+                    pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_80;
+                    break;
 
-                #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
-            case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
-                #else /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
-            case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
-                #endif /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
-                pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_32;
-                break;
-            default:
-                LogError( ( "DTLS_SSL_UNKNOWN_SRTP_PROFILE" ) );
-                retStatus = DTLS_SSL_UNKNOWN_SRTP_PROFILE;
-        }
+                    #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
+                        case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
+                    #else /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
+                        case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
+                            #endif /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
+                            pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_32;
+                            break;
+                        default:
+                            LogError( ( "DTLS_SSL_UNKNOWN_SRTP_PROFILE" ) );
+                            retStatus = DTLS_SSL_UNKNOWN_SRTP_PROFILE;
+            }
     }
     return retStatus;
 }

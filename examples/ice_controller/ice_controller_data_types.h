@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 /* Standard includes. */
 #include <stdint.h>
@@ -345,8 +347,10 @@ typedef struct IceControllerContext
     pthread_mutex_t iceMutex;
 } IceControllerContext_t;
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* ICE_CONTROLLER_DATA_TYPES_H */

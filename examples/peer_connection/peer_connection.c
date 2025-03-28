@@ -178,7 +178,7 @@ static void OnRtcpSenderReportAudioTimerExpire( void * pParameter )
     uint8_t i;
     uint64_t currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
 
-    for(i = 0 ; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ; i++ )
+    for( i = 0; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT; i++ )
     {
         if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
         {
@@ -207,7 +207,7 @@ static void OnRtcpSenderReportVideoTimerExpire( void * pParameter )
     uint8_t i;
     uint64_t currentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
 
-    for(i = 0 ; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ; i++ )
+    for( i = 0; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT; i++ )
     {
         if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
         {
@@ -779,7 +779,7 @@ static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t 
     uint8_t i;
     TimerControllerResult_t retTimer;
 
-    for(i = 0 ; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ; i++ )
+    for( i = 0; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT; i++ )
     {
         if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
         {
@@ -1333,7 +1333,7 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     #if ENABLE_TWCC_SUPPORT
-    RtcpTwccManagerResult_t resultRtcpTwccManager = RTCP_TWCC_MANAGER_RESULT_OK;
+        RtcpTwccManagerResult_t resultRtcpTwccManager = RTCP_TWCC_MANAGER_RESULT_OK;
     #endif
     MessageQueueResult_t retMessageQueue;
     TimerControllerResult_t retTimer;
@@ -1570,12 +1570,12 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
         /* Empty else marker. */
     }
 
-#if ENABLE_SCTP_DATA_CHANNEL
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        pSession->ucEnableDataChannelRemote = 0U;
-    }
-#endif /* ENABLE_SCTP_DATA_CHANNEL */
+    #if ENABLE_SCTP_DATA_CHANNEL
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            pSession->ucEnableDataChannelRemote = 0U;
+        }
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     /* Use SDP controller to parse SDP message into data structure. */
     if( ret == PEER_CONNECTION_RESULT_OK )

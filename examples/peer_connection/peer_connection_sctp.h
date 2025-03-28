@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include "sctp_utils.h"
 #include "peer_connection.h"
@@ -44,13 +46,15 @@ void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
                                          int readBytes );
 
 #if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
-OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
-                                                                                    uint32_t ulChannelId,
-                                                                                    const uint8_t * pucName,
-                                                                                    uint32_t ulNameLen );
+    OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
+                                                                                       uint32_t ulChannelId,
+                                                                                       const uint8_t * pucName,
+                                                                                       uint32_t ulNameLen );
 #endif
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 #endif /* PEER_CONNECTION_SCTP_H */

@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include <stdio.h>
 #include "ice_controller_data_types.h"
@@ -38,8 +40,10 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
                                                         IceControllerIceServerConfig_t * pIceServersConfig );
 IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_t * pCtx );
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* ICE_CONTROLLER_H */

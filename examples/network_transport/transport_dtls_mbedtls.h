@@ -47,12 +47,12 @@
 
 #define MBEDTLS_ERROR_STRING_BUFFER_SIZE 512
 
-#define MBEDTLS_ERROR_DESCRIPTION( err ) \
-    do { \
-        char _error_string[MBEDTLS_ERROR_STRING_BUFFER_SIZE]; \
-        mbedtls_strerror( err, \
-                          _error_string, \
-                          sizeof( _error_string ) ); \
+#define MBEDTLS_ERROR_DESCRIPTION( err )                                               \
+    do {                                                                               \
+        char _error_string[MBEDTLS_ERROR_STRING_BUFFER_SIZE];                          \
+        mbedtls_strerror( err,                                                         \
+                          _error_string,                                               \
+                          sizeof( _error_string ) );                                   \
         LogError( ( "Error 0x%04x: %s\n", ( unsigned int )-( err ), _error_string ) ); \
     } while( 0 )
 

@@ -301,7 +301,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipFromBuffer[ INET_ADDRSTRLEN ];
+        char ipFromBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
     uint8_t isLocked = 0U;
 
@@ -403,8 +403,8 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceControllerSocketContext_t * pSocketContext = pTargetSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipFromBuffer[ INET_ADDRSTRLEN ];
-    char ipToBuffer[ INET_ADDRSTRLEN ];
+        char ipFromBuffer[ INET_ADDRSTRLEN ];
+        char ipToBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
     IceEndpoint_t * pDestEndpoint = NULL;
 
@@ -660,7 +660,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
     IceResult_t iceResult;
     uint8_t acceptCandidate = 0U;
     #if LIBRARY_LOG_LEVEL >= LOG_INFO
-    char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( ( pCtx == NULL ) || ( pRemoteCandidate == NULL ) )

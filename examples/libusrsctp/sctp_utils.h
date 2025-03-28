@@ -22,8 +22,8 @@
 
 #define MAX_DATA_CHANNEL_NAME_LEN           255
 #define MAX_DATA_CHANNEL_PROTOCOL_LEN       255
-#define SCTP_MAX_PACKET_LENGTH              ( DCEP_HEADER_LENGTH +                  \
-                                              MAX_DATA_CHANNEL_NAME_LEN +           \
+#define SCTP_MAX_PACKET_LENGTH              ( DCEP_HEADER_LENGTH +        \
+                                              MAX_DATA_CHANNEL_NAME_LEN + \
                                               MAX_DATA_CHANNEL_PROTOCOL_LEN + 2 )
 
 /*-----------------------------------------------------------*/

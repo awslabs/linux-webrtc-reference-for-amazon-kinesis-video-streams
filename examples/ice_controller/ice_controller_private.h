@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include "ice_controller_data_types.h"
 
@@ -53,13 +55,15 @@ IceControllerResult_t IceControllerSocketListener_StopPolling( IceControllerCont
 
 /* Debug utils. */
 #if LIBRARY_LOG_LEVEL >= LOG_INFO
-const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoint,
-                                                char * pIpBuffer,
-                                                size_t ipBufferLength );
+    const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoint,
+                                                    char * pIpBuffer,
+                                                    size_t ipBufferLength );
 #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* ICE_CONTROLLER_PRIVATE_H */
