@@ -574,13 +574,13 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
             LogDebug( ( "Appending audio tranceiver" ) );
         }
         #if ENABLE_SCTP_DATA_CHANNEL
-        else if( ( pMediaDescription->mediaNameLength >= 11 ) &&
-                 ( strncmp( pMediaDescription->pMediaName, "application", 11 ) == 0 ) )
-        {
-            trackKind = TRANSCEIVER_TRACK_KIND_DATA_CHANNEL;
-            pSession->ucEnableDataChannelRemote = 1;
-            LogDebug( ( "Appending data channel" ) );
-        }
+            else if( ( pMediaDescription->mediaNameLength >= 11 ) &&
+                     ( strncmp( pMediaDescription->pMediaName, "application", 11 ) == 0 ) )
+            {
+                trackKind = TRANSCEIVER_TRACK_KIND_DATA_CHANNEL;
+                pSession->ucEnableDataChannelRemote = 1;
+                LogDebug( ( "Appending data channel" ) );
+            }
         #endif
         else
         {
@@ -787,9 +787,8 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
                 pLocalBufferSessionDescription->sdpDescription.mediaCount++;
             }
         }
-        #if ENABLE_SCTP_DATA_CHANNEL
-        {
 
+        #if ENABLE_SCTP_DATA_CHANNEL
             if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( pSession->ucEnableDataChannelLocal != 0 ) && ( i < SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ) )
             {
                 populateConfiguration.pTransceiver = NULL;
@@ -810,7 +809,6 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
                     pLocalBufferSessionDescription->sdpDescription.mediaCount++;
                 }
             }
-        }
         #endif /* ENABLE_SCTP_DATA_CHANNEL */
     }
     else
@@ -853,8 +851,6 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
         }
 
         #if ENABLE_SCTP_DATA_CHANNEL
-        {
-
             if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( pSession->ucEnableDataChannelRemote == 1 ) && ( i < SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ) )
             {
                 populateConfiguration.pTransceiver = NULL;
@@ -875,7 +871,6 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
                     pLocalBufferSessionDescription->sdpDescription.mediaCount++;
                 }
             }
-        }
         #endif /* ENABLE_SCTP_DATA_CHANNEL */
     }
 
@@ -1040,7 +1035,7 @@ PeerConnectionResult_t PeerConnectionSdp_SetPayloadTypes( PeerConnectionSession_
     int i;
     uint8_t isTransceiverCodecSet[ PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ] = { 0 };
     uint32_t remoteMediaCodecBitMap = 0;
-    uint32_t remoteCodecPayloads[ TRANSCEIVER_RTC_CODEC_NUM ] = {0};
+    uint32_t remoteCodecPayloads[ TRANSCEIVER_RTC_CODEC_NUM ] = { 0 };
 
     if( ( pSession == NULL ) ||
         ( pRemoteBufferSessionDescription == NULL ) )

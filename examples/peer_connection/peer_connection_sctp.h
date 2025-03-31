@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include "sctp_utils.h"
 #include "peer_connection.h"
@@ -19,13 +21,13 @@ extern "C" {
 
 #define MASTER_DATA_CHANNEL_MESSAGE "This message is from the FreeRTOS-WebRTC-Application KVS Master"
 
-PeerConnectionDataChannel_t * PeerConnectionSCTP_AllocateDataChannel( uint32_t * ulChannelID );
+PeerConnectionDataChannel_t * PeerConnectionSCTP_AllocateDataChannel( void );
 
 PeerConnectionResult_t PeerConnectionSCTP_DeallocateDataChannel( PeerConnectionDataChannel_t * pChannel );
 
 PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSession_t * pSession,
                                                              char * pcDataChannelName,
-                                                             DataChannelInit_t * pDataChannelInit,
+                                                             SctpDataChannelInitInfo_t * pDataChannelInitInfo,
                                                              PeerConnectionDataChannel_t ** ppChannel );
 
 PeerConnectionResult_t PeerConnectionSCTP_CloseDataChannel( PeerConnectionDataChannel_t * pChannel );
@@ -44,13 +46,15 @@ void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
                                          int readBytes );
 
 #if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
-OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOneMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
-                                                                                    uint32_t ulChannelId,
-                                                                                    uint8_t * pucName,
-                                                                                    uint32_t ulNameLen );
+    OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
+                                                                                       uint32_t ulChannelId,
+                                                                                       const uint8_t * pucName,
+                                                                                       uint32_t ulNameLen );
 #endif
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 #endif /* PEER_CONNECTION_SCTP_H */

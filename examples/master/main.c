@@ -639,27 +639,27 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
     #ifdef ENABLE_STREAMING_LOOPBACK
-    webrtc_frame_t frame;
+        webrtc_frame_t frame;
 
-    if( pFrame != NULL )
-    {
-        LogDebug( ( "Received video frame with length: %u", pFrame->dataLength ) );
+        if( pFrame != NULL )
+        {
+            LogDebug( ( "Received video frame with length: %u", pFrame->dataLength ) );
 
-        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-        frame.pData = pFrame->pData;
-        frame.size = pFrame->dataLength;
-        frame.freeData = 0U;
-        frame.timestampUs = pFrame->presentationUs;
-        ( void ) OnMediaSinkHook( pCustomContext,
-                                  &frame );
-    }
+            frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+            frame.pData = pFrame->pData;
+            frame.size = pFrame->dataLength;
+            frame.freeData = 0U;
+            frame.timestampUs = pFrame->presentationUs;
+            ( void ) OnMediaSinkHook( pCustomContext,
+                                      &frame );
+        }
 
     #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-    ( void ) pCustomContext;
-    if( pFrame != NULL )
-    {
-        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
-    }
+        ( void ) pCustomContext;
+        if( pFrame != NULL )
+        {
+            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
+        }
     #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
     return PEER_CONNECTION_RESULT_OK;
@@ -669,27 +669,27 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
     #ifdef ENABLE_STREAMING_LOOPBACK
-    webrtc_frame_t frame;
+        webrtc_frame_t frame;
 
-    if( pFrame != NULL )
-    {
-        LogDebug( ( "Received audio frame with length: %u", pFrame->dataLength ) );
+        if( pFrame != NULL )
+        {
+            LogDebug( ( "Received audio frame with length: %u", pFrame->dataLength ) );
 
-        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-        frame.pData = pFrame->pData;
-        frame.size = pFrame->dataLength;
-        frame.freeData = 0U;
-        frame.timestampUs = pFrame->presentationUs;
-        ( void ) OnMediaSinkHook( pCustomContext,
-                                  &frame );
-    }
+            frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+            frame.pData = pFrame->pData;
+            frame.size = pFrame->dataLength;
+            frame.freeData = 0U;
+            frame.timestampUs = pFrame->presentationUs;
+            ( void ) OnMediaSinkHook( pCustomContext,
+                                      &frame );
+        }
 
     #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-    ( void ) pCustomContext;
-    if( pFrame != NULL )
-    {
-        LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
-    }
+        ( void ) pCustomContext;
+        if( pFrame != NULL )
+        {
+            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
+        }
     #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
     return PEER_CONNECTION_RESULT_OK;
@@ -1082,50 +1082,55 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
 #if ENABLE_SCTP_DATA_CHANNEL
 
 #if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
-
-static void onDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
-                                  uint8_t isBinary,
-                                  uint8_t * pMessage,
-                                  uint32_t pMessageLen )
-{
+        static void onDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
+                                          uint8_t isBinary,
+                                          uint8_t * pMessage,
+                                          uint32_t pMessageLen )
+        {
 #define OP_BUFFER_SIZE      512
-    char ucSendMessage[OP_BUFFER_SIZE];
-    PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
-    if( ( pMessage == NULL ) || ( pDataChannel == NULL ) )
-    {
-        LogError( ( "No message or pDataChannel received in onDataChannelMessage" ) );
-        return;
-    }
+            char ucSendMessage[OP_BUFFER_SIZE];
+            PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
+            if( ( pMessage == NULL ) || ( pDataChannel == NULL ) )
+            {
+                LogError( ( "No message or pDataChannel received in onDataChannelMessage" ) );
+                return;
+            }
 
-    if( isBinary )
-    {
-        LogWarn( ( "[VIEWER] [Channel Name: %s ID: %d] >>> DataChannel Binary Message", pDataChannel->ucDataChannelName, ( int ) pDataChannel->channelId ) );
-    }
-    else {
-        LogWarn( ( "[VIEWER] [Channel Name: %s ID: %d] >>> DataChannel String Message: %.*s\n", pDataChannel->ucDataChannelName, ( int ) pDataChannel->channelId, ( int ) pMessageLen, pMessage ) );
-        sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( OP_BUFFER_SIZE - 128 ) ? ( OP_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
-        retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
-    }
+            if( isBinary )
+            {
+                LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel Binary Message",
+                           pDataChannel->pPeerConnection->combinedName,
+                           pDataChannel->ucDataChannelName ) );
+            }
+            else {
+                LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel String Message: %.*s\n",
+                           pDataChannel->pPeerConnection->combinedName,
+                           pDataChannel->ucDataChannelName,
+                           ( int ) pMessageLen, pMessage ) );
 
-    if( retStatus != PEER_CONNECTION_RESULT_OK )
-    {
-        LogInfo( ( "[KVS Master] onDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
-    }
+                sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( OP_BUFFER_SIZE - 128 ) ? ( OP_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
+                retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
+            }
 
-}
+            if( retStatus != PEER_CONNECTION_RESULT_OK )
+            {
+                LogWarn( ( "[KVS Master] onDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
+            }
 
-OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOneMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
-                                                                                    uint32_t ulChannelId,
-                                                                                    uint8_t * pucName,
-                                                                                    uint32_t ulNameLen )
-{
-    ( void ) pPeerConnectionSession;
-    ( void ) ulChannelId;
-    ( void ) pucName;
-    ( void ) ulNameLen;
+        }
 
-    return onDataChannelMessage;
-}
+        OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
+                                                                                           uint32_t ulChannelId,
+                                                                                           const uint8_t * pucName,
+                                                                                           uint32_t ulNameLen )
+        {
+            ( void ) pPeerConnectionSession;
+            ( void ) ulChannelId;
+            ( void ) pucName;
+            ( void ) ulNameLen;
+
+            return onDataChannelMessage;
+        }
 
 #endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
 
@@ -1134,7 +1139,6 @@ OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOneMessageCallbackHo
 int main()
 {
     int ret = 0;
-    int i;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingControllerConnectInfo_t connectInfo;
     SSLCredentials_t sslCreds;
@@ -1144,7 +1148,7 @@ int main()
     srtp_init();
 
     #if ENABLE_SCTP_DATA_CHANNEL
-    SCTP_InitSCTPSession();
+        Sctp_Init();
     #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     memset( &demoContext, 0, sizeof( DemoContext_t ) );
@@ -1153,11 +1157,11 @@ int main()
 
     sslCreds.pCaCertPath = AWS_CA_CERT_PATH;
     #if defined( AWS_IOT_THING_ROLE_ALIAS )
-    sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
-    sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
+        sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
+        sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
     #else
-    sslCreds.pDeviceCertPath = NULL;
-    sslCreds.pDeviceKeyPath = NULL;
+        sslCreds.pDeviceCertPath = NULL;
+        sslCreds.pDeviceKeyPath = NULL;
     #endif
 
     connectInfo.awsConfig.pRegion = AWS_REGION;
@@ -1175,23 +1179,23 @@ int main()
     connectInfo.pMessageReceivedCallbackData = NULL;
 
     #if defined( AWS_ACCESS_KEY_ID )
-    connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
-    connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
-    connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-    connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
-    #if defined( AWS_SESSION_TOKEN )
-    connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
-    connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
-    #endif     /* #if defined( AWS_SESSION_TOKEN ) */
+        connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
+        connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
+        connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+        connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
+        #if defined( AWS_SESSION_TOKEN )
+            connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
+            connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
+        #endif /* #if defined( AWS_SESSION_TOKEN ) */
     #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
 
     #if defined( AWS_IOT_THING_ROLE_ALIAS )
-    connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
-    connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
-    connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
-    connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
-    connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
-    connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
+        connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
+        connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
+        connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
+        connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
+        connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
+        connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
     #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
 
     signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &sslCreds );
@@ -1243,8 +1247,8 @@ int main()
     }
 
     #if ENABLE_SCTP_DATA_CHANNEL
-    /* TODO_SCTP: Move to a common shutdown function? */
-    SCTP_DeInitSCTPSession();
+        /* TODO_SCTP: Move to a common shutdown function? */
+        Sctp_DeInit();
     #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     return 0;

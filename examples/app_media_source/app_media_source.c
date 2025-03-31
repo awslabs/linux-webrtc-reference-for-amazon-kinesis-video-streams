@@ -63,6 +63,7 @@ static void * VideoTx_Task( void * pParameter )
         while( 1 )
         {
             #ifndef ENABLE_STREAMING_LOOPBACK
+          
             if( pVideoContext->numReadyPeer != 0 )
             {
                 #if USE_H265
@@ -88,36 +89,36 @@ static void * VideoTx_Task( void * pParameter )
                     fseek( fp, 0, SEEK_END );
                     frameLength = ftell( fp );
 
-                    if( frameLength > allocatedBufferLength )
-                    {
-                        if( allocatedBufferLength != 0 )
+                        if( frameLength > allocatedBufferLength )
                         {
-                            free( frame.pData );
+                            if( allocatedBufferLength != 0 )
+                            {
+                                free( frame.pData );
+                            }
+                            frame.pData = ( uint8_t * ) malloc( frameLength );
+                            allocatedBufferLength = frameLength;
                         }
-                        frame.pData = ( uint8_t * ) malloc( frameLength );
-                        allocatedBufferLength = frameLength;
-                    }
-                    frame.size = frameLength;
-                    frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
-                    frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+                        frame.size = frameLength;
+                        frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
+                        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
 
-                    fseek( fp, 0, SEEK_SET );
-                    if( fread( frame.pData, frameLength, 1, fp ) == 1 )
-                    {
-                        LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
-                        if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
+                        fseek( fp, 0, SEEK_SET );
+                        if( fread( frame.pData, frameLength, 1, fp ) == 1 )
                         {
-                            ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
+                            LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
+                            if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
+                            {
+                                ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
+                            }
                         }
-                    }
-                    else
-                    {
-                        LogError( ( "VideoTx_Task: fread failed!" ) );
-                    }
+                        else
+                        {
+                            LogError( ( "VideoTx_Task: fread failed!" ) );
+                        }
 
-                    fclose( fp );
+                        fclose( fp );
+                    }
                 }
-            }
             #endif
             usleep( SAMPLE_VIDEO_FRAME_DURATION_IN_US );
         }
@@ -147,52 +148,52 @@ static void * AudioTx_Task( void * pParameter )
         while( 1 )
         {
             #ifndef ENABLE_STREAMING_LOOPBACK
-            if( pAudioContext->numReadyPeer != 0 )
-            {
-                fileIndex = fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
-                snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", fileIndex );
-
-                fp = fopen( filePath, "rb" );
-
-                if( fp == NULL )
+                if( pAudioContext->numReadyPeer != 0 )
                 {
-                    LogError( ( "Failed to open %s.", filePath ) );
-                }
-                else
-                {
-                    fseek( fp, 0, SEEK_END );
-                    frameLength = ftell( fp );
+                    fileIndex = fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", fileIndex );
 
-                    if( frameLength > allocatedBufferLength )
-                    {
-                        if( allocatedBufferLength != 0 )
-                        {
-                            free( frame.pData );
-                        }
-                        frame.pData = ( uint8_t * ) malloc( frameLength );
-                        allocatedBufferLength = frameLength;
-                    }
-                    frame.size = frameLength;
-                    frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
-                    frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+                    fp = fopen( filePath, "rb" );
 
-                    fseek( fp, 0, SEEK_SET );
-                    if( fread( frame.pData, frameLength, 1, fp ) == 1 )
+                    if( fp == NULL )
                     {
-                        LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
-                        if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
-                        {
-                            ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
-                        }
+                        LogError( ( "Failed to open %s.", filePath ) );
                     }
                     else
                     {
-                        LogError( ( "AudioTx_Task: fread failed!" ) );
-                    }
+                        fseek( fp, 0, SEEK_END );
+                        frameLength = ftell( fp );
 
-                    fclose( fp );
+                        if( frameLength > allocatedBufferLength )
+                        {
+                            if( allocatedBufferLength != 0 )
+                            {
+                                free( frame.pData );
+                            }
+                            frame.pData = ( uint8_t * ) malloc( frameLength );
+                            allocatedBufferLength = frameLength;
+                        }
+                        frame.size = frameLength;
+                        frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
+                        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+
+                        fseek( fp, 0, SEEK_SET );
+                        if( fread( frame.pData, frameLength, 1, fp ) == 1 )
+                        {
+                            LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
+                            if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
+                            {
+                                ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
+                            }
+                        }
+                        else
+                        {
+                            LogError( ( "AudioTx_Task: fread failed!" ) );
+                        }
+
+                        fclose( fp );
+                    }
                 }
-            }
             #endif
             usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
@@ -506,10 +507,10 @@ int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
         pAudioTranceiver->trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
         pAudioTranceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
         #if ( AUDIO_OPUS )
-        TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT );
+            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT );
         #else
-        TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT );
-        TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT );
+            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT );
+            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT );
         #endif
         pAudioTranceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND;
         pAudioTranceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE;

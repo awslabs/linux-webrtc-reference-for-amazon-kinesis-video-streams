@@ -84,14 +84,26 @@ TimerControllerResult_t TimerController_SetTimer( TimerHandler_t * pTimerHandler
     return ret;
 }
 
-void TimerController_ResetTimer( TimerHandler_t * pTimerHandler )
+void TimerController_Reset( TimerHandler_t * pTimerHandler )
 {
     if( pTimerHandler != NULL )
     {
         // Cancel the timer
         if( TimerController_SetTimer( pTimerHandler, 0U, 0U ) != TIMER_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to reset time, errno: %s", strerror( errno ) ) );
+            LogError( ( "Fail to reset timer, errno: %s", strerror( errno ) ) );
+        }
+    }
+}
+
+void TimerController_Delete( TimerHandler_t * pTimerHandler )
+{
+    if( pTimerHandler != NULL )
+    {
+        // Delete the timer
+        if( timer_delete( pTimerHandler->timerId ) != 0 )
+        {
+            LogError( ( "Fail to delete timer, errno: %s", strerror( errno ) ) );
         }
     }
 }

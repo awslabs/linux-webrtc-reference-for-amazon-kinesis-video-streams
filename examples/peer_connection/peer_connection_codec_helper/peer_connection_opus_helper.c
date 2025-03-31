@@ -18,7 +18,9 @@ PeerConnectionResult_t GetOpusPacketProperty( PeerConnectionJitterBufferPacket_t
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        resultOpus = OpusDepacketizer_GetPacketProperties( pPacket->pPacketBuffer, pPacket->packetBufferLength, &properties );
+        resultOpus = OpusDepacketizer_GetPacketProperties( pPacket->pPacketBuffer,
+                                                           pPacket->packetBufferLength,
+                                                           &properties );
 
         if( resultOpus != OPUS_RESULT_OK )
         {
@@ -142,6 +144,10 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
     uint16_t * pRtpSeq = NULL;
     uint32_t payloadType;
     uint32_t * pSsrc = NULL;
+    uint32_t packetSent = 0;
+    uint32_t bytesSent = 0;
+    uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+
     /* For TWCC ID extension info. */
     uint32_t extensionPayload;
 
@@ -254,14 +260,16 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
 
             pRollingBufferPacket->rtpPacket.header.csrcCount = 0;
             pRollingBufferPacket->rtpPacket.header.pCsrc = NULL;
-            pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_OPUS_CLOCKRATE, pFrame->presentationUs );
+            pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_OPUS_CLOCKRATE,
+                                                                                                                      pFrame->presentationUs );
 
             if( pSession->rtpConfig.twccId > 0 )
             {
                 pRollingBufferPacket->rtpPacket.header.flags |= RTP_HEADER_FLAG_EXTENSION;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionProfile = PEER_CONNECTION_SRTP_TWCC_EXT_PROFILE;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionPayloadLength = 1;
-                extensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId, pSession->rtpConfig.twccSequence );
+                extensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId,
+                                                                          pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &extensionPayload;
                 pSession->rtpConfig.twccSequence++;
             }
@@ -321,6 +329,12 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
 
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
+            packetSent++;
+            bytesSent += pRollingBufferPacket->rtpPacket.payloadLength;
+        }
+
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
             Metric_EndEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
         }
     }
@@ -329,6 +343,15 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
     {
         pthread_mutex_unlock( &( pSrtpSender->senderMutex ) );
     }
+
+    if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
+    {
+        pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
+        pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
+    }
+
+    pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
+    pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
 
     return ret;
 }

@@ -13,6 +13,10 @@
 #define ENABLE_SCTP_DATA_CHANNEL 0U
 #endif
 
+#ifndef ENABLE_TWCC_SUPPORT
+#define ENABLE_TWCC_SUPPORT 1U
+#endif
+
 /* Uncomment to use fetching credentials by IoT Role-alias for Authentication */
 // #define AWS_CREDENTIALS_ENDPOINT ""
 // #define AWS_IOT_THING_NAME ""

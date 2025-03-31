@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -50,8 +52,10 @@ MessageQueueResult_t MessageQueue_AttachPoll( MessageQueueHandler_t * pMessageQu
                                               struct pollfd * pPollFd,
                                               uint32_t PollEvents );
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* MESSAGE_QUEUE_H */

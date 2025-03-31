@@ -1256,6 +1256,11 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                         LogError( ( "Failed to remove element from the ring buffer!" ) );
                         ret = 1;
                     }
+                    else
+                    {
+                        /* Check if there is any data remain in ringbuffer at next iteration. */
+                        lws_callback_on_writable( pWsi );
+                    }
                 }
                 else
                 {
@@ -1427,8 +1432,10 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
                                         HttpResponse_t * pResponse )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
-    const char * pHost, * pPath;
-    size_t hostLength, pathLength;
+    const char * pHost = NULL;
+    const char * pPath = NULL;
+    size_t hostLength = 0;
+    size_t pathLength = 0;
     struct lws_client_connect_info connectInfo;
     struct lws * clientLws;
 
@@ -1595,7 +1602,7 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     struct lws_client_connect_info connectInfo;
     struct lws * clientLws;
-    const char * pHost;
+    const char * pHost = NULL;
     size_t hostLength = 0;
 
     if( ( pWebsocketCtx == NULL ) ||
@@ -1743,7 +1750,6 @@ NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWeb
         /* This will cause a LWS_CALLBACK_EVENT_WAIT_CANCELLED in the lws
          * service thread context. */
         lws_cancel_service( pWebsocketCtx->pLwsContext );
-
     }
 
     return ret;

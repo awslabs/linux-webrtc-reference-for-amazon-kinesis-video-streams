@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include <stdio.h>
 #include "sdp_controller.h"
@@ -48,8 +50,10 @@ typedef struct DemoContext
     AppMediaSourcesContext_t appMediaSourcesContext;
 } DemoContext_t;
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* DEMO_DATA_TYPES_H */

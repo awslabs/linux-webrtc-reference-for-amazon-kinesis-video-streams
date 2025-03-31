@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -38,11 +40,14 @@ TimerControllerResult_t TimerController_Create( TimerHandler_t * pTimerHandler,
 TimerControllerResult_t TimerController_SetTimer( TimerHandler_t * pTimerHandler,
                                                   uint32_t initialTimeMs,
                                                   uint32_t repeatTimeMs );
-void TimerController_ResetTimer( TimerHandler_t * pTimerHandler );
+void TimerController_Reset( TimerHandler_t * pTimerHandler );
+void TimerController_Delete( TimerHandler_t * pTimerHandler );
 TimerControllerResult_t TimerController_IsTimerSet( TimerHandler_t * pTimerHandler );
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* TIMER_CONTROLLER_H */

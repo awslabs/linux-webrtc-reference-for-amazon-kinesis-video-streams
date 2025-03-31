@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -20,7 +22,7 @@ PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * 
                                                       Transceiver_t * pTransceiver );
 #if ENABLE_SCTP_DATA_CHANNEL
 /* Enable data channel to be included in the SDP offer. */
-PeerConnectionResult_t PeerConnection_AddDataChannel( PeerConnectionSession_t * pSession );
+    PeerConnectionResult_t PeerConnection_AddDataChannel( PeerConnectionSession_t * pSession );
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSession_t * pSession,
                                                               uint32_t ssrc,
@@ -56,9 +58,14 @@ PeerConnectionResult_t PeerConnection_SetOnLocalCandidateReady( PeerConnectionSe
 PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_t * pSession,
                                                           IceControllerIceServer_t * pIceServers,
                                                           size_t iceServersCount );
+PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConnectionSession_t * pSession,
+                                                                        OnPictureLossIndicationCallback_t onPictureLossIndicationCallback,
+                                                                        void * pUserContext );
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* PEER_CONNECTION_H */

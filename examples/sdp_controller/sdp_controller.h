@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -38,8 +40,10 @@ SdpControllerResult_t SdpController_PopulateSessionDescription( SdpControllerSdp
                                                                 size_t * pBufferLength );
 
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* SDP_CONTROLLER_H */

@@ -3,9 +3,11 @@
 
 #pragma once
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 /* Standard includes. */
 #include <stdint.h>
@@ -244,8 +246,10 @@ typedef struct SdpControllerPopulateSessionConfiguration
     SdpControllerTiming_t timingDescription;
 } SdpControllerPopulateSessionConfiguration_t;
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 #endif /* SDP_CONTROLLER_DATA_TYPES_H */
