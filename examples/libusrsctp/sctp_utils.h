@@ -14,12 +14,8 @@
 
 /*-----------------------------------------------------------*/
 
-/* TODO aggarg - Move to a central config file. */
 #define SCTP_SHUTDOWN_TIMEOUT_SEC           ( 2 )
 #define SCTP_TEARDOWN_POLLING_INTERVAL_USEC ( 10 )
-
-/*-----------------------------------------------------------*/
-
 #define MAX_DATA_CHANNEL_NAME_LEN           255
 #define MAX_DATA_CHANNEL_PROTOCOL_LEN       255
 #define SCTP_MAX_PACKET_LENGTH              ( DCEP_HEADER_LENGTH +        \

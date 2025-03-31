@@ -2618,7 +2618,8 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     else if( ( populateConfiguration.pCname == NULL ) ||
              ( populateConfiguration.pLocalFingerprint == NULL ) ||
              ( populateConfiguration.pPassword == NULL ) ||
-             ( trackKind == TRANSCEIVER_TRACK_KIND_UNKNOWN ) ||
+             ( trackKind < TRANSCEIVER_TRACK_KIND_AUDIO ) ||
+             ( trackKind > TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) ||
              ( ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) && ( populateConfiguration.pTransceiver == NULL ) ) ||
              ( populateConfiguration.pUserName == NULL ) )
     {
@@ -2647,31 +2648,44 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* We support only one payload type, so only one payload type printed in media name. */
-        if( trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
+        switch( trackKind )
         {
-            if( populateConfiguration.rtxPayloadType == 0 )
+            case TRANSCEIVER_TRACK_KIND_VIDEO:
             {
-                written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                if( populateConfiguration.rtxPayloadType == 0 )
+                {
+                    written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                }
+                else
+                {
+                    written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+                }
+                break;
             }
-            else
+            case TRANSCEIVER_TRACK_KIND_AUDIO:
             {
-                written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+                if( populateConfiguration.rtxPayloadType == 0 )
+                {
+                    written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                }
+                else
+                {
+                    written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+                }
+                break;
             }
-        }
-        else if( trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
-        {
-            if( populateConfiguration.rtxPayloadType == 0 )
+            case TRANSCEIVER_TRACK_KIND_DATA_CHANNEL:
             {
-                written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
+                break;
             }
-            else
-            {
-                written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
-            }
-        }
-        else if( trackKind == TRANSCEIVER_TRACK_KIND_DATA_CHANNEL )
-        {
-            written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
+
+            /* Since the range of trackKind is checked above the
+             * TRANSCEIVER_TRACK_KIND_UNKNOWN and default case is not required to be handled.
+             * The labels are kept for keeping the compiler happy wrt -Werror=switch */
+            case TRANSCEIVER_TRACK_KIND_UNKNOWN:
+            default:
+                break;
         }
 
         if( written < 0 )
