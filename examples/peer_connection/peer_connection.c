@@ -20,7 +20,7 @@
 
 #if ENABLE_SCTP_DATA_CHANNEL
 #include "peer_connection_sctp.h"
-#endif
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 #define PEER_CONNECTION_SESSION_TASK_NAME "PcSessionTsk"
 #define PEER_CONNECTION_SESSION_RX_TASK_NAME "PcRxTsk" // For Ice controller to monitor socket Rx path
@@ -1678,8 +1678,18 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        #if ENABLE_SCTP_DATA_CHANNEL
+        ret = DestroyIceController( pSession );
+    }
+
+    #if ENABLE_SCTP_DATA_CHANNEL
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
             PeerConnectionResult_t xSCTPRet;
+
+            /* Clear enable remote data channel */
+            pSession->ucEnableDataChannelRemote = 0;
+            pSession->uKvsDataChannelCount = 0;
+
             /* Close and deallocate all data channels along with terminating
              * SCTP session. */
             xSCTPRet = PeerConnectionSCTP_DeallocateSCTP( pSession );
@@ -1692,13 +1702,8 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
                 LogError( ( "Fail to close SCTP session, result: %d", xSCTPRet ) );
                 ret = PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE;
             }
-        #endif /* #if ENABLE_SCTP_DATA_CHANNEL */
-    }
-
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        ret = DestroyIceController( pSession );
-    }
+        }
+    #endif /* #if ENABLE_SCTP_DATA_CHANNEL */
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {

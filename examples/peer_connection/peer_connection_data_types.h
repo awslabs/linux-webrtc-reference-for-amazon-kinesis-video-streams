@@ -403,7 +403,7 @@ typedef struct PeerConnectionSession
         /* Data channel configs */
         PeerConnectionDataChannel_t * pDataChannels;
         uint32_t uKvsDataChannelCount;
-    #endif         /* ENABLE_SCTP_DATA_CHANNEL */
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     PeerConnectionSrtpSender_t videoSrtpSender;
     PeerConnectionSrtpSender_t audioSrtpSender;

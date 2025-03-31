@@ -18,6 +18,7 @@ extern "C" {
 #define DATACHANNEL_CUSTOM_CALLBACK_HOOK  ( 1U )
 #endif
 
+#define DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE ( 512U )
 
 #define MASTER_DATA_CHANNEL_MESSAGE "This message is from the FreeRTOS-WebRTC-Application KVS Master"
 
