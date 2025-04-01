@@ -411,7 +411,9 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
             memset( &ipv4Address, 0, sizeof( ipv4Address ) );
             ipv4Address.sin_family = AF_INET;
             ipv4Address.sin_port = htons( pDestinationIceEndpoint->transportAddress.port );
-            memcpy( &ipv4Address.sin_addr, pDestinationIceEndpoint->transportAddress.address, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( &ipv4Address.sin_addr,
+                    pDestinationIceEndpoint->transportAddress.address,
+                    STUN_IPV4_ADDRESS_SIZE );
 
             pDestinationAddress = ( struct sockaddr * ) &ipv4Address;
             addressLength = sizeof( ipv4Address );
@@ -421,7 +423,9 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
             memset( &ipv6Address, 0, sizeof( ipv6Address ) );
             ipv6Address.sin6_family = AF_INET6;
             ipv6Address.sin6_port = htons( pDestinationIceEndpoint->transportAddress.port );
-            memcpy( &ipv6Address.sin6_addr, pDestinationIceEndpoint->transportAddress.address, STUN_IPV6_ADDRESS_SIZE );
+            memcpy( &ipv6Address.sin6_addr,
+                    pDestinationIceEndpoint->transportAddress.address,
+                    STUN_IPV6_ADDRESS_SIZE );
 
             pDestinationAddress = ( struct sockaddr * ) &ipv6Address;
             addressLength = sizeof( ipv6Address );
@@ -762,14 +766,18 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
             {
                 ipv4Address = ( struct sockaddr_in * ) pIterator->ai_addr;
                 pIceTransportAddress->family = STUN_ADDRESS_IPv4;
-                memcpy( pIceTransportAddress->address, &ipv4Address->sin_addr, STUN_IPV4_ADDRESS_SIZE );
+                memcpy( pIceTransportAddress->address,
+                        &ipv4Address->sin_addr,
+                        STUN_IPV4_ADDRESS_SIZE );
                 break;
             }
             else if( pIterator->ai_family == AF_INET6 )
             {
                 ipv6Address = ( struct sockaddr_in6 * ) pIterator->ai_addr;
                 pIceTransportAddress->family = STUN_ADDRESS_IPv6;
-                memcpy( pIceTransportAddress->address, &ipv6Address->sin6_addr, STUN_IPV6_ADDRESS_SIZE );
+                memcpy( pIceTransportAddress->address,
+                        &ipv6Address->sin6_addr,
+                        STUN_IPV6_ADDRESS_SIZE );
                 break;
             }
         }

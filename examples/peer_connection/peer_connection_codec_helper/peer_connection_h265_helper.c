@@ -18,7 +18,9 @@ PeerConnectionResult_t GetH265PacketProperty( PeerConnectionJitterBufferPacket_t
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        resultH265 = H265Depacketizer_GetPacketProperties( pPacket->pPacketBuffer, pPacket->packetBufferLength, &properties );
+        resultH265 = H265Depacketizer_GetPacketProperties( pPacket->pPacketBuffer,
+                                                           pPacket->packetBufferLength,
+                                                           &properties );
         if( resultH265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to get h265 packet properties, result: %d", resultH265 ) );
@@ -66,7 +68,9 @@ PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuff
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        resultH265 = H265Depacketizer_Init( &h265DepacketizerContext, h265Packets, PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+        resultH265 = H265Depacketizer_Init( &h265DepacketizerContext,
+                                            h265Packets,
+                                            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
         if( resultH265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to initialize H265 depacketizer, result: %d", resultH265 ) );
@@ -83,7 +87,9 @@ PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuff
             h265Packet.pPacketData = pPacket->pPacketBuffer;
             h265Packet.packetDataLength = pPacket->packetBufferLength;
             rtpTimestamp = pPacket->rtpTimestamp;
+
             LogDebug( ( "Adding packet seq: %u, length: %lu, timestamp: %u", i, h265Packet.packetDataLength, rtpTimestamp ) );
+
 
             resultH265 = H265Depacketizer_AddPacket( &h265DepacketizerContext,
                                                      &h265Packet );
@@ -163,7 +169,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        resulth265 = H265Packetizer_Init( &h265PacketizerContext, nalusArray, PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME );
+        resulth265 = H265Packetizer_Init( &h265PacketizerContext,
+                                          nalusArray,
+                                          PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME );
         if( resulth265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to init h265 packetizer, result: %d", resulth265 ) );
@@ -267,14 +275,16 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
 
             pRollingBufferPacket->rtpPacket.header.csrcCount = 0;
             pRollingBufferPacket->rtpPacket.header.pCsrc = NULL;
-            pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE, pFrame->presentationUs );
+            pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE,
+                                                                                                                      pFrame->presentationUs );
 
             if( pSession->rtpConfig.twccId > 0 )
             {
                 pRollingBufferPacket->rtpPacket.header.flags |= RTP_HEADER_FLAG_EXTENSION;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionProfile = PEER_CONNECTION_SRTP_TWCC_EXT_PROFILE;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionPayloadLength = 1;
-                extensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId, pSession->rtpConfig.twccSequence );
+                extensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId,
+                                                                          pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &extensionPayload;
                 pSession->rtpConfig.twccSequence++;
             }
