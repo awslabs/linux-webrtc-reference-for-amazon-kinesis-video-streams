@@ -8,6 +8,7 @@ endif()
 
 # Custom target to build the usrsctp library
 add_custom_target(usrsctp-build ALL
+    BYPRODUCTS ${LIBUSRSCTP_BUILD_DIR}/lib/libusrsctp.a
     COMMAND ${CMAKE_COMMAND} -S ${LIBUSRSCTP_SOURCE_DIR} -B ${LIBUSRSCTP_BUILD_DIR}
             -DCMAKE_INSTALL_PREFIX=${LIBUSRSCTP_BUILD_DIR}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
