@@ -1,0 +1,81 @@
+name: Ubuntu 24.04 x86-64 - build smoke test
+
+on:
+  push:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Generate (dummy) demo_config.h
+        run: |
+             cat << 'EOF' > examples/master/demo_config.h
+             #ifndef DEMO_CONFIG_H
+             #define DEMO_CONFIG_H
+
+             #define AWS_REGION ""
+
+             #define AWS_KVS_CHANNEL_NAME ""
+
+             #define AWS_KVS_AGENT_NAME "AWS-SDK-KVS"
+
+             #define AWS_CREDENTIALS_ENDPOINT ""
+             #define AWS_IOT_THING_NAME ""
+             #define AWS_IOT_THING_ROLE_ALIAS ""
+             #define AWS_IOT_THING_CERT_PATH "certificate.pem"
+             #define AWS_IOT_THING_PRIVATE_KEY_PATH "private.key"
+
+             #define AWS_CA_CERT_PATH "cert/cert.pem"
+
+             #define AWS_MAX_VIEWER_NUM ( 2 )
+
+             /* Audio format setting. */
+             #define AUDIO_G711_MULAW    0
+             #define AUDIO_G711_ALAW     0
+             #define AUDIO_OPUS          1
+             #if ( AUDIO_G711_MULAW + AUDIO_G711_ALAW + AUDIO_OPUS ) != 1
+                 #error only one of audio format should be set.
+             #endif
+
+             /* Video format setting. */
+             #define USE_H265 0
+
+             #endif /* DEMO_CONFIG_H */
+             EOF
+             echo demo_config.h:
+             cat examples/master/demo_config.h
+
+      - name: Cache Podman image
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/podman-x86-64-image.tar
+          key:
+            ${{ runner.os }}-podman-${{ hashFiles('misc/buildtestcontainer/*')
+            }}
+
+      - name: Build and save container for x86-64
+        run: |
+          if [ ! -f ~/podman-x86-64-image.tar ]; then
+            podman build misc/buildtestcontainer -t container
+            podman save container:latest > ~/podman-x86-64-image.tar
+          else
+            podman load < ~/podman-x86-64-image.tar
+          fi
+
+      - name: Run build in container
+        shell: bash
+        run: |
+          podman run -v $PWD/.:/FreeRTOS-WebRTC-Application --replace --name ggl container:latest bash -c "\
+            cd FreeRTOS-WebRTC-Application && \
+            rm -rf build/ && \
+            cmake -B build \
+            -DLIBRARY_LOG_LEVEL=LOG_VERBOSE && \
+            make -C build -j$(nproc) \
+            "
