@@ -1,0 +1,168 @@
+name: yocto-build-test-iot-creds
+on:
+  push:
+  workflow_dispatch:
+  pull_request:
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  build-test:
+    name: Build, Test ${{ matrix.machine }} scarthgap
+    strategy:
+      fail-fast: false
+      matrix:
+        machine:
+          - qemuarm
+          - qemuarm64
+          - qemux86-64
+    runs-on: codebuild-${{ vars.CODEBUILD_RUNNER_NAME || 'FreeRTOS-WebRTC-Application' }}-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      THING_NAME: ${{ env.THING_NAME }}
+      ROLE_ALIAS: ${{ env.ROLE_ALIAS }}
+      POLICY_NAME: ${{ env.POLICY_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set recipes to build and test
+        id: recipes_to_build_test
+        shell: bash
+        run: |
+          export RECIPES="amazon-kvs-webrtc-sdk-c"
+          echo "recipes=$RECIPES" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Configure AWS IoT Resources
+        run: |
+          export UNIQUE_ID="${{ matrix.machine }}_$(date +%s)"
+          ./tests/iot-credentials/create-iot-credentials.sh
+
+      - name: Generate demo_config.h
+        run: |
+          cat << 'EOF' > examples/master/demo_config.h
+          #ifndef DEMO_CONFIG_H
+          #define DEMO_CONFIG_H
+
+          #define AWS_REGION "${{ env.AWS_REGION }}"
+
+          #define AWS_KVS_CHANNEL_NAME "${{ env.CHANNEL_NAME }}"
+
+          #define AWS_KVS_AGENT_NAME "AWS-SDK-KVS"
+
+          #define AWS_CREDENTIALS_ENDPOINT "${{ env.CREDENTIALS_ENDPOINT }}"
+          #define AWS_IOT_THING_NAME "${{ env.THING_NAME }}"
+          #define AWS_IOT_THING_ROLE_ALIAS "${{ env.ROLE_ALIAS }}"
+          #define AWS_IOT_THING_CERT_PATH "/etc/certificate.pem"
+          #define AWS_IOT_THING_PRIVATE_KEY_PATH "/etc/private.key"
+
+          #define AWS_CA_CERT_PATH "/etc/cert.pem"
+
+          #define AWS_MAX_VIEWER_NUM ( 2 )
+
+          /* Audio format setting. */
+          #define AUDIO_G711_MULAW    0
+          #define AUDIO_G711_ALAW     0
+          #define AUDIO_OPUS          1
+          #if ( AUDIO_G711_MULAW + AUDIO_G711_ALAW + AUDIO_OPUS ) != 1
+              #error only one of audio format should be set.
+          #endif
+
+          /* Video format setting. */
+          #define USE_H265 0
+
+          #endif /* DEMO_CONFIG_H */
+          EOF
+
+          echo demo_config.h:
+          cat examples/master/demo_config.h
+
+          # this is necessary for legacy sdk for ptests
+          echo "${{ env.THING_NAME }}" > THING_NAME
+          echo "${{ env.ROLE_ALIAS }}" > AWS_IOT_THING_ROLE_ALIAS
+          echo "${{ env.CREDENTIALS_ENDPOINT }}" > CREDENTIALS_ENDPOINT
+          echo "${{ vars.AWS_REGION }}" > AWS_REGION
+
+      - name: Init Yocto setup
+        run: |
+           .yocto/scripts/init-yocto-build.sh
+
+      - name: Run build
+        env:
+          RECIPES: ${{ steps.recipes_to_build_test.outputs.recipes }}
+        run: |
+           echo RECIPES to build: $RECIPES
+           chown yoctouser /sstate-cache
+           chown yoctouser /downloads
+           chown -R yoctouser ../
+           cd  ../FreeRTOS_WebRTC_App_yocto_build
+           sysctl vm.mmap_min_addr=65536
+           sudo RECIPES="$RECIPES" -u yoctouser bash -c '
+             source poky/oe-init-build-env build
+             export SSTATE_DIR=/sstate-cache
+             export DL_DIR=/downloads
+             export MACHINE=${{ matrix.machine }}
+             export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS SSTATE_DIR DL_DIR"
+             bitbake $RECIPES -f | tee -a $MACHINE-build.log'
+            set -e
+            echo RECIPES to build: $RECIPES
+            if [ -e "build/${{ matrix.machine }}-build.log" ]; then
+              if grep -A3 " failed" "build/${{ matrix.machine }}-build.log"; then
+                echo "Found build failures in log"
+                exit 1
+              fi
+              if grep -A3 " ERROR:" "build/${{ matrix.machine }}-build.log"; then
+                echo "Found errors in log"
+                exit 1
+              fi
+            else
+              echo "Build log file not found: build/${{ matrix.machine }}-build.log"
+              exit 1
+            fi
+
+      - name: Save ${{ matrix.machine }}-build.log
+        if: '!cancelled()'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.machine }}-build.log
+          path: build/${{ matrix.machine }}-build.log
+
+      - name: Run test
+        env:
+          RECIPES: ${{ steps.recipes_to_build_test.outputs.recipes }}
+        run: |
+           sudo RECIPES="$RECIPES" -u yoctouser bash -c '
+             cd  ../FreeRTOS_WebRTC_App_yocto_build
+             source poky/oe-init-build-env build
+             # PUT = package under test
+             for recipe in $RECIPES; do PUT+="${recipe}-ptest "; done
+             echo IMAGE_INSTALL:append = \" ptest-runner ssh ${PUT}\" >> conf/local.conf
+             export SSTATE_DIR=/sstate-cache
+             export DL_DIR=/downloads
+             export MACHINE=${{ matrix.machine }}
+             export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS SSTATE_DIR DL_DIR"
+             bitbake core-image-minimal
+             bitbake core-image-minimal -c testimage -D
+             resulttool report tmp/log/oeqa/testresults.json | tee -a ${{ matrix.machine }}-resulttool_report.txt'
+            set -e
+            echo RECIPES to test: $RECIPES
+            test -e build/tmp/log/oeqa/testresults.json && ! grep -B3 "\"FAILED\""  build/tmp/log/oeqa/testresults.json
+
+      - name: Save resulttool_report.txt
+        if: '!cancelled()'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.machine }}-resulttool_report.txt
+          path: build/${{ matrix.machine }}-resulttool_report.txt
+
+      - name: Cleanup AWS IoT Resources
+        if: always()
+        run: |
+          ./tests/iot-credentials/destroy-iot-credentials.sh
+        continue-on-error: true
