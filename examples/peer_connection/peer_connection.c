@@ -1483,32 +1483,32 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        LogVerbose(("REMOTE Candidates Count : %d", pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount ));
+        LogVerbose( ( "REMOTE Candidates Count : %d", pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount ) );
+
         if( pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount != 0 )
         {
             pSession->state = PEER_CONNECTION_SESSION_STATE_START;
 
-            for( i=0; i < pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount; i++ )
+            for( i = 0; i < pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount; i++ )
             {
 
                 ret = PeerConnection_AddRemoteCandidate( pSession,
-                                                     pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ],
-                                                     pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ] );
-                
+                                                         pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ],
+                                                         pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ] );
+
                 if( ret != PEER_CONNECTION_RESULT_OK )
                 {
-                    LogError(("Fail to add remote candidate at index %d, result: %d", i, ret));
+                    LogError( ( "Fail to add remote candidate at index %d, result: %d", i, ret ) );
                     ret = PEER_CONNECTION_RESULT_OK;
                 }
                 else
                 {
                     LogDebug( ( "Added remote candidate from SDP offer (%lu): %.*s with status code: %d",
-                       pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
-                       ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
-                       pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ], ret ) );
+                                pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
+                                ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
+                                pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ], ret ) );
                 }
             }
-            
         }
     }
 

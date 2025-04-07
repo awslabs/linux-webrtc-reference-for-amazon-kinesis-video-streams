@@ -326,16 +326,16 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
         else if( ( pAttribute->attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH ) &&
                  ( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH ) == 0 ) )
         {
-            /* Ensure we do not exceed the maximum candidate limit */
+            /* Ensure we do not exceed the maximum candidate limit. */
             if( pOffer->quickAccess.remoteCandidateCount < SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT )
             {
-                pOffer->quickAccess.pRemoteCandidates[pOffer->quickAccess.remoteCandidateCount] = pAttribute->pAttributeValue;
-                pOffer->quickAccess.remoteCandidateLengths[pOffer->quickAccess.remoteCandidateCount] = pAttribute->attributeValueLength;
+                pOffer->quickAccess.pRemoteCandidates[ pOffer->quickAccess.remoteCandidateCount ] = pAttribute->pAttributeValue;
+                pOffer->quickAccess.remoteCandidateLengths[ pOffer->quickAccess.remoteCandidateCount ] = pAttribute->attributeValueLength;
                 pOffer->quickAccess.remoteCandidateCount++;
             }
             else
             {
-                LogWarn( ( "Max candidate limit reached (%d), ignoring extra candidates", SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ) );
+                LogWarn( ( "Max candidate limit reached (%d), ignoring extra candidates.", SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ) );
             }
         }
     }
