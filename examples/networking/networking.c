@@ -1210,10 +1210,13 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                 }
                 else
                 {
+                    /* If you are getting this warning, one possible reason is
+                     * that we receive an SDP Offer which is large because it
+                     * contains ICE Candidates (non-trickle functionality).
+                     * Increasing the Macro WEBSOCKET_RX_BUFFER_LENGTH to a
+                     * larger value (such as 13 * 1024) may help in this case. */
                     LogWarn( ( "WSS RX buffer is not large enough for received message. Message size: %lu.",
                                pWebsocketContext->dataLengthInRxBuffer + dataLength ) );
-                    /* In case you are using non-trickle functionality and want to parse the SDP Offer with ICE Candidates,
-                    Increase the Macro WEBSOCKET_RX_BUFFER_LENGTH to ( 13 * 1024 ) */
                     ret = 1;
                 }
             }
