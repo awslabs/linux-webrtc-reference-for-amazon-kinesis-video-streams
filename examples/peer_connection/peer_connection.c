@@ -1359,6 +1359,7 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     RtpResult_t resultRtp;
     RtcpResult_t resultRtcp;
     PeerConnectionBufferSessionDescription_t * pTargetRemoteSdp = NULL;
+    uint8_t i;
 
     if( ( pSession == NULL ) ||
         ( pBufferSessionDescription == NULL ) )
@@ -1482,15 +1483,32 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        if( pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidate != NULL )
+        LogVerbose(("REMOTE Candidates Count : %d", pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount ));
+        if( pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount != 0 )
         {
-            LogInfo( ( "Add remote candidate in SDP offer/answer(%lu): %.*s",
-                       pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLength,
-                       ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLength,
-                       pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidate ) );
-            ret = PeerConnection_AddRemoteCandidate( pSession,
-                                                     pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidate,
-                                                     pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLength );
+            pSession->state = PEER_CONNECTION_SESSION_STATE_START;
+
+            for( i=0; i < pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount; i++ )
+            {
+
+                ret = PeerConnection_AddRemoteCandidate( pSession,
+                                                     pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ],
+                                                     pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ] );
+                
+                if( ret != PEER_CONNECTION_RESULT_OK )
+                {
+                    LogError(("Fail to add remote candidate at index %d, result: %d", i, ret));
+                    ret = PEER_CONNECTION_RESULT_OK;
+                }
+                else
+                {
+                    LogDebug( ( "Added remote candidate from SDP offer (%lu): %.*s with status code: %d",
+                       pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
+                       ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
+                       pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ], ret ) );
+                }
+            }
+            
         }
     }
 
