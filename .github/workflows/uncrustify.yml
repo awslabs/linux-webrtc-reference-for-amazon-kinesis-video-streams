@@ -1,10 +1,10 @@
-name: formatting
+name: uncrustify
 on:
     push:
     workflow_dispatch:
     pull_request:
 jobs:
-  formatting:
+  uncrustify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,13 +29,3 @@ jobs:
           ~/uncrustify/uncrustify -c ./uncrustify.cfg --no-backup --replace examples/*/*.c examples/*/*.h
           git diff
           git diff | diff - /dev/null &> /dev/null
-      - name: Check For Trailing Whitespace
-        run: |
-          set +e
-          grep -rnI -e "[[:blank:]]$" examples
-          if [ "$?" = "0" ]; then
-            echo "Trailing whitespace check failed."
-            exit 1
-          else
-            exit 0
-          fi
