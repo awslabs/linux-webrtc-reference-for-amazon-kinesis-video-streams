@@ -12,16 +12,23 @@ char * Logging_GetTime()
     size_t timeStringLength;
 
     // Get current time
-    clock_gettime( CLOCK_REALTIME, &curtime );
+    clock_gettime( CLOCK_REALTIME,
+                   &curtime );
     ms = curtime.tv_nsec / 1000000;
 
     if( ( tmval = gmtime( &curtime.tv_sec ) ) != NULL )
     {
         // Build the first part of the time
-        timeStringLength = strftime( timebuffer, sizeof( timebuffer ), "%Y-%m-%d %H:%M:%S", tmval );
+        timeStringLength = strftime( timebuffer,
+                                     sizeof( timebuffer ),
+                                     "%Y-%m-%d %H:%M:%S",
+                                     tmval );
 
         // Add the milliseconds part and build the time string
-        snprintf( timebuffer + timeStringLength, sizeof( timebuffer ) - timeStringLength, ".%03u", ms );
+        snprintf( timebuffer + timeStringLength,
+                  sizeof( timebuffer ) - timeStringLength,
+                  ".%03u",
+                  ms );
     }
 
     return ret;

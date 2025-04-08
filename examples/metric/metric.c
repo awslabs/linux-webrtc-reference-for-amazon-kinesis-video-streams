@@ -73,7 +73,8 @@ static uint64_t CalculateEventDurationMs( uint64_t startTimeUs,
 static uint64_t GetTimestampInNs( void )
 {
     struct timespec nowTime;
-    clock_gettime( CLOCK_REALTIME, &nowTime );
+    clock_gettime( CLOCK_REALTIME,
+                   &nowTime );
     return ( uint64_t ) nowTime.tv_sec * 1000 * 1000 * 1000 + ( uint64_t ) nowTime.tv_nsec;
 }
 
@@ -97,9 +98,12 @@ void Metric_Init( void )
     int retval;
     pthread_t thread;
 
-    memset( &context, 0, sizeof( MetricContext_t ) );
+    memset( &context,
+            0,
+            sizeof( MetricContext_t ) );
 
-    retval = pthread_mutex_init( &( context.mutex ), NULL );
+    retval = pthread_mutex_init( &( context.mutex ),
+                                 NULL );
     if( retval != 0 )
     {
         LogError( ( "Fail to create mutex for Metric." ) );
@@ -172,7 +176,8 @@ void Metric_PrintMetrics( void )
             {
                 LogInfo( ( "Duration of %s: %lu ms",
                            ConvertEventToString( ( MetricEvent_t )i ),
-                           CalculateEventDurationMs( pEventRecord->startTimeUs, pEventRecord->endTimeUs ) ) );
+                           CalculateEventDurationMs( pEventRecord->startTimeUs,
+                                                     pEventRecord->endTimeUs ) ) );
             }
         }
 

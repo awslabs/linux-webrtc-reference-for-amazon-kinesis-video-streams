@@ -26,7 +26,7 @@ extern "C" {
                                                                             size_t * pOutputSrtcpPacketLength );
 
 #ifdef __cplusplus
-}
+        }
 #endif
 
 #endif /* PEER_CONNECTION_SRTCP_H */

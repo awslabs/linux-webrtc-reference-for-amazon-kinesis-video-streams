@@ -37,13 +37,17 @@ TimerControllerResult_t TimerController_Create( TimerHandler_t * pTimerHandler,
         pTimerHandler->pUserContext = pUserContext;
 
         // Set up the signal handler
-        memset( &sigEvent, 0, sizeof( sigEvent ) );
+        memset( &sigEvent,
+                0,
+                sizeof( sigEvent ) );
         sigEvent.sigev_notify = SIGEV_THREAD;
         sigEvent.sigev_notify_function = &generalTimerCallback;
         sigEvent.sigev_value.sival_ptr = pTimerHandler;
 
         // Create the timer
-        if( timer_create( CLOCK_REALTIME, &sigEvent, &pTimerHandler->timerId ) != 0 )
+        if( timer_create( CLOCK_REALTIME,
+                          &sigEvent,
+                          &pTimerHandler->timerId ) != 0 )
         {
             LogError( ( "Fail to create timer, errno: %s", strerror( errno ) ) );
             ret = TIMER_CONTROLLER_RESULT_FAIL_TIMER_CREATE;
@@ -74,7 +78,10 @@ TimerControllerResult_t TimerController_SetTimer( TimerHandler_t * pTimerHandler
         its.it_interval.tv_nsec = ( repeatTimeMs % 1000 ) * 1000000;
 
         // Start the timer
-        if( timer_settime( pTimerHandler->timerId, 0, &its, NULL ) != 0 )
+        if( timer_settime( pTimerHandler->timerId,
+                           0,
+                           &its,
+                           NULL ) != 0 )
         {
             LogError( ( "Fail to set timer, errno: %s", strerror( errno ) ) );
             ret = TIMER_CONTROLLER_RESULT_FAIL_TIMER_SET;
@@ -89,7 +96,9 @@ void TimerController_Reset( TimerHandler_t * pTimerHandler )
     if( pTimerHandler != NULL )
     {
         // Cancel the timer
-        if( TimerController_SetTimer( pTimerHandler, 0U, 0U ) != TIMER_CONTROLLER_RESULT_OK )
+        if( TimerController_SetTimer( pTimerHandler,
+                                      0U,
+                                      0U ) != TIMER_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to reset timer, errno: %s", strerror( errno ) ) );
         }
@@ -118,7 +127,8 @@ TimerControllerResult_t TimerController_IsTimerSet( TimerHandler_t * pTimerHandl
         ret = TIMER_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
-    if( timer_gettime( pTimerHandler->timerId, &its ) != 0 )
+    if( timer_gettime( pTimerHandler->timerId,
+                       &its ) != 0 )
     {
         LogError( ( "timer_gettime fail, errno: %s", strerror( errno ) ) );
         ret = TIMER_CONTROLLER_RESULT_FAIL_GETTIME;

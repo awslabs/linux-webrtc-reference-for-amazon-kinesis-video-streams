@@ -62,9 +62,13 @@ static void * VideoTx_Task( void * pParameter )
                 if( pVideoContext->numReadyPeer != 0 )
                 {
                     fileIndex = fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", fileIndex );
+                    snprintf( filePath,
+                              MAX_PATH_LEN,
+                              "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264",
+                              fileIndex );
 
-                    fp = fopen( filePath, "rb" );
+                    fp = fopen( filePath,
+                                "rb" );
 
                     if( fp == NULL )
                     {
@@ -72,7 +76,9 @@ static void * VideoTx_Task( void * pParameter )
                     }
                     else
                     {
-                        fseek( fp, 0, SEEK_END );
+                        fseek( fp,
+                               0,
+                               SEEK_END );
                         frameLength = ftell( fp );
 
                         if( frameLength > allocatedBufferLength )
@@ -88,13 +94,19 @@ static void * VideoTx_Task( void * pParameter )
                         frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
                         frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
 
-                        fseek( fp, 0, SEEK_SET );
-                        if( fread( frame.pData, frameLength, 1, fp ) == 1 )
+                        fseek( fp,
+                               0,
+                               SEEK_SET );
+                        if( fread( frame.pData,
+                                   frameLength,
+                                   1,
+                                   fp ) == 1 )
                         {
                             LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
                             if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
                             {
-                                ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
+                                ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
+                                                                                              &frame );
                             }
                         }
                         else
@@ -137,9 +149,13 @@ static void * AudioTx_Task( void * pParameter )
                 if( pAudioContext->numReadyPeer != 0 )
                 {
                     fileIndex = fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", fileIndex );
+                    snprintf( filePath,
+                              MAX_PATH_LEN,
+                              "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus",
+                              fileIndex );
 
-                    fp = fopen( filePath, "rb" );
+                    fp = fopen( filePath,
+                                "rb" );
 
                     if( fp == NULL )
                     {
@@ -147,7 +163,9 @@ static void * AudioTx_Task( void * pParameter )
                     }
                     else
                     {
-                        fseek( fp, 0, SEEK_END );
+                        fseek( fp,
+                               0,
+                               SEEK_END );
                         frameLength = ftell( fp );
 
                         if( frameLength > allocatedBufferLength )
@@ -163,13 +181,19 @@ static void * AudioTx_Task( void * pParameter )
                         frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
                         frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
 
-                        fseek( fp, 0, SEEK_SET );
-                        if( fread( frame.pData, frameLength, 1, fp ) == 1 )
+                        fseek( fp,
+                               0,
+                               SEEK_SET );
+                        if( fread( frame.pData,
+                                   frameLength,
+                                   1,
+                                   fp ) == 1 )
                         {
                             LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
                             if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
                             {
-                                ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
+                                ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
+                                                                                              &frame );
                             }
                         }
                         else
@@ -413,7 +437,9 @@ int32_t AppMediaSource_Init( AppMediaSourcesContext_t * pCtx,
 
     if( ret == 0 )
     {
-        memset( pCtx, 0, sizeof( AppMediaSourcesContext_t ) );
+        memset( pCtx,
+                0,
+                sizeof( AppMediaSourcesContext_t ) );
         pCtx->videoContext.pSourcesContext = pCtx;
         ret = InitializeVideoSource( &pCtx->videoContext );
     }
@@ -447,15 +473,22 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         /* Initialize video transceiver. */
-        memset( pVideoTranceiver, 0, sizeof( Transceiver_t ) );
+        memset( pVideoTranceiver,
+                0,
+                sizeof( Transceiver_t ) );
         pVideoTranceiver->trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
         pVideoTranceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
-        TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
+        TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap,
+                                  TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
         pVideoTranceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND;
         pVideoTranceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE;
-        strncpy( pVideoTranceiver->streamId, DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID, sizeof( pVideoTranceiver->streamId ) );
+        strncpy( pVideoTranceiver->streamId,
+                 DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
+                 sizeof( pVideoTranceiver->streamId ) );
         pVideoTranceiver->streamIdLength = strlen( DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID );
-        strncpy( pVideoTranceiver->trackId, DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID, sizeof( pVideoTranceiver->trackId ) );
+        strncpy( pVideoTranceiver->trackId,
+                 DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID,
+                 sizeof( pVideoTranceiver->trackId ) );
         pVideoTranceiver->trackIdLength = strlen( DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID );
         pVideoTranceiver->onPcEventCallbackFunc = HandlePcEventCallback;
         pVideoTranceiver->pOnPcEventCustomContext = &pCtx->videoContext;
@@ -478,20 +511,29 @@ int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         /* Initialize audio transceiver. */
-        memset( pAudioTranceiver, 0, sizeof( Transceiver_t ) );
+        memset( pAudioTranceiver,
+                0,
+                sizeof( Transceiver_t ) );
         pAudioTranceiver->trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
         pAudioTranceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
         #if ( AUDIO_OPUS )
-            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT );
+            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap,
+                                      TRANSCEIVER_RTC_CODEC_OPUS_BIT );
         #else
-            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT );
-            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT );
+            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap,
+                                      TRANSCEIVER_RTC_CODEC_MULAW_BIT );
+            TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap,
+                                      TRANSCEIVER_RTC_CODEC_ALAW_BIT );
         #endif
         pAudioTranceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND;
         pAudioTranceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE;
-        strncpy( pAudioTranceiver->streamId, DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID, sizeof( pAudioTranceiver->streamId ) );
+        strncpy( pAudioTranceiver->streamId,
+                 DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
+                 sizeof( pAudioTranceiver->streamId ) );
         pAudioTranceiver->streamIdLength = strlen( DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID );
-        strncpy( pAudioTranceiver->trackId, DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID, sizeof( pAudioTranceiver->trackId ) );
+        strncpy( pAudioTranceiver->trackId,
+                 DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID,
+                 sizeof( pAudioTranceiver->trackId ) );
         pAudioTranceiver->trackIdLength = strlen( DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID );
         pAudioTranceiver->onPcEventCallbackFunc = HandlePcEventCallback;
         pAudioTranceiver->pOnPcEventCustomContext = &pCtx->audioContext;

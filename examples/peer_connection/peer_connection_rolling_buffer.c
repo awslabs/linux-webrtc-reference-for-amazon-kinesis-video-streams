@@ -208,8 +208,12 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SetPacket( PeerConnectionRoll
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        memset( &rtpPacket, 0, sizeof( RtpPacketInfo_t ) );
-        memset( &deletedRtpPacket, 0, sizeof( RtpPacketInfo_t ) );
+        memset( &rtpPacket,
+                0,
+                sizeof( RtpPacketInfo_t ) );
+        memset( &deletedRtpPacket,
+                0,
+                sizeof( RtpPacketInfo_t ) );
         rtpPacket.pSerializedRtpPacket = ( uint8_t * )pPacket;
         rtpPacket.seqNum = rtpSeq;
         rtpPacket.serializedPacketLength = pPacket->packetBufferLength;
@@ -229,7 +233,8 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SetPacket( PeerConnectionRoll
     {
         if( deletedRtpPacket.pSerializedRtpPacket )
         {
-            PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( pRollingBuffer, ( PeerConnectionRollingBufferPacket_t * ) deletedRtpPacket.pSerializedRtpPacket );
+            PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( pRollingBuffer,
+                                                                  ( PeerConnectionRollingBufferPacket_t * ) deletedRtpPacket.pSerializedRtpPacket );
         }
     }
 
