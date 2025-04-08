@@ -1,4 +1,4 @@
-files: examples/networking|examples/master
+files: examples/
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -12,4 +12,4 @@ repos:
   rev: v1.3.5
   hooks:
     - id: uncrustify
-      args: [-c]
+      args: [-c, uncrustify.cfg, --replace, --no-backup]
