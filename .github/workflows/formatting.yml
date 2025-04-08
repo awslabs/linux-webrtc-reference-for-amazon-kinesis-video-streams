@@ -3,23 +3,36 @@ on:
     push:
     workflow_dispatch:
     pull_request:
-
 jobs:
   formatting:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Uncrustify
-        run: sudo apt-get install uncrustify
+      - name: Cache uncrustify
+        uses: actions/cache@v4
+        id: cache-uncrustify
+        with:
+          path: |
+            ~/uncrustify
+          key: ${{ runner.os }}-uncrustify
+      - name: build uncrustify (to have a fixed version)
+        if: steps.cache-uncrustify.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/uncrustify/uncrustify/archive/refs/tags/uncrustify-0.72.0.tar.gz
+          tar xzvf uncrustify-0.72.0.tar.gz && cd uncrustify-uncrustify-0.72.0
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -- -j$(nproc) -s
+          mkdir ~/uncrustify
+          cd build && cp uncrustify ~/uncrustify/
       - name: Run Uncrustify
         run: |
-          uncrustify -c ./uncrustify.cfg --no-backup --replace examples/*/*.c examples/*/*.h
+          ~/uncrustify/uncrustify -c ./uncrustify.cfg --no-backup --replace examples/*/*.c examples/*/*.h
           git diff
           git diff | diff - /dev/null &> /dev/null
       - name: Check For Trailing Whitespace
         run: |
           set +e
-          grep examples -rnI -e "[[:blank:]]$" .
+          grep -rnI -e "[[:blank:]]$" examples
           if [ "$?" = "0" ]; then
             echo "Trailing whitespace check failed."
             exit 1
