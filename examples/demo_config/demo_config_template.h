@@ -17,7 +17,7 @@
  #ifndef DEMO_CONFIG_H
 #define DEMO_CONFIG_H
 
-#define AWS_REGION "us-west-2"
+#define AWS_REGION ""
 
 #define AWS_KVS_CHANNEL_NAME ""
 
@@ -33,12 +33,13 @@
 #define ENABLE_TWCC_SUPPORT 1U
 #endif
 
-/* Uncomment to use fetching credentials by IoT Role-alias for Authentication. */
-// #define AWS_CREDENTIALS_ENDPOINT ""
-// #define AWS_IOT_THING_NAME ""
-// #define AWS_IOT_THING_ROLE_ALIAS ""
-// #define AWS_IOT_THING_CERT_PATH ""
-// #define AWS_IOT_THING_PRIVATE_KEY_PATH ""
+/* Use fetching credentials by IoT Role-alias for Authentication */
+/* Those defines need to be filled with valid values */
+#define AWS_CREDENTIALS_ENDPOINT ""
+#define AWS_IOT_THING_NAME ""
+#define AWS_IOT_THING_ROLE_ALIAS ""
+#define AWS_IOT_THING_CERT_PATH "certificate.pem"
+#define AWS_IOT_THING_PRIVATE_KEY_PATH "private.key"
 
 /* Uncomment to use AWS Access Key Credentials for Authentication. */
 // #define AWS_ACCESS_KEY_ID ""
