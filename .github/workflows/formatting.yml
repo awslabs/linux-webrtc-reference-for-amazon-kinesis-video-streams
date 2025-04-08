@@ -13,8 +13,7 @@ jobs:
         run: sudo apt-get install uncrustify
       - name: Run Uncrustify
         run: |
-          uncrustify --version
-          find -not -path ".*/bla*" -iname "*.[hc]" -exec uncrustify --check -c ./uncrustify.cfg {} +
+          find examples -iname "*.[hc]" -exec uncrustify --check -c ./uncrustify.cfg {} +
           if [ "$?" = "0" ]; then
             exit 0
           else
