@@ -33,36 +33,6 @@
 
 #define PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ( 2048 )
 
-#define PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US        1000 * 10000  //1,000,000 microseconds.
-#define PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS                     512     // Unit kilobits/sec. Value could change based on codec.
-#define PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS                     2048000 // Unit kilobits/sec. Value could change based on codec.
-#define PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS                      4000    // Unit bits/sec. Value could change based on codec.
-#define PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS                      650000  // Unit bits/sec. Value could change based on codec.
-
-/**
- * EMA (Exponential Moving Average) alpha value and 1-alpha value - over appx 20 samples
- */
-#define EMA_ALPHA_VALUE           ( ( double ) 0.05 )
-#define ONE_MINUS_EMA_ALPHA_VALUE ( ( double ) ( 1 - EMA_ALPHA_VALUE ) )
-
-/**
- * Calculates the EMA (Exponential Moving Average) accumulator value
- *
- * a - Accumulator value
- * v - Next sample point
- *
- * @return the new Accumulator value
- */
-#define EMA_ACCUMULATOR_GET_NEXT( a, v ) ( double )( EMA_ALPHA_VALUE * ( v ) + ONE_MINUS_EMA_ALPHA_VALUE * ( a ) )
-
-#ifndef MIN
-#define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
-#endif
-
-#ifndef MAX
-#define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
-#endif
-
 PeerConnectionContext_t peerConnectionContext = { 0 };
 
 extern void * IceControllerSocketListener_Task( void * pParameter );
@@ -81,10 +51,6 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession );
 static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t * pSession );
-#if ENABLE_TWCC_SUPPORT
-    static void PeerConnection_SampleSenderBandwidthEstimationHandler( void * pCustomContext,
-                                                                       TwccBandwidthInfo_t * pTwccBandwidthInfo );
-#endif
 
 static void * PeerConnection_SessionTask( void * pParameter )
 {
@@ -132,42 +98,6 @@ static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession )
         }
     }
 }
-
-PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConnectionSession_t * pSession,
-                                                                        OnPictureLossIndicationCallback_t onPictureLossIndicationCallback,
-                                                                        void * pUserContext )
-{
-    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-
-    if( ( pSession == NULL ) || ( onPictureLossIndicationCallback == NULL ) )
-    {
-        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
-
-    pSession->onPictureLossIndicationCallback = onPictureLossIndicationCallback;
-    pSession->pPictureLossIndicationUserContext = pUserContext;
-
-    return ret;
-}
-
-#if ENABLE_TWCC_SUPPORT
-    static PeerConnectionResult_t PeerConnection_SetSenderBandwidthEstimationCallback( PeerConnectionSession_t * pSession,
-                                                                                       OnBandwidthEstimationCallback_t onBandwidthEstimationCallback,
-                                                                                       void * pUserContext )
-    {
-        PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-
-        if( ( pSession == NULL ) || ( onBandwidthEstimationCallback == NULL ) )
-        {
-            ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-        }
-
-        pSession->pCtx->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
-        pSession->pCtx->pOnBandwidthEstimationCallbackContext = pUserContext;
-
-        return ret;
-    }
-#endif
 
 static void OnRtcpSenderReportAudioTimerExpire( void * pParameter )
 {
@@ -834,7 +764,9 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
             /* Trigger the DTLS handshaking to send client hello if necessary
              * and process incoming DTLS data by forwarding to respective
              * libraries to process. */
-            ret = ProcessDtlsPacket( pSession, pBuffer, bufferLength );
+            ret = ProcessDtlsPacket( pSession,
+                                     pBuffer,
+                                     bufferLength );
         }
         else
         {
@@ -1270,18 +1202,6 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
             }
         }
 
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            /* In case you want to set a different callback based on your business logic, you could replace PeerConnection_SampleSenderBandwidthEstimationHandler() with your Handler. */
-            ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
-                                                                       PeerConnection_SampleSenderBandwidthEstimationHandler,
-                                                                       &pSession->twccMetaData );
-            if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
-            {
-                LogError( ( "Fail to Initialize RTCP TWCC Manager, result: %d", resultRtcpTwccManager ) );
-                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT;
-            }
-        }
     #endif
 
     /* Initialize timer for audio Sender Reports. */
@@ -2034,105 +1954,38 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
 
     return ret;
 }
+PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConnectionSession_t * pSession,
+                                                                        OnPictureLossIndicationCallback_t onPictureLossIndicationCallback,
+                                                                        void * pUserContext )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( ( pSession == NULL ) || ( onPictureLossIndicationCallback == NULL ) )
+    {
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    pSession->onPictureLossIndicationCallback = onPictureLossIndicationCallback;
+    pSession->pPictureLossIndicationUserContext = pUserContext;
+
+    return ret;
+}
 
 #if ENABLE_TWCC_SUPPORT
-/* Sample callback for TWCC. The average packet loss is tracked using an exponential moving average (EMA).
-   - If packet loss stays at or below 5%, the bitrate increases by 5%.
-   - If packet loss exceeds 5%, the bitrate decreases by the same percentage as the loss.
-   The bitrate is adjusted once per second, ensuring it stays within predefined limits. */
-    static void PeerConnection_SampleSenderBandwidthEstimationHandler( void * pCustomContext,
-                                                                       TwccBandwidthInfo_t * pTwccBandwidthInfo )
+    PeerConnectionResult_t PeerConnection_SetSenderBandwidthEstimationCallback( PeerConnectionSession_t * pSession,
+                                                                                OnBandwidthEstimationCallback_t onBandwidthEstimationCallback,
+                                                                                void * pUserContext )
     {
         PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-        PeerConnectionTwccMetaData_t * pTwccMetaData = NULL;
-        uint64_t videoBitrate = 0;
-        uint64_t audioBitrate = 0;
-        uint64_t currentTimeUs = 0;
-        uint64_t timeDifference = 0;
-        uint32_t lostPacketCount = 0;
-        uint8_t isLocked = 0;
-        double percentLost = 0.0;
 
-        if( ( pCustomContext == NULL ) ||
-            ( pTwccBandwidthInfo == NULL ) )
+        if( ( pSession == NULL ) || ( onBandwidthEstimationCallback == NULL ) )
         {
-            LogError( ( "Invalid input, pCustomContext: %p, pTwccBandwidthInfo: %p",
-                        pCustomContext, pTwccBandwidthInfo ) );
             ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
         }
 
-        // Calculate packet loss
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            pTwccMetaData = ( PeerConnectionTwccMetaData_t * ) pCustomContext;
+        pSession->pCtx->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
+        pSession->pCtx->pOnBandwidthEstimationCallbackContext = pUserContext;
 
-            pTwccMetaData->averagePacketLoss = EMA_ACCUMULATOR_GET_NEXT( pTwccMetaData->averagePacketLoss,
-                                                                         ( ( double ) percentLost ) );
-
-            currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
-            lostPacketCount = pTwccBandwidthInfo->sentPackets - pTwccBandwidthInfo->receivedPackets;
-            percentLost = ( double ) ( ( pTwccBandwidthInfo->sentPackets > 0 ) ? ( ( double ) ( lostPacketCount * 100 ) / ( double )pTwccBandwidthInfo->sentPackets ) : 0.0 );
-            timeDifference = currentTimeUs - pTwccMetaData->lastAdjustmentTimeUs;
-
-            if( timeDifference < PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US )
-            {
-                // Too soon for another adjustment
-                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT;
-            }
-        }
-
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            if( pthread_mutex_lock( &( pTwccMetaData->twccBitrateMutex ) ) == 0 )
-            {
-                isLocked = 1;
-            }
-            else
-            {
-                LogError( ( "Failed to lock Twcc mutex." ) );
-                ret = PEER_CONNECTION_RESULT_FAIL_TAKE_TWCC_MUTEX;
-            }
-        }
-
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            videoBitrate = pTwccMetaData->currentVideoBitrate;
-            audioBitrate = pTwccMetaData->currentAudioBitrate;
-
-            if( pTwccMetaData->averagePacketLoss <= 5 )
-            {
-                // Increase encoder bitrates by 5 percent with cap at MAX_BITRATE
-                videoBitrate = ( uint64_t ) MIN( videoBitrate * 1.05,
-                                                 PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS );
-                audioBitrate = ( uint64_t ) MIN( audioBitrate * 1.05,
-                                                 PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS );
-            }
-            else
-            {
-                // Decrease encoder bitrate by average packet loss percent, with a cap at MIN_BITRATE
-                videoBitrate = ( uint64_t ) MAX( videoBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
-                                                 PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS );
-                audioBitrate = ( uint64_t ) MAX( audioBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
-                                                 PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS );
-            }
-
-            pTwccMetaData->updatedVideoBitrate = videoBitrate;
-            pTwccMetaData->updatedAudioBitrate = audioBitrate;
-        }
-
-        if( isLocked != 0 )
-        {
-            pthread_mutex_unlock( &( pTwccMetaData->twccBitrateMutex ) );
-
-        }
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            pTwccMetaData->lastAdjustmentTimeUs = currentTimeUs;
-
-            LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pTwccMetaData->averagePacketLoss, timeDifference  ) );
-            LogInfo( ( "Suggested video bitrate: %lu kbps, suggested audio bitrate: %lu bps, sent: %lu bytes, %lu packets,   received: %lu bytes, %lu packets, in %llu msec ",
-                       videoBitrate, audioBitrate, pTwccBandwidthInfo->sentBytes, pTwccBandwidthInfo->sentPackets, pTwccBandwidthInfo->receivedBytes, pTwccBandwidthInfo->receivedPackets, pTwccBandwidthInfo->duration / 10000ULL ) );
-        }
-
+        return ret;
     }
 #endif
