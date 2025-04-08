@@ -13,19 +13,15 @@ jobs:
         run: sudo apt-get install uncrustify
       - name: Run Uncrustify
         run: |
-          find examples -iname "*.[hc]" -exec uncrustify --check -c ./uncrustify.cfg {} +
-          if [ "$?" = "0" ]; then
-            exit 0
-          else
-            echo -e "\033[31;1;43mFormatting check (using Uncrustify) failed...\033[0m"
-            exit 1
-          fi
+          uncrustify -c ./uncrustify.cfg --no-backup --replace examples/*/*.c examples/*/*.h
+          git diff
+          git diff | diff - /dev/null &> /dev/null
       - name: Check For Trailing Whitespace
         run: |
           set +e
-          grep --exclude-dir="bla" --exclude="bla" -rnI -e "[[:blank:]]$" .
+          grep examples -rnI -e "[[:blank:]]$" .
           if [ "$?" = "0" ]; then
-            echo "Files have trailing whitespace."
+            echo "Trailing whitespace check failed."
             exit 1
           else
             exit 0
