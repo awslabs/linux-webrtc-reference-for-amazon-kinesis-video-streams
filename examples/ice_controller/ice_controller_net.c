@@ -49,7 +49,9 @@ static void getLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
             pLocalIpAddresses[ localIpAddressesNum ].transportAddress.family = STUN_ADDRESS_IPv4;
             pLocalIpAddresses[ localIpAddressesNum ].transportAddress.port = 0;
             pIpv4Addr = ( struct sockaddr_in * ) pIfAddr->ifa_addr;
-            memcpy( pLocalIpAddresses[ localIpAddressesNum ].transportAddress.address, &pIpv4Addr->sin_addr, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( pLocalIpAddresses[ localIpAddressesNum ].transportAddress.address,
+                    &pIpv4Addr->sin_addr,
+                    STUN_IPV4_ADDRESS_SIZE );
             pLocalIpAddresses[ localIpAddressesNum ].isPointToPoint = ( ( pIfAddr->ifa_flags & IFF_POINTOPOINT ) != 0 );
             localIpAddressesNum++;
         }
@@ -157,10 +159,14 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
     {
         if( pIceEndpoint->transportAddress.family == STUN_ADDRESS_IPv4 )
         {
-            memset( &ipv4Address, 0, sizeof( ipv4Address ) );
+            memset( &ipv4Address,
+                    0,
+                    sizeof( ipv4Address ) );
             ipv4Address.sin_family = AF_INET;
             ipv4Address.sin_port = 0; // use next available port
-            memcpy( &ipv4Address.sin_addr, pIceEndpoint->transportAddress.address, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( &ipv4Address.sin_addr,
+                    pIceEndpoint->transportAddress.address,
+                    STUN_IPV4_ADDRESS_SIZE );
             sockAddress = ( struct sockaddr * ) &ipv4Address;
             addressLength = sizeof( struct sockaddr_in );
         }
@@ -181,7 +187,9 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        if( bind( pSocketContext->socketFd, sockAddress, addressLength ) < 0 )
+        if( bind( pSocketContext->socketFd,
+                  sockAddress,
+                  addressLength ) < 0 )
         {
             LogError( ( "socket() failed to bind socket with errno: %s", strerror( errno ) ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_BIND;
@@ -192,14 +200,28 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        setsockopt( pSocketContext->socketFd, SOL_SOCKET, SO_SNDBUF, &sendBufferSize, sizeof( sendBufferSize ) );
-        setsockopt( pSocketContext->socketFd, SOL_SOCKET, SO_RCVTIMEO, &socketTimeoutMs, sizeof( socketTimeoutMs ) );
-        setsockopt( pSocketContext->socketFd, SOL_SOCKET, SO_SNDTIMEO, &socketTimeoutMs, sizeof( socketTimeoutMs ) );
+        setsockopt( pSocketContext->socketFd,
+                    SOL_SOCKET,
+                    SO_SNDBUF,
+                    &sendBufferSize,
+                    sizeof( sendBufferSize ) );
+        setsockopt( pSocketContext->socketFd,
+                    SOL_SOCKET,
+                    SO_RCVTIMEO,
+                    &socketTimeoutMs,
+                    sizeof( socketTimeoutMs ) );
+        setsockopt( pSocketContext->socketFd,
+                    SOL_SOCKET,
+                    SO_SNDTIMEO,
+                    &socketTimeoutMs,
+                    sizeof( socketTimeoutMs ) );
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        if( getsockname( pSocketContext->socketFd, sockAddress, &addressLength ) < 0 )
+        if( getsockname( pSocketContext->socketFd,
+                         sockAddress,
+                         &addressLength ) < 0 )
         {
             LogError( ( "getsockname() failed with errno: %s", strerror( errno ) ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_GETSOCKNAME;
@@ -283,10 +305,15 @@ static void IceControllerNet_AddSrflxCandidate( IceControllerContext_t * pCtx,
         if( ( pCtx->iceServers[ i ].iceEndpoint.transportAddress.family == STUN_ADDRESS_IPv4 ) &&
             ( pLocalIceEndpoint->transportAddress.family == pCtx->iceServers[ i ].iceEndpoint.transportAddress.family ) )
         {
-            ret = CreateSocketContext( pCtx, pLocalIceEndpoint, ICE_SOCKET_PROTOCOL_UDP, &pSocketContext );
+            ret = CreateSocketContext( pCtx,
+                                       pLocalIceEndpoint,
+                                       ICE_SOCKET_PROTOCOL_UDP,
+                                       &pSocketContext );
             LogVerbose( ( "Create srflx candidate with fd %d, IP/port: %s/%d",
                           pSocketContext->socketFd,
-                          IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                          IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint,
+                                                             ipBuffer,
+                                                             sizeof( ipBuffer ) ),
                           pLocalIceEndpoint->transportAddress.port ) );
         }
 
@@ -294,12 +321,14 @@ static void IceControllerNet_AddSrflxCandidate( IceControllerContext_t * pCtx,
         {
             iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext,
                                                          pLocalIceEndpoint,
-                                                         stunBuffer, &stunBufferLength );
+                                                         stunBuffer,
+                                                         &stunBufferLength );
             if( iceResult != ICE_RESULT_OK )
             {
                 /* Free resource that already created. */
                 LogError( ( "Ice_AddServerReflexiveCandidate fail, result: %d", iceResult ) );
-                IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                IceControllerNet_FreeSocketContext( pCtx,
+                                                    pSocketContext );
                 ret = ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE;
                 break;
             }
@@ -307,9 +336,17 @@ static void IceControllerNet_AddSrflxCandidate( IceControllerContext_t * pCtx,
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE, &pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ], NULL );
+            UpdateSocketContext( pCtx,
+                                 pSocketContext,
+                                 ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
+                                 &pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ],
+                                 NULL );
 
-            ret = IceControllerNet_SendPacket( pCtx, pSocketContext, &pCtx->iceServers[ i ].iceEndpoint, stunBuffer, stunBufferLength );
+            ret = IceControllerNet_SendPacket( pCtx,
+                                               pSocketContext,
+                                               &pCtx->iceServers[ i ].iceEndpoint,
+                                               stunBuffer,
+                                               stunBufferLength );
         }
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -336,14 +373,20 @@ IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        memcpy( ipAddress, pIpAddr, ipAddrLength );
+        memcpy( ipAddress,
+                pIpAddr,
+                ipAddrLength );
         ipAddress[ ipAddrLength ] = '\0';
 
-        if( inet_pton( AF_INET, ipAddress, pDestinationIceEndpoint->transportAddress.address ) == 1 )
+        if( inet_pton( AF_INET,
+                       ipAddress,
+                       pDestinationIceEndpoint->transportAddress.address ) == 1 )
         {
             pDestinationIceEndpoint->transportAddress.family = STUN_ADDRESS_IPv4;
         }
-        else if( inet_pton( AF_INET6, ipAddress, pDestinationIceEndpoint->transportAddress.address ) == 1 )
+        else if( inet_pton( AF_INET6,
+                            ipAddress,
+                            pDestinationIceEndpoint->transportAddress.address ) == 1 )
         {
             pDestinationIceEndpoint->transportAddress.family = STUN_ADDRESS_IPv6;
         }
@@ -406,20 +449,28 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
     {
         if( pDestinationIceEndpoint->transportAddress.family == STUN_ADDRESS_IPv4 )
         {
-            memset( &ipv4Address, 0, sizeof( ipv4Address ) );
+            memset( &ipv4Address,
+                    0,
+                    sizeof( ipv4Address ) );
             ipv4Address.sin_family = AF_INET;
             ipv4Address.sin_port = htons( pDestinationIceEndpoint->transportAddress.port );
-            memcpy( &ipv4Address.sin_addr, pDestinationIceEndpoint->transportAddress.address, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( &ipv4Address.sin_addr,
+                    pDestinationIceEndpoint->transportAddress.address,
+                    STUN_IPV4_ADDRESS_SIZE );
 
             pDestinationAddress = ( struct sockaddr * ) &ipv4Address;
             addressLength = sizeof( ipv4Address );
         }
         else
         {
-            memset( &ipv6Address, 0, sizeof( ipv6Address ) );
+            memset( &ipv6Address,
+                    0,
+                    sizeof( ipv6Address ) );
             ipv6Address.sin6_family = AF_INET6;
             ipv6Address.sin6_port = htons( pDestinationIceEndpoint->transportAddress.port );
-            memcpy( &ipv6Address.sin6_addr, pDestinationIceEndpoint->transportAddress.address, STUN_IPV6_ADDRESS_SIZE );
+            memcpy( &ipv6Address.sin6_addr,
+                    pDestinationIceEndpoint->transportAddress.address,
+                    STUN_IPV6_ADDRESS_SIZE );
 
             pDestinationAddress = ( struct sockaddr * ) &ipv6Address;
             addressLength = sizeof( ipv6Address );
@@ -461,12 +512,16 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
                     LogWarn( ( "Failed to send to socket fd: %d error, errno(%d): %s", pSocketContext->socketFd, errno, strerror( errno ) ) );
                     LogWarn( ( "Source family: %d, IP:port: %s:%u",
                                pSocketContext->pLocalCandidate->endpoint.transportAddress.family,
-                               IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ),
+                               IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint,
+                                                                  ipBuffer,
+                                                                  sizeof( ipBuffer ) ),
                                pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
 
                     LogWarn( ( "Dest family: %d, IP:port: %s:%u",
                                pDestinationIceEndpoint->transportAddress.family,
-                               IceControllerNet_LogIpAddressInfo( pDestinationIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                               IceControllerNet_LogIpAddressInfo( pDestinationIceEndpoint,
+                                                                  ipBuffer,
+                                                                  sizeof( ipBuffer ) ),
                                pDestinationIceEndpoint->transportAddress.port ) );
                     ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_SENDTO;
                     break;
@@ -510,21 +565,27 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
     {
         /* Collect information from local network interfaces. */
         pCtx->localIceEndpointsCount = ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT;
-        getLocalIPAdresses( pCtx->localEndpoints, &pCtx->localIceEndpointsCount );
+        getLocalIPAdresses( pCtx->localEndpoints,
+                            &pCtx->localIceEndpointsCount );
 
         /* Start gathering local candidates. */
         for( i = 0; i < pCtx->localIceEndpointsCount; i++ )
         {
-            ret = CreateSocketContext( pCtx, &pCtx->localEndpoints[i], ICE_SOCKET_PROTOCOL_UDP, &pSocketContext );
+            ret = CreateSocketContext( pCtx,
+                                       &pCtx->localEndpoints[i],
+                                       ICE_SOCKET_PROTOCOL_UDP,
+                                       &pSocketContext );
 
             if( ret == ICE_CONTROLLER_RESULT_OK )
             {
-                iceResult = Ice_AddHostCandidate( &pCtx->iceContext, &pCtx->localEndpoints[i] );
+                iceResult = Ice_AddHostCandidate( &pCtx->iceContext,
+                                                  &pCtx->localEndpoints[i] );
                 if( iceResult != ICE_RESULT_OK )
                 {
                     /* Free resource that already created. */
                     LogError( ( "Ice_AddHostCandidate fail, result: %d", iceResult ) );
-                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                    IceControllerNet_FreeSocketContext( pCtx,
+                                                        pSocketContext );
                     ret = ICE_CONTROLLER_RESULT_FAIL_ADD_HOST_CANDIDATE;
                     break;
                 }
@@ -537,7 +598,9 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
                 {
                     localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.pLocalCandidate = pCandidate;
                     localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.localCandidateIndex = pCtx->candidateFoundationCounter;
-                    retLocalCandidateReady = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext, ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY, &localCandidateReadyContent );
+                    retLocalCandidateReady = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                                                           ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY,
+                                                                           &localCandidateReadyContent );
                     if( retLocalCandidateReady == 0 )
                     {
                         pCtx->candidateFoundationCounter++;
@@ -545,7 +608,8 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
                     else
                     {
                         /* Free resource that already created. */
-                        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                        IceControllerNet_FreeSocketContext( pCtx,
+                                                            pSocketContext );
                         LogError( ( "Fail to send local candidate, ret: %d.", retLocalCandidateReady ) );
                         ret = ICE_CONTROLLER_RESULT_CANDIDATE_SEND_FAIL;
                     }
@@ -554,18 +618,25 @@ IceControllerResult_t IceControllerNet_AddLocalCandidates( IceControllerContext_
 
             if( ret == ICE_CONTROLLER_RESULT_OK )
             {
-                UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY, pCandidate, NULL );
+                UpdateSocketContext( pCtx,
+                                     pSocketContext,
+                                     ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY,
+                                     pCandidate,
+                                     NULL );
 
                 LogVerbose( ( "Created host candidate with fd %d, IP/port: %s/%d",
                               pSocketContext->socketFd,
-                              IceControllerNet_LogIpAddressInfo( &pCtx->localEndpoints[i], ipBuffer, sizeof( ipBuffer ) ),
+                              IceControllerNet_LogIpAddressInfo( &pCtx->localEndpoints[i],
+                                                                 ipBuffer,
+                                                                 sizeof( ipBuffer ) ),
                               pCtx->localEndpoints[i].transportAddress.port ) );
             }
 
             /* Prepare srflx candidates based on current host candidate. */
             if( ret == ICE_CONTROLLER_RESULT_OK )
             {
-                IceControllerNet_AddSrflxCandidate( pCtx, &pCtx->localEndpoints[i] );
+                IceControllerNet_AddSrflxCandidate( pCtx,
+                                                    &pCtx->localEndpoints[i] );
             }
         }
     }
@@ -602,9 +673,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         LogVerbose( ( "Receiving %lu bytes from IP/port: %s/%d", receiveBufferLength,
-                      IceControllerNet_LogIpAddressInfo( pRemoteIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                      IceControllerNet_LogIpAddressInfo( pRemoteIceEndpoint,
+                                                         ipBuffer,
+                                                         sizeof( ipBuffer ) ),
                       pRemoteIceEndpoint->transportAddress.port ) );
-        IceControllerNet_LogStunPacket( pReceiveBuffer, receiveBufferLength );
+        IceControllerNet_LogStunPacket( pReceiveBuffer,
+                                        receiveBufferLength );
 
         iceHandleStunResult = Ice_HandleStunPacket( &pCtx->iceContext,
                                                     pReceiveBuffer,
@@ -620,11 +694,17 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 if( pCtx->onIceEventCallbackFunc )
                 {
                     /* Update socket context. */
-                    UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY, pSocketContext->pLocalCandidate, pSocketContext->pRemoteCandidate );
+                    UpdateSocketContext( pCtx,
+                                         pSocketContext,
+                                         ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY,
+                                         pSocketContext->pLocalCandidate,
+                                         pSocketContext->pRemoteCandidate );
 
                     localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.pLocalCandidate = pSocketContext->pLocalCandidate;
                     localCandidateReadyContent.iceControllerCallbackContent.localCandidateReadyMsg.localCandidateIndex = pCtx->candidateFoundationCounter;
-                    retLocalCandidateReady = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext, ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY, &localCandidateReadyContent );
+                    retLocalCandidateReady = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                                                           ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY,
+                                                                           &localCandidateReadyContent );
                     if( retLocalCandidateReady == 0 )
                     {
                         pCtx->candidateFoundationCounter++;
@@ -656,9 +736,14 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 else
                 {
                     LogDebug( ( "Sending STUN bind response back to remote" ) );
-                    IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+                    IceControllerNet_LogStunPacket( sentStunBuffer,
+                                                    sentStunBufferLength );
 
-                    if( IceControllerNet_SendPacket( pCtx, pSocketContext, &pCandidatePair->pRemoteCandidate->endpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+                    if( IceControllerNet_SendPacket( pCtx,
+                                                     pSocketContext,
+                                                     &pCandidatePair->pRemoteCandidate->endpoint,
+                                                     sentStunBuffer,
+                                                     sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
                     {
                         LogWarn( ( "Unable to send STUN response for nomination" ) );
                     }
@@ -670,8 +755,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                             LogInfo( ( "Found nomination pair." ) );
 
                             LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
-                                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
-                                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
+                                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint,
+                                                                             ipBuffer,
+                                                                             sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
+                                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint,
+                                                                             ipBuffer2,
+                                                                             sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
                             if( TIMER_CONTROLLER_RESULT_SET == TimerController_IsTimerSet( &pCtx->connectivityCheckTimer ) )
                             {
                                 TimerController_Reset( &pCtx->connectivityCheckTimer );
@@ -744,7 +833,10 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        dnsResult = getaddrinfo( pUrl, NULL, NULL, &pResult );
+        dnsResult = getaddrinfo( pUrl,
+                                 NULL,
+                                 NULL,
+                                 &pResult );
         if( dnsResult != 0 )
         {
             LogWarn( ( "DNS query failing, url: %s, result: %d", pUrl, dnsResult ) );
@@ -760,14 +852,18 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
             {
                 ipv4Address = ( struct sockaddr_in * ) pIterator->ai_addr;
                 pIceTransportAddress->family = STUN_ADDRESS_IPv4;
-                memcpy( pIceTransportAddress->address, &ipv4Address->sin_addr, STUN_IPV4_ADDRESS_SIZE );
+                memcpy( pIceTransportAddress->address,
+                        &ipv4Address->sin_addr,
+                        STUN_IPV4_ADDRESS_SIZE );
                 break;
             }
             else if( pIterator->ai_family == AF_INET6 )
             {
                 ipv6Address = ( struct sockaddr_in6 * ) pIterator->ai_addr;
                 pIceTransportAddress->family = STUN_ADDRESS_IPv6;
-                memcpy( pIceTransportAddress->address, &ipv6Address->sin6_addr, STUN_IPV6_ADDRESS_SIZE );
+                memcpy( pIceTransportAddress->address,
+                        &ipv6Address->sin6_addr,
+                        STUN_IPV6_ADDRESS_SIZE );
                 break;
             }
         }
@@ -790,7 +886,10 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
 
         if( ( pIceEndpoint != NULL ) && ( pIpBuffer != NULL ) && ( ipBufferLength >= INET_ADDRSTRLEN ) )
         {
-            ret = inet_ntop( AF_INET, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
+            ret = inet_ntop( AF_INET,
+                             pIceEndpoint->transportAddress.address,
+                             pIpBuffer,
+                             ipBufferLength );
         }
 
         return ret;

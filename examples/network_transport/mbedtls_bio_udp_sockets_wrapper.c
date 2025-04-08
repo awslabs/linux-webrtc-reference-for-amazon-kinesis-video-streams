@@ -59,7 +59,9 @@ int xMbedTLSBioUDPSocketsWrapperSend( void * ctx,
     assert( ctx != NULL );
     assert( buf != NULL );
 
-    xReturnStatus = UDP_Sockets_Send( ( Socket_t ) ctx, buf, len );
+    xReturnStatus = UDP_Sockets_Send( ( Socket_t ) ctx,
+                                      buf,
+                                      len );
 
     switch( xReturnStatus )
     {
@@ -104,7 +106,9 @@ int xMbedTLSBioUDPSocketsWrapperRecv( void * ctx,
     assert( ctx != NULL );
     assert( buf != NULL );
 
-    xReturnStatus = UDP_Sockets_Recv( ( Socket_t ) ctx, buf, len );
+    xReturnStatus = UDP_Sockets_Recv( ( Socket_t ) ctx,
+                                      buf,
+                                      len );
 
     switch( xReturnStatus )
     {

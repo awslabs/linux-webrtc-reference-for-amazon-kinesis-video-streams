@@ -82,7 +82,8 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
     {
         for( i = rtpSeqStart; i != rtpSeqEnd + 1; i++ )
         {
-            index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
+            index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i,
+                                                        PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
             pPacket = &pJitterBuffer->rtpPackets[ index ];
             h264Packet.pPacketData = pPacket->pPacketBuffer;
             h264Packet.packetDataLength = pPacket->packetBufferLength;
@@ -262,7 +263,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
         else if( resultH264 == H264_RESULT_OK )
         {
             /* Prepare RTP packet for each payload buffer. */
-            memset( &pRollingBufferPacket->rtpPacket, 0, sizeof( RtpPacket_t ) );
+            memset( &pRollingBufferPacket->rtpPacket,
+                    0,
+                    sizeof( RtpPacket_t ) );
             pRollingBufferPacket->rtpPacket.header.payloadType = payloadType;
             pRollingBufferPacket->rtpPacket.header.sequenceNumber = *pRtpSeq;
             pRollingBufferPacket->rtpPacket.header.ssrc = *pSsrc;
@@ -274,14 +277,16 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
 
             pRollingBufferPacket->rtpPacket.header.csrcCount = 0;
             pRollingBufferPacket->rtpPacket.header.pCsrc = NULL;
-            pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE, pFrame->presentationUs );
+            pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE,
+                                                                                                                      pFrame->presentationUs );
 
             if( pSession->rtpConfig.twccId > 0 )
             {
                 pRollingBufferPacket->rtpPacket.header.flags |= RTP_HEADER_FLAG_EXTENSION;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionProfile = PEER_CONNECTION_SRTP_TWCC_EXT_PROFILE;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionPayloadLength = 1;
-                extensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId, pSession->rtpConfig.twccSequence );
+                extensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId,
+                                                                          pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &extensionPayload;
                 pSession->rtpConfig.twccSequence++;
             }

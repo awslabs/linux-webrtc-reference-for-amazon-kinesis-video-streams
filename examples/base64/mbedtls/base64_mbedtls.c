@@ -29,7 +29,11 @@ Base64Result_t Base64_Encode( const char * pInputData,
     size_t olen = 0;
     int retBase64;
 
-    retBase64 = mbedtls_base64_encode( ( unsigned char * ) pOutputData, *pOutputDataLength, &olen, ( const unsigned char * ) pInputData, inputDataLength );
+    retBase64 = mbedtls_base64_encode( ( unsigned char * ) pOutputData,
+                                       *pOutputDataLength,
+                                       &olen,
+                                       ( const unsigned char * ) pInputData,
+                                       inputDataLength );
     if( retBase64 == 0 )
     {
         /* Update output length for user. */
@@ -52,7 +56,11 @@ Base64Result_t Base64_Decode( const char * pInputData,
     size_t olen = 0;
     int retBase64;
 
-    retBase64 = mbedtls_base64_decode( ( unsigned char * ) pOutputData, *pOutputDataLength, &olen, ( const unsigned char * ) pInputData, inputDataLength );
+    retBase64 = mbedtls_base64_decode( ( unsigned char * ) pOutputData,
+                                       *pOutputDataLength,
+                                       &olen,
+                                       ( const unsigned char * ) pInputData,
+                                       inputDataLength );
     if( retBase64 == 0 )
     {
         /* Update output length for user. */

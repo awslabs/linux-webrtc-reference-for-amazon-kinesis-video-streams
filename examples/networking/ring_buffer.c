@@ -13,7 +13,8 @@ RingBufferResult_t RingBuffer_Init( RingBuffer_t * pRingBuffer )
     {
         pRingBuffer->pHead = NULL;
         pRingBuffer->pTail = NULL;
-        pthread_mutex_init( &( pRingBuffer->lock ), NULL );
+        pthread_mutex_init( &( pRingBuffer->lock ),
+                            NULL );
     }
 
     return ret;

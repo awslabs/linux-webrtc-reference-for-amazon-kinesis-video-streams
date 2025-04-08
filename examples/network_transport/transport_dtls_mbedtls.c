@@ -182,7 +182,9 @@ static int DtlsUdpSendWrap( void * pCustomCtx,
     {
         if( pDtlsTransportParams->onDtlsSendHook != NULL )
         {
-            ret = pDtlsTransportParams->onDtlsSendHook( pDtlsTransportParams->pOnDtlsSendCustomContext, pBuf, len );
+            ret = pDtlsTransportParams->onDtlsSendHook( pDtlsTransportParams->pOnDtlsSendCustomContext,
+                                                        pBuf,
+                                                        len );
         }
         else
         {
@@ -237,7 +239,9 @@ static int DtlsUdpRecvWrap( void * pCustomCtx,
         }
 
         /* Copy the buffer content to mbedtls buffer. */
-        memcpy( pBuf, pDtlsTransportParams->pReceivedPacket + pDtlsTransportParams->receivedPacketOffset, ret );
+        memcpy( pBuf,
+                pDtlsTransportParams->pReceivedPacket + pDtlsTransportParams->receivedPacketOffset,
+                ret );
 
         if( ret + pDtlsTransportParams->receivedPacketOffset >= pDtlsTransportParams->receivedPacketLength )
         {
@@ -1012,7 +1016,8 @@ int32_t DTLS_CreateCertificateAndKey( int32_t certificateBits,
                                 LogDebug( ( "mbedtls_mpi_read_binary successful" ) );
                                 struct timespec nowTime;
                                 time_t timeT;
-                                clock_gettime( CLOCK_REALTIME, &nowTime );
+                                clock_gettime( CLOCK_REALTIME,
+                                               &nowTime );
                                 timeT = nowTime.tv_sec;
 
                                 if( strftime( notBeforeBuf,

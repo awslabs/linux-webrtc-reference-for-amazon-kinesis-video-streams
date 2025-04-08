@@ -42,11 +42,16 @@ MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t * pMessageQueueH
 
     if( ret == MESSAGE_QUEUE_RESULT_OK )
     {
-        memset( &attr, 0, sizeof( struct mq_attr ) );
+        memset( &attr,
+                0,
+                sizeof( struct mq_attr ) );
         attr.mq_msgsize = messageMaxLength;
         attr.mq_maxmsg = messageQueueMaxNum;
 
-        pMessageQueueHandler->messageQueue = mq_open( pQueueName, O_RDWR | O_CREAT, 0666, &attr );
+        pMessageQueueHandler->messageQueue = mq_open( pQueueName,
+                                                      O_RDWR | O_CREAT,
+                                                      0666,
+                                                      &attr );
 
         if( pMessageQueueHandler->messageQueue == ( mqd_t ) -1 )
         {
@@ -74,7 +79,10 @@ MessageQueueResult_t MessageQueue_Send( MessageQueueHandler_t * pMessageQueueHan
 
     if( ret == MESSAGE_QUEUE_RESULT_OK )
     {
-        if( mq_send( pMessageQueueHandler->messageQueue, pMessage, messageLength, 0 ) == -1 )
+        if( mq_send( pMessageQueueHandler->messageQueue,
+                     pMessage,
+                     messageLength,
+                     0 ) == -1 )
         {
             LogError( ( "mq_send returns failed" ) );
             ret = MESSAGE_QUEUE_RESULT_MQ_SEND_FAILED;
@@ -99,7 +107,10 @@ MessageQueueResult_t MessageQueue_Recv( MessageQueueHandler_t * pMessageQueueHan
 
     if( ret == MESSAGE_QUEUE_RESULT_OK )
     {
-        recvLength = mq_receive( pMessageQueueHandler->messageQueue, pMessage, *pMessageLength, &recvPriority );
+        recvLength = mq_receive( pMessageQueueHandler->messageQueue,
+                                 pMessage,
+                                 *pMessageLength,
+                                 &recvPriority );
         if( recvLength == -1 )
         {
             LogError( ( "mq_receive returns failed" ) );
@@ -120,7 +131,8 @@ MessageQueueResult_t MessageQueue_IsEmpty( MessageQueueHandler_t * pMessageQueue
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
     struct mq_attr attr;
 
-    if( mq_getattr( pMessageQueueHandler->messageQueue, &attr ) == -1 )
+    if( mq_getattr( pMessageQueueHandler->messageQueue,
+                    &attr ) == -1 )
     {
         LogError( ( "mq_getattr returns failed" ) );
         ret = MESSAGE_QUEUE_RESULT_MQ_GETATTR_FAILED;
@@ -146,7 +158,8 @@ MessageQueueResult_t MessageQueue_IsFull( MessageQueueHandler_t * pMessageQueueH
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
     struct mq_attr attr;
 
-    if( mq_getattr( pMessageQueueHandler->messageQueue, &attr ) == -1 )
+    if( mq_getattr( pMessageQueueHandler->messageQueue,
+                    &attr ) == -1 )
     {
         LogError( ( "mq_getattr returns failed" ) );
         ret = MESSAGE_QUEUE_RESULT_MQ_GETATTR_FAILED;

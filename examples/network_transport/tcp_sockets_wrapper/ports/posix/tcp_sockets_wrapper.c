@@ -82,12 +82,20 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
     struct addrinfo xHints, * pxAddrList, * pxCur;
     char xPortStr[6];
 
-    memset( &xHints, 0, sizeof( xHints ) );
+    memset( &xHints,
+            0,
+            sizeof( xHints ) );
     xHints.ai_family = AF_UNSPEC;
     xHints.ai_socktype = SOCK_STREAM;
     xHints.ai_protocol = IPPROTO_TCP;
-    snprintf( xPortStr, sizeof( xPortStr ), "%d", port );
-    if( getaddrinfo( pHostName, xPortStr, &xHints, &pxAddrList ) != 0 )
+    snprintf( xPortStr,
+              sizeof( xPortStr ),
+              "%d",
+              port );
+    if( getaddrinfo( pHostName,
+                     xPortStr,
+                     &xHints,
+                     &pxAddrList ) != 0 )
     {
         LogError( ( "Failed to connect to server: DNS resolution failed: Hostname=%s.",
                     pHostName ) );
@@ -98,7 +106,8 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
     xRet = TCP_SOCKETS_ERRNO_ERROR;
     for( pxCur = pxAddrList; pxCur != NULL; pxCur = pxCur->ai_next )
     {
-        xFd = socket( pxCur->ai_family, pxCur->ai_socktype,
+        xFd = socket( pxCur->ai_family,
+                      pxCur->ai_socktype,
                       pxCur->ai_protocol );
         if( xFd < 0 )
         {
@@ -107,7 +116,9 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
             continue;
         }
 
-        if( connect( xFd, pxCur->ai_addr, pxCur->ai_addrlen ) == 0 )
+        if( connect( xFd,
+                     pxCur->ai_addr,
+                     pxCur->ai_addrlen ) == 0 )
         {
             xRet = TCP_SOCKETS_ERRNO_NONE;
             LogInfo( ( "Established TCP connection with %s.", pHostName ) );
@@ -137,8 +148,16 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
 
     if( xRet == TCP_SOCKETS_ERRNO_NONE )
     {
-        setsockopt( xFd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeoutMs, sizeof( receiveTimeoutMs ) );
-        setsockopt( xFd, SOL_SOCKET, SO_SNDTIMEO, &sendTimeoutMs, sizeof( sendTimeoutMs ) );
+        setsockopt( xFd,
+                    SOL_SOCKET,
+                    SO_RCVTIMEO,
+                    &receiveTimeoutMs,
+                    sizeof( receiveTimeoutMs ) );
+        setsockopt( xFd,
+                    SOL_SOCKET,
+                    SO_SNDTIMEO,
+                    &sendTimeoutMs,
+                    sizeof( sendTimeoutMs ) );
     }
 
     return xRet;
@@ -151,7 +170,8 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
  */
 void TCP_Sockets_Disconnect( Socket_t tcpSocket )
 {
-    ( void )shutdown( tcpSocket->xFd, SHUT_RDWR );
+    ( void )shutdown( tcpSocket->xFd,
+                      SHUT_RDWR );
     ( void )close( tcpSocket->xFd );
     free( tcpSocket );
 }
@@ -179,7 +199,9 @@ int32_t TCP_Sockets_Send( Socket_t xSocket,
     assert( xSocket != NULL );
     assert( pvBuffer != NULL );
 
-    xWriteRet = write( xSocket->xFd, pvBuffer, xBufferLength );
+    xWriteRet = write( xSocket->xFd,
+                       pvBuffer,
+                       xBufferLength );
     if( xWriteRet >= 0 )
     {
         xReturnStatus = xWriteRet;
@@ -227,7 +249,9 @@ int32_t TCP_Sockets_Recv( Socket_t xSocket,
     assert( xSocket != NULL );
     assert( pvBuffer != NULL );
 
-    xReadRet = read( xSocket->xFd, pvBuffer, xBufferLength );
+    xReadRet = read( xSocket->xFd,
+                     pvBuffer,
+                     xBufferLength );
     if( xReadRet >= 0 )
     {
         xReturnStatus = xReadRet;
