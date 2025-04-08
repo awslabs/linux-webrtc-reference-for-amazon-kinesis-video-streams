@@ -147,7 +147,9 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
             if( onRecvNonStunPacketFunc )
             {
-                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, readBytes );
+                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext,
+                                                  receiveBuffer,
+                                                  readBytes );
             }
         }
         else
@@ -162,12 +164,15 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                 /* Set state to pass handshake and release other un-selected sockets. */
                 pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
 
-                ReleaseOtherSockets( pCtx, pSocketContext );
+                ReleaseOtherSockets( pCtx,
+                                     pSocketContext );
 
                 /* Found nominated pair, execute DTLS handshake and release all other resources. */
                 if( onIceEventCallbackFunc )
                 {
-                    retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, NULL );
+                    retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext,
+                                                                           ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
+                                                                           NULL );
                     if( retPeerToPeerConnectionFound != 0 )
                     {
                         LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
@@ -240,7 +245,8 @@ static void pollingSockets( IceControllerContext_t * pCtx )
             /* fds might be removed for any reason. Handle that by checking if it's -1. */
             if( fds[i] >= 0 )
             {
-                FD_SET( fds[i], &rfds );
+                FD_SET( fds[i],
+                        &rfds );
                 if( fds[i] > maxFd )
                 {
                     maxFd = fds[i];
@@ -249,7 +255,11 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         }
 
         /* Poll all socket handlers. */
-        retSelect = select( maxFd + 1, &rfds, NULL, NULL, &tv );
+        retSelect = select( maxFd + 1,
+                            &rfds,
+                            NULL,
+                            NULL,
+                            &tv );
         if( retSelect < 0 )
         {
             LogError( ( "select return error value %d", retSelect ) );
@@ -270,7 +280,8 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < fdsCount; i++ )
         {
-            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
+            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i],
+                                             &rfds ) )
             {
                 LogVerbose( ( "Detect packets on fd %d, idx: %d", fds[i], i ) );
 
@@ -369,4 +380,3 @@ void * IceControllerSocketListener_Task( void * pParameter )
         }
     }
 }
-

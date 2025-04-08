@@ -59,7 +59,9 @@ int xMbedTLSBioTCPSocketsWrapperSend( void * ctx,
     assert( ctx != NULL );
     assert( buf != NULL );
 
-    xReturnStatus = TCP_Sockets_Send( ( Socket_t ) ctx, buf, len );
+    xReturnStatus = TCP_Sockets_Send( ( Socket_t ) ctx,
+                                      buf,
+                                      len );
 
     switch( xReturnStatus )
     {
@@ -104,7 +106,9 @@ int xMbedTLSBioTCPSocketsWrapperRecv( void * ctx,
     assert( ctx != NULL );
     assert( buf != NULL );
 
-    xReturnStatus = TCP_Sockets_Recv( ( Socket_t ) ctx, buf, len );
+    xReturnStatus = TCP_Sockets_Recv( ( Socket_t ) ctx,
+                                      buf,
+                                      len );
 
     switch( xReturnStatus )
     {

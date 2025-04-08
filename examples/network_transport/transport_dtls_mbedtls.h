@@ -190,7 +190,7 @@ typedef struct
     uint8_t key_length;
 
     KVS_SRTP_PROFILE srtpProfile;
-} DtlsKeyingMaterial, * pDtlsKeyingMaterial_t;
+} DtlsKeyingMaterial, *pDtlsKeyingMaterial_t;
 
 
 /**

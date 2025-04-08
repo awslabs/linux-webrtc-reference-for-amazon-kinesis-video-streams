@@ -328,12 +328,14 @@ static int32_t setPrivateKey( SSLContext_t * pSslContext,
         mbedtlsError = mbedtls_pk_parse_key( &( pSslContext->privKey ),
                                              pPrivateKey,
                                              privateKeySize,
-                                             NULL, 0 );
+                                             NULL,
+                                             0 );
     #else
         mbedtlsError = mbedtls_pk_parse_key( &( pSslContext->privKey ),
                                              pPrivateKey,
                                              privateKeySize,
-                                             NULL, 0,
+                                             NULL,
+                                             0,
                                              mbedtls_ctr_drbg_random,
                                              &( pSslContext->ctrDrbgContext ) );
     #endif /* if MBEDTLS_VERSION_NUMBER < 0x03000000 */
@@ -702,7 +704,9 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     /* Initialize TLS contexts and set credentials. */
     if( returnStatus == TLS_TRANSPORT_SUCCESS )
     {
-        returnStatus = tlsSetup( pNetworkContext, pHostName, pNetworkCredentials );
+        returnStatus = tlsSetup( pNetworkContext,
+                                 pHostName,
+                                 pNetworkCredentials );
     }
 
     /* Perform TLS handshake. */
@@ -710,7 +714,8 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     {
         isTlsSetup = 1;
 
-        returnStatus = tlsHandshake( pNetworkContext, pNetworkCredentials );
+        returnStatus = tlsHandshake( pNetworkContext,
+                                     pNetworkCredentials );
     }
 
     /* Clean up on failure. */

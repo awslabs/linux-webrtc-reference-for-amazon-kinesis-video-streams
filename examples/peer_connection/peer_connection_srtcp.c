@@ -246,8 +246,12 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        memset( &nackPacket, 0, sizeof( RtcpNackPacket_t ) );
-        memset( &seqNumList[ 0 ], 0, sizeof( uint16_t ) * PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM );
+        memset( &nackPacket,
+                0,
+                sizeof( RtcpNackPacket_t ) );
+        memset( &seqNumList[ 0 ],
+                0,
+                sizeof( uint16_t ) * PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM );
         nackPacket.pSeqNumList = seqNumList;
         nackPacket.seqNumListLength = PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM;
         resultRtcp = Rtcp_ParseNackPacket( &pSession->pCtx->rtcpContext,
@@ -498,8 +502,12 @@ static PeerConnectionResult_t OnRtcpRembEvent( PeerConnectionSession_t * pSessio
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        memset( &rembPacket, 0, sizeof( RtcpRembPacket_t ) );
-        memset( &ssrcList[ 0 ], 0, sizeof( uint32_t ) * PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM );
+        memset( &rembPacket,
+                0,
+                sizeof( RtcpRembPacket_t ) );
+        memset( &ssrcList[ 0 ],
+                0,
+                sizeof( uint32_t ) * PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM );
         rembPacket.pSsrcList = ssrcList;
         rembPacket.ssrcListLength = PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM;
         resultRtcp = Rtcp_ParseRembPacket( &pSession->pCtx->rtcpContext,

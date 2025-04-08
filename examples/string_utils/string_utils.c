@@ -54,7 +54,9 @@ StringUtilsResult_t StringUtils_ConvertStringToHex( const char * pStr,
 
     if( ret == STRING_UTILS_RESULT_OK )
     {
-        result = sscanf( pStr, "%x", pOutUl );
+        result = sscanf( pStr,
+                         "%x",
+                         pOutUl );
         if( result < 1 )
         {
             ret = STRING_UTILS_RESULT_NON_NUMBERIC_STRING;

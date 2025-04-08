@@ -51,7 +51,9 @@ static int OnWssMessageReceived( char * pMessage,
     SignalingMessage_t signalingMessage;
     Base64Result_t base64Result;
 
-    signalingResult = Signaling_ParseWssRecvMessage( pMessage, messageLength, &( wssRecvMessage ) );
+    signalingResult = Signaling_ParseWssRecvMessage( pMessage,
+                                                     messageLength,
+                                                     &( wssRecvMessage ) );
     if( signalingResult != SIGNALING_RESULT_OK )
     {
         LogError( ( "Failed to parse the WSS message. Result: %d!", signalingResult ) );
@@ -86,7 +88,8 @@ static int OnWssMessageReceived( char * pMessage,
 
             case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
             {
-                if( strcmp( wssRecvMessage.statusResponse.pStatusCode,"200" ) != 0 )
+                if( strcmp( wssRecvMessage.statusResponse.pStatusCode,
+                            "200" ) != 0 )
                 {
                     LogWarn( ( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s!",
                                wssRecvMessage.statusResponse.pCorrelationId,
@@ -104,7 +107,9 @@ static int OnWssMessageReceived( char * pMessage,
 
     if( ( ret == 0 ) && ( pCtx->messageReceivedCallback != NULL ) )
     {
-        memset( &( signalingMessage ), 0, sizeof( SignalingMessage_t ) );
+        memset( &( signalingMessage ),
+                0,
+                sizeof( SignalingMessage_t ) );
 
         signalingMessage.pRemoteClientId = wssRecvMessage.pSenderClientId;
         signalingMessage.remoteClientIdLength = wssRecvMessage.senderClientIdLength;
@@ -202,7 +207,9 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
         httpHeader[ 0 ].pValue = pAwsIotCredentials->pThingName;
         httpHeader[ 0 ].valueLength = pAwsIotCredentials->thingNameLength;
 
-        memset( &( httpRequest ), 0, sizeof( HttpRequest_t ) );
+        memset( &( httpRequest ),
+                0,
+                sizeof( HttpRequest_t ) );
         httpRequest.pUrl = signalingRequest.pUrl;
         httpRequest.urlLength = signalingRequest.urlLength;
         httpRequest.pHeaders = &( httpHeader[ 0 ] );
@@ -211,7 +218,9 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
         httpRequest.userAgentLength = pCtx->userAgentNameLength;
         httpRequest.verb = HTTP_GET;
 
-        memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
+        memset( &( httpResponse ),
+                0,
+                sizeof( HttpResponse_t ) );
         httpResponse.pBuffer = &( pCtx->httpResponserBuffer[ 0 ] );
         httpResponse.bufferLength = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
@@ -322,18 +331,24 @@ static SignalingControllerResult_t DescribeSignalingChannel( SignalingController
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        memset( &( httpRequest ), 0, sizeof( HttpRequest_t ) );
+        memset( &( httpRequest ),
+                0,
+                sizeof( HttpRequest_t ) );
         httpRequest.pUrl = signalingRequest.pUrl;
         httpRequest.urlLength = signalingRequest.urlLength;
         httpRequest.pBody = signalingRequest.pBody;
         httpRequest.bodyLength = signalingRequest.bodyLength;
         httpRequest.verb = HTTP_POST;
 
-        memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
+        memset( &( httpResponse ),
+                0,
+                sizeof( HttpResponse_t ) );
         httpResponse.pBuffer = &( pCtx->httpResponserBuffer[ 0 ] );
         httpResponse.bufferLength = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
-        ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
+        ret = HttpSend( pCtx,
+                        &( httpRequest ),
+                        &( httpResponse ) );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -355,7 +370,9 @@ static SignalingControllerResult_t DescribeSignalingChannel( SignalingController
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         if( ( signalingChannelInfo.pChannelStatus == NULL ) ||
-            ( strncmp( signalingChannelInfo.pChannelStatus, "ACTIVE", signalingChannelInfo.channelStatusLength ) != 0 ) )
+            ( strncmp( signalingChannelInfo.pChannelStatus,
+                       "ACTIVE",
+                       signalingChannelInfo.channelStatusLength ) != 0 ) )
         {
             LogError( ( "No active channel found!" ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
@@ -413,18 +430,24 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        memset( &( httpRequest ), 0, sizeof( HttpRequest_t ) );
+        memset( &( httpRequest ),
+                0,
+                sizeof( HttpRequest_t ) );
         httpRequest.pUrl = signalingRequest.pUrl;
         httpRequest.urlLength = signalingRequest.urlLength;
         httpRequest.pBody = signalingRequest.pBody;
         httpRequest.bodyLength = signalingRequest.bodyLength;
         httpRequest.verb = HTTP_POST;
 
-        memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
+        memset( &( httpResponse ),
+                0,
+                sizeof( HttpResponse_t ) );
         httpResponse.pBuffer = &( pCtx->httpResponserBuffer[ 0 ] );
         httpResponse.bufferLength = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
-        ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
+        ret = HttpSend( pCtx,
+                        &( httpRequest ),
+                        &( httpResponse ) );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -537,18 +560,24 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        memset( &( httpRequest ), 0, sizeof( HttpRequest_t ) );
+        memset( &( httpRequest ),
+                0,
+                sizeof( HttpRequest_t ) );
         httpRequest.pUrl = signalingRequest.pUrl;
         httpRequest.urlLength = signalingRequest.urlLength;
         httpRequest.pBody = signalingRequest.pBody;
         httpRequest.bodyLength = signalingRequest.bodyLength;
         httpRequest.verb = HTTP_POST;
 
-        memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
+        memset( &( httpResponse ),
+                0,
+                sizeof( HttpResponse_t ) );
         httpResponse.pBuffer = &( pCtx->httpResponserBuffer[ 0 ] );
         httpResponse.bufferLength = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
-        ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
+        ret = HttpSend( pCtx,
+                        &( httpRequest ),
+                        &( httpResponse ) );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -600,7 +629,8 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
             pCtx->iceServerConfigs[ i ].passwordLength = iceServers[ i ].passwordLength;
             pCtx->iceServerConfigs[ i ].ttlSeconds = iceServers[ i ].messageTtlSeconds;
 
-            minTtl = MIN( minTtl, pCtx->iceServerConfigs[i].ttlSeconds );
+            minTtl = MIN( minTtl,
+                          pCtx->iceServerConfigs[i].ttlSeconds );
 
             for( j = 0; j < iceServers[ i ].urisNum; j++ )
             {
@@ -677,7 +707,9 @@ static SignalingControllerResult_t ConnectToWssEndpoint( SignalingControllerCont
     signalingRequest.pBody = &( pCtx->httpBodyBuffer[ 0 ] );
     signalingRequest.bodyLength = SIGNALING_CONTROLLER_HTTP_BODY_BUFFER_LENGTH;
 
-    memset( &( wssEndpointRequestInfo ), 0, sizeof( ConnectWssEndpointRequestInfo_t ) );
+    memset( &( wssEndpointRequestInfo ),
+            0,
+            sizeof( ConnectWssEndpointRequestInfo_t ) );
     wssEndpointRequestInfo.channelArn.pChannelArn = pCtx->signalingChannelArn;
     wssEndpointRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
     wssEndpointRequestInfo.role = SIGNALING_ROLE_MASTER;
@@ -790,7 +822,8 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         Metric_StartEvent( METRIC_EVENT_SIGNALING_DESCRIBE_CHANNEL );
-        ret = DescribeSignalingChannel( pCtx, &( pConnectInfo->channelName ) );
+        ret = DescribeSignalingChannel( pCtx,
+                                        &( pConnectInfo->channelName ) );
         Metric_EndEvent( METRIC_EVENT_SIGNALING_DESCRIBE_CHANNEL );
     }
 
@@ -870,9 +903,12 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        memset( pCtx, 0, sizeof( SignalingControllerContext_t ) );
+        memset( pCtx,
+                0,
+                sizeof( SignalingControllerContext_t ) );
 
-        if( pthread_mutex_init( &( pCtx->signalingTxMutex ), NULL ) != 0 )
+        if( pthread_mutex_init( &( pCtx->signalingTxMutex ),
+                                NULL ) != 0 )
         {
             LogError( ( "Failed to initialize signalingTxMutex!" ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
@@ -919,7 +955,8 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
         ret = SIGNALING_CONTROLLER_RESULT_OK;
         networkingResult = NETWORKING_RESULT_OK;
 
-        ret = ConnectToSignalingService( pCtx, pConnectInfo );
+        ret = ConnectToSignalingService( pCtx,
+                                         pConnectInfo );
 
         if( ret == SIGNALING_CONTROLLER_RESULT_OK )
         {
@@ -979,7 +1016,9 @@ SignalingControllerResult_t SignalingController_SendMessage( SignalingController
 
             if( ret == SIGNALING_CONTROLLER_RESULT_OK )
             {
-                memset( &( wssSendMessage ), 0, sizeof( WssSendMessage_t ) );
+                memset( &( wssSendMessage ),
+                        0,
+                        sizeof( WssSendMessage_t ) );
 
                 wssSendMessage.messageType = pSignalingMessage->messageType;
                 wssSendMessage.pBase64EncodedMessage = &( pCtx->signalingIntermediateMessageBuffer[ 0 ] );
@@ -1104,7 +1143,8 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        jsonResult = JSON_Validate( pSignalingMessage, signalingMessageLength );
+        jsonResult = JSON_Validate( pSignalingMessage,
+                                    signalingMessageLength );
 
         if( jsonResult != JSONSuccess )
         {
@@ -1119,12 +1159,20 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        jsonResult = JSON_Iterate( pSignalingMessage, signalingMessageLength, &( start ), &( next ), &( pair ) );
+        jsonResult = JSON_Iterate( pSignalingMessage,
+                                   signalingMessageLength,
+                                   &( start ),
+                                   &( next ),
+                                   &( pair ) );
 
         while( jsonResult == JSONSuccess )
         {
-            if( ( strncmp( pair.key, "type", pair.keyLength ) == 0 ) &&
-                ( strncmp( pair.value, "offer", pair.valueLength ) != 0 ) )
+            if( ( strncmp( pair.key,
+                           "type",
+                           pair.keyLength ) == 0 ) &&
+                ( strncmp( pair.value,
+                           "offer",
+                           pair.valueLength ) != 0 ) )
             {
                 LogError( ( "Message type \"%.*s\" is not SDP offer!",
                             ( int ) pair.valueLength,
@@ -1134,7 +1182,9 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
 
                 break;
             }
-            else if( strncmp( pair.key, "sdp", pair.keyLength ) == 0 )
+            else if( strncmp( pair.key,
+                              "sdp",
+                              pair.keyLength ) == 0 )
             {
                 *ppSdpMessage = pair.value;
                 *pSdpMessageLength = pair.valueLength;
@@ -1147,7 +1197,11 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
                 /* Skip unknown attributes. */
             }
 
-            jsonResult = JSON_Iterate( pSignalingMessage, signalingMessageLength, &( start ), &( next ), &( pair ) );
+            jsonResult = JSON_Iterate( pSignalingMessage,
+                                       signalingMessageLength,
+                                       &( start ),
+                                       &( next ),
+                                       &( pair ) );
         }
     }
 
@@ -1188,7 +1242,8 @@ SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( co
     {
         pCurOutput = pFormalSdpMessage;
 
-        while( ( pNext = strstr( pCurSdp, "\\n" ) ) != NULL )
+        while( ( pNext = strstr( pCurSdp,
+                                 "\\n" ) ) != NULL )
         {
             lineLength = pNext - pCurSdp;
 
@@ -1210,7 +1265,9 @@ SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( co
                 break;
             }
 
-            memcpy( pCurOutput, pCurSdp, lineLength );
+            memcpy( pCurOutput,
+                    pCurSdp,
+                    lineLength );
             pCurOutput += lineLength;
             *pCurOutput++ = '\r';
             *pCurOutput++ = '\n';
@@ -1253,7 +1310,9 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
     {
         pTail = pSdpMessage + sdpMessageLength;
 
-        while( ( pNext = memchr( pCurSdp, '\n', pTail - pCurSdp ) ) != NULL )
+        while( ( pNext = memchr( pCurSdp,
+                                 '\n',
+                                 pTail - pCurSdp ) ) != NULL )
         {
             lineLength = pNext - pCurSdp;
 
@@ -1274,7 +1333,9 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
                 break;
             }
 
-            writtenLength = snprintf( pCurOutput, *pEventSdpMessageLength - outputLength, "%.*s\\r\\n",
+            writtenLength = snprintf( pCurOutput,
+                                      *pEventSdpMessageLength - outputLength,
+                                      "%.*s\\r\\n",
                                       ( int ) lineLength,
                                       pCurSdp );
 
@@ -1301,7 +1362,9 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
         if( pTail > pCurSdp )
         {
             lineLength = pTail - pCurSdp;
-            memcpy( pCurOutput, pCurSdp, lineLength );
+            memcpy( pCurOutput,
+                    pCurSdp,
+                    lineLength );
 
             outputLength += lineLength;
             pCurOutput += lineLength;

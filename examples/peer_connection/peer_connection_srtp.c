@@ -78,9 +78,12 @@ static PeerConnectionResult_t OnJitterBufferFrameReady( void * pCustomContext,
     {
         if( pSrtpReceiver->onFrameReadyCallbackFunc )
         {
-            memset( &frame, 0, sizeof( PeerConnectionFrame_t ) );
+            memset( &frame,
+                    0,
+                    sizeof( PeerConnectionFrame_t ) );
             frame.version = PEER_CONNECTION_FRAME_CURRENT_VERSION;
-            frame.presentationUs = PEER_CONNECTION_SRTP_CONVERT_RTP_TIMESTAMP_TO_TIME_US( pSrtpReceiver->rxJitterBuffer.clockRate, rtpTimestamp );
+            frame.presentationUs = PEER_CONNECTION_SRTP_CONVERT_RTP_TIMESTAMP_TO_TIME_US( pSrtpReceiver->rxJitterBuffer.clockRate,
+                                                                                          rtpTimestamp );
             frame.pData = pSrtpReceiver->frameBuffer;
             frame.dataLength = frameBufferLength;
             pSrtpReceiver->onFrameReadyCallbackFunc( pSrtpReceiver->pOnFrameReadyCallbackCustomContext,
@@ -201,7 +204,9 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        memset( &receivePolicy, 0, sizeof( receivePolicy ) );
+        memset( &receivePolicy,
+                0,
+                sizeof( receivePolicy ) );
         srtp_policy_setter( &receivePolicy.rtp );
         srtcp_policy_setter( &receivePolicy.rtcp );
 
@@ -220,7 +225,9 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        memset( &transmitPolicy, 0, sizeof( transmitPolicy ) );
+        memset( &transmitPolicy,
+                0,
+                sizeof( transmitPolicy ) );
         srtp_policy_setter( &transmitPolicy.rtp );
         srtcp_policy_setter( &transmitPolicy.rtcp );
 
@@ -287,7 +294,8 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
             }
 
             /* Mutex can only be created in executing scheduler. */
-            if( pthread_mutex_init( &( pSrtpSender->senderMutex ), NULL ) != 0 )
+            if( pthread_mutex_init( &( pSrtpSender->senderMutex ),
+                                    NULL ) != 0 )
             {
                 LogError( ( "Fail to create mutex for SRTP sender." ) );
                 ret = PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX;
@@ -405,12 +413,16 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
     }
 
     /* Clean up Video SRTP Receiver */
-    memset( pSession->videoSrtpReceiver.frameBuffer, 0, PEER_CONNECTION_FRAME_BUFFER_SIZE );
+    memset( pSession->videoSrtpReceiver.frameBuffer,
+            0,
+            PEER_CONNECTION_FRAME_BUFFER_SIZE );
 
     PeerConnectionJitterBuffer_Free( &pSession->videoSrtpReceiver.rxJitterBuffer );
 
     /* Clean up Audio SRTP Receiver */
-    memset( pSession->audioSrtpReceiver.frameBuffer, 0, PEER_CONNECTION_FRAME_BUFFER_SIZE );
+    memset( pSession->audioSrtpReceiver.frameBuffer,
+            0,
+            PEER_CONNECTION_FRAME_BUFFER_SIZE );
 
     PeerConnectionJitterBuffer_Free( &pSession->audioSrtpReceiver.rxJitterBuffer );
 
@@ -501,7 +513,9 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSessio
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        memcpy( pJitterBufferPacket->pPacketBuffer, rtpPacket.pPayload, rtpPacket.payloadLength );
+        memcpy( pJitterBufferPacket->pPacketBuffer,
+                rtpPacket.pPayload,
+                rtpPacket.payloadLength );
         pJitterBufferPacket->receiveTick = time( NULL ); //xTaskGetTickCount();
         pJitterBufferPacket->rtpTimestamp = rtpPacket.header.timestamp;
         pJitterBufferPacket->sequenceNumber = rtpPacket.header.sequenceNumber;

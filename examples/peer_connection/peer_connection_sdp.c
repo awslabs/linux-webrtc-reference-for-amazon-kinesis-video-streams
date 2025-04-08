@@ -173,9 +173,13 @@ static SdpControllerAttributes_t * FindH264FmtpAttribute( SdpControllerAttribute
             for( i = 0; i < attributeCount; i++ )
             {
                 if( ( pAttributes[i].attributeNameLength == PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) &&
-                    ( strncmp( PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP, pAttributes[i].pAttributeName, PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) == 0 ) &&
+                    ( strncmp( PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP,
+                               pAttributes[i].pAttributeName,
+                               PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) == 0 ) &&
                     ( pAttributes[i].attributeValueLength >= codecStringLength ) &&
-                    ( strncmp( pCodecStart, pAttributes[i].pAttributeValue, codecStringLength ) == 0 ) )
+                    ( strncmp( pCodecStart,
+                               pAttributes[i].pAttributeValue,
+                               codecStringLength ) == 0 ) )
                 {
                     /* Found the fmtp. */
                     pTargetFmtpAttribute = &pAttributes[i];
@@ -204,21 +208,27 @@ static uint32_t CalculateH264ScoreByFmtp( SdpControllerAttributes_t * pTargetFmt
         }
 
         /* Calculate the score from fmtp. */
-        if( StringUtils_StrStr( pTargetFmtpAttribute->pAttributeValue, pTargetFmtpAttribute->attributeValueLength,
-                                PEER_CONNECTION_SDP_H264_PACKETIZATION_MODE, PEER_CONNECTION_SDP_H264_PACKETIZATION_MODE_LENGTH ) )
+        if( StringUtils_StrStr( pTargetFmtpAttribute->pAttributeValue,
+                                pTargetFmtpAttribute->attributeValueLength,
+                                PEER_CONNECTION_SDP_H264_PACKETIZATION_MODE,
+                                PEER_CONNECTION_SDP_H264_PACKETIZATION_MODE_LENGTH ) )
         {
             /* Packetization mode is mandatory. */
             score += PEER_CONNECTION_SDP_H264_FMTP_MINIMUM_SCORE;
         }
 
-        if( StringUtils_StrStr( pTargetFmtpAttribute->pAttributeValue, pTargetFmtpAttribute->attributeValueLength,
-                                PEER_CONNECTION_SDP_H264_ASYMMETRY_ALLOWED, PEER_CONNECTION_SDP_H264_ASYMMETRY_ALLOWED_LENGTH ) )
+        if( StringUtils_StrStr( pTargetFmtpAttribute->pAttributeValue,
+                                pTargetFmtpAttribute->attributeValueLength,
+                                PEER_CONNECTION_SDP_H264_ASYMMETRY_ALLOWED,
+                                PEER_CONNECTION_SDP_H264_ASYMMETRY_ALLOWED_LENGTH ) )
         {
             score++;
         }
 
-        pProfileLevelIdStart = StringUtils_StrStr( pTargetFmtpAttribute->pAttributeValue, pTargetFmtpAttribute->attributeValueLength,
-                                                   PEER_CONNECTION_SDP_H264_PROFILE_LEVEL_ID, PEER_CONNECTION_SDP_H264_PROFILE_LEVEL_ID_LENGTH );
+        pProfileLevelIdStart = StringUtils_StrStr( pTargetFmtpAttribute->pAttributeValue,
+                                                   pTargetFmtpAttribute->attributeValueLength,
+                                                   PEER_CONNECTION_SDP_H264_PROFILE_LEVEL_ID,
+                                                   PEER_CONNECTION_SDP_H264_PROFILE_LEVEL_ID_LENGTH );
         if( !pProfileLevelIdStart )
         {
             break;
@@ -227,7 +237,9 @@ static uint32_t CalculateH264ScoreByFmtp( SdpControllerAttributes_t * pTargetFmt
         /* Move pProfileLevelIdStart to the start of ID. */
         pProfileLevelIdStart = pProfileLevelIdStart + PEER_CONNECTION_SDP_H264_PROFILE_LEVEL_ID_LENGTH;
         remainLength = pTargetFmtpAttribute->pAttributeValue + pTargetFmtpAttribute->attributeValueLength - pProfileLevelIdStart;
-        stringResult = StringUtils_ConvertStringToHex( pProfileLevelIdStart, remainLength, &profileLevelId );
+        stringResult = StringUtils_ConvertStringToHex( pProfileLevelIdStart,
+                                                       remainLength,
+                                                       &profileLevelId );
         if( stringResult != STRING_UTILS_RESULT_OK )
         {
             LogWarn( ( "Fail to convert string(%lu): %.*s to hex.",
@@ -271,16 +283,24 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
         for( i = 0; i < attributeCount; i++ )
         {
             if( ( pAttributes[i].attributeNameLength == PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH ) &&
-                ( strncmp( PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_RTPMAP, pAttributes[i].pAttributeName, PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH ) == 0 ) )
+                ( strncmp( PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_RTPMAP,
+                           pAttributes[i].pAttributeName,
+                           PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH ) == 0 ) )
             {
                 if( ( highestH264Score < PEER_CONNECTION_SDP_H264_FMTP_HIGHEST_SCORE ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH ) &&
-                    ( strncmp( PEER_CONNECTION_SDP_CODEC_H264_VALUE, pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH, PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH ) == 0 ) )
+                    ( strncmp( PEER_CONNECTION_SDP_CODEC_H264_VALUE,
+                               pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH,
+                               PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH ) == 0 ) )
                 {
-                    pH264FmtpAttribute = FindH264FmtpAttribute( pAttributes, attributeCount, &pAttributes[i] );
+                    pH264FmtpAttribute = FindH264FmtpAttribute( pAttributes,
+                                                                attributeCount,
+                                                                &pAttributes[i] );
                     h264Score = CalculateH264ScoreByFmtp( pH264FmtpAttribute );
                     if( ( h264Score >= PEER_CONNECTION_SDP_H264_FMTP_MINIMUM_SCORE ) && ( highestH264Score < h264Score ) )
                     {
-                        stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH, &aptPayload );
+                        stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue,
+                                                                      pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H264_VALUE_LENGTH,
+                                                                      &aptPayload );
                         if( stringResult != STRING_UTILS_RESULT_OK )
                         {
                             LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
@@ -290,17 +310,24 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                         }
                         else
                         {
-                            TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
-                            codecPayloads[ TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
+                            TRANSCEIVER_ENABLE_CODEC( codecBitMap,
+                                                      TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
+                            codecPayloads[ TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0,
+                                                                                                                                                                    aptPayload );
                             LogDebug( ( "Found H264 codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ] ) );
                             highestH264Score = h264Score;
                         }
                     }
                 }
-                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH ) &&
-                         ( strncmp( PEER_CONNECTION_SDP_CODEC_VP8_VALUE, pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH, PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH ) == 0 ) )
+                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                                        TRANSCEIVER_RTC_CODEC_VP8_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH ) &&
+                         ( strncmp( PEER_CONNECTION_SDP_CODEC_VP8_VALUE,
+                                    pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH,
+                                    PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH ) == 0 ) )
                 {
-                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH, &aptPayload );
+                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue,
+                                                                  pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_VP8_VALUE_LENGTH,
+                                                                  &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
                         LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
@@ -310,15 +337,22 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     }
                     else
                     {
-                        TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT );
-                        codecPayloads[ TRANSCEIVER_RTC_CODEC_VP8_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
+                        TRANSCEIVER_ENABLE_CODEC( codecBitMap,
+                                                  TRANSCEIVER_RTC_CODEC_VP8_BIT );
+                        codecPayloads[ TRANSCEIVER_RTC_CODEC_VP8_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0,
+                                                                                                          aptPayload );
                         LogDebug( ( "Found VP8 codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_VP8_BIT ] ) );
                     }
                 }
-                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH ) &&
-                         ( strncmp( PEER_CONNECTION_SDP_CODEC_H265_VALUE, pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH, PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH ) == 0 ) )
+                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                                        TRANSCEIVER_RTC_CODEC_H265_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH ) &&
+                         ( strncmp( PEER_CONNECTION_SDP_CODEC_H265_VALUE,
+                                    pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH,
+                                    PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH ) == 0 ) )
                 {
-                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH, &aptPayload );
+                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue,
+                                                                  pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_H265_VALUE_LENGTH,
+                                                                  &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
                         LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
@@ -328,15 +362,22 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     }
                     else
                     {
-                        TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT );
-                        codecPayloads[ TRANSCEIVER_RTC_CODEC_H265_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
+                        TRANSCEIVER_ENABLE_CODEC( codecBitMap,
+                                                  TRANSCEIVER_RTC_CODEC_H265_BIT );
+                        codecPayloads[ TRANSCEIVER_RTC_CODEC_H265_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0,
+                                                                                                           aptPayload );
                         LogDebug( ( "Found H265 codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_H265_BIT ] ) );
                     }
                 }
-                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH ) &&
-                         ( strncmp( PEER_CONNECTION_SDP_CODEC_OPUS_VALUE, pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH, PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH ) == 0 ) )
+                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                                        TRANSCEIVER_RTC_CODEC_OPUS_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH ) &&
+                         ( strncmp( PEER_CONNECTION_SDP_CODEC_OPUS_VALUE,
+                                    pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH,
+                                    PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH ) == 0 ) )
                 {
-                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH, &aptPayload );
+                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue,
+                                                                  pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_OPUS_VALUE_LENGTH,
+                                                                  &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
                         LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
@@ -346,15 +387,22 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     }
                     else
                     {
-                        TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT );
-                        codecPayloads[ TRANSCEIVER_RTC_CODEC_OPUS_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
+                        TRANSCEIVER_ENABLE_CODEC( codecBitMap,
+                                                  TRANSCEIVER_RTC_CODEC_OPUS_BIT );
+                        codecPayloads[ TRANSCEIVER_RTC_CODEC_OPUS_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0,
+                                                                                                           aptPayload );
                         LogDebug( ( "Found OPUS codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_OPUS_BIT ] ) );
                     }
                 }
-                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH ) &&
-                         ( strncmp( PEER_CONNECTION_SDP_CODEC_MULAW_VALUE, pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH, PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH ) == 0 ) )
+                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                                        TRANSCEIVER_RTC_CODEC_MULAW_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH ) &&
+                         ( strncmp( PEER_CONNECTION_SDP_CODEC_MULAW_VALUE,
+                                    pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH,
+                                    PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH ) == 0 ) )
                 {
-                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH, &aptPayload );
+                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue,
+                                                                  pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_MULAW_VALUE_LENGTH,
+                                                                  &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
                         LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
@@ -364,15 +412,22 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     }
                     else
                     {
-                        TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT );
-                        codecPayloads[ TRANSCEIVER_RTC_CODEC_MULAW_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
+                        TRANSCEIVER_ENABLE_CODEC( codecBitMap,
+                                                  TRANSCEIVER_RTC_CODEC_MULAW_BIT );
+                        codecPayloads[ TRANSCEIVER_RTC_CODEC_MULAW_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0,
+                                                                                                            aptPayload );
                         LogDebug( ( "Found MULAW codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_MULAW_BIT ] ) );
                     }
                 }
-                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH ) &&
-                         ( strncmp( PEER_CONNECTION_SDP_CODEC_ALAW_VALUE, pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH, PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH ) == 0 ) )
+                else if( !TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                                        TRANSCEIVER_RTC_CODEC_ALAW_BIT ) && ( pAttributes[i].attributeValueLength >= PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH ) &&
+                         ( strncmp( PEER_CONNECTION_SDP_CODEC_ALAW_VALUE,
+                                    pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH,
+                                    PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH ) == 0 ) )
                 {
-                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH, &aptPayload );
+                    stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue,
+                                                                  pAttributes[i].attributeValueLength - PEER_CONNECTION_SDP_CODEC_ALAW_VALUE_LENGTH,
+                                                                  &aptPayload );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
                         LogWarn( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
@@ -382,8 +437,10 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                     }
                     else
                     {
-                        TRANSCEIVER_ENABLE_CODEC( codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT );
-                        codecPayloads[ TRANSCEIVER_RTC_CODEC_ALAW_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0, aptPayload );
+                        TRANSCEIVER_ENABLE_CODEC( codecBitMap,
+                                                  TRANSCEIVER_RTC_CODEC_ALAW_BIT );
+                        codecPayloads[ TRANSCEIVER_RTC_CODEC_ALAW_BIT ] = PEER_CONNECTION_SDP_SET_PAYLOAD( 0,
+                                                                                                           aptPayload );
                         LogDebug( ( "Found ALAW codec: %u", codecPayloads[ TRANSCEIVER_RTC_CODEC_ALAW_BIT ] ) );
                     }
                 }
@@ -393,9 +450,14 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                 }
             }
             else if( ( pAttributes[i].attributeNameLength == PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) &&
-                     ( strncmp( PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP, pAttributes[i].pAttributeName, PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) == 0 ) )
+                     ( strncmp( PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP,
+                                pAttributes[i].pAttributeName,
+                                PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) == 0 ) )
             {
-                pAtp = StringUtils_StrStr( pAttributes[i].pAttributeValue, pAttributes[i].attributeValueLength, PEER_CONNECTION_SDP_CODEC_APT_VALUE, PEER_CONNECTION_SDP_CODEC_APT_VALUE_LENGTH );
+                pAtp = StringUtils_StrStr( pAttributes[i].pAttributeValue,
+                                           pAttributes[i].attributeValueLength,
+                                           PEER_CONNECTION_SDP_CODEC_APT_VALUE,
+                                           PEER_CONNECTION_SDP_CODEC_APT_VALUE_LENGTH );
 
                 if( pAtp == NULL )
                 {
@@ -405,7 +467,8 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
 
                 /* Parse RTX payload */
                 stringResult = StringUtils_ConvertStringToUl( pAttributes[i].pAttributeValue,
-                                                              pAttributes[i].attributeValueLength, &rtxPayload );
+                                                              pAttributes[i].attributeValueLength,
+                                                              &rtxPayload );
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
                     LogWarn( ( "StringUtils_ConvertStringToUl RTX payload fail, result %d, converting %.*s to %u",
@@ -418,7 +481,8 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                 /* Parse APT payload */
                 stringLength = pAttributes[i].pAttributeValue + pAttributes[i].attributeValueLength - pAtp - PEER_CONNECTION_SDP_CODEC_APT_VALUE_LENGTH;
                 stringResult = StringUtils_ConvertStringToUl( pAtp + PEER_CONNECTION_SDP_CODEC_APT_VALUE_LENGTH,
-                                                              stringLength, &aptPayload );
+                                                              stringLength,
+                                                              &aptPayload );
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
                     LogWarn( ( "StringUtils_ConvertStringToUl APT payload fail, result %d, converting %.*s to %u",
@@ -431,11 +495,13 @@ static uint32_t CollectAttributesCodec( SdpControllerAttributes_t * pAttributes,
                 /* Try match apt payload and update rtx payload. */
                 for( j = TRANSCEIVER_RTC_CODEC_MULAW_BIT; j < TRANSCEIVER_RTC_CODEC_NUM; j++ )
                 {
-                    if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, j ) &&
+                    if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                                      j ) &&
                         ( PEER_CONNECTION_SDP_GET_APT_CODEC_FROM_PAYLOAD( codecPayloads[ j ] ) == aptPayload ) )
                     {
                         /* Found APT payload, update RTX payload. */
-                        codecPayloads[ j ] = PEER_CONNECTION_SDP_SET_PAYLOAD( rtxPayload, aptPayload );
+                        codecPayloads[ j ] = PEER_CONNECTION_SDP_SET_PAYLOAD( rtxPayload,
+                                                                              aptPayload );
                     }
                 }
             }
@@ -473,7 +539,9 @@ static PeerConnectionResult_t GetPayloadTypesFromMedia( SdpControllerMediaDescri
         remainLength = pMediaDescription->mediaNameLength;
         do {
             count++;
-            pEnd = memchr( pStart, ' ', remainLength );
+            pEnd = memchr( pStart,
+                           ' ',
+                           remainLength );
 
             if( pEnd )
             {
@@ -489,16 +557,22 @@ static PeerConnectionResult_t GetPayloadTypesFromMedia( SdpControllerMediaDescri
             if( count > 3 )
             {
                 if( ( tokenLength == PEER_CONNECTION_SDP_CODEC_MULAW_DEFAULT_INDEX_LENGTH ) &&
-                    ( strncmp( PEER_CONNECTION_SDP_CODEC_MULAW_DEFAULT_INDEX, pStart, tokenLength ) == 0 ) )
+                    ( strncmp( PEER_CONNECTION_SDP_CODEC_MULAW_DEFAULT_INDEX,
+                               pStart,
+                               tokenLength ) == 0 ) )
                 {
-                    TRANSCEIVER_ENABLE_CODEC( *pCodecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT );
+                    TRANSCEIVER_ENABLE_CODEC( *pCodecBitMap,
+                                              TRANSCEIVER_RTC_CODEC_MULAW_BIT );
                     codecPayloads[ TRANSCEIVER_RTC_CODEC_MULAW_BIT ] = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_MULAW;
                     break;
                 }
                 else if( ( tokenLength == PEER_CONNECTION_SDP_CODEC_ALAW_DEFAULT_INDEX_LENGTH ) &&
-                         ( strncmp( PEER_CONNECTION_SDP_CODEC_ALAW_DEFAULT_INDEX, pStart, tokenLength ) == 0 ) )
+                         ( strncmp( PEER_CONNECTION_SDP_CODEC_ALAW_DEFAULT_INDEX,
+                                    pStart,
+                                    tokenLength ) == 0 ) )
                 {
-                    TRANSCEIVER_ENABLE_CODEC( *pCodecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT );
+                    TRANSCEIVER_ENABLE_CODEC( *pCodecBitMap,
+                                              TRANSCEIVER_RTC_CODEC_ALAW_BIT );
                     codecPayloads[ TRANSCEIVER_RTC_CODEC_MULAW_BIT ] = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_ALAW;
                     break;
                 }
@@ -556,7 +630,9 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         if( ( pMediaDescription->mediaNameLength >= 5 ) &&
-            ( strncmp( pMediaDescription->pMediaName, "video", 5 ) == 0 ) )
+            ( strncmp( pMediaDescription->pMediaName,
+                       "video",
+                       5 ) == 0 ) )
         {
             trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
             pTargetCodecPayload = &pSession->rtpConfig.videoCodecPayload;
@@ -565,7 +641,9 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
             LogDebug( ( "Appending video tranceiver" ) );
         }
         else if( ( pMediaDescription->mediaNameLength >= 5 ) &&
-                 ( strncmp( pMediaDescription->pMediaName, "audio", 5 ) == 0 ) )
+                 ( strncmp( pMediaDescription->pMediaName,
+                            "audio",
+                            5 ) == 0 ) )
         {
             trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
             pTargetCodecPayload = &pSession->rtpConfig.audioCodecPayload;
@@ -575,7 +653,9 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
         }
         #if ENABLE_SCTP_DATA_CHANNEL
             else if( ( pMediaDescription->mediaNameLength >= 11 ) &&
-                     ( strncmp( pMediaDescription->pMediaName, "application", 11 ) == 0 ) )
+                     ( strncmp( pMediaDescription->pMediaName,
+                                "application",
+                                11 ) == 0 ) )
             {
                 trackKind = TRANSCEIVER_TRACK_KIND_DATA_CHANNEL;
                 pSession->ucEnableDataChannelRemote = 1;
@@ -610,7 +690,8 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 continue;
             }
 
-            if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
+            if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap,
+                                              TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
             {
                 isTransceiverCodecSet[currentTransceiverIdx] = 1;
                 *pIsTargetCodecPayloadSet = 1;
@@ -626,7 +707,8 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 }
                 break;
             }
-            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
+            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap,
+                                                   TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
             {
                 isTransceiverCodecSet[currentTransceiverIdx] = 1;
                 *pIsTargetCodecPayloadSet = 1;
@@ -642,7 +724,8 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 }
                 break;
             }
-            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
+            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap,
+                                                   TRANSCEIVER_RTC_CODEC_H265_BIT ) )
             {
                 isTransceiverCodecSet[currentTransceiverIdx] = 1;
                 *pIsTargetCodecPayloadSet = 1;
@@ -658,7 +741,8 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 }
                 break;
             }
-            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
+            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap,
+                                                   TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
             {
                 isTransceiverCodecSet[currentTransceiverIdx] = 1;
                 *pIsTargetCodecPayloadSet = 1;
@@ -674,7 +758,8 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 }
                 break;
             }
-            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
+            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap,
+                                                   TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
             {
                 isTransceiverCodecSet[currentTransceiverIdx] = 1;
                 *pIsTargetCodecPayloadSet = 1;
@@ -690,7 +775,8 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 }
                 break;
             }
-            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
+            else if( TRANSCEIVER_IS_CODEC_ENABLED( *pCodecBitMap & pSession->pTransceivers[currentTransceiverIdx]->codecBitMap,
+                                                   TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
             {
                 isTransceiverCodecSet[currentTransceiverIdx] = 1;
                 *pIsTargetCodecPayloadSet = 1;
@@ -736,7 +822,9 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
     SdpControllerResult_t retSdpController;
     SdpControllerPopulateMediaConfiguration_t populateConfiguration;
 
-    memset( &populateConfiguration, 0, sizeof( SdpControllerPopulateMediaConfiguration_t ) );
+    memset( &populateConfiguration,
+            0,
+            sizeof( SdpControllerPopulateMediaConfiguration_t ) );
     populateConfiguration.canTrickleIce = 1U;
 
     populateConfiguration.pCname = pSession->pCtx->localCname;
@@ -897,7 +985,9 @@ static PeerConnectionResult_t PopulateSessionDescription( PeerConnectionSession_
     SdpControllerResult_t retSdpController;
     SdpControllerPopulateSessionConfiguration_t populateConfiguration;
 
-    memset( &populateConfiguration, 0, sizeof( SdpControllerPopulateSessionConfiguration_t ) );
+    memset( &populateConfiguration,
+            0,
+            sizeof( SdpControllerPopulateSessionConfiguration_t ) );
     populateConfiguration.canTrickleIce = 1U;
     if( pRemoteBufferSessionDescription == NULL )
     {
@@ -950,8 +1040,12 @@ static void SetReceiverSsrc( PeerConnectionBufferSessionDescription_t * pBufferS
             }
             continue;
         }
-        isVideoDescription = strncmp( pBufferSessionDescription->sdpDescription.mediaDescriptions[i].pMediaName, "video", 5 ) == 0 ? 1U : 0U;
-        isAudioDescription = strncmp( pBufferSessionDescription->sdpDescription.mediaDescriptions[i].pMediaName, "audio", 5 ) == 0 ? 1U : 0U;
+        isVideoDescription = strncmp( pBufferSessionDescription->sdpDescription.mediaDescriptions[i].pMediaName,
+                                      "video",
+                                      5 ) == 0 ? 1U : 0U;
+        isAudioDescription = strncmp( pBufferSessionDescription->sdpDescription.mediaDescriptions[i].pMediaName,
+                                      "audio",
+                                      5 ) == 0 ? 1U : 0U;
         if( ( isVideoDescription == 0U ) && ( isAudioDescription == 0U ) )
         {
             LogWarn( ( "Non video/audio media description." ) );
@@ -970,7 +1064,9 @@ static void SetReceiverSsrc( PeerConnectionBufferSessionDescription_t * pBufferS
         for( j = 0; j < pMediaDescription->mediaAttributesCount; j++ )
         {
             if( ( pMediaDescription->attributes[j].attributeNameLength == strlen( "ssrc" ) ) &&
-                ( strncmp( pMediaDescription->attributes[j].pAttributeName, "ssrc", strlen( "ssrc" ) ) == 0 ) )
+                ( strncmp( pMediaDescription->attributes[j].pAttributeName,
+                           "ssrc",
+                           strlen( "ssrc" ) ) == 0 ) )
             {
                 LogInfo( ( "Found SSRC attribute: %.*s",
                            ( int ) pMediaDescription->attributes[j].attributeValueLength,
@@ -1146,7 +1242,11 @@ PeerConnectionResult_t PeerConnectionSdp_PopulateSessionDescription( PeerConnect
         /* Add media descriptions, use the temp buffer to store SDP content for pointers to refer to. */
         pBuffer = pLocalBufferSessionDescription->pSdpBuffer;
         bufferLength = pLocalBufferSessionDescription->sdpBufferLength;
-        ret = PopulateMediaDescriptions( pSession, pRemoteBufferSessionDescription, pLocalBufferSessionDescription, &pBuffer, &bufferLength );
+        ret = PopulateMediaDescriptions( pSession,
+                                         pRemoteBufferSessionDescription,
+                                         pLocalBufferSessionDescription,
+                                         &pBuffer,
+                                         &bufferLength );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -1154,7 +1254,11 @@ PeerConnectionResult_t PeerConnectionSdp_PopulateSessionDescription( PeerConnect
         /* Add session descriptions.
          * Note that we need to session media count to populate session group attribute,
          * so this have to do after populate media sessions. */
-        ret = PopulateSessionDescription( pSession, pRemoteBufferSessionDescription, pLocalBufferSessionDescription, &pBuffer, &bufferLength );
+        ret = PopulateSessionDescription( pSession,
+                                          pRemoteBufferSessionDescription,
+                                          pLocalBufferSessionDescription,
+                                          &pBuffer,
+                                          &bufferLength );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )

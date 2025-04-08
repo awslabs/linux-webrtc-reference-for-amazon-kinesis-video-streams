@@ -468,10 +468,13 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
     PeerConnectionResult_t peerConnectionResult;
     PeerConnectionSessionConfiguration_t pcConfig;
 
-    memset( &pcConfig, 0, sizeof( PeerConnectionSessionConfiguration_t ) );
+    memset( &pcConfig,
+            0,
+            sizeof( PeerConnectionSessionConfiguration_t ) );
     pcConfig.canTrickleIce = 1U;
 
-    peerConnectionResult = PeerConnection_Init( &pDemoSession->peerConnectionSession, &pcConfig );
+    peerConnectionResult = PeerConnection_Init( &pDemoSession->peerConnectionSession,
+                                                &pcConfig );
     if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
     {
         LogWarn( ( "PeerConnection_Init fail, result: %d", peerConnectionResult ) );
@@ -499,7 +502,9 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
 
     if( ret == 0 )
     {
-        memset( &pcConfig, 0, sizeof( PeerConnectionSessionConfiguration_t ) );
+        memset( &pcConfig,
+                0,
+                sizeof( PeerConnectionSessionConfiguration_t ) );
         pcConfig.iceServersCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
 
         ret = GetIceServerList( pDemoContext,
@@ -535,14 +540,16 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
     if( ret == 0 )
     {
         pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
-        ret = AppMediaSource_InitVideoTransceiver( &pDemoContext->appMediaSourcesContext, pTransceiver );
+        ret = AppMediaSource_InitVideoTransceiver( &pDemoContext->appMediaSourcesContext,
+                                                   pTransceiver );
         if( ret != 0 )
         {
             LogError( ( "Fail to get video transceiver." ) );
         }
         else
         {
-            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession, pTransceiver );
+            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession,
+                                                                  pTransceiver );
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
                 LogError( ( "Fail to add video transceiver, result = %d.", peerConnectionResult ) );
@@ -555,14 +562,16 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
     if( ret == 0 )
     {
         pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
-        ret = AppMediaSource_InitAudioTransceiver( &pDemoContext->appMediaSourcesContext, pTransceiver );
+        ret = AppMediaSource_InitAudioTransceiver( &pDemoContext->appMediaSourcesContext,
+                                                   pTransceiver );
         if( ret != 0 )
         {
             LogError( ( "Fail to get audio transceiver." ) );
         }
         else
         {
-            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession, pTransceiver );
+            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession,
+                                                                  pTransceiver );
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
                 LogError( ( "Fail to add audio transceiver, result = %d.", peerConnectionResult ) );
@@ -574,7 +583,9 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
     if( ret == 0 )
     {
         pDemoSession->remoteClientIdLength = remoteClientIdLength;
-        memcpy( pDemoSession->remoteClientId, pRemoteClientId, remoteClientIdLength );
+        memcpy( pDemoSession->remoteClientId,
+                pRemoteClientId,
+                remoteClientIdLength );
         peerConnectionResult = PeerConnection_Start( &pDemoSession->peerConnectionSession );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
@@ -598,7 +609,9 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
     for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
     {
         if( ( pDemoContext->peerConnectionSessions[i].remoteClientIdLength == remoteClientIdLength ) &&
-            ( strncmp( pDemoContext->peerConnectionSessions[i].remoteClientId, pRemoteClientId, remoteClientIdLength ) == 0 ) )
+            ( strncmp( pDemoContext->peerConnectionSessions[i].remoteClientId,
+                       pRemoteClientId,
+                       remoteClientIdLength ) == 0 ) )
         {
             /* Found existing session. */
             pRet = &pDemoContext->peerConnectionSessions[i];
@@ -625,7 +638,10 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
                     remoteClientIdLength,
                     ( int ) remoteClientIdLength,
                     pRemoteClientId ) );
-        initResult = StartPeerConnectionSession( pDemoContext, pRet, pRemoteClientId, remoteClientIdLength );
+        initResult = StartPeerConnectionSession( pDemoContext,
+                                                 pRet,
+                                                 pRemoteClientId,
+                                                 remoteClientIdLength );
         if( initResult != 0 )
         {
             pRet = NULL;
@@ -756,7 +772,10 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
 
     if( skipProcess == 0 )
     {
-        pPcSession = GetCreatePeerConnectionSession( pDemoContext, pSignalingMessage->pRemoteClientId, pSignalingMessage->remoteClientIdLength, 1U );
+        pPcSession = GetCreatePeerConnectionSession( pDemoContext,
+                                                     pSignalingMessage->pRemoteClientId,
+                                                     pSignalingMessage->remoteClientIdLength,
+                                                     1U );
         if( pPcSession == NULL )
         {
             LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -806,7 +825,9 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
 
     if( skipProcess == 0 )
     {
-        memset( &bufferSessionDescription, 0, sizeof( PeerConnectionBufferSessionDescription_t ) );
+        memset( &bufferSessionDescription,
+                0,
+                sizeof( PeerConnectionBufferSessionDescription_t ) );
         bufferSessionDescription.pSdpBuffer = pDemoContext->sdpBuffer;
         bufferSessionDescription.sdpBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
         peerConnectionResult = PeerConnection_SetLocalDescription( &pPcSession->peerConnectionSession,
@@ -861,7 +882,8 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
         signalingMessageSdpAnswer.pRemoteClientId = pSignalingMessage->pRemoteClientId;
         signalingMessageSdpAnswer.remoteClientIdLength = pSignalingMessage->remoteClientIdLength;
 
-        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &signalingMessageSdpAnswer );
+        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext,
+                                                                     &signalingMessageSdpAnswer );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             skipProcess = 1;
@@ -877,7 +899,10 @@ static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
     PeerConnectionResult_t peerConnectionResult;
     DemoPeerConnectionSession_t * pPcSession = NULL;
 
-    pPcSession = GetCreatePeerConnectionSession( pDemoContext, pSignalingMessage->pRemoteClientId, pSignalingMessage->remoteClientIdLength, 1U );
+    pPcSession = GetCreatePeerConnectionSession( pDemoContext,
+                                                 pSignalingMessage->pRemoteClientId,
+                                                 pSignalingMessage->remoteClientIdLength,
+                                                 1U );
     if( pPcSession == NULL )
     {
         LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -976,22 +1001,41 @@ static void HandleLocalCandidateReady( void * pCustomContext,
     {
         if( pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.family == STUN_ADDRESS_IPv4 )
         {
-            written = snprintf( candidateStringBuffer, DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE,
+            written = snprintf( candidateStringBuffer,
+                                DEMO_JSON_CANDIDATE_MAX_LENGTH,
+                                DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE,
                                 pIceLocalCandidate->localCandidateIndex,
                                 pIceLocalCandidate->pLocalCandidate->priority,
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[0], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[1], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[2], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[3],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[0],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[1],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[2],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[3],
                                 pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.port,
                                 GetCandidateTypeString( pIceLocalCandidate->pLocalCandidate->candidateType ) );
         }
         else
         {
-            written = snprintf( candidateStringBuffer, DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE,
+            written = snprintf( candidateStringBuffer,
+                                DEMO_JSON_CANDIDATE_MAX_LENGTH,
+                                DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE,
                                 pIceLocalCandidate->localCandidateIndex,
                                 pIceLocalCandidate->pLocalCandidate->priority,
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[0], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[1], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[2], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[3],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[4], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[5], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[6], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[7],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[8], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[9], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[10], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[11],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[12], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[13], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[14], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[15],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[0],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[1],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[2],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[3],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[4],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[5],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[6],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[7],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[8],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[9],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[10],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[11],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[12],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[13],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[14],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[15],
                                 pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.port,
                                 GetCandidateTypeString( pIceLocalCandidate->pLocalCandidate->candidateType ) );
         }
@@ -1006,10 +1050,15 @@ static void HandleLocalCandidateReady( void * pCustomContext,
     if( skipProcess == 0 )
     {
         /* Format this into candidate string. */
-        memset( &( buffer[ 0 ] ), 0, DEMO_JSON_CANDIDATE_MAX_LENGTH );
+        memset( &( buffer[ 0 ] ),
+                0,
+                DEMO_JSON_CANDIDATE_MAX_LENGTH );
 
-        written = snprintf( &( buffer[ 0 ] ), DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_TEMPLATE,
-                            written, candidateStringBuffer );
+        written = snprintf( &( buffer[ 0 ] ),
+                            DEMO_JSON_CANDIDATE_MAX_LENGTH,
+                            DEMO_ICE_CANDIDATE_JSON_TEMPLATE,
+                            written,
+                            candidateStringBuffer );
 
         if( written < 0 )
         {
@@ -1028,7 +1077,8 @@ static void HandleLocalCandidateReady( void * pCustomContext,
         signalingMessage.pRemoteClientId = pPcSession->remoteClientId;
         signalingMessage.remoteClientIdLength = pPcSession->remoteClientIdLength;
 
-        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &signalingMessage );
+        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext,
+                                                                     &signalingMessage );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Send signaling message fail, result: %d", signalingControllerReturn ) );
@@ -1060,15 +1110,18 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
     {
         case SIGNALING_TYPE_MESSAGE_SDP_OFFER:
             Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
-            HandleSdpOffer( &demoContext, pSignalingMessage );
+            HandleSdpOffer( &demoContext,
+                            pSignalingMessage );
             break;
         case SIGNALING_TYPE_MESSAGE_SDP_ANSWER:
             break;
         case SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE:
-            HandleRemoteCandidate( &demoContext, pSignalingMessage );
+            HandleRemoteCandidate( &demoContext,
+                                   pSignalingMessage );
             break;
         case SIGNALING_TYPE_MESSAGE_RECONNECT_ICE_SERVER:
-            HandleIceServerReconnect( &demoContext, pSignalingMessage );
+            HandleIceServerReconnect( &demoContext,
+                                      pSignalingMessage );
             break;
         case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
             break;
@@ -1107,8 +1160,15 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                            pDataChannel->ucDataChannelName,
                            ( int ) pMessageLen, pMessage ) );
 
-                sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) ? ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
-                retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
+                sprintf( ucSendMessage,
+                         "Received %ld bytes, ECHO: %.*s",
+                         ( long int ) pMessageLen,
+                         ( int ) ( pMessageLen > ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) ? ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) : pMessageLen ),
+                         pMessage );
+                retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel,
+                                                                0U,
+                                                                ( uint8_t * ) ucSendMessage,
+                                                                strlen( ucSendMessage ) );
             }
 
             if( retStatus != PEER_CONNECTION_RESULT_OK )
@@ -1151,9 +1211,15 @@ int main()
         Sctp_Init();
     #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
-    memset( &demoContext, 0, sizeof( DemoContext_t ) );
-    memset( &sslCreds, 0, sizeof( SSLCredentials_t ) );
-    memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
+    memset( &demoContext,
+            0,
+            sizeof( DemoContext_t ) );
+    memset( &sslCreds,
+            0,
+            sizeof( SSLCredentials_t ) );
+    memset( &connectInfo,
+            0,
+            sizeof( SignalingControllerConnectInfo_t ) );
 
     sslCreds.pCaCertPath = AWS_CA_CERT_PATH;
     #if defined( AWS_IOT_THING_ROLE_ALIAS )
@@ -1198,7 +1264,8 @@ int main()
         connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
     #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
 
-    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext, &sslCreds );
+    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext,
+                                                          &sslCreds );
 
     if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
     {
@@ -1209,7 +1276,8 @@ int main()
     if( ret == 0 )
     {
         /* Set the signal handler to release resource correctly. */
-        signal( SIGINT, terminateHandler );
+        signal( SIGINT,
+                terminateHandler );
 
         /* Initialize metrics. */
         Metric_Init();

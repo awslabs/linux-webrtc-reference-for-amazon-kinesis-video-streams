@@ -40,7 +40,8 @@ uint64_t NetworkingUtils_GetCurrentTimeSec( void * pTick )
 uint64_t NetworkingUtils_GetCurrentTimeUs( void * pTick )
 {
     struct timespec nowTime;
-    clock_gettime( CLOCK_REALTIME, &nowTime );
+    clock_gettime( CLOCK_REALTIME,
+                   &nowTime );
     return ( ( uint64_t ) nowTime.tv_sec * 1000 * 1000 ) + ( ( uint64_t ) nowTime.tv_nsec / 1000 );
 }
 
@@ -55,10 +56,19 @@ uint64_t NetworkingUtils_GetTimeFromIso8601( const char * pDate,
 
     if( ( dateLength == NETWORKING_ISO8601_TIME_STRING_LENGTH ) && ( pDate != NULL ) )
     {
-        memcpy( isoTimeBuffer, pDate, dateLength );
+        memcpy( isoTimeBuffer,
+                pDate,
+                dateLength );
         isoTimeBuffer[dateLength] = '\0';
 
-        sscanf( isoTimeBuffer, "%d-%d-%dT%d:%d:%dZ", &year, &month, &day, &hour, &minute, &second );
+        sscanf( isoTimeBuffer,
+                "%d-%d-%dT%d:%d:%dZ",
+                &year,
+                &month,
+                &day,
+                &hour,
+                &minute,
+                &second );
 
         tm.tm_year = year - 1900;
         tm.tm_mon = month - 1;

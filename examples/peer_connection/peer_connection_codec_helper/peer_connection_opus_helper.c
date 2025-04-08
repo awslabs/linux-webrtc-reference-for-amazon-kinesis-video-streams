@@ -83,7 +83,8 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
     {
         for( i = rtpSeqStart; i != rtpSeqEnd + 1; i++ )
         {
-            index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
+            index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i,
+                                                        PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
             pPacket = &pJitterBuffer->rtpPackets[ index ];
             opusPacket.pPacketData = pPacket->pPacketBuffer;
             opusPacket.packetDataLength = pPacket->packetBufferLength;
@@ -250,7 +251,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         else if( resultOpus == OPUS_RESULT_OK )
         {
             /* Prepare RTP packet for each payload buffer. */
-            memset( &pRollingBufferPacket->rtpPacket, 0, sizeof( RtpPacket_t ) );
+            memset( &pRollingBufferPacket->rtpPacket,
+                    0,
+                    sizeof( RtpPacket_t ) );
             pRollingBufferPacket->rtpPacket.header.payloadType = payloadType;
             pRollingBufferPacket->rtpPacket.header.sequenceNumber = *pRtpSeq;
             pRollingBufferPacket->rtpPacket.header.ssrc = *pSsrc;
