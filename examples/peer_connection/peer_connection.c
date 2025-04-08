@@ -472,7 +472,9 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 break;
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
                 /* Assign transport send/recv callback function/context for TURN headers. */
-                memset( &pSession->dtlsSession.xDtlsTransportParams, 0, sizeof( DtlsTransportParams_t ) );
+                memset( &pSession->dtlsSession.xDtlsTransportParams,
+                        0,
+                        sizeof( DtlsTransportParams_t ) );
                 pSession->state = PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND;
                 pSession->dtlsSession.xDtlsTransportParams.onDtlsSendHook = OnDtlsSendHook;
                 pSession->dtlsSession.xDtlsTransportParams.pOnDtlsSendCustomContext = ( void * ) pSession;
@@ -834,7 +836,9 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
             /* Trigger the DTLS handshaking to send client hello if necessary
              * and process incoming DTLS data by forwarding to respective
              * libraries to process. */
-            ret = ProcessDtlsPacket( pSession, pBuffer, bufferLength );
+            ret = ProcessDtlsPacket( pSession,
+                                     pBuffer,
+                                     bufferLength );
         }
         else
         {
@@ -1057,27 +1061,33 @@ static PeerConnectionResult_t GetDefaultCodec( uint32_t codecBitMap,
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
-    if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
+    if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                      TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_H264;
     }
-    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
+    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                           TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_OPUS;
     }
-    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
+    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                           TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_VP8;
     }
-    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
+    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                           TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_MULAW;
     }
-    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
+    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                           TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_ALAW;
     }
-    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
+    else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
+                                           TRANSCEIVER_RTC_CODEC_H265_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_H265;
     }
@@ -1186,10 +1196,16 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        memset( pSession, 0, sizeof( PeerConnectionSession_t ) );
+        memset( pSession,
+                0,
+                sizeof( PeerConnectionSession_t ) );
 
         /* Initialize request queue. */
-        ( void ) snprintf( tempName, sizeof( tempName ), "%s%02d", PEER_CONNECTION_MESSAGE_QUEUE_NAME, initSeq );
+        ( void ) snprintf( tempName,
+                           sizeof( tempName ),
+                           "%s%02d",
+                           PEER_CONNECTION_MESSAGE_QUEUE_NAME,
+                           initSeq );
 
         /* Delete message queue from previous round. */
         MessageQueue_Destroy( NULL,
@@ -1209,7 +1225,11 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         /* Initialize session task. */
-        ( void ) snprintf( tempName, sizeof( tempName ), "%s%02d", PEER_CONNECTION_SESSION_TASK_NAME, initSeq );
+        ( void ) snprintf( tempName,
+                           sizeof( tempName ),
+                           "%s%02d",
+                           PEER_CONNECTION_SESSION_TASK_NAME,
+                           initSeq );
 
         if( pthread_create( &( pSession->pTaskHandler ),
                             NULL,
@@ -1229,7 +1249,11 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        ( void ) snprintf( tempName, sizeof( tempName ), "%s%02d", PEER_CONNECTION_SESSION_RX_TASK_NAME, initSeq++ );
+        ( void ) snprintf( tempName,
+                           sizeof( tempName ),
+                           "%s%02d",
+                           PEER_CONNECTION_SESSION_RX_TASK_NAME,
+                           initSeq++ );
 
         if( pthread_create( &( pSession->pSocketListener ),
                             NULL,
@@ -1382,11 +1406,15 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         pTargetRemoteSdp = &pSession->remoteSessionDescription;
-        memset( pTargetRemoteSdp, 0, sizeof( PeerConnectionBufferSessionDescription_t ) );
+        memset( pTargetRemoteSdp,
+                0,
+                sizeof( PeerConnectionBufferSessionDescription_t ) );
         pTargetRemoteSdp->pSdpBuffer = pSession->remoteSdpBuffer;
         pTargetRemoteSdp->sdpBufferLength = pBufferSessionDescription->sdpBufferLength;
         pTargetRemoteSdp->type = pBufferSessionDescription->type;
-        memcpy( pTargetRemoteSdp->pSdpBuffer, pBufferSessionDescription->pSdpBuffer, pTargetRemoteSdp->sdpBufferLength );
+        memcpy( pTargetRemoteSdp->pSdpBuffer,
+                pBufferSessionDescription->pSdpBuffer,
+                pTargetRemoteSdp->sdpBufferLength );
 
         ret = PeerConnectionSdp_DeserializeSdpMessage( pTargetRemoteSdp );
     }
@@ -1726,7 +1754,9 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         // Free each transceiver in the array
-        memset( pSession->pTransceivers, 0, sizeof( pSession->pTransceivers ) );
+        memset( pSession->pTransceivers,
+                0,
+                sizeof( pSession->pTransceivers ) );
         pSession->transceiverCount = 0;
         pSession->mLinesTransceiverCount = 0;
 
@@ -1759,29 +1789,41 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
         {
             LogDebug( ( "This session is not ready for sending frames." ) );
         }
-        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
+                                               TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
         {
-            ret = PeerConnectionSrtp_WriteH264Frame( pSession, pTransceiver, pFrame );
+            ret = PeerConnectionSrtp_WriteH264Frame( pSession,
+                                                     pTransceiver,
+                                                     pFrame );
         }
-        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
+                                               TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
         {
             ret = PeerConnectionSrtp_WriteOpusFrame( pSession,
                                                      pTransceiver,
                                                      pFrame );
         }
-        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
+                                               TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {
 
         }
-        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
+                                               TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
         {
-            ret = PeerConnectionSrtp_WriteG711Frame( pSession, pTransceiver, pFrame );
+            ret = PeerConnectionSrtp_WriteG711Frame( pSession,
+                                                     pTransceiver,
+                                                     pFrame );
         }
-        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
+                                               TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
         {
-            ret = PeerConnectionSrtp_WriteG711Frame( pSession, pTransceiver, pFrame );
+            ret = PeerConnectionSrtp_WriteG711Frame( pSession,
+                                                     pTransceiver,
+                                                     pFrame );
         }
-        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
+                                               TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
 
         }

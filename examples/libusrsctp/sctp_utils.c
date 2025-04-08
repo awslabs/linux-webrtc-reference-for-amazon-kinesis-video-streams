@@ -67,7 +67,8 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
                               SCTP_ADAPTATION_INDICATION,
                               SCTP_PARTIAL_DELIVERY_EVENT };
 
-    if( usrsctp_set_non_blocking( pSocket, 1 ) != 0 )
+    if( usrsctp_set_non_blocking( pSocket,
+                                  1 ) != 0 )
     {
         LogError( ( "usrsctp_set_non_blocking failed!" ) );
         retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -106,7 +107,9 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        memset( &( event ), 0, sizeof( event ) );
+        memset( &( event ),
+                0,
+                sizeof( event ) );
         event.se_assoc_id = SCTP_FUTURE_ASSOC;
         event.se_on = 1;
         for( i = 0; i < ( uint32_t ) ( sizeof( eventTypes ) / sizeof( eventTypes[ 0 ] ) ); i++ )
@@ -127,7 +130,9 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        memset( &( initmsg ), 0, sizeof( struct sctp_initmsg ) );
+        memset( &( initmsg ),
+                0,
+                sizeof( struct sctp_initmsg ) );
         initmsg.sinit_num_ostreams = 300;
         initmsg.sinit_max_instreams = 300;
 
@@ -204,7 +209,10 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        dcepResult = Dcep_GetMessageType( &( dcepCtx ), pData, length, &( dcepMessageType ) );
+        dcepResult = Dcep_GetMessageType( &( dcepCtx ),
+                                          pData,
+                                          length,
+                                          &( dcepMessageType ) );
 
         if( dcepResult != DCEP_RESULT_OK )
         {
@@ -245,7 +253,8 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
                                                                                 channelOpenMessage.channelNameLength );
 
                     /* Send DATA_CHANNEL_ACK Message. */
-                    if( SendOpenDataChannelAck( pSctpSession, channelId ) != SCTP_UTILS_RESULT_OK )
+                    if( SendOpenDataChannelAck( pSctpSession,
+                                                channelId ) != SCTP_UTILS_RESULT_OK )
                     {
                         LogWarn( ( "Failed to sending DCEP_MESSAGE_DATA_CHANNEL_ACK!" ) );
                     }
@@ -373,7 +382,9 @@ static SctpUtilsResult_t SendOpenDataChannelAck( SctpSession_t * pSctpSession,
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        memset( &( pSctpSession->spa ), 0x00, sizeof( struct sctp_sendv_spa ) );
+        memset( &( pSctpSession->spa ),
+                0x00,
+                sizeof( struct sctp_sendv_spa ) );
         pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
         pSctpSession->spa.sendv_sndinfo.snd_sid = channelId;
         pSctpSession->spa.sendv_sndinfo.snd_ppid = ntohl( SCTP_PPID_DCEP );
@@ -401,7 +412,9 @@ SctpUtilsResult_t Sctp_Init( void )
 {
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
 
-    usrsctp_init_nothreads( 0, &OnSctpOutboundPacket, NULL );
+    usrsctp_init_nothreads( 0,
+                            &OnSctpOutboundPacket,
+                            NULL );
 
     /* Disable Explicit Congestion Notification. */
     usrsctp_sysctl_set_sctp_ecn_enable( 0 );
@@ -438,9 +451,15 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        memset( &( params ), 0x00, sizeof( struct sctp_paddrparams ) );
-        memset( &( localConn ), 0x00, sizeof( struct sockaddr_conn ) );
-        memset( &( remoteConn ), 0x00, sizeof( struct sockaddr_conn ) );
+        memset( &( params ),
+                0x00,
+                sizeof( struct sctp_paddrparams ) );
+        memset( &( localConn ),
+                0x00,
+                sizeof( struct sockaddr_conn ) );
+        memset( &( remoteConn ),
+                0x00,
+                sizeof( struct sockaddr_conn ) );
 
         pSctpSession->shutdownStatus = SCTP_SESSION_ACTIVE;
 
@@ -500,7 +519,9 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        memcpy( &( params.spp_address ), &( remoteConn ), sizeof( remoteConn ) );
+        memcpy( &( params.spp_address ),
+                &( remoteConn ),
+                sizeof( remoteConn ) );
         params.spp_flags = SPP_PMTUD_DISABLE;
         params.spp_pathmtu = SCTP_MTU;
         if( usrsctp_setsockopt( pSctpSession->socket,
@@ -556,8 +577,10 @@ SctpUtilsResult_t Sctp_FreeSession( SctpSession_t * pSctpSession )
 
         if( pSctpSession->socket != NULL )
         {
-            usrsctp_set_ulpinfo( pSctpSession->socket, NULL );
-            usrsctp_shutdown( pSctpSession->socket, SHUT_RDWR );
+            usrsctp_set_ulpinfo( pSctpSession->socket,
+                                 NULL );
+            usrsctp_shutdown( pSctpSession->socket,
+                              SHUT_RDWR );
             usrsctp_close( pSctpSession->socket );
         }
 
@@ -590,7 +613,10 @@ SctpUtilsResult_t Sctp_ProcessMessage( SctpSession_t * pSctpSession,
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        usrsctp_conninput( pSctpSession, pBuf, bufLen, 0 );
+        usrsctp_conninput( pSctpSession,
+                           pBuf,
+                           bufLen,
+                           0 );
     }
 
     return retStatus;
@@ -627,7 +653,9 @@ SctpUtilsResult_t Sctp_OpenDataChannel( SctpSession_t * pSctpSession,
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        memset( &( dcepChannelOpenMessage ), 0, sizeof( DcepChannelOpenMessage_t ) );
+        memset( &( dcepChannelOpenMessage ),
+                0,
+                sizeof( DcepChannelOpenMessage_t ) );
 
         dcepChannelOpenMessage.channelType = pDataChannelInitInfo->channelType;
         dcepChannelOpenMessage.numRetransmissions = pDataChannelInitInfo->numRetransmissions;
@@ -639,7 +667,9 @@ SctpUtilsResult_t Sctp_OpenDataChannel( SctpSession_t * pSctpSession,
         dcepChannelOpenMessage.pProtocol = NULL;
         dcepChannelOpenMessage.protocolLength = 0;
 
-        memset( &( pSctpSession->packet[ 0 ] ), 0x00, sizeof( pSctpSession->packet ) );
+        memset( &( pSctpSession->packet[ 0 ] ),
+                0x00,
+                sizeof( pSctpSession->packet ) );
         pSctpSession->packetSize = sizeof( pSctpSession->packet );
 
         dcepResult = Dcep_SerializeChannelOpenMessage( &( dcepCtx ),
@@ -659,7 +689,9 @@ SctpUtilsResult_t Sctp_OpenDataChannel( SctpSession_t * pSctpSession,
         channelId = pSctpSession->currentChannelId;
         pSctpSession->currentChannelId += 2;
 
-        memset( &( pSctpSession->spa ), 0x00, sizeof( struct sctp_sendv_spa ) );
+        memset( &( pSctpSession->spa ),
+                0x00,
+                sizeof( struct sctp_sendv_spa ) );
         pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
         pSctpSession->spa.sendv_sndinfo.snd_sid = channelId;
         pSctpSession->spa.sendv_sndinfo.snd_ppid = htonl( SCTP_PPID_DCEP );
@@ -710,7 +742,9 @@ SctpUtilsResult_t Sctp_SendMessage( SctpSession_t * pSctpSession,
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        memset( &( pSctpSession->spa ), 0x00, sizeof( struct sctp_sendv_spa ) );
+        memset( &( pSctpSession->spa ),
+                0x00,
+                sizeof( struct sctp_sendv_spa ) );
 
         pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
         pSctpSession->spa.sendv_sndinfo.snd_sid = pDataChannel->channelId;

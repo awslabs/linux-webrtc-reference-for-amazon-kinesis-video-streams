@@ -110,12 +110,20 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
     struct addrinfo xHints, * pxAddrList, * pxCur;
     char xPortStr[6];
 
-    memset( &xHints, 0, sizeof( xHints ) );
+    memset( &xHints,
+            0,
+            sizeof( xHints ) );
     xHints.ai_family = AF_UNSPEC;
     xHints.ai_socktype = SOCK_DGRAM;
     xHints.ai_protocol = IPPROTO_UDP;
-    snprintf( xPortStr, sizeof( xPortStr ), "%d", port );
-    if( getaddrinfo( pHostName, xPortStr, &xHints, &pxAddrList ) != 0 )
+    snprintf( xPortStr,
+              sizeof( xPortStr ),
+              "%d",
+              port );
+    if( getaddrinfo( pHostName,
+                     xPortStr,
+                     &xHints,
+                     &pxAddrList ) != 0 )
     {
         LogError( ( "Failed to connect to server: DNS resolution failed: Hostname=%s.",
                     pHostName ) );
@@ -134,7 +142,9 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
             continue;
         }
 
-        if( connect( xFd, pxCur->ai_addr, pxCur->ai_addrlen ) == 0 )
+        if( connect( xFd,
+                     pxCur->ai_addr,
+                     pxCur->ai_addrlen ) == 0 )
         {
             xRet = UDP_SOCKETS_ERRNO_NONE;
             LogInfo( ( "Established UDP connection with %s.", pHostName ) );
@@ -182,7 +192,8 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
  */
 void UDP_Sockets_Disconnect( Socket_t udpSocket )
 {
-    ( void )shutdown( udpSocket->xFd, SHUT_RDWR );
+    ( void )shutdown( udpSocket->xFd,
+                      SHUT_RDWR );
     free( udpSocket );
 }
 
@@ -209,7 +220,9 @@ int32_t UDP_Sockets_Send( Socket_t xSocket,
     assert( xSocket != NULL );
     assert( pvBuffer != NULL );
 
-    xWriteRet = write( xSocket->xFd, pvBuffer, xBufferLength );
+    xWriteRet = write( xSocket->xFd,
+                       pvBuffer,
+                       xBufferLength );
     if( xWriteRet >= 0 )
     {
         xReturnStatus = xWriteRet;
@@ -257,7 +270,9 @@ int32_t UDP_Sockets_Recv( Socket_t xSocket,
     assert( xSocket != NULL );
     assert( pvBuffer != NULL );
 
-    xReadRet = read( xSocket->xFd, pvBuffer, xBufferLength );
+    xReadRet = read( xSocket->xFd,
+                     pvBuffer,
+                     xBufferLength );
     if( xReadRet >= 0 )
     {
         xReturnStatus = xReadRet;

@@ -36,7 +36,8 @@ static int32_t Sha256Init( void * pHashContext )
     int32_t ret = 0;
     const EVP_MD * md = EVP_sha256();
 
-    ret = EVP_DigestInit( pHashContext, md );
+    ret = EVP_DigestInit( pHashContext,
+                          md );
 
     if( ret != 1 )
     {
@@ -54,7 +55,9 @@ static int32_t Sha256Update( void * pHashContext,
 {
     int32_t ret = 0;
 
-    ret = EVP_DigestUpdate( pHashContext, pInput, inputLen );
+    ret = EVP_DigestUpdate( pHashContext,
+                            pInput,
+                            inputLen );
 
     if( ret != 1 )
     {
@@ -73,7 +76,9 @@ static int32_t Sha256Final( void * pHashContext,
     int32_t ret = 0;
     unsigned int outLength = outputLen;
 
-    ret = EVP_DigestFinal( pHashContext, pOutput, &( outLength ) );
+    ret = EVP_DigestFinal( pHashContext,
+                           pOutput,
+                           &( outLength ) );
 
     if( ret != 1 )
     {
@@ -98,7 +103,8 @@ static int GetHostFromUrl( const char * pUrl,
 
     if( ret == 0 )
     {
-        pStart = strstr( pUrl, "://" );
+        pStart = strstr( pUrl,
+                         "://" );
         if( pStart == NULL )
         {
             ret = -1;
@@ -159,14 +165,18 @@ static int GetPathFromUrl( const char * pUrl,
     size_t hostLength = 0;
 
     /* Find out the host part. */
-    ret = GetHostFromUrl( pUrl, urlLength, &( pHost ), &( hostLength ) );
+    ret = GetHostFromUrl( pUrl,
+                          urlLength,
+                          &( pHost ),
+                          &( hostLength ) );
 
     if( ret == 0 )
     {
         pPathStart = pHost + hostLength;
 
         /* Query portion starts with '?'. */
-        pQueryStart = strchr( pPathStart, '?' );
+        pQueryStart = strchr( pPathStart,
+                              '?' );
 
         if( pQueryStart == NULL )
         {
@@ -197,7 +207,10 @@ static int GetCurrentTimeInIso8601Format( char * pBuf,
     size_t timeLength = 0;
 
     time( &( now ) );
-    timeLength = strftime( pBuf, *pBufLength, "%Y%m%dT%H%M%SZ", gmtime( &( now ) ) );
+    timeLength = strftime( pBuf,
+                           *pBufLength,
+                           "%Y%m%dT%H%M%SZ",
+                           gmtime( &( now ) ) );
 
     if( timeLength <= 0 )
     {
@@ -453,7 +466,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         if( ret == 0 )
         {
             if( ( queryLength < strlen( "X-Amz-ChannelARN" ) ) ||
-                ( strncmp( pQueryStart, "X-Amz-ChannelARN", strlen( "X-Amz-ChannelARN" ) ) != 0 ) )
+                ( strncmp( pQueryStart,
+                           "X-Amz-ChannelARN",
+                           strlen( "X-Amz-ChannelARN" ) ) != 0 ) )
             {
                 LogError( ( "Cannot find X-Amz-ChannelARN in the query string!" ) );
                 ret = -1;
@@ -462,7 +477,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
 
         if( ret == 0 )
         {
-            pEqualSign = strchr( pQueryStart, '=' );
+            pEqualSign = strchr( pQueryStart,
+                                 '=' );
 
             if( pEqualSign != NULL )
             {
@@ -712,7 +728,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             expirationSeconds = MIN( STATIC_CRED_EXPIRES_SECONDS,
                                      pAwsCredentials->expirationSeconds - time( NULL ) );
-            expirationSeconds = MAX( expirationSeconds, 1 );
+            expirationSeconds = MAX( expirationSeconds,
+                                     1 );
         }
 
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
@@ -974,7 +991,9 @@ static int LwsHttpCallback( struct lws * pWsi,
                 }
                 else
                 {
-                    memcpy( pHttpContext->pResponse->pBuffer, pData, dataLength );
+                    memcpy( pHttpContext->pResponse->pBuffer,
+                            pData,
+                            dataLength );
                     pHttpContext->pResponse->bufferLength = dataLength;
                 }
             }
@@ -990,7 +1009,9 @@ static int LwsHttpCallback( struct lws * pWsi,
 
             bufferLength = HTTP_RX_BUFFER_LENGTH;
 
-            if( lws_http_client_read( pWsi, ( char ** ) pHttpContext->rxBuffer, &( bufferLength ) ) < 0 )
+            if( lws_http_client_read( pWsi,
+                                      ( char ** ) pHttpContext->rxBuffer,
+                                      &( bufferLength ) ) < 0 )
             {
                 LogError( ( "lws_http_client_read failed!" ) );
                 ret = -1;
@@ -1034,7 +1055,10 @@ static int LwsHttpCallback( struct lws * pWsi,
                                                      ppStart,
                                                      pEnd );
 
-            contentLengthStrLength = snprintf( &( contentLengthStr[ 0 ] ), 11, "%lu", pHttpContext->pRequest->bodyLength );
+            contentLengthStrLength = snprintf( &( contentLengthStr[ 0 ] ),
+                                               11,
+                                               "%lu",
+                                               pHttpContext->pRequest->bodyLength );
             lwsStatus = lws_add_http_header_by_name( pWsi,
                                                      ( const unsigned char * ) "content-length",
                                                      ( const unsigned char * ) &( contentLengthStr[ 0 ] ),
@@ -1052,7 +1076,8 @@ static int LwsHttpCallback( struct lws * pWsi,
                                                          pEnd );
             }
 
-            lws_client_http_body_pending( pWsi, 1 );
+            lws_client_http_body_pending( pWsi,
+                                          1 );
             lws_callback_on_writable( pWsi );
         }
         break;
@@ -1074,7 +1099,8 @@ static int LwsHttpCallback( struct lws * pWsi,
                 if( writtenBodyLength > 0 )
                 {
                     /* Schedule again. */
-                    lws_client_http_body_pending( pWsi, 1 );
+                    lws_client_http_body_pending( pWsi,
+                                                  1 );
                     lws_callback_on_writable( pWsi );
                 }
                 else
@@ -1087,7 +1113,8 @@ static int LwsHttpCallback( struct lws * pWsi,
             else
             {
                 /* Finished sending the body. */
-                lws_client_http_body_pending( pWsi, 0 );
+                lws_client_http_body_pending( pWsi,
+                                              0 );
             }
         }
         break;
@@ -1312,14 +1339,18 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
 
     if( ret == NETWORKING_RESULT_OK )
     {
-        memset( pHttpCtx, 0, sizeof( NetworkingHttpContext_t ) );
+        memset( pHttpCtx,
+                0,
+                sizeof( NetworkingHttpContext_t ) );
 
         pHttpCtx->protocols[ 0 ].name = "https";
         pHttpCtx->protocols[ 0 ].callback = LwsHttpCallback;
         pHttpCtx->protocols[ 0 ].user = pHttpCtx;
         pHttpCtx->protocols[ 1 ].callback = NULL; /* End marker. */
 
-        memset( &( creationInfo ), 0, sizeof( struct lws_context_creation_info ) );
+        memset( &( creationInfo ),
+                0,
+                sizeof( struct lws_context_creation_info ) );
         creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
         creationInfo.port = CONTEXT_PORT_NO_LISTEN;
         creationInfo.protocols = &( pHttpCtx->protocols[ 0 ] );
@@ -1340,7 +1371,8 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
             creationInfo.client_ssl_private_key_filepath = pCreds->pDeviceKeyPath;
         }
 
-        lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
+        lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR,
+                           NULL );
         pHttpCtx->pLwsContext = lws_create_context( &( creationInfo ) );
 
         if( pHttpCtx->pLwsContext == NULL )
@@ -1373,7 +1405,9 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
 
     if( ret == NETWORKING_RESULT_OK )
     {
-        memset( pWebsocketCtx, 0, sizeof( NetworkingWebsocketContext_t ) );
+        memset( pWebsocketCtx,
+                0,
+                sizeof( NetworkingWebsocketContext_t ) );
 
         if( RingBuffer_Init( &( pWebsocketCtx->ringBuffer ) ) != RING_BUFFER_RESULT_OK )
         {
@@ -1389,7 +1423,9 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
         pWebsocketCtx->protocols[ 0 ].user = pWebsocketCtx;
         pWebsocketCtx->protocols[ 1 ].callback = NULL; /* End marker. */
 
-        memset( &( creationInfo ), 0, sizeof( struct lws_context_creation_info ) );
+        memset( &( creationInfo ),
+                0,
+                sizeof( struct lws_context_creation_info ) );
         creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
         creationInfo.port = CONTEXT_PORT_NO_LISTEN;
         creationInfo.protocols = &( pWebsocketCtx->protocols[ 0 ] );
@@ -1410,7 +1446,8 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
             creationInfo.client_ssl_private_key_filepath = pCreds->pDeviceKeyPath;
         }
 
-        lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
+        lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR,
+                           NULL );
         pWebsocketCtx->pLwsContext = lws_create_context( &( creationInfo ) );
 
         if( pWebsocketCtx->pLwsContext == NULL )
@@ -1567,7 +1604,9 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         /* Needed to receive the response in the user supplied buffer. */
         pHttpCtx->pResponse = pResponse;
 
-        memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
+        memset( &( connectInfo ),
+                0,
+                sizeof( struct lws_client_connect_info ) );
 
         connectInfo.context = pHttpCtx->pLwsContext;
         connectInfo.ssl_connection = LCCSCF_USE_SSL;
@@ -1585,7 +1624,8 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         pHttpCtx->connectionClosed = 0U;
         while( pHttpCtx->connectionClosed == 0U )
         {
-            ( void ) lws_service( pHttpCtx->pLwsContext, 0 );
+            ( void ) lws_service( pHttpCtx->pLwsContext,
+                                  0 );
         }
     }
 
@@ -1670,7 +1710,9 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
         pWebsocketCtx->rxCallback = pConnectInfo->rxCallback;
         pWebsocketCtx->pRxCallbackData = pConnectInfo->pRxCallbackData;
 
-        memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
+        memset( &( connectInfo ),
+                0,
+                sizeof( struct lws_client_connect_info ) );
 
         connectInfo.context = pWebsocketCtx->pLwsContext;
         connectInfo.ssl_connection = LCCSCF_USE_SSL;
@@ -1690,7 +1732,8 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
         while( ( pWebsocketCtx->connectionEstablished == 0U ) &&
                ( pWebsocketCtx->connectionClosed == 0U ) )
         {
-            ( void ) lws_service( pWebsocketCtx->pLwsContext, 0 );
+            ( void ) lws_service( pWebsocketCtx->pLwsContext,
+                                  0 );
         }
 
         if( pWebsocketCtx->connectionClosed == 1U )
@@ -1768,7 +1811,8 @@ NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pW
 
     if( ret == NETWORKING_RESULT_OK )
     {
-        lws_service( pWebsocketCtx->pLwsContext, 0 );
+        lws_service( pWebsocketCtx->pLwsContext,
+                     0 );
 
         if( pWebsocketCtx->connectionClosed == 1 )
         {
