@@ -49,6 +49,12 @@ extern "C" {
 #define MAX_SCTP_DATA_CHANNELS          4
 #define PEER_CONNECTION_MAX_SCTP_DATA_CHANNELS_PER_PEER 2
 
+#define PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US        1000 * 10000  //1,000,000 microseconds.
+#define PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS                     512     // Unit kilobits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS                     2048000 // Unit kilobits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS                      4000    // Unit bits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS                      650000  // Unit bits/sec. Value could change based on codec.
+
 typedef enum PeerConnectionResult
 {
     PEER_CONNECTION_RESULT_OK = 0,

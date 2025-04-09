@@ -46,7 +46,7 @@ If not using the samples directly, following thing need to be done to set up Twc
 1. Set the callback that will have the business logic to modify the bitrate based on packet loss information. The callback can be set using `PeerConnection_SetSenderBandwidthEstimationCallback()` inside `PeerConnection_Init()`:
 ```c
 ret = PeerConnection_SetSenderBandwidthEstimationCallback(  pSession,
-                                                            PeerConnection_SampleSenderBandwidthEstimationHandler,
+                                                            SampleSenderBandwidthEstimationHandler,
                                                             &pSession->twccMetaData );
 ```
 ## Compile Commands
