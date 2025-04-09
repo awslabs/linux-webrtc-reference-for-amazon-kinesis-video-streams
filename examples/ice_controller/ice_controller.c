@@ -205,11 +205,6 @@ static IceResult_t IceController_MbedtlsMd5( const uint8_t * pBuffer,
     return ret;
 }
 
-static uint64_t IceController_GetCurrentTimeSeconds( void )
-{
-    return NetworkingUtils_GetCurrentTimeSec( NULL );
-}
-
 static IceControllerResult_t parseIceCandidate( const char * pDecodeMessage,
                                                 size_t decodeMessageLength,
                                                 const char ** ppCandidateString,
@@ -297,13 +292,14 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
     IceResult_t iceResult;
     uint32_t i;
     size_t count;
-    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_HEADER_LENGTH ];
+    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
         char ipFromBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
     uint8_t isLocked = 0U;
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
 
     if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
     {
@@ -334,6 +330,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
 
             iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
                                                         &pCtx->iceContext.pLocalCandidates[i],
+                                                        currentTimeSeconds,
                                                         stunBuffer,
                                                         &stunBufferLength );
 
@@ -399,7 +396,7 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
-    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_HEADER_LENGTH ];
+    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceControllerSocketContext_t * pSocketContext = pTargetSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
@@ -407,6 +404,7 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
         char ipToBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
     IceEndpoint_t * pDestEndpoint = NULL;
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
 
     LogVerbose( ( "Candidate Pair local/remote ID:0x%04x/0x%04x state is %d",
                   pTargetCandidatePair->pLocalCandidate->candidateId,
@@ -418,6 +416,7 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
         stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
         iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
                                                pTargetCandidatePair,
+                                               currentTimeSeconds,
                                                stunBuffer,
                                                &stunBufferLength );
 
@@ -1325,13 +1324,12 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         iceInitInfo.remoteCandidatesArrayLength = ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT;
         iceInitInfo.pCandidatePairsArray = pCtx->candidatePairsBuffer;
         iceInitInfo.candidatePairsArrayLength = ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT;
-        iceInitInfo.pRelayExtensionsArray = pCtx->relayExtensionsBuffer;
-        iceInitInfo.relayExtensionsArrayLength = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
+        iceInitInfo.pTurnServerArray = pCtx->turnServersBuffer;
+        iceInitInfo.turnServerArrayLength = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
         iceInitInfo.cryptoFunctions.randomFxn = IceController_CalculateRandom;
         iceInitInfo.cryptoFunctions.crc32Fxn = IceController_CalculateCrc32;
         iceInitInfo.cryptoFunctions.hmacFxn = IceController_MbedtlsHmac;
         iceInitInfo.cryptoFunctions.md5Fxn = IceController_MbedtlsMd5;
-        iceInitInfo.getCurrentTimeSecondsFxn = IceController_GetCurrentTimeSeconds;
         iceInitInfo.isControlling = 0;
         iceInitInfo.pStunBindingRequestTransactionIdStore = &pCtx->transactionIdStore;
 
@@ -1402,7 +1400,6 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
     IceResult_t iceResult;
     const uint8_t * pSendingBuffer = pBuffer;
     size_t sendingBufferLength = bufferLength;
-    uint8_t * pTurnBuffer;
     size_t turnBufferLength;
     IceEndpoint_t * pDestEndpoint = NULL;
     uint8_t turnSendBuffer[ ICE_CONTROLLER_MAX_MTU ];
@@ -1447,27 +1444,26 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
     {
         if( pCtx->pNominatedSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
         {
-            if( bufferLength + ICE_TURN_CHANNEL_DATA_HEADER_LENGTH > ICE_CONTROLLER_MAX_MTU )
+            if( bufferLength + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH > ICE_CONTROLLER_MAX_MTU )
             {
                 LogError( ( "The sending buffer is larger than MTU, length: %ld", sendingBufferLength ) );
                 ret = ICE_CONTROLLER_RESULT_FAIL_EXCEED_MTU;
             }
             else
             {
-                pTurnBuffer = turnSendBuffer;
-                turnBufferLength = ICE_CONTROLLER_MAX_MTU;
+                memcpy( turnSendBuffer + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH, pBuffer, bufferLength );
 
                 if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
+                    turnBufferLength = ICE_CONTROLLER_MAX_MTU;
                     iceResult = Ice_CreateTurnChannelDataMessage( &pCtx->iceContext,
                                                                   pCtx->pNominatedSocketContext->pCandidatePair,
-                                                                  pBuffer,
+                                                                  turnSendBuffer + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH,
                                                                   bufferLength,
-                                                                  pTurnBuffer,
                                                                   &turnBufferLength );
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
-                    if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
+                    if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_CHANNEL_DATA_HEADER_NOT_REQUIRED ) )
                     {
                         LogError( ( "Fail to create TURN channel data, result: %d", iceResult ) );
                         ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_TURN_CHANNEL_DATA;
@@ -1480,7 +1476,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
                         if( iceResult == ICE_RESULT_OK )
                         {
                             /* Set sending buffer/length to turn buffer since TURN channel header has been appended successfully. */
-                            pSendingBuffer = pTurnBuffer;
+                            pSendingBuffer = turnSendBuffer;
                             sendingBufferLength = turnBufferLength;
                         }
                     }

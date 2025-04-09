@@ -334,7 +334,7 @@ typedef struct IceControllerContext
     IceCandidate_t localCandidatesBuffer[ ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT ];
     IceCandidate_t remoteCandidatesBuffer[ ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT ];
     IceCandidatePair_t candidatePairsBuffer[ ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT ];
-    IceRelayExtension_t relayExtensionsBuffer[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ];
+    IceTurnServer_t turnServersBuffer[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ];
     TransactionIdStore_t transactionIdStore;
     TransactionIdSlot_t transactionIdsBuffer[ ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT ];
 

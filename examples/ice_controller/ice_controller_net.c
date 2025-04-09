@@ -1052,6 +1052,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
     uint8_t sentStunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
     size_t sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceResult_t iceResult;
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
 
     if( ( pCtx == NULL ) || ( pReceiveBuffer == NULL ) || ( pRemoteIceEndpoint == NULL ) )
     {
@@ -1069,6 +1070,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                                                         ( size_t ) receiveBufferLength,
                                                         pSocketContext->pLocalCandidate,
                                                         pRemoteIceEndpoint,
+                                                        currentTimeSeconds,
                                                         &pTransactionIdBuffer,
                                                         &pCandidatePair );
             pthread_mutex_unlock( &( pCtx->iceMutex ) );
@@ -1088,7 +1090,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
 
             if( pCandidatePair != NULL )
             {
-                LogDebug( ( "Receiving STUN packet, local/renite candidate ID: 0x%04x / 0x%04x",
+                LogDebug( ( "Receiving STUN packet, local/remote candidate ID: 0x%04x / 0x%04x",
                             pCandidatePair->pLocalCandidate->candidateId,
                             pCandidatePair->pRemoteCandidate->candidateId ) );
             }
@@ -1164,7 +1166,8 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 ret = SendBindingResponse( pCtx, pSocketContext, pCandidatePair, pTransactionIdBuffer );
 
                 if( ( ret == ICE_CONTROLLER_RESULT_OK ) &&
-                    ( iceHandleStunResult == ICE_HANDLE_STUN_PACKET_RESULT_SEND_RESPONSE_FOR_NOMINATION ) )
+                    ( pCandidatePair->state == ICE_CANDIDATE_PAIR_STATE_SUCCEEDED ) &&
+                    ( pCtx->pNominatedSocketContext == NULL ) )
                 {
                     Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
                     LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x / 0x%04x",
@@ -1194,6 +1197,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 {
                     iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
                                                            pCandidatePair,
+                                                           currentTimeSeconds,
                                                            sentStunBuffer,
                                                            &sentStunBufferLength );
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
@@ -1221,11 +1225,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
                 break;
-            case ICE_HANDLE_STUN_PACKET_RESULT_SEND_CONNECTIVITY_BINDING_REQUEST:
+            case ICE_HANDLE_STUN_PACKET_RESULT_SEND_CONNECTIVITY_CHECK_REQUEST:
                 if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
                     iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
                                                            pCandidatePair,
+                                                           currentTimeSeconds,
                                                            sentStunBuffer,
                                                            &sentStunBufferLength );
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
@@ -1291,6 +1296,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
                     iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
                                                                 pSocketContext->pLocalCandidate,
+                                                                currentTimeSeconds,
                                                                 sentStunBuffer,
                                                                 &sentStunBufferLength );
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
@@ -1331,13 +1337,8 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
 
                 ret = ICE_CONTROLLER_RESULT_CONNECTION_CLOSED;
                 break;
-            case ICE_HANDLE_STUN_PACKET_RESULT_RELAY_CANDIDATE_PAIR_NOT_CREATING_PERMISSION:
-                LogDebug( ( "candidate pair not creating permission. pair state is %d, local candidate ID: 0x%04x",
-                            pCandidatePair->state,
-                            pSocketContext->pLocalCandidate->candidateId ) );
-                break;
-            case ICE_HANDLE_STUN_PACKET_RESULT_RELAY_CANDIDATE_PAIR_NOT_CHANNEL_BINDING:
-                LogDebug( ( "candidate pair not binding channel. pair state is %d, local candidate ID: 0x%04x",
+            case ICE_HANDLE_STUN_PACKET_RESULT_UNEXPECTED_RESPONSE:
+                LogDebug( ( "Unexpected response. pair state is %d, local candidate ID: 0x%04x",
                             pCandidatePair->state,
                             pSocketContext->pLocalCandidate->candidateId ) );
                 break;
@@ -1548,9 +1549,9 @@ void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
                     LogVerbose( ( "TURN channel number: 0x%02x%02x, TURN application data length: 0x%02x%02x",
                                   pStunPacket[ 0 ], pStunPacket[ 1 ],
                                   pStunPacket[ 2 ], pStunPacket[ 3 ] ) );
-                    pStunMsgContent = &pStunPacket[ ICE_TURN_CHANNEL_DATA_HEADER_LENGTH ];
+                    pStunMsgContent = &pStunPacket[ ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
                     pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunMsgContent;
-                    if( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) + ICE_TURN_CHANNEL_DATA_HEADER_LENGTH )
+                    if( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH )
                     {
                         // invalid STUN packet, ignore it.
                         LogWarn( ( "Invalid TURN packet, packet size: %lu", stunPacketSize ) );

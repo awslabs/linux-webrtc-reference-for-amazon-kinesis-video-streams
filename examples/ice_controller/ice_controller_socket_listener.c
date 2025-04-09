@@ -159,7 +159,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
     int32_t retPeerToPeerConnectionFound;
     IceResult_t iceResult;
     IceCandidatePair_t * pCandidatePair = NULL;
-    uint8_t * pTurnPayloadBuffer = NULL;
+    uint8_t * pTurnPayload = NULL;
     uint16_t turnPayloadBufferLength = 0;
     uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
     uint8_t * pProcessingBuffer = receiveBuffer;
@@ -210,20 +210,15 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
             {
                 iceResult = Ice_HandleTurnPacket( &pCtx->iceContext,
-                                                  pSocketContext->pLocalCandidate,
                                                   pProcessingBuffer,
                                                   processingBufferLength,
-                                                  ( const uint8_t ** ) &pTurnPayloadBuffer,
+                                                  pSocketContext->pLocalCandidate,
+                                                  ( const uint8_t ** ) &pTurnPayload,
                                                   &turnPayloadBufferLength,
                                                   &pCandidatePair );
                 pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
-                if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_PREFIX_NOT_REQUIRED ) )
-                {
-                    LogError( ( "Ice_HandleTurnPacket detects failure, iceResult: %d", iceResult ) );
-                    break;
-                }
-                else if( iceResult == ICE_RESULT_OK )
+                if( iceResult == ICE_RESULT_OK )
                 {
                     LogVerbose( ( "Removed TURN channel header for local/remote candidate ID 0x%04x / 0x%04x, number: 0x%02x%02x, length: 0x%02x%02x",
                                   pCandidatePair->pLocalCandidate->candidateId,
@@ -232,7 +227,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                                   pProcessingBuffer[ 2 ], pProcessingBuffer[ 3 ] ) );
 
                     /* Received TURN buffer, replace buffer pointer for further processing. */
-                    pProcessingBuffer = pTurnPayloadBuffer;
+                    pProcessingBuffer = pTurnPayload;
                     processingBufferLength = turnPayloadBufferLength;
                 }
                 else
