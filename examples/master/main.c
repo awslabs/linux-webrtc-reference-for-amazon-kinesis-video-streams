@@ -79,6 +79,10 @@ DemoContext_t demoContext;
 
 static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                                        void * pUserData );
+#if ENABLE_TWCC_SUPPORT
+static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
+                                                    TwccBandwidthInfo_t * pTwccBandwidthInfo );
+#endif /* ENABLE_TWCC_SUPPORT */
 static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
                                                 DemoPeerConnectionSession_t * pDemoSession );
 static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
@@ -491,8 +495,8 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
    - If packet loss stays at or below 5%, the bitrate increases by 5%.
    - If packet loss exceeds 5%, the bitrate decreases by the same percentage as the loss.
    The bitrate is adjusted once per second, ensuring it stays within predefined limits. */
-    static void PeerConnection_SampleSenderBandwidthEstimationHandler( void * pCustomContext,
-                                                                       TwccBandwidthInfo_t * pTwccBandwidthInfo )
+    static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
+                                                        TwccBandwidthInfo_t * pTwccBandwidthInfo )
     {
         PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
         PeerConnectionTwccMetaData_t * pTwccMetaData = NULL;
@@ -609,9 +613,9 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
     #if ENABLE_TWCC_SUPPORT
         if( peerConnectionResult == PEER_CONNECTION_RESULT_OK )
         {
-            /* In case you want to set a different callback based on your business logic, you could replace PeerConnection_SampleSenderBandwidthEstimationHandler() with your Handler. */
+            /* In case you want to set a different callback based on your business logic, you could replace SampleSenderBandwidthEstimationHandler() with your Handler. */
             peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pDemoSession->peerConnectionSession,
-                                                                                        PeerConnection_SampleSenderBandwidthEstimationHandler,
+                                                                                        SampleSenderBandwidthEstimationHandler,
                                                                                         &pDemoSession->peerConnectionSession.twccMetaData );
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
