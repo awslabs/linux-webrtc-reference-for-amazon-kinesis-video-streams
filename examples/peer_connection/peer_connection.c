@@ -56,7 +56,7 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
 static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession );
-static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t * pSession );
+static void PeerConnection_SetTimer( PeerConnectionSession_t * pSession );
 
 static void * PeerConnection_SessionTask( void * pParameter )
 {
@@ -594,7 +594,6 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_SUCCESS;
     DtlsSession_t * pDtlsSession = NULL;
-    TimerControllerResult_t retTimer;
 
     if( pSession == NULL )
     {
@@ -653,16 +652,6 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
         ret = ExecuteDtlsHandshake( pSession );
     }
 
-    if( ret == 0 )
-    {
-        retTimer = PeerConnection_SetTimer( pSession );
-
-        if( retTimer != TIMER_CONTROLLER_RESULT_OK )
-        {
-            LogError( ( "Fail to start RTCP Sender Report timer, result: %d", retTimer ) );
-        }
-    }
-
     return ret;
 }
 
@@ -704,7 +693,7 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession )
     return ret;
 }
 
-static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t * pSession )
+static void PeerConnection_SetTimer( PeerConnectionSession_t * pSession )
 {
     uint8_t i;
     TimerControllerResult_t retTimer;
@@ -718,7 +707,6 @@ static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t 
             {
                 /* The timer is not set before, send the request immendiately and start rtcp audio Sender Report timer. */
                 LogDebug( ( "Trigger rtcp audio Sender Report timer." ) );
-                OnRtcpSenderReportAudioTimerExpire( pSession );
                 retTimer = TimerController_SetTimer( &pSession->rtcpAudioSenderReportTimer,
                                                      PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ),
                                                      PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ) );
@@ -735,7 +723,6 @@ static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t 
             {
                 /* The timer is not set before, send the request immendiately and start rtcp video Sender Report timer. */
                 LogDebug( ( "Trigger rtcp video Sender Report timer." ) );
-                OnRtcpSenderReportVideoTimerExpire( pSession );
                 retTimer = TimerController_SetTimer( &pSession->rtcpVideoSenderReportTimer,
                                                      PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ),
                                                      PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ) );
@@ -750,8 +737,8 @@ static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t 
             /* Do Nothing, Coverity Happy. */
         }
     }
-    return retTimer;
 }
+
 static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
 {
     int32_t ret = 0;
@@ -816,6 +803,11 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
             }
         }
     #endif /* ENABLE_SCTP_DATA_CHANNEL */
+
+    if( ret == 0 )
+    {
+        PeerConnection_SetTimer( pSession );
+    }
 
     if( ret == 0 )
     {
