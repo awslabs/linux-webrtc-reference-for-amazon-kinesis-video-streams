@@ -24,6 +24,14 @@ PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * 
 /* Enable data channel to be included in the SDP offer. */
     PeerConnectionResult_t PeerConnection_AddDataChannel( PeerConnectionSession_t * pSession );
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
+
+#if ENABLE_TWCC_SUPPORT
+/* Enable TWCC Bandwidth Estimation Callback to change the media bitrates along side tith the Handler Callback */
+    PeerConnectionResult_t PeerConnection_SetSenderBandwidthEstimationCallback( PeerConnectionSession_t * pSession,
+                                                                                OnBandwidthEstimationCallback_t onBandwidthEstimationCallback,
+                                                                                void * pUserContext );
+#endif /* ENABLE_TWCC_SUPPORT */
+
 PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSession_t * pSession,
                                                               uint32_t ssrc,
                                                               const Transceiver_t ** ppTransceiver );
