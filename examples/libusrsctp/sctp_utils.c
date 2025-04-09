@@ -1,7 +1,6 @@
 #if ENABLE_SCTP_DATA_CHANNEL
 
 /* Standard includes. */
-#include <time.h>
 #include <stdio.h>
 #include <unistd.h>
 

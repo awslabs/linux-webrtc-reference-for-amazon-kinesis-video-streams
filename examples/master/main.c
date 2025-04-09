@@ -1098,17 +1098,16 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
 #if ENABLE_SCTP_DATA_CHANNEL
 
 #if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
-        static void onDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
+        static void OnDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
                                           uint8_t isBinary,
                                           uint8_t * pMessage,
                                           uint32_t pMessageLen )
         {
-#define OP_BUFFER_SIZE      512
-            char ucSendMessage[OP_BUFFER_SIZE];
+            char ucSendMessage[DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE];
             PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
             if( ( pMessage == NULL ) || ( pDataChannel == NULL ) )
             {
-                LogError( ( "No message or pDataChannel received in onDataChannelMessage" ) );
+                LogError( ( "No message or pDataChannel received in OnDataChannelMessage" ) );
                 return;
             }
 
@@ -1124,13 +1123,13 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                            pDataChannel->ucDataChannelName,
                            ( int ) pMessageLen, pMessage ) );
 
-                sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( OP_BUFFER_SIZE - 128 ) ? ( OP_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
+                sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) ? ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
                 retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
             }
 
             if( retStatus != PEER_CONNECTION_RESULT_OK )
             {
-                LogWarn( ( "[KVS Master] onDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
+                LogWarn( ( "[KVS Master] OnDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
             }
 
         }
@@ -1145,7 +1144,7 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
             ( void ) pucName;
             ( void ) ulNameLen;
 
-            return onDataChannelMessage;
+            return OnDataChannelMessage;
         }
 
 #endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
