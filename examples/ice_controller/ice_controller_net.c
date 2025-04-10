@@ -190,6 +190,7 @@ static IceControllerResult_t CreateSocketContextUdp( IceControllerContext_t * pC
             ret = ICE_CONTROLLER_RESULT_IPV6_NOT_SUPPORT;
             close( pSocketContext->socketFd );
             pSocketContext->socketFd = -1;
+            pCtx->socketsContextsCount--;
         }
     }
 
@@ -201,6 +202,7 @@ static IceControllerResult_t CreateSocketContextUdp( IceControllerContext_t * pC
             ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_BIND;
             close( pSocketContext->socketFd );
             pSocketContext->socketFd = -1;
+            pCtx->socketsContextsCount--;
         }
     }
 
@@ -212,6 +214,7 @@ static IceControllerResult_t CreateSocketContextUdp( IceControllerContext_t * pC
             ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_GETSOCKNAME;
             close( pSocketContext->socketFd );
             pSocketContext->socketFd = -1;
+            pCtx->socketsContextsCount--;
         }
         else
         {
@@ -255,32 +258,32 @@ static IceControllerResult_t CreateSocketContextTcp( IceControllerContext_t * pC
     const char * pRemoteIpPos;
     char remoteIpAddr[ INET_ADDRSTRLEN ];
 
-    /* Find a free socket context. */
-    if( pCtx->socketsContextsCount < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT )
+    pRemoteIpPos = inet_ntop( AF_INET,
+                              pConnectEndpoint->transportAddress.address,
+                              remoteIpAddr,
+                              INET_ADDRSTRLEN );
+    LogInfo( ( "Start TLS handshaking with %s:%d", pRemoteIpPos ? pRemoteIpPos : "UNKNOWN", pConnectEndpoint->transportAddress.port ) );
+    if( pRemoteIpPos == NULL )
     {
-        pSocketContext = &pCtx->socketsContexts[ pCtx->socketsContextsCount++ ];
-    }
-    else
-    {
-        LogWarn( ( "No socket context available for ice controller. Current number: %lu", pCtx->socketsContextsCount ) );
-        ret = ICE_CONTROLLER_RESULT_NO_SOCKET_CONTEXT_AVAILABLE;
+        LogError( ( "Unknown address, address: 0x%02x%02x%02x%02x",
+                    pConnectEndpoint->transportAddress.address[0],
+                    pConnectEndpoint->transportAddress.address[1],
+                    pConnectEndpoint->transportAddress.address[2],
+                    pConnectEndpoint->transportAddress.address[3] ) );
+        ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_NTOP;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        pRemoteIpPos = inet_ntop( AF_INET,
-                                  pConnectEndpoint->transportAddress.address,
-                                  remoteIpAddr,
-                                  INET_ADDRSTRLEN );
-        LogInfo( ( "Start TLS handshaking with %s:%d", pRemoteIpPos ? pRemoteIpPos : "UNKNOWN", pConnectEndpoint->transportAddress.port ) );
-        if( pRemoteIpPos == NULL )
+        /* Find a free socket context. */
+        if( pCtx->socketsContextsCount < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT )
         {
-            LogError( ( "Unknown address, address: 0x%02x%02x%02x%02x",
-                        pConnectEndpoint->transportAddress.address[0],
-                        pConnectEndpoint->transportAddress.address[1],
-                        pConnectEndpoint->transportAddress.address[2],
-                        pConnectEndpoint->transportAddress.address[3] ) );
-            ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_NTOP;
+            pSocketContext = &pCtx->socketsContexts[ pCtx->socketsContextsCount++ ];
+        }
+        else
+        {
+            LogWarn( ( "No socket context available for ice controller. Current number: %lu", pCtx->socketsContextsCount ) );
+            ret = ICE_CONTROLLER_RESULT_NO_SOCKET_CONTEXT_AVAILABLE;
         }
     }
 
@@ -316,6 +319,8 @@ static IceControllerResult_t CreateSocketContextTcp( IceControllerContext_t * pC
         if( xNetworkStatus != TLS_TRANSPORT_SUCCESS )
         {
             LogWarn( ( "Fail to connect with server with return %d", xNetworkStatus ) );
+            pCtx->socketsContextsCount--;
+            pSocketContext->socketFd = -1;
             ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONNECT;
         }
         else
@@ -845,6 +850,57 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
     return ret;
 }
 
+static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
+                                              IceControllerSocketContext_t * pSocketContext,
+                                              IceCandidatePair_t * pCandidatePair )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+        char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer2[ INET_ADDRSTRLEN ];
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
+
+    if( pCtx == NULL ||
+        pSocketContext == NULL ||
+        pCandidatePair == NULL )
+    {
+        LogWarn( ( "Invalid input, pCtx: %p, pSocketContext: %p, pCandidatePair: %p",
+                   pCtx, pSocketContext, pCandidatePair ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( ( pCandidatePair->state == ICE_CANDIDATE_PAIR_STATE_SUCCEEDED ) &&
+            ( pCtx->pNominatedSocketContext == NULL ) )
+        {
+            Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+            LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x / 0x%04x",
+                       pCandidatePair->pLocalCandidate->candidateId,
+                       pCandidatePair->pRemoteCandidate->candidateId ) );
+    
+            LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
+                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
+                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
+    
+            /* Update socket context. */
+            if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
+            {
+                pCtx->pNominatedSocketContext = pSocketContext;
+                pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
+                pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
+    
+                /* We have finished accessing the shared resource.  Release the mutex. */
+                pthread_mutex_unlock( &( pCtx->socketMutex ) );
+            }
+    
+            ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
+        }
+    }
+
+    return ret;
+}
+
 IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
                                                         size_t ipAddrLength,
                                                         IceEndpoint_t * pDestinationIceEndpoint )
@@ -1043,10 +1099,6 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceHandleStunPacketResult_t iceHandleStunResult;
     uint8_t * pTransactionIdBuffer;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipBuffer[ INET_ADDRSTRLEN ];
-        char ipBuffer2[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
     int32_t retLocalCandidateReady;
     IceControllerCallbackContent_t localCandidateReadyContent;
     uint8_t sentStunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
@@ -1165,31 +1217,11 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_RESPONSE_FOR_REMOTE_REQUEST:
                 ret = SendBindingResponse( pCtx, pSocketContext, pCandidatePair, pTransactionIdBuffer );
 
-                if( ( ret == ICE_CONTROLLER_RESULT_OK ) &&
-                    ( pCandidatePair->state == ICE_CANDIDATE_PAIR_STATE_SUCCEEDED ) &&
-                    ( pCtx->pNominatedSocketContext == NULL ) )
+                if( ret == ICE_CONTROLLER_RESULT_OK )
                 {
-                    Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
-                    LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x / 0x%04x",
-                               pCandidatePair->pLocalCandidate->candidateId,
-                               pCandidatePair->pRemoteCandidate->candidateId ) );
-
-                    LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
-                                  IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
-                                  IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
-
-                    /* Update socket context. */
-                    if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
-                    {
-                        pCtx->pNominatedSocketContext = pSocketContext;
-                        pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
-                        pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
-
-                        /* We have finished accessing the shared resource.  Release the mutex. */
-                        pthread_mutex_unlock( &( pCtx->socketMutex ) );
-                    }
-
-                    ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
+                    ret = CheckNomination( pCtx,
+                                           pSocketContext,
+                                           pCandidatePair );
                 }
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_CHANNEL_BIND_REQUEST:
@@ -1265,7 +1297,9 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 LogInfo( ( "A valid candidate pair is found" ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_PAIR_READY:
-                LogInfo( ( "ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_PAIR_READY" ) );
+                ret = CheckNomination( pCtx,
+                                       pSocketContext,
+                                       pCandidatePair );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_INTEGRITY_MISMATCH:
                 LogWarn( ( "Message Integrity check of the received packet failed" ) );
