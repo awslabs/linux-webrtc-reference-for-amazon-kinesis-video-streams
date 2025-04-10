@@ -1000,7 +1000,37 @@ static int LwsHttpCallback( struct lws * pWsi,
 
         case LWS_CALLBACK_COMPLETED_CLIENT_HTTP:
         {
+            pLwsProtocol = lws_get_protocol( pWsi );
+            pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
+
             LogDebug( ( "LWS_CALLBACK_COMPLETED_CLIENT_HTTP callback." ) );
+
+            status = lws_http_client_http_response( pWsi );
+            ( void ) status;
+
+            #if JOIN_STORAGE_SESSION
+            if( dataLength == 0 && 
+                pHttpContext->uriPathLength >= strlen("/joinStorageSession") &&
+                strstr(pHttpContext->uriPath, "/joinStorageSession") != NULL )
+            {
+                if( status == 200 )
+                {
+                    LogInfo( ( "HTTP request completed successfully with status %d",status ) );
+                    if( pHttpContext->pResponse != NULL )
+                    {
+                        pHttpContext->pResponse->bufferLength = 0;
+                    }
+                }
+                else
+                {
+                    LogInfo( ( "HTTP request failed with status %d", status ) );
+                    if( pHttpContext->pResponse != NULL )
+                    {
+                        pHttpContext->pResponse->bufferLength = 0;
+                    }
+                }
+            }
+            #endif
         }
         break;
 
