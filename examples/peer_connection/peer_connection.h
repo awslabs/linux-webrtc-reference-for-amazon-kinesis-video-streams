@@ -35,6 +35,8 @@ PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * 
 PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSession_t * pSession,
                                                               uint32_t ssrc,
                                                               const Transceiver_t ** ppTransceiver );
+PeerConnectionResult_t PeerConnection_MatchRemoteTransceiverBySsrc( PeerConnectionSession_t * pSession,
+                                                                    uint32_t ssrc );
 PeerConnectionResult_t PeerConnection_SetLocalDescription( PeerConnectionSession_t * pSession,
                                                            const PeerConnectionBufferSessionDescription_t * pBufferSessionDescription );
 PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSession_t * pSession,
