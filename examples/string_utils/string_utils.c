@@ -78,7 +78,7 @@ const char * StringUtils_StrStr( const char * pStr,
     {
         pRet = pStr;
     }
-    else if( pStr && pPattern )
+    else if( pStr && pPattern  && ( patternLength <= strLength ) )
     {
         for( i = 0; i <= strLength - patternLength; i++ )
         {
