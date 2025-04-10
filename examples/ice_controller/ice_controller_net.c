@@ -49,7 +49,9 @@ static void getLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
             pLocalIpAddresses[ localIpAddressesNum ].transportAddress.family = STUN_ADDRESS_IPv4;
             pLocalIpAddresses[ localIpAddressesNum ].transportAddress.port = 0;
             pIpv4Addr = ( struct sockaddr_in * ) pIfAddr->ifa_addr;
-            memcpy( pLocalIpAddresses[ localIpAddressesNum ].transportAddress.address, &pIpv4Addr->sin_addr, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( pLocalIpAddresses[ localIpAddressesNum ].transportAddress.address,
+                    &pIpv4Addr->sin_addr,
+                    STUN_IPV4_ADDRESS_SIZE );
             pLocalIpAddresses[ localIpAddressesNum ].isPointToPoint = ( ( pIfAddr->ifa_flags & IFF_POINTOPOINT ) != 0 );
             localIpAddressesNum++;
         }
@@ -160,7 +162,9 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
             memset( &ipv4Address, 0, sizeof( ipv4Address ) );
             ipv4Address.sin_family = AF_INET;
             ipv4Address.sin_port = 0; // use next available port
-            memcpy( &ipv4Address.sin_addr, pIceEndpoint->transportAddress.address, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( &ipv4Address.sin_addr,
+                    pIceEndpoint->transportAddress.address,
+                    STUN_IPV4_ADDRESS_SIZE );
             sockAddress = ( struct sockaddr * ) &ipv4Address;
             addressLength = sizeof( struct sockaddr_in );
         }
@@ -292,9 +296,7 @@ static void IceControllerNet_AddSrflxCandidate( IceControllerContext_t * pCtx,
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
         {
-            iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext,
-                                                         pLocalIceEndpoint,
-                                                         stunBuffer, &stunBufferLength );
+            iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext, pLocalIceEndpoint, stunBuffer, &stunBufferLength );
             if( iceResult != ICE_RESULT_OK )
             {
                 /* Free resource that already created. */
@@ -409,7 +411,9 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
             memset( &ipv4Address, 0, sizeof( ipv4Address ) );
             ipv4Address.sin_family = AF_INET;
             ipv4Address.sin_port = htons( pDestinationIceEndpoint->transportAddress.port );
-            memcpy( &ipv4Address.sin_addr, pDestinationIceEndpoint->transportAddress.address, STUN_IPV4_ADDRESS_SIZE );
+            memcpy( &ipv4Address.sin_addr,
+                    pDestinationIceEndpoint->transportAddress.address,
+                    STUN_IPV4_ADDRESS_SIZE );
 
             pDestinationAddress = ( struct sockaddr * ) &ipv4Address;
             addressLength = sizeof( ipv4Address );
@@ -419,7 +423,9 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
             memset( &ipv6Address, 0, sizeof( ipv6Address ) );
             ipv6Address.sin6_family = AF_INET6;
             ipv6Address.sin6_port = htons( pDestinationIceEndpoint->transportAddress.port );
-            memcpy( &ipv6Address.sin6_addr, pDestinationIceEndpoint->transportAddress.address, STUN_IPV6_ADDRESS_SIZE );
+            memcpy( &ipv6Address.sin6_addr,
+                    pDestinationIceEndpoint->transportAddress.address,
+                    STUN_IPV6_ADDRESS_SIZE );
 
             pDestinationAddress = ( struct sockaddr * ) &ipv6Address;
             addressLength = sizeof( ipv6Address );
@@ -760,14 +766,18 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
             {
                 ipv4Address = ( struct sockaddr_in * ) pIterator->ai_addr;
                 pIceTransportAddress->family = STUN_ADDRESS_IPv4;
-                memcpy( pIceTransportAddress->address, &ipv4Address->sin_addr, STUN_IPV4_ADDRESS_SIZE );
+                memcpy( pIceTransportAddress->address,
+                        &ipv4Address->sin_addr,
+                        STUN_IPV4_ADDRESS_SIZE );
                 break;
             }
             else if( pIterator->ai_family == AF_INET6 )
             {
                 ipv6Address = ( struct sockaddr_in6 * ) pIterator->ai_addr;
                 pIceTransportAddress->family = STUN_ADDRESS_IPv6;
-                memcpy( pIceTransportAddress->address, &ipv6Address->sin6_addr, STUN_IPV6_ADDRESS_SIZE );
+                memcpy( pIceTransportAddress->address,
+                        &ipv6Address->sin6_addr,
+                        STUN_IPV6_ADDRESS_SIZE );
                 break;
             }
         }

@@ -15,6 +15,7 @@
 
 #include "peer_connection_codec_helper.h"
 #include "peer_connection_h264_helper.h"
+#include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
 #include "peer_connection_g711_helper.h"
 
@@ -428,7 +429,7 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_SUCCESS;
     DtlsSession_t * pDtlsSession = NULL;
-    TimerControllerResult_t retTimer;
+    TimerControllerResult_t retTimer = TIMER_CONTROLLER_RESULT_OK;
 
     if( pSession == NULL )
     {
@@ -538,7 +539,7 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession )
 static TimerControllerResult_t PeerConnection_SetTimer( PeerConnectionSession_t * pSession )
 {
     uint8_t i;
-    TimerControllerResult_t retTimer;
+    TimerControllerResult_t retTimer = TIMER_CONTROLLER_RESULT_OK;
 
     for( i = 0; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT; i++ )
     {
@@ -1721,7 +1722,7 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
-
+            ret = PeerConnectionSrtp_WriteH265Frame( pSession, pTransceiver, pFrame );
         }
         else
         {
