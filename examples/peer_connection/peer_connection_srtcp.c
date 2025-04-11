@@ -30,6 +30,29 @@
 
 /*-----------------------------------------------------------*/
 
+static PeerConnectionResult_t PeerConnectionSrtcp_MatchRemoteBySsrc( PeerConnectionSession_t * pSession,
+                                                                     uint32_t ssrc )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( ( pSession == NULL ) )
+    {
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( ( ssrc != pSession->rtpConfig.remoteAudioSsrc ) && ( ssrc != pSession->rtpConfig.remoteVideoSsrc ) )
+        {
+            LogWarn( ( "No transceiver for SSRC: %u", ssrc ) );
+            ret = PEER_CONNECTION_RESULT_UNKNOWN_SSRC;
+        }
+    }
+
+    return ret;
+}
+
 static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSession,
                                                 const Transceiver_t * pTransceiver,
                                                 uint16_t rtpSeq,
@@ -583,8 +606,8 @@ static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t *
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        ret = PeerConnection_MatchRemoteTransceiverBySsrc( pSession,
-                                                           senderReport.senderSsrc );
+        ret = PeerConnectionSrtcp_MatchRemoteBySsrc( pSession,
+                                                     senderReport.senderSsrc );
 
         LogVerbose( ( "RTCP_PACKET_SENDER_REPORT %u %lu  rtpTs: %u  %u pkts  %u bytes", senderReport.senderSsrc, senderReport.senderInfo.ntpTime, senderReport.senderInfo.rtpTime, senderReport.senderInfo.packetCount, senderReport.senderInfo.octetCount ) );
 

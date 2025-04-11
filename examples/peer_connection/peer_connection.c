@@ -1587,29 +1587,6 @@ PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSess
     return ret;
 }
 
-PeerConnectionResult_t PeerConnection_MatchRemoteTransceiverBySsrc( PeerConnectionSession_t * pSession,
-                                                                    uint32_t ssrc )
-{
-    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-
-    if( ( pSession == NULL ) )
-    {
-        LogError( ( "Invalid input, pSession: %p", pSession ) );
-        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
-
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        if( ( ssrc != pSession->rtpConfig.remoteAudioSsrc ) && ( ssrc != pSession->rtpConfig.remoteVideoSsrc ) )
-        {
-            LogWarn( ( "No transceiver for SSRC: %u", ssrc ) );
-            ret = PEER_CONNECTION_RESULT_UNKNOWN_SSRC;
-        }
-    }
-
-    return ret;
-}
-
 PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pSession )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
