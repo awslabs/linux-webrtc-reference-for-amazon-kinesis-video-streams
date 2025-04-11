@@ -53,11 +53,6 @@
 /* assert() using stuff in task.h */
 //#include "task.h"
 
-struct xSOCKET
-{
-    int xFd;
-};
-
 /**
  * @brief Establish a connection to server.
  *
@@ -188,6 +183,12 @@ int32_t TCP_Sockets_Send( Socket_t xSocket,
     {
         switch( errno )
         {
+            case EAGAIN:
+            case EINTR:
+            case ENOMEM:
+            case ENOSPC:
+                xReturnStatus = TCP_SOCKETS_ERRNO_EWOULDBLOCK;
+                break;
             case EPIPE:
             case ECONNRESET:
                 xReturnStatus = TCP_SOCKETS_ERRNO_ENOTCONN;
@@ -245,6 +246,7 @@ int32_t TCP_Sockets_Recv( Socket_t xSocket,
                 xReturnStatus = TCP_SOCKETS_ERRNO_ENOTCONN;
                 break;
             default:
+                LogInfo( ( "error code %d, %s", errno, strerror( errno ) ) );
                 xReturnStatus = TCP_SOCKETS_ERRNO_ERROR;
                 break;
         }

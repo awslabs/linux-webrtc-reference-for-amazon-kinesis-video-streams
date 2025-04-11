@@ -3,13 +3,96 @@
 #include "logging.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
-//#include "task.h"
+#include "ice_api.h"
 #include "stun_deserializer.h"
+#include "transport_mbedtls.h"
 
-#define ICE_CONTROLLER_SOCKET_LISTENER_QUEUE_NAME "/WebrtcApplicationIceControllerSocketListener"
-#define MAX_QUEUE_MSG_NUM ( 10 )
 #define ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ( 50 )
 #define RX_BUFFER_SIZE ( 4096 )
+
+static int32_t RecvPacketUdp( IceControllerSocketContext_t * pSocketContext,
+                              uint8_t * pBuffer,
+                              size_t bufferSize,
+                              int flags,
+                              IceEndpoint_t * pRemoteEndpoint )
+{
+    int32_t ret;
+    struct sockaddr_storage srcAddress;
+    socklen_t srcAddressLength = sizeof( srcAddress );
+    struct sockaddr_in * pIpv4Address;
+    struct sockaddr_in6 * pIpv6Address;
+    uint8_t keepProcess = 1U;
+
+    ret = recvfrom( pSocketContext->socketFd, pBuffer, bufferSize, flags, ( struct sockaddr * ) &srcAddress, &srcAddressLength );
+
+    if( ret < 0 )
+    {
+        if( ( errno == EAGAIN ) || ( errno == EWOULDBLOCK ) )
+        {
+            /* Timeout, no more data to receive. */
+            ret = 0;
+            keepProcess = 0U;
+        }
+    }
+    else if( ret == 0 )
+    {
+        /* Nothing to do if receive 0 byte. */
+        keepProcess = 0U;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
+
+    if( keepProcess != 0U )
+    {
+        /* Received data, handle this STUN message. */
+        if( srcAddress.ss_family == AF_INET )
+        {
+            pIpv4Address = ( struct sockaddr_in * ) &srcAddress;
+
+            pRemoteEndpoint->transportAddress.family = STUN_ADDRESS_IPv4;
+            pRemoteEndpoint->transportAddress.port = ntohs( pIpv4Address->sin_port );
+            memcpy( pRemoteEndpoint->transportAddress.address, &pIpv4Address->sin_addr, STUN_IPV4_ADDRESS_SIZE );
+        }
+        else if( srcAddress.ss_family == AF_INET6 )
+        {
+            pIpv6Address = ( struct sockaddr_in6 * ) &srcAddress;
+
+            pRemoteEndpoint->transportAddress.family = STUN_ADDRESS_IPv6;
+            pRemoteEndpoint->transportAddress.port = ntohs( pIpv6Address->sin6_port );
+            memcpy( pRemoteEndpoint->transportAddress.address, &pIpv6Address->sin6_addr, STUN_IPV6_ADDRESS_SIZE );
+        }
+        else
+        {
+            /* Unknown IP type, drop packet. */
+            LogWarn( ( "Unknown source type(%d) from UDP connection.", srcAddress.ss_family ) );
+            ret = -1;
+        }
+    }
+
+    return ret;
+}
+
+static int32_t RecvPacketTls( IceControllerSocketContext_t * pSocketContext,
+                              uint8_t * pBuffer,
+                              size_t bufferSize,
+                              IceEndpoint_t * pRemoteEndpoint )
+{
+    int32_t ret;
+
+    memcpy( pRemoteEndpoint, pSocketContext->pIceServerEndpoint, sizeof( IceEndpoint_t ) );
+    ret = TLS_FreeRTOS_recv( &pSocketContext->tlsSession.xTlsNetworkContext,
+                             pBuffer,
+                             bufferSize );
+
+    if( ret < 0 )
+    {
+        LogError( ( "Receiving %d from TLS connection", ret ) );
+    }
+
+    return ret;
+}
 
 static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                                  IceControllerSocketContext_t * pChosenSocketContext )
@@ -25,17 +108,40 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
 
     if( skipProcess == 0 )
     {
-        LogDebug( ( "Closing sockets other than: %d", pChosenSocketContext->socketFd ) );
+        LogDebug( ( "Closing sockets other than local candidate ID: 0x%04x", pChosenSocketContext->pLocalCandidate->candidateId ) );
         for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
             if( pCtx->socketsContexts[i].socketFd != pChosenSocketContext->socketFd )
             {
-                /* Release all unused socket contexts. */
-                LogDebug( ( "Closing socket: %d", pCtx->socketsContexts[i].socketFd ) );
-                IceControllerNet_FreeSocketContext( pCtx,
-                                                    &pCtx->socketsContexts[i] );
+                if( ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) && ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
+                {
+                    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+                    {
+                        /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
+                         * Thus keep the socket alive until it's terminated. */
+                        Ice_CloseCandidate( &pCtx->iceContext,
+                                            pCtx->socketsContexts[i].pLocalCandidate );
+                        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+                        LogDebug( ( "Keep socket of local relay candidate ID: 0x%04x for terminating TURN resource", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
+                    }
+                    else
+                    {
+                        LogError( ( "Failed to close ICE candidate: mutex lock acquisition." ) );
+                    }
+                }
+                else
+                {
+                    /* Release all unused socket contexts. */
+                    LogDebug( ( "Closing socket for local candidate ID: 0x%04x", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
+                    IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
+                }
             }
         }
+    }
+
+    if( skipProcess == 0 )
+    {
+        IceController_CloseOtherCandidatePairs( pCtx, pChosenSocketContext->pCandidatePair );
     }
 }
 
@@ -47,18 +153,17 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                             void * pOnIceEventCallbackCustomContext )
 {
     uint8_t skipProcess = 0;
-    int readBytes;
-    struct sockaddr_storage srcAddress;
-    socklen_t srcAddressLength = sizeof( srcAddress );
-    struct sockaddr_in * pIpv4Address;
-    struct sockaddr_in6 * pIpv6Address;
+    int32_t readBytes;
     IceEndpoint_t remoteIceEndpoint;
     IceControllerResult_t ret;
-    StunResult_t retStun;
-    StunContext_t stunContext;
-    StunHeader_t stunHeader;
     int32_t retPeerToPeerConnectionFound;
+    IceResult_t iceResult;
+    IceCandidatePair_t * pCandidatePair = NULL;
+    uint8_t * pTurnPayload = NULL;
+    uint16_t turnPayloadBufferLength = 0;
     uint8_t receiveBuffer[ RX_BUFFER_SIZE ];
+    uint8_t * pProcessingBuffer = receiveBuffer;
+    size_t processingBufferLength = 0;
 
     if( ( pCtx == NULL ) || ( pSocketContext == NULL ) )
     {
@@ -68,63 +173,73 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 
     while( !skipProcess )
     {
-        readBytes = recvfrom( pSocketContext->socketFd,
-                              receiveBuffer,
-                              RX_BUFFER_SIZE,
-                              0,
-                              ( struct sockaddr * ) &srcAddress,
-                              &srcAddressLength );
+        if( pSocketContext->socketType == ICE_CONTROLLER_SOCKET_TYPE_UDP )
+        {
+            readBytes = RecvPacketUdp( pSocketContext, pProcessingBuffer, RX_BUFFER_SIZE, 0, &remoteIceEndpoint );
+        }
+        else if( pSocketContext->socketType == ICE_CONTROLLER_SOCKET_TYPE_TLS )
+        {
+            readBytes = RecvPacketTls( pSocketContext, pProcessingBuffer, RX_BUFFER_SIZE, &remoteIceEndpoint );
+        }
+        else
+        {
+            LogError( ( "Internal error, invalid socket type %d", pSocketContext->socketType ) );
+            skipProcess = 1;
+            break;
+        }
+
         if( readBytes < 0 )
         {
-            if( ( errno == EAGAIN ) || ( errno == EWOULDBLOCK ) )
-            {
-                /* Timeout, no more data to receive. */
-            }
-            else
-            {
-                LogError( ( "Fail to receive packets from socket ID: %d, errno: %s", pSocketContext->socketFd, strerror( errno ) ) );
-            }
-            skipProcess = 1;
+            LogError( ( "Fail to receive packets from socket ID: %d, errno: %s", pSocketContext->socketFd, strerror( errno ) ) );
             break;
         }
         else if( readBytes == 0 )
         {
             /* Nothing to do if receive 0 byte. */
-            skipProcess = 1;
             break;
         }
         else
         {
             /* Received valid data, keep addressing. */
+            LogVerbose( ( "Receiving %d btyes on local candidate ID: 0x%04x", readBytes, pSocketContext->pLocalCandidate->candidateId ) );
+            processingBufferLength = ( size_t ) readBytes;
         }
 
-        /* Received data, handle this STUN message. */
-        if( srcAddress.ss_family == AF_INET )
+        if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
         {
-            pIpv4Address = ( struct sockaddr_in * ) &srcAddress;
+            if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+            {
+                iceResult = Ice_HandleTurnPacket( &pCtx->iceContext,
+                                                  pProcessingBuffer,
+                                                  processingBufferLength,
+                                                  pSocketContext->pLocalCandidate,
+                                                  ( const uint8_t ** ) &pTurnPayload,
+                                                  &turnPayloadBufferLength,
+                                                  &pCandidatePair );
+                pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
-            remoteIceEndpoint.transportAddress.family = STUN_ADDRESS_IPv4;
-            remoteIceEndpoint.transportAddress.port = ntohs( pIpv4Address->sin_port );
-            memcpy( remoteIceEndpoint.transportAddress.address,
-                    &pIpv4Address->sin_addr,
-                    STUN_IPV4_ADDRESS_SIZE );
-        }
-        else if( srcAddress.ss_family == AF_INET6 )
-        {
-            pIpv6Address = ( struct sockaddr_in6 * ) &srcAddress;
+                if( iceResult == ICE_RESULT_OK )
+                {
+                    LogVerbose( ( "Removed TURN channel header for local/remote candidate ID 0x%04x / 0x%04x, number: 0x%02x%02x, length: 0x%02x%02x",
+                                  pCandidatePair->pLocalCandidate->candidateId,
+                                  pCandidatePair->pRemoteCandidate->candidateId,
+                                  pProcessingBuffer[ 0 ], pProcessingBuffer[ 1 ],
+                                  pProcessingBuffer[ 2 ], pProcessingBuffer[ 3 ] ) );
 
-            remoteIceEndpoint.transportAddress.family = STUN_ADDRESS_IPv6;
-            remoteIceEndpoint.transportAddress.port = ntohs( pIpv6Address->sin6_port );
-            memcpy( remoteIceEndpoint.transportAddress.address,
-                    &pIpv6Address->sin6_addr,
-                    STUN_IPV6_ADDRESS_SIZE );
-        }
-        else
-        {
-            /* Unknown IP type, drop packet. */
-            LogWarn( ( "Unknown IP type: %d", srcAddress.ss_family ) );
-            skipProcess = 1;
-            break;
+                    /* Received TURN buffer, replace buffer pointer for further processing. */
+                    pProcessingBuffer = pTurnPayload;
+                    processingBufferLength = turnPayloadBufferLength;
+                }
+                else
+                {
+                    /* TURN prefix not required, keep original buffer. */
+                }
+            }
+            else
+            {
+                LogError( ( "Failed to handle TURN packet: mutex lock acquisition." ) );
+                break;
+            }
         }
 
         /*
@@ -138,54 +253,80 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
          * |       B < 2   -+--> forward to STUN
          * +----------------+
          */
-        retStun = StunDeserializer_Init( &stunContext,
-                                         receiveBuffer,
-                                         readBytes,
-                                         &stunHeader );
-        if( retStun != STUN_RESULT_OK )
+        if( processingBufferLength > 0 )
         {
-            /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
-            if( onRecvNonStunPacketFunc )
+            if( ( ( pProcessingBuffer[ 0 ] > 127 ) && ( pProcessingBuffer[ 0 ] < 192 ) ) ||
+                ( ( pProcessingBuffer[ 0 ] > 19 ) && ( pProcessingBuffer[ 0 ] < 64 ) ) )
             {
-                ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext, receiveBuffer, readBytes );
-            }
-        }
-        else
-        {
-            ret = IceControllerNet_HandleStunPacket( pCtx,
-                                                     pSocketContext,
-                                                     receiveBuffer,
-                                                     readBytes,
-                                                     &remoteIceEndpoint );
-            if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) && ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
-            {
-                /* Set state to pass handshake and release other un-selected sockets. */
-                pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
-
-                ReleaseOtherSockets( pCtx, pSocketContext );
-
-                /* Found nominated pair, execute DTLS handshake and release all other resources. */
-                if( onIceEventCallbackFunc )
+                /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
+                if( onRecvNonStunPacketFunc )
                 {
-                    retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext, ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND, NULL );
-                    if( retPeerToPeerConnectionFound != 0 )
-                    {
-                        LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
-                    }
+                    ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext,
+                                                      pProcessingBuffer,
+                                                      processingBufferLength );
                 }
                 else
                 {
-                    LogWarn( ( "No callback function to handle P2P connection found event." ) );
+                    LogError( ( "No callback function to handle DTLS/RTP/RTCP packets." ) );
                 }
-                LogDebug( ( "Released all other socket contexts" ) );
             }
-            else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
+            else if( pProcessingBuffer[ 0 ] < 2 )
             {
-                /* Handle STUN packet successfully, keep processing. */
+                /* STUN packet. */
+                ret = IceControllerNet_HandleStunPacket( pCtx,
+                                                         pSocketContext,
+                                                         pProcessingBuffer,
+                                                         processingBufferLength,
+                                                         &remoteIceEndpoint,
+                                                         pCandidatePair );
+                if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) &&
+                    ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
+                {
+                    /* Set state to selected and release other un-selected sockets. */
+                    IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_READY );
+                    IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
+                    pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
+
+                    ReleaseOtherSockets( pCtx, pSocketContext );
+                    LogDebug( ( "Released all other socket contexts" ) );
+
+                    /* Found nominated pair, execute DTLS handshake and release all other resources. */
+                    if( onIceEventCallbackFunc )
+                    {
+                        retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext,
+                                                                               ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
+                                                                               NULL );
+                        if( retPeerToPeerConnectionFound != 0 )
+                        {
+                            LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
+                        }
+                    }
+                    else
+                    {
+                        LogWarn( ( "No callback function to handle P2P connection found event." ) );
+                    }
+                    LogDebug( ( "Released all other socket contexts" ) );
+                }
+                else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
+                {
+                    /* Handle STUN packet successfully, keep processing. */
+                }
+                else if( ret == ICE_CONTROLLER_RESULT_CONNECTION_CLOSED )
+                {
+                    /* Socket has been closed, skip the next recv loop. */
+                    break;
+                }
+                else
+                {
+                    LogError( ( "Fail to handle this RX packet, ret: %d, readBytes: %lu", ret, processingBufferLength ) );
+                }
             }
             else
             {
-                LogError( ( "Fail to handle this RX packet, ret: %d, readBytes: %d", ret, readBytes ) );
+                /* Unknown packet. */
+                LogWarn( ( "drop unknown packet, length=%lu, first byte=0x%02x",
+                           processingBufferLength,
+                           pProcessingBuffer[ 0 ] ) );
             }
         }
     }
@@ -272,8 +413,6 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         {
             if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
             {
-                LogVerbose( ( "Detect packets on fd %d, idx: %d", fds[i], i ) );
-
                 HandleRxPacket( pCtx,
                                 &pCtx->socketsContexts[i],
                                 onRecvNonStunPacketFunc,

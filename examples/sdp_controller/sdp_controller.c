@@ -2628,12 +2628,13 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
              ( ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) && ( populateConfiguration.pTransceiver == NULL ) ) ||
              ( populateConfiguration.pUserName == NULL ) )
     {
-        LogError( ( "Invalid input, pCname: %p, pLocalFingerprint: %p, pPassword: %p, pTransceiver: %p, pUserName: %p",
+        LogError( ( "Invalid input, pCname: %p, pLocalFingerprint: %p, pPassword: %p, pTransceiver: %p, pUserName: %p, trackKind: %d",
                     populateConfiguration.pCname,
                     populateConfiguration.pLocalFingerprint,
                     populateConfiguration.pPassword,
                     populateConfiguration.pTransceiver,
-                    populateConfiguration.pUserName ) );
+                    populateConfiguration.pUserName,
+                    trackKind ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
     else
@@ -2684,7 +2685,6 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
                 written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
                 break;
             }
-
             /* Since the range of trackKind is checked above the
              * TRANSCEIVER_TRACK_KIND_UNKNOWN and default case is not required to be handled.
              * The labels are kept for keeping the compiler happy wrt -Werror=switch */

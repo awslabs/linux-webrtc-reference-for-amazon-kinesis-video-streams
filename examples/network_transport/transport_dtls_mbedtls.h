@@ -66,8 +66,6 @@
 #define MAX_DTLS_RANDOM_BYTES_LEN 32
 #define MAX_DTLS_MASTER_KEY_LEN 48
 
-#define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
-
 typedef int32_t (* OnTransportDtlsSendHook_t)( void * pCustomContext,
                                                const uint8_t * pInputBuffer,
                                                size_t inputBufferLength );
@@ -154,7 +152,7 @@ typedef struct DtlsTransportParams
     /* Store the processing packet here. */
     uint8_t * pReceivedPacket;
     size_t receivedPacketLength;
-    uint32_t receivedPacketOffset;
+    size_t receivedPacketOffset;
 } DtlsTransportParams_t;
 
 typedef enum DtlsState
@@ -234,34 +232,34 @@ typedef struct DtlsSession
  */
 typedef enum DtlsTransportStatus
 {
-    DTLS_SUCCESS = 0,         /**< Function successfully completed. */
+    DTLS_SUCCESS = 0,                                /**< Function successfully completed. */
 
     /* Common error code. */
-    DTLS_INVALID_PARAMETER,   /**< At least one parameter was invalid. */
-    DTLS_OUT_OF_MEMORY, /**< Fail to allocate memory by malloc. */
+    DTLS_INVALID_PARAMETER,                          /**< At least one parameter was invalid. */
+    DTLS_OUT_OF_MEMORY,                              /**< Fail to allocate memory by malloc. */
 
     /* Transport error code */
-    DTLS_TRANSPORT_INSUFFICIENT_MEMORY, /**< Insufficient memory required to establish connection. */
-    DTLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid. */
-    DTLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server failed. */
-    DTLS_TRANSPORT_INTERNAL_ERROR,      /**< A call to a system API resulted in an internal error. */
-    DTLS_TRANSPORT_CONNECT_FAILURE,     /**< Initial connection to the server failed. */
-    DTLS_TRANSPORT_PROCESS_FAILURE,     /**< Fail while processing received packet. */
+    DTLS_TRANSPORT_INSUFFICIENT_MEMORY,              /**< Insufficient memory required to establish connection. */
+    DTLS_TRANSPORT_INVALID_CREDENTIALS,              /**< Provided credentials were invalid. */
+    DTLS_TRANSPORT_HANDSHAKE_FAILED,                 /**< Performing TLS handshake with server failed. */
+    DTLS_TRANSPORT_INTERNAL_ERROR,                   /**< A call to a system API resulted in an internal error. */
+    DTLS_TRANSPORT_CONNECT_FAILURE,                  /**< Initial connection to the server failed. */
+    DTLS_TRANSPORT_PROCESS_FAILURE,                  /**< Fail while processing received packet. */
 
     /* Error code for key and certificate generation. */
-    DTLS_INITIALIZE_PK_FAILURE,         /**< Fail to initialize SSL context before generating RSA key. */
-    DTLS_GENERATE_KEY_FAILURE,          /**< Fail to generate SSL key. */
-    DTLS_SET_CERT_ISSUER_NAME_FAILURE,  /**< Fail to set issuer name. */
-    DTLS_SET_CERT_VALIDITY_FAILURE,     /**< Fail to set validity. */
-    DTLS_WRITE_CERT_CRT_DER_FAILURE,    /**< Fail to write X509 crt der. */
-    DTLS_PARSE_CERT_DER_FAILURE,        /**< Fail to parse X509 der. */
-    DTLS_SET_CERT_SERIAL_FAILURE,       /**< Fail to set cert serial. */
-    DTLS_GENERATE_TIMESTAMP_STRING_FAILURE, /**< Fail to generate timestamp string. */
-    DTLS_READ_BINARY_FAILURE, /**< Fail to read binary. */
-    DTLS_GENERATE_RANDOM_BITS_FAILURE, /**< Fail to generate random bits. */
+    DTLS_INITIALIZE_PK_FAILURE,                      /**< Fail to initialize SSL context before generating RSA key. */
+    DTLS_GENERATE_KEY_FAILURE,                       /**< Fail to generate SSL key. */
+    DTLS_SET_CERT_ISSUER_NAME_FAILURE,               /**< Fail to set issuer name. */
+    DTLS_SET_CERT_VALIDITY_FAILURE,                  /**< Fail to set validity. */
+    DTLS_WRITE_CERT_CRT_DER_FAILURE,                 /**< Fail to write X509 crt der. */
+    DTLS_PARSE_CERT_DER_FAILURE,                     /**< Fail to parse X509 der. */
+    DTLS_SET_CERT_SERIAL_FAILURE,                    /**< Fail to set cert serial. */
+    DTLS_GENERATE_TIMESTAMP_STRING_FAILURE,          /**< Fail to generate timestamp string. */
+    DTLS_READ_BINARY_FAILURE,                        /**< Fail to read binary. */
+    DTLS_GENERATE_RANDOM_BITS_FAILURE,               /**< Fail to generate random bits. */
 
     DTLS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED, /**< The remote certificate failed verification. */
-    DTLS_SSL_UNKNOWN_SRTP_PROFILE, /**< The SRTP profile is unknown. */
+    DTLS_SSL_UNKNOWN_SRTP_PROFILE,                   /**< The SRTP profile is unknown. */
 
     /* User info. */
     DTLS_HANDSHAKE_COMPLETE, /**< Just complete the DTLS handshaking. */

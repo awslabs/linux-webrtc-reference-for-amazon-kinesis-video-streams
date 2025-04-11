@@ -47,6 +47,9 @@ static const char * ConvertEventToString( MetricEvent_t event )
         case METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES:
             pRet = "Gather ICE Srflx Candidate";
             break;
+        case METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES:
+            pRet = "Gather ICE Relay Candidate";
+            break;
         case METRIC_EVENT_ICE_FIND_P2P_CONNECTION:
             pRet = "Find Peer-To-Peer Connection";
             break;

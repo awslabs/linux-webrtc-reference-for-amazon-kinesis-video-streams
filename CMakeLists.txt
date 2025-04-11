@@ -277,10 +277,11 @@ target_link_libraries(WebRTCLinuxApplicationMaster
 )
 
 if(BUILD_USRSCTP_LIBRARY)
-  target_link_libraries(WebRTCLinuxApplicationMaster 
-  usrsctp
-  dcep
-)
+    target_link_libraries(WebRTCLinuxApplicationMaster 
+        usrsctp
+        dcep
+    )
+    target_compile_definitions(WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1)
 endif()
 
-target_compile_options(WebRTCLinuxApplicationMaster PRIVATE -Wall)
+target_compile_options(WebRTCLinuxApplicationMaster PRIVATE -Wall -Werror)
