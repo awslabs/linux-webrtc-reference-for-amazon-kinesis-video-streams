@@ -11,6 +11,7 @@ extern "C" {
 
 /* Standard includes. */
 #include <stdint.h>
+#include <sys/eventfd.h>
 
 #include "transport_dtls_mbedtls.h"
 
@@ -58,10 +59,13 @@ extern "C" {
 typedef enum PeerConnectionResult
 {
     PEER_CONNECTION_RESULT_OK = 0,
+    PEER_CONNECTION_RESULT_CLOSING,
     PEER_CONNECTION_RESULT_BAD_PARAMETER,
     PEER_CONNECTION_RESULT_NO_FREE_TRANSCEIVER,
     PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_CONTROLLER,
     PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_SOCK_LISTENER,
+    PEER_CONNECTION_RESULT_FAIL_CREATE_STARTUP_BARRIER,
+    PEER_CONNECTION_RESULT_FAIL_SIGNAL_STARTUP_BARRIER,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_INIT,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_START,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADD_REMOTE_CANDIDATE,
@@ -250,6 +254,7 @@ typedef enum PeerConnectionSessionRequestType
     PEER_CONNECTION_SESSION_REQUEST_TYPE_CONNECTIVITY_CHECK,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_RESOLVE_ICE_SERVER_IP_ADDRESS,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSE,
 } PeerConnectionSessionRequestType_t;
 
 typedef struct PeerConnectionSessionRequestMessage
@@ -361,6 +366,8 @@ typedef struct PeerConnectionSession
 
     pthread_t pTaskHandler;
     pthread_t pSocketListener;
+
+    int startupBarrier;
 
     /* The remote user name, representing the remote peer, from SDP message. */
     char remoteUserName[ PEER_CONNECTION_USER_NAME_LENGTH + 1 ];
