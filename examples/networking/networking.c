@@ -1008,25 +1008,29 @@ static int LwsHttpCallback( struct lws * pWsi,
             status = lws_http_client_http_response( pWsi );
             ( void ) status;
 
-            #if JOIN_STORAGE_SESSION
-            if( dataLength == 0 && 
-                pHttpContext->uriPathLength >= strlen("/joinStorageSession") &&
-                strstr(pHttpContext->uriPath, "/joinStorageSession") != NULL )
+            #if( JOIN_STORAGE_SESSION == 1 )
             {
-                if( status == 200 )
+                if( ( dataLength == 0 ) &&
+                    ( StringUtils_StrStr( &( pHttpContext->uriPath[ 0 ] ),
+                                          pHttpContext->uriPathLength,
+                                          "/joinStorageSession",
+                                          strlen( "/joinStorageSession" ) ) != NULL ) )
                 {
-                    LogInfo( ( "HTTP request completed successfully with status %d",status ) );
-                    if( pHttpContext->pResponse != NULL )
+                    if( status == 200 )
                     {
-                        pHttpContext->pResponse->bufferLength = 0;
+                        LogInfo( ( "HTTP request completed successfully with status %d",status ) );
+                        if( pHttpContext->pResponse != NULL )
+                        {
+                            pHttpContext->pResponse->bufferLength = 0;
+                        }
                     }
-                }
-                else
-                {
-                    LogInfo( ( "HTTP request failed with status %d", status ) );
-                    if( pHttpContext->pResponse != NULL )
+                    else
                     {
-                        pHttpContext->pResponse->bufferLength = 0;
+                        LogInfo( ( "HTTP request failed with status %d", status ) );
+                        if( pHttpContext->pResponse != NULL )
+                        {
+                            pHttpContext->pResponse->bufferLength = 0;
+                        }
                     }
                 }
             }

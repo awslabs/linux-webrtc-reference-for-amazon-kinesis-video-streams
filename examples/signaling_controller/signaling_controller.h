@@ -21,9 +21,6 @@
 #define SIGNALING_CONTROLLER_ICE_SERVER_PASSWORD_BUFFER_LENGTH      ( 256 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_CONFIG_COUNT            ( 5 )
 #define SIGNALING_CONTROLLER_ICE_CONFIG_REFRESH_GRACE_PERIOD_SEC    ( 30 )
-#define SIGNALING_CONTROLLER_AWS_MAX_ARN_LENGTH ( 1024 )
-#define SIGNALING_CONTROLLER_MAX_HTTP_URI_LENGTH ( 10000 )
-#define SIGNALING_CONTROLLER_MAX_HTTP_BODY_LENGTH ( 10 * 1024 )
 
 /*----------------------------------------------------------------------------*/
 
@@ -32,8 +29,6 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_OK = 0,
     SIGNALING_CONTROLLER_RESULT_BAD_PARAM,
     SIGNALING_CONTROLLER_RESULT_FAIL,
-    SIGNALING_CONTROLLER_RESULT_CONSTRUCT_JOIN_STORAGE_SESSION_FAIL,
-    SIGNALING_CONTROLLER_RESULT_PARSE_JOIN_STORAGE_SESSION_FAIL,
 } SignalingControllerResult_t;
 
 typedef struct SignalingMessage
@@ -136,7 +131,6 @@ typedef struct SignalingControllerContext
 
     NetworkingHttpContext_t httpContext;
     NetworkingWebsocketContext_t websocketContext;
-    SignalingMediaStorageConfig_t mediaStorageConfig;
 } SignalingControllerContext_t;
 
 /*----------------------------------------------------------------------------*/
