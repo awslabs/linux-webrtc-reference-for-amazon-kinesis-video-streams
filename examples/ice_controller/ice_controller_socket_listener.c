@@ -126,7 +126,7 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                     }
                     else
                     {
-                        LogError( ( "Failed to lock ice mutex." ) );
+                        LogError( ( "Failed to close ICE candidate: mutex lock acquisition." ) );
                     }
                 }
                 else
@@ -237,7 +237,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             }
             else
             {
-                LogError( ( "Failed to lock ice mutex." ) );
+                LogError( ( "Failed to handle TURN packet: mutex lock acquisition." ) );
                 break;
             }
         }
