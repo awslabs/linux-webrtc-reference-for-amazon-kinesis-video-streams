@@ -1019,18 +1019,14 @@ static int LwsHttpCallback( struct lws * pWsi,
                     if( status == 200 )
                     {
                         LogInfo( ( "HTTP request completed successfully with status %d",status ) );
-                        if( pHttpContext->pResponse != NULL )
-                        {
-                            pHttpContext->pResponse->bufferLength = 0;
-                        }
                     }
                     else
                     {
                         LogInfo( ( "HTTP request failed with status %d", status ) );
-                        if( pHttpContext->pResponse != NULL )
-                        {
-                            pHttpContext->pResponse->bufferLength = 0;
-                        }
+                    }
+                    if( pHttpContext->pResponse != NULL )
+                    {
+                        pHttpContext->pResponse->bufferLength = 0;
                     }
                 }
             }
