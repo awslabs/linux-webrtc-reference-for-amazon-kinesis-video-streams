@@ -2919,9 +2919,27 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         }
         else
         {
-            written = snprintf( pCurBuffer, remainSize, "%u",
-                                currentMediaIdx );
-
+            #if ( JOIN_STORAGE_SESSION == 1)
+            {
+                if ( strncmp( pLocalMediaDescription->pMediaName, "audio", 5 ) == 0 ) 
+                {
+                    written = snprintf( pCurBuffer, remainSize, "audio%u", currentMediaIdx );
+                }
+                else if ( strncmp( pLocalMediaDescription->pMediaName, "video", 5 ) == 0 ) 
+                {
+                    written = snprintf( pCurBuffer, remainSize, "video%u", currentMediaIdx );
+                }
+                else 
+                {
+                    written = snprintf( pCurBuffer, remainSize, "%u", currentMediaIdx );
+                }
+            }
+            #else
+            {
+                written = snprintf( pCurBuffer, remainSize, "%u", currentMediaIdx );
+            }
+            #endif
+            
             if( written < 0 )
             {
                 ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -2934,36 +2952,12 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
             }
             else
             {
-                #if ( JOIN_STORAGE_SESSION == 1)
-                {
-                    if( currentMediaIdx == 0 )
-                    {
-                        pTargetAttribute->pAttributeValue = "audio0";
-                        pTargetAttribute->attributeValueLength = 6;
-                    }
-                    else if( currentMediaIdx == 1 )
-                    {
-                        pTargetAttribute->pAttributeValue = "video1";
-                        pTargetAttribute->attributeValueLength = 6;
-                    }
-                
-                    LogVerbose( ( "[Storage] mid attribute value set to '%s' (length: %d)", pTargetAttribute->pAttributeValue,
-                                                                                            pTargetAttribute->attributeValueLength ) );
+                pTargetAttribute->pAttributeValue = pCurBuffer;
+                pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
+                *pTargetAttributeCount += 1;
 
-                    *pTargetAttributeCount += 1;
-                    pCurBuffer += written;
-                    remainSize -= written;
-                }
-                #else
-                {
-                    pTargetAttribute->pAttributeValue = pCurBuffer;
-                    pTargetAttribute->attributeValueLength = strlen( pCurBuffer );
-                    *pTargetAttributeCount += 1;
-
-                    pCurBuffer += written;
-                    remainSize -= written;
-                }
-                #endif
+                pCurBuffer += written;
+                remainSize -= written;
             }
         }
     }
