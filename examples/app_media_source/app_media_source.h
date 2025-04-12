@@ -27,9 +27,6 @@ typedef int32_t (* AppMediaSourceOnMediaSinkHook)( void * pCustom,
 
 typedef struct AppMediaSourceContext
 {
-    /* Mutex to protect numReadyPeer because we might receive multiple ready/close message from different tasks. */
-    pthread_mutex_t mediaMutex;
-
     MessageQueueHandler_t dataQueue;
     uint8_t numReadyPeer;
     TransceiverTrackKind_t trackKind;
@@ -39,6 +36,9 @@ typedef struct AppMediaSourceContext
 
 typedef struct AppMediaSourcesContext
 {
+    /* Mutex to protect numReadyPeer because we might receive multiple ready/close message from different tasks. */
+    pthread_mutex_t mediaMutex;
+
     AppMediaSourceContext_t videoContext;
     AppMediaSourceContext_t audioContext;
 

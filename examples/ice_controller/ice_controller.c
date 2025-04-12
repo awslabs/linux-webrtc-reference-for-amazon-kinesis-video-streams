@@ -307,7 +307,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
     }
     else
     {
-        LogError( ( "Failed to lock ice mutex." ) );
+        LogError( ( "Failed to process local candidates: mutex lock acquisition." ) );
         result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
     }
 
@@ -514,7 +514,7 @@ static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
     }
     else
     {
-        LogError( ( "Failed to lock ice mutex." ) );
+        LogError( ( "Failed to process candidate pairs: mutex lock acquisition." ) );
         result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
     }
 
@@ -575,7 +575,7 @@ static void PrintCandidatesStatus( IceControllerContext_t * pCtx )
     }
     else
     {
-        LogError( ( "Failed to lock ice mutex." ) );
+        LogError( ( "Failed to print candidates' status: mutex lock acquisition." ) );
         result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
     }
 
@@ -620,7 +620,7 @@ static void PrintCandidatePairsStatus( IceControllerContext_t * pCtx )
     }
     else
     {
-        LogError( ( "Failed to lock ice mutex." ) );
+        LogError( ( "Failed to print candidate pairs' status: mutex lock acquisition." ) );
         result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
     }
 
@@ -827,7 +827,7 @@ IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_
             }
             else
             {
-                LogError( ( "Failed to lock ice mutex." ) );
+                LogError( ( "Failed to check nominated pair request: mutex lock acquisition." ) );
             }
         }
         else
@@ -955,7 +955,7 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
                 }
                 else
                 {
-                    LogError( ( "Failed to lock ice mutex." ) );
+                    LogError( ( "Failed to close ICE candidate: mutex lock acquisition." ) );
                 }
             }
             else if( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE )
@@ -1347,7 +1347,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         }
         else
         {
-            LogError( ( "Failed to lock ice mutex." ) );
+            LogError( ( "Failed to initialize ICE context: mutex lock acquisition." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
         }
     }
@@ -1483,7 +1483,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
                 }
                 else
                 {
-                    LogError( ( "Failed to lock ice mutex." ) );
+                    LogError( ( "Failed to create TURN channel data message: mutex lock acquisition." ) );
                     ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
             }
@@ -1599,7 +1599,7 @@ void IceController_CloseOtherCandidatePairs( IceControllerContext_t * pCtx,
         }
         else
         {
-            LogError( ( "Failed to lock ice mutex." ) );
+            LogError( ( "Failed to release non-selected candidate pairs: mutex lock acquisition." ) );
             skipProcess = 1;
         }
     }

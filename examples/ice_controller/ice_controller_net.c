@@ -557,7 +557,7 @@ static void AddHostCandidate( IceControllerContext_t * pCtx,
         }
         else
         {
-            LogError( ( "Failed to lock ice mutex." ) );
+            LogError( ( "Failed to add host candidate: mutex lock acquisition." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
         }
     }
@@ -654,7 +654,7 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
             }
             else
             {
-                LogError( ( "Failed to lock ice mutex." ) );
+                LogError( ( "Failed to add server reflexive candidate: mutex lock acquisition." ) );
                 ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
             }
         }
@@ -767,7 +767,7 @@ static void AddRelayCandidates( IceControllerContext_t * pCtx )
                 }
                 else
                 {
-                    LogError( ( "Failed to lock ice mutex." ) );
+                    LogError( ( "Failed to add relay candidate: mutex lock acquisition." ) );
                     ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
             }
@@ -817,7 +817,7 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
     }
     else
     {
-        LogError( ( "Failed to lock ice mutex." ) );
+        LogError( ( "Failed to create binding response: mutex lock acquisition." ) );
         ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
     }
 
@@ -1129,7 +1129,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
         }
         else
         {
-            LogError( ( "Failed to lock ice mutex." ) );
+            LogError( ( "Failed to handle stun packet: mutex lock acquisition." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
         }
     }
@@ -1253,7 +1253,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 }
                 else
                 {
-                    LogError( ( "Failed to lock ice mutex." ) );
+                    LogError( ( "Failed to create channel binding request: mutex lock acquisition." ) );
                     ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
                 break;
@@ -1286,7 +1286,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 }
                 else
                 {
-                    LogError( ( "Failed to lock ice mutex." ) );
+                    LogError( ( "Failed to create connectivity check binding request: mutex lock acquisition." ) );
                     ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
                 break;
@@ -1353,7 +1353,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 }
                 else
                 {
-                    LogError( ( "Failed to lock ice mutex." ) );
+                    LogError( ( "Failed to create allocation request: mutex lock acquisition." ) );
                     ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
 

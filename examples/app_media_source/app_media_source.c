@@ -200,7 +200,7 @@ static int32_t OnPcEventRemotePeerReady( AppMediaSourceContext_t * pMediaSource 
 
     if( ret == 0 )
     {
-        if( pthread_mutex_lock( &( pMediaSource->mediaMutex ) ) == 0 )
+        if( pthread_mutex_lock( &( pMediaSource->pSourcesContext->mediaMutex ) ) == 0 )
         {
             if( pMediaSource->numReadyPeer < AWS_MAX_VIEWER_NUM )
             {
@@ -208,7 +208,7 @@ static int32_t OnPcEventRemotePeerReady( AppMediaSourceContext_t * pMediaSource 
             }
 
             /* We have finished accessing the shared resource.  Release the mutex. */
-            pthread_mutex_unlock( &( pMediaSource->mediaMutex ) );
+            pthread_mutex_unlock( &( pMediaSource->pSourcesContext->mediaMutex ) );
             LogInfo( ( "Starting track kind(%d) media, value=%u", pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
         }
         else
@@ -233,7 +233,7 @@ static int32_t OnPcEventRemotePeerClosed( AppMediaSourceContext_t * pMediaSource
 
     if( ret == 0 )
     {
-        if( pthread_mutex_lock( &( pMediaSource->mediaMutex ) ) == 0 )
+        if( pthread_mutex_lock( &( pMediaSource->pSourcesContext->mediaMutex ) ) == 0 )
         {
             if( pMediaSource->numReadyPeer > 0U )
             {
@@ -241,7 +241,7 @@ static int32_t OnPcEventRemotePeerClosed( AppMediaSourceContext_t * pMediaSource
             }
 
             /* We have finished accessing the shared resource.  Release the mutex. */
-            pthread_mutex_unlock( &( pMediaSource->mediaMutex ) );
+            pthread_mutex_unlock( &( pMediaSource->pSourcesContext->mediaMutex ) );
             LogInfo( ( "Stopping track kind(%d) media, value=%u", pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
         }
         else
@@ -309,17 +309,6 @@ static int32_t InitializeVideoSource( AppMediaSourceContext_t * pVideoSource )
 
     if( ret == 0 )
     {
-        /* Mutex can only be created in executing scheduler. */
-        if( pthread_mutex_init( &( pVideoSource->mediaMutex ),
-                                NULL ) != 0 )
-        {
-            LogError( ( "Fail to create mutex for Video source." ) );
-            ret = -1;
-        }
-    }
-
-    if( ret == 0 )
-    {
         pVideoSource->trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
     }
 
@@ -367,16 +356,6 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
 
     if( ret == 0 )
     {
-        if( pthread_mutex_init( &( pAudioSource->mediaMutex ),
-                                NULL ) != 0 )
-        {
-            LogError( ( "Fail to create mutex for Audio source." ) );
-            ret = -1;
-        }
-    }
-
-    if( ret == 0 )
-    {
         pAudioSource->trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
     }
 
@@ -414,18 +393,30 @@ int32_t AppMediaSource_Init( AppMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         memset( pCtx, 0, sizeof( AppMediaSourcesContext_t ) );
-        pCtx->videoContext.pSourcesContext = pCtx;
+
+        /* Mutex can only be created in executing scheduler. */
+        if( pthread_mutex_init( &( pCtx->mediaMutex ),
+                                NULL ) != 0 )
+        {
+            LogError( ( "Fail to create mutex for media source." ) );
+            ret = -1;
+        }
+    }
+
+    if( ret == 0 )
+    {
         ret = InitializeVideoSource( &pCtx->videoContext );
     }
 
     if( ret == 0 )
     {
-        pCtx->audioContext.pSourcesContext = pCtx;
         ret = InitializeAudioSource( &pCtx->audioContext );
     }
 
     if( ret == 0 )
     {
+        pCtx->videoContext.pSourcesContext = pCtx;
+        pCtx->audioContext.pSourcesContext = pCtx;
         pCtx->onMediaSinkHookFunc = onMediaSinkHookFunc;
         pCtx->pOnMediaSinkHookCustom = pOnMediaSinkHookCustom;
     }
