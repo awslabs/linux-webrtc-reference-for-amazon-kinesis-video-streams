@@ -10,11 +10,11 @@
 #define AWS_CA_CERT_PATH "cert/cert.pem"
 
 #ifndef ENABLE_SCTP_DATA_CHANNEL
-    #define ENABLE_SCTP_DATA_CHANNEL 0U
+#define ENABLE_SCTP_DATA_CHANNEL 0U
 #endif
 
 #ifndef ENABLE_TWCC_SUPPORT
-    #define ENABLE_TWCC_SUPPORT 1U
+#define ENABLE_TWCC_SUPPORT 1U
 #endif
 
 /* Uncomment to use fetching credentials by IoT Role-alias for Authentication. */
@@ -48,7 +48,7 @@
 
 /* Join Storage Session setting. */
 #ifndef JOIN_STORAGE_SESSION
-    #define JOIN_STORAGE_SESSION 0
+#define JOIN_STORAGE_SESSION 0
 #endif
 
 #endif /* DEMO_CONFIG_H */
