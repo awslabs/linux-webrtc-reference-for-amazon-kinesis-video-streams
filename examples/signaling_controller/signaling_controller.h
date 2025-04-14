@@ -28,7 +28,7 @@ typedef enum SignalingControllerResult
 {
     SIGNALING_CONTROLLER_RESULT_OK = 0,
     SIGNALING_CONTROLLER_RESULT_BAD_PARAM,
-    SIGNALING_CONTROLLER_RESULT_FAIL
+    SIGNALING_CONTROLLER_RESULT_FAIL,
 } SignalingControllerResult_t;
 
 typedef struct SignalingMessage
@@ -65,6 +65,9 @@ typedef struct SignalingControllerConnectInfo
     size_t userAgentNameLength;
     SignalingMessageReceivedCallback_t messageReceivedCallback;
     void * pMessageReceivedCallbackData;
+
+    /* Configurations. */
+    uint8_t enableStorageSession;
 } SignalingControllerConnectInfo_t;
 
 typedef struct IceServerUri

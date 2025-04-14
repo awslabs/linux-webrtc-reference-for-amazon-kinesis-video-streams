@@ -1344,6 +1344,10 @@ int main()
         sslCreds.pDeviceKeyPath = NULL;
     #endif
 
+    #if ( JOIN_STORAGE_SESSION != 0 )
+        connectInfo.enableStorageSession = 1U;
+    #endif
+
     connectInfo.awsConfig.pRegion = AWS_REGION;
     connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
     connectInfo.awsConfig.pService = "kinesisvideo";

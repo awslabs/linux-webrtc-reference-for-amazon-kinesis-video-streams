@@ -98,8 +98,9 @@ typedef struct HttpRequest
 
 typedef struct HttpResponse
 {
-    char * pBuffer;
-    size_t bufferLength;
+    char * pContent;
+    size_t contentLength;
+    size_t contentMaxCapacity;
 } HttpResponse_t;
 
 typedef int ( * WebsocketMessageReceivedCallback_t )( char * pMessage,
@@ -142,6 +143,7 @@ typedef struct NetworkingHttpContext
     HttpResponse_t * pResponse;
     char rxBuffer[ HTTP_RX_BUFFER_LENGTH ];
     uint8_t connectionClosed;
+    int httpStatusCode;
 } NetworkingHttpContext_t;
 
 typedef struct NetworkingWebsocketContext
