@@ -295,7 +295,7 @@ target_link_libraries(WebRTCLinuxApplicationMaster
 )
 
 if(BUILD_USRSCTP_LIBRARY)
-    target_link_libraries(WebRTCLinuxApplicationMaster 
+    target_link_libraries(WebRTCLinuxApplicationMaster
         usrsctp
         dcep
     )
@@ -303,3 +303,6 @@ if(BUILD_USRSCTP_LIBRARY)
 endif()
 
 target_compile_options(WebRTCLinuxApplicationMaster PRIVATE -Wall -Werror)
+
+# Include GStreamer master build
+include(${CMAKE_ROOT_DIRECTORY}/examples/gst_master/gst_master.cmake)

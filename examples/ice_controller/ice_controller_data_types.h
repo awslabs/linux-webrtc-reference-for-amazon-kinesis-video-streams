@@ -11,7 +11,7 @@ extern "C" {
 
 /* Standard includes. */
 #include <stdint.h>
-#include "demo_config.h"
+#include "../demo_config/demo_config.h"
 #include "ice_data_types.h"
 #include "timer_controller.h"
 #include <sys/socket.h>
