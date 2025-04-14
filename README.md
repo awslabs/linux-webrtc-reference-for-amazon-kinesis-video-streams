@@ -25,6 +25,28 @@ Choose ONE of the following authentication options:
    * Set `AWS_IOT_THING_CERT_PATH` to your IOT Core Certificate Path.
    * Set `AWS_IOT_THING_PRIVATE_KEY_PATH` to your IOT Core Private Key Path.
 
+## Compile Commands
+```
+cmake -S . -B build
+make -C build
+```
+
+**Note**: `BUILD_USRSCTP_LIBRARY` flag can be used to disable data channel and the build of `usrsctp` library. It can be used like: `cmake -S . -B build -DBUILD_USRSCTP_LIBRARY=OFF`
+
+## Execute
+
+```
+./build/WebRTCLinuxApplicationMaster
+```
+
+## Output Sample
+```
+[2024/03/28 06:43:35:9749] N: lws_create_context: LWS: 4.3.3-v4.3.3, NET CLI H1 H2 WS ConMon IPv6-absent
+[2024/03/28 06:43:35:9855] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
+[2024/03/28 06:43:35:9856] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
+[2024/03/28 06:43:35:9878] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
+[2024/03/28 06:43:36:0003] E: Unable to load SSL Client certs file from  -- client ssl isn't going to work
+```
 ## TWCC support
 
 Transport Wide Congestion Control (TWCC) is a mechanism in WebRTC designed to enhance the performance and reliability of real-time communication over the internet. TWCC addresses the challenges of network congestion by providing detailed feedback on the transport of packets across the network, enabling adaptive bitrate control and optimization of media streams in real-time. This feedback mechanism is crucial for maintaining high-quality audio and video communication, as it allows senders to adjust their transmission strategies based on comprehensive information about packet losses, delays, and jitter experienced across the entire transport path.
@@ -49,28 +71,36 @@ ret = PeerConnection_SetSenderBandwidthEstimationCallback(  pSession,
                                                             SampleSenderBandwidthEstimationHandler,
                                                             &pSession->twccMetaData );
 ```
-## Compile Commands
-```
-cmake -S . -B build
-make -C build
-```
 
-**Note**: `BUILD_USRSCTP_LIBRARY` flag can be used to disable data channel and the build of `usrsctp` library. It can be used like: `cmake -S . -B build -DBUILD_USRSCTP_LIBRARY=OFF`
+## JoinStorageSession support
 
-## Execute
+JoinStorageSession enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities. 
 
-```
-./build/WebRTCLinuxApplicationMaster
-```
+In our implementation (Master participant only):
+1. First connect to Kinesis Video Streams with WebRTC Signaling.
+2. It calls the `JoinStorageSession` API to initiate a storage session WebRTC connection.
+3. Once WebRTC connection is established, media is ingested to the configured Kinesis video stream.
 
-## Output Sample
+#### Media Requirements
+- **Video Track**: H.264 codec required.
+- **Audio Track**: Opus codec required.
+- Both audio and video tracks are mandatory for WebRTC ingestion.
+
+### Enabling JoinStorageSession support
+
+JoinStorageSession is disabled by default in this application (via `JOIN_STORAGE_SESSION`) value set as `0` in `demo_config_template.h`. In order to enable it, set this value to `1`.
+```c
+#define JOIN_STORAGE_SESSION 0
 ```
-[2024/03/28 06:43:35:9749] N: lws_create_context: LWS: 4.3.3-v4.3.3, NET CLI H1 H2 WS ConMon IPv6-absent
-[2024/03/28 06:43:35:9855] N: __lws_lc_tag:  ++ [wsi|0|pipe] (1)
-[2024/03/28 06:43:35:9856] N: __lws_lc_tag:  ++ [vh|0|netlink] (1)
-[2024/03/28 06:43:35:9878] N: __lws_lc_tag:  ++ [vh|1|default||-1] (2)
-[2024/03/28 06:43:36:0003] E: Unable to load SSL Client certs file from  -- client ssl isn't going to work
-```
+#### Prerequisites for enabling JoinStorageSession
+
+Before using JoinStorageSession, Set up Signaling Channel with Video Stream :
+   - Create a Kinesis Video Streams signaling channel
+   - Create a Kinesis Video Streams video stream
+   - Connect the channel to the video stream
+   - Ensure proper IAM permissions are configured
+
+For detailed setup instructions, refer to: https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/webrtc-ingestion.html
 
 # Security
 
