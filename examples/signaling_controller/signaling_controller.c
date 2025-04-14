@@ -217,8 +217,8 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
         httpRequest.verb = HTTP_GET;
 
         memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
-        httpResponse.pBuffer = &( pCtx->httpResponserBuffer[ 0 ] );
-        httpResponse.bufferLength = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
+        httpResponse.pContent = &( pCtx->httpResponserBuffer[ 0 ] );
+        httpResponse.contentMaxCapacity = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
         if( Networking_HttpSend( &( pCtx->httpContext ),
                                  &( httpRequest ),
@@ -234,16 +234,16 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        signalingResult = Signaling_ParseFetchTempCredsResponseFromAwsIot( httpResponse.pBuffer,
-                                                                           httpResponse.bufferLength,
+        signalingResult = Signaling_ParseFetchTempCredsResponseFromAwsIot( httpResponse.pContent,
+                                                                           httpResponse.contentLength,
                                                                            &( signalingCredentials ) );
 
         if( signalingResult != SIGNALING_RESULT_OK )
         {
             LogError( ( "Fail to parse fetch credentials response, return=0x%x, response(%lu): %.*s",
                         signalingResult,
-                        httpResponse.bufferLength,
-                        ( int ) httpResponse.bufferLength, httpResponse.pBuffer ) );
+                        httpResponse.contentLength,
+                        ( int ) httpResponse.contentLength, httpResponse.pContent ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
         }
         else
@@ -335,24 +335,24 @@ static SignalingControllerResult_t DescribeSignalingChannel( SignalingController
         httpRequest.verb = HTTP_POST;
 
         memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
-        httpResponse.pBuffer = &( pCtx->httpResponserBuffer[ 0 ] );
-        httpResponse.bufferLength = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
+        httpResponse.pContent = &( pCtx->httpResponserBuffer[ 0 ] );
+        httpResponse.contentMaxCapacity = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
         ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        signalingResult = Signaling_ParseDescribeSignalingChannelResponse( httpResponse.pBuffer,
-                                                                           httpResponse.bufferLength,
+        signalingResult = Signaling_ParseDescribeSignalingChannelResponse( httpResponse.pContent,
+                                                                           httpResponse.contentLength,
                                                                            &( signalingChannelInfo ) );
 
         if( signalingResult != SIGNALING_RESULT_OK )
         {
             LogError( ( "Fail to parse describe signaling channel response, return=0x%x, response(%lu): %.*s",
                         signalingResult,
-                        httpResponse.bufferLength,
-                        ( int ) httpResponse.bufferLength, httpResponse.pBuffer ) );
+                        httpResponse.contentLength,
+                        ( int ) httpResponse.contentLength, httpResponse.pContent ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
         }
     }
@@ -437,16 +437,16 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
         httpRequest.verb = HTTP_POST;
 
         memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
-        httpResponse.pBuffer = &( pCtx->httpResponserBuffer[ 0 ] );
-        httpResponse.bufferLength = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
+        httpResponse.pContent = &( pCtx->httpResponserBuffer[ 0 ] );
+        httpResponse.contentMaxCapacity = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
         ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        signalingResult = Signaling_ParseGetSignalingChannelEndpointResponse( httpResponse.pBuffer,
-                                                                              httpResponse.bufferLength,
+        signalingResult = Signaling_ParseGetSignalingChannelEndpointResponse( httpResponse.pContent,
+                                                                              httpResponse.contentLength,
                                                                               &( signalingEndpoints ) );
 
         if( signalingResult != SIGNALING_RESULT_OK )
@@ -507,11 +507,6 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
         }
     }
 
-    LogInfo( ( "GetSignalingChannelEndpoints response endpoints:" ) );
-    LogInfo( ( "WSS: %.*s", ( int ) pCtx->wssEndpointLength, pCtx->wssEndpoint ) );
-    LogInfo( ( "HTTPS: %.*s", ( int ) pCtx->httpsEndpointLength, pCtx->httpsEndpoint ) );
-    LogInfo( ( "WebRTC: %.*s", ( int ) pCtx->webrtcEndpointLength, pCtx->webrtcEndpoint ) );
-
     return ret;
 }
 
@@ -566,16 +561,16 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
         httpRequest.verb = HTTP_POST;
 
         memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
-        httpResponse.pBuffer = &( pCtx->httpResponserBuffer[ 0 ] );
-        httpResponse.bufferLength = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
+        httpResponse.pContent = &( pCtx->httpResponserBuffer[ 0 ] );
+        httpResponse.contentMaxCapacity = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
         ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        signalingResult = Signaling_ParseGetIceServerConfigResponse( httpResponse.pBuffer,
-                                                                     httpResponse.bufferLength,
+        signalingResult = Signaling_ParseGetIceServerConfigResponse( httpResponse.pContent,
+                                                                     httpResponse.contentLength,
                                                                      &( iceServers[ 0 ] ),
                                                                      &( iceServersCount ) );
 
@@ -1378,8 +1373,6 @@ static SignalingControllerResult_t JoinStorageSession( SignalingControllerContex
     webrtcEndpoint.pEndpoint = &( pCtx->webrtcEndpoint[ 0 ] );
     webrtcEndpoint.endpointLength = pCtx->webrtcEndpointLength;
 
-    LogInfo( ( "Joining storage session for channel: %s with length: %ld", pCtx->signalingChannelArn,
-                                                                           pCtx->signalingChannelArnLength ) );
     signalingResult = Signaling_ConstructJoinStorageSessionRequest( &( webrtcEndpoint ),
                                                                     &( joinSessionRequestInfo ),
                                                                     &( signalingRequest ) );
@@ -1388,11 +1381,6 @@ static SignalingControllerResult_t JoinStorageSession( SignalingControllerContex
     {
         LogError( ( "Failed to construct join storage session request, return=0x%x", signalingResult ) );
         ret = SIGNALING_CONTROLLER_RESULT_FAIL;
-    }
-    else
-    {
-        LogInfo( ( "Constructed join storage session request: %.*s", ( int ) signalingRequest.bodyLength,
-                                                                             signalingRequest.pBody ) );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )

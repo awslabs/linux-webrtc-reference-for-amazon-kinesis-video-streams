@@ -919,7 +919,7 @@ static int LwsHttpCallback( struct lws * pWsi,
                             void * pData,
                             size_t dataLength )
 {
-    int ret = 0, bufferLength, writtenBodyLength, status, lwsStatus = 0;
+    int ret = 0, bufferLength, writtenBodyLength, lwsStatus = 0;
     unsigned char * pEnd;
     unsigned char ** ppStart;
     size_t i;
@@ -934,7 +934,7 @@ static int LwsHttpCallback( struct lws * pWsi,
         {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
-            pHttpContext->connectionClosed = 1;
+            pHttpContext->httpStatusCode = -1;
             LogError( ( "HTTP connection error!" ) );
         }
         break;
@@ -943,16 +943,16 @@ static int LwsHttpCallback( struct lws * pWsi,
         {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
-            pHttpContext->connectionClosed = 1;
             LogDebug( ( "HTTP connection closed." ) );
         }
         break;
 
         case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
         {
-            status = lws_http_client_http_response( pWsi );
-            ( void ) status;
-            LogDebug( ( "Connected with HTTP server. Response: %d.", status ) );
+            pLwsProtocol = lws_get_protocol( pWsi );
+            pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
+            pHttpContext->httpStatusCode = lws_http_client_http_response( pWsi );
+            LogDebug( ( "Connected with HTTP server. Response: %d.", pHttpContext->httpStatusCode ) );
         }
         break;
 
@@ -966,7 +966,7 @@ static int LwsHttpCallback( struct lws * pWsi,
 
             if( dataLength != 0 )
             {
-                if( dataLength >= pHttpContext->pResponse->bufferLength )
+                if( dataLength >= pHttpContext->pResponse->contentMaxCapacity )
                 {
                     /* Receive data is larger than buffer size. */
                     ret = -2;
@@ -974,8 +974,8 @@ static int LwsHttpCallback( struct lws * pWsi,
                 }
                 else
                 {
-                    memcpy( pHttpContext->pResponse->pBuffer, pData, dataLength );
-                    pHttpContext->pResponse->bufferLength = dataLength;
+                    memcpy( pHttpContext->pResponse->pContent, pData, dataLength );
+                    pHttpContext->pResponse->contentLength = dataLength;
                 }
             }
         }
@@ -1000,37 +1000,7 @@ static int LwsHttpCallback( struct lws * pWsi,
 
         case LWS_CALLBACK_COMPLETED_CLIENT_HTTP:
         {
-            pLwsProtocol = lws_get_protocol( pWsi );
-            pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
-
             LogDebug( ( "LWS_CALLBACK_COMPLETED_CLIENT_HTTP callback." ) );
-
-            status = lws_http_client_http_response( pWsi );
-            ( void ) status;
-
-            #if( JOIN_STORAGE_SESSION == 1 )
-            {
-                if( ( dataLength == 0 ) &&
-                    ( StringUtils_StrStr( &( pHttpContext->uriPath[ 0 ] ),
-                                          pHttpContext->uriPathLength,
-                                          "/joinStorageSession",
-                                          strlen( "/joinStorageSession" ) ) != NULL ) )
-                {
-                    if( status == 200 )
-                    {
-                        LogInfo( ( "HTTP request completed successfully with status %d",status ) );
-                    }
-                    else
-                    {
-                        LogInfo( ( "HTTP request failed with status %d", status ) );
-                    }
-                    if( pHttpContext->pResponse != NULL )
-                    {
-                        pHttpContext->pResponse->bufferLength = 0;
-                    }
-                }
-            }
-            #endif
         }
         break;
 
@@ -1602,6 +1572,9 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         /* Needed to receive the response in the user supplied buffer. */
         pHttpCtx->pResponse = pResponse;
 
+        /* HTTP status code (200, 403, etc) would be stored in this varirable. */
+        pHttpCtx->httpStatusCode = 0;
+
         memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
 
         connectInfo.context = pHttpCtx->pLwsContext;
@@ -1621,6 +1594,12 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         while( pHttpCtx->connectionClosed == 0U )
         {
             ( void ) lws_service( pHttpCtx->pLwsContext, 0 );
+        }
+
+        if( pHttpCtx->httpStatusCode != 200 )
+        {
+            LogWarn( ( "HTTP status code = %d", pHttpCtx->httpStatusCode ) );
+            ret = NETWORKING_RESULT_FAIL;
         }
     }
 
