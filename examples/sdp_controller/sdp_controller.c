@@ -2637,15 +2637,6 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
                     trackKind ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
-    #if ( JOIN_STORAGE_SESSION != 0 )
-        else if( ( trackKind < TRANSCEIVER_TRACK_KIND_AUDIO ) ||
-                 ( trackKind > TRANSCEIVER_TRACK_KIND_VIDEO ) )
-        {
-            LogError( ( "Invalid input for join storage session, trackKind: %d",
-                        trackKind ) );
-            ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
-        }
-    #endif
     else
     {
         /* Empty else marker. */
@@ -2928,24 +2919,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         }
         else
         {
-            #if ( JOIN_STORAGE_SESSION != 0 )
-                /* In join storage session mode, the media identifier format differs from standard cases:
-                 * Join Storage Format: "a=mid:audio0"
-                 * Standard Format:     "a=mid:0"
-                 *
-                 * Note: you won't receive any connectivity check packet when providing incorrect mid format. */
-                if( trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
-                {
-                    written = snprintf( pCurBuffer, remainSize, "audio%u", currentMediaIdx );
-                }
-                else
-                {
-                    /* In join storage session, media trackkind only accepts either video or audio. */
-                    written = snprintf( pCurBuffer, remainSize, "video%u", currentMediaIdx );
-                }
-            #else /* JOIN_STORAGE_SESSION */
-                written = snprintf( pCurBuffer, remainSize, "%u", currentMediaIdx );
-            #endif /* JOIN_STORAGE_SESSION */
+            written = snprintf( pCurBuffer, remainSize, "%u", currentMediaIdx );
 
             if( written < 0 )
             {

@@ -65,6 +65,9 @@ typedef struct SignalingControllerConnectInfo
     size_t userAgentNameLength;
     SignalingMessageReceivedCallback_t messageReceivedCallback;
     void * pMessageReceivedCallbackData;
+
+    /* Configurations. */
+    uint8_t enableStorageSession;
 } SignalingControllerConnectInfo_t;
 
 typedef struct IceServerUri
