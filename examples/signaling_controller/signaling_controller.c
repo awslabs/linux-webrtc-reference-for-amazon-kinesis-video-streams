@@ -39,8 +39,8 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
 
 static void LogSignalingInfo( SignalingControllerContext_t * pCtx );
 
-#if( JOIN_STORAGE_SESSION == 1 )
-    static SignalingControllerResult_t JoinStorageSession( SignalingControllerContext_t *pCtx );
+#if ( JOIN_STORAGE_SESSION != 0 )
+    static SignalingControllerResult_t JoinStorageSession( SignalingControllerContext_t * pCtx );
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -403,17 +403,17 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
 
     endpointRequestInfo.channelArn.pChannelArn = &( pCtx->signalingChannelArn[ 0 ] );
     endpointRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
-    #if( JOIN_STORAGE_SESSION == 1 )
-    {
-        endpointRequestInfo.protocols = SIGNALING_PROTOCOL_WEBSOCKET_SECURE |
-                                        SIGNALING_PROTOCOL_HTTPS |
-                                        SIGNALING_PROTOCOL_WEBRTC;
-    }
+    #if ( JOIN_STORAGE_SESSION != 0 )
+        {
+            endpointRequestInfo.protocols = SIGNALING_PROTOCOL_WEBSOCKET_SECURE |
+                                            SIGNALING_PROTOCOL_HTTPS |
+                                            SIGNALING_PROTOCOL_WEBRTC;
+        }
     #else
-    {
-        endpointRequestInfo.protocols = SIGNALING_PROTOCOL_WEBSOCKET_SECURE |
-                                        SIGNALING_PROTOCOL_HTTPS;
-    }
+        {
+            endpointRequestInfo.protocols = SIGNALING_PROTOCOL_WEBSOCKET_SECURE |
+                                            SIGNALING_PROTOCOL_HTTPS;
+        }
     #endif
     endpointRequestInfo.role = SIGNALING_ROLE_MASTER;
 
@@ -509,6 +509,65 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
 
     return ret;
 }
+
+/*----------------------------------------------------------------------------*/
+
+#if ( JOIN_STORAGE_SESSION != 0 )
+    static SignalingControllerResult_t JoinStorageSession( SignalingControllerContext_t * pCtx )
+    {
+        SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+        SignalingResult_t signalingResult;
+        SignalingChannelEndpoint_t webrtcEndpoint;
+        JoinStorageSessionRequestInfo_t joinSessionRequestInfo;
+        SignalingRequest_t signalingRequest;
+        HttpRequest_t httpRequest;
+        HttpResponse_t httpResponse;
+
+        signalingRequest.pUrl = &( pCtx->httpUrlBuffer[ 0 ] );
+        signalingRequest.urlLength = SIGNALING_CONTROLLER_HTTP_URL_BUFFER_LENGTH;
+
+        signalingRequest.pBody = &( pCtx->httpBodyBuffer[ 0 ] );
+        signalingRequest.bodyLength = SIGNALING_CONTROLLER_HTTP_BODY_BUFFER_LENGTH;
+
+        /* Create the API request. */
+        memset( &( joinSessionRequestInfo ), 0, sizeof( JoinStorageSessionRequestInfo_t ) );
+        joinSessionRequestInfo.channelArn.pChannelArn = &( pCtx->signalingChannelArn[ 0 ] );
+        joinSessionRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
+        joinSessionRequestInfo.role = SIGNALING_ROLE_MASTER;
+
+        webrtcEndpoint.pEndpoint = &( pCtx->webrtcEndpoint[ 0 ] );
+        webrtcEndpoint.endpointLength = pCtx->webrtcEndpointLength;
+
+        signalingResult = Signaling_ConstructJoinStorageSessionRequest( &( webrtcEndpoint ),
+                                                                        &( joinSessionRequestInfo ),
+                                                                        &( signalingRequest ) );
+
+        if( signalingResult != SIGNALING_RESULT_OK )
+        {
+            LogError( ( "Failed to construct join storage session request, return=0x%x", signalingResult ) );
+            ret = SIGNALING_CONTROLLER_RESULT_FAIL;
+        }
+
+        if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            memset( &( httpRequest ), 0, sizeof( HttpRequest_t ) );
+            httpRequest.pUrl = signalingRequest.pUrl;
+            httpRequest.urlLength = signalingRequest.urlLength;
+            httpRequest.pBody = signalingRequest.pBody;
+            httpRequest.bodyLength = signalingRequest.bodyLength;
+            httpRequest.verb = HTTP_POST;
+
+            memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
+            ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
+            if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+            {
+                LogError( ( "HTTP request failed, error=0x%x", ret ) );
+            }
+        }
+
+        return ret;
+    }
+#endif /* JOIN_STORAGE_SESSION */
 
 /*----------------------------------------------------------------------------*/
 
@@ -817,16 +876,16 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
         Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ENDPOINTS );
     }
 
-    #if( JOIN_STORAGE_SESSION == 1 )
-    {
-        /* Join the storage session, if enabled. */
-        if ( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    #if ( JOIN_STORAGE_SESSION != 0 )
         {
-            Metric_StartEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
-            ret = JoinStorageSession( pCtx );
-            Metric_EndEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
+            /* Join the storage session, if enabled. */
+            if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+            {
+                Metric_StartEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
+                ret = JoinStorageSession( pCtx );
+                Metric_EndEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
+            }
         }
-    }
     #endif
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -1344,64 +1403,5 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
 
     return ret;
 }
-
-/*----------------------------------------------------------------------------*/
-
-#if ( JOIN_STORAGE_SESSION == 1 )
-static SignalingControllerResult_t JoinStorageSession( SignalingControllerContext_t *pCtx )
-{
-    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
-    SignalingResult_t signalingResult;
-    SignalingChannelEndpoint_t webrtcEndpoint;
-    JoinStorageSessionRequestInfo_t joinSessionRequestInfo;
-    SignalingRequest_t signalingRequest;
-    HttpRequest_t httpRequest;
-    HttpResponse_t httpResponse;
-
-    signalingRequest.pUrl = &( pCtx->httpUrlBuffer[ 0 ] );
-    signalingRequest.urlLength = SIGNALING_CONTROLLER_HTTP_URL_BUFFER_LENGTH;
-
-    signalingRequest.pBody = &( pCtx->httpBodyBuffer[ 0 ] );
-    signalingRequest.bodyLength = SIGNALING_CONTROLLER_HTTP_BODY_BUFFER_LENGTH;
-
-    /* Create the API request. */
-    memset( &( joinSessionRequestInfo ), 0, sizeof( JoinStorageSessionRequestInfo_t ) );
-    joinSessionRequestInfo.channelArn.pChannelArn = &( pCtx->signalingChannelArn[ 0 ] );
-    joinSessionRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
-    joinSessionRequestInfo.role = SIGNALING_ROLE_MASTER;
-
-    webrtcEndpoint.pEndpoint = &( pCtx->webrtcEndpoint[ 0 ] );
-    webrtcEndpoint.endpointLength = pCtx->webrtcEndpointLength;
-
-    signalingResult = Signaling_ConstructJoinStorageSessionRequest( &( webrtcEndpoint ),
-                                                                    &( joinSessionRequestInfo ),
-                                                                    &( signalingRequest ) );
-
-    if( signalingResult != SIGNALING_RESULT_OK )
-    {
-        LogError( ( "Failed to construct join storage session request, return=0x%x", signalingResult ) );
-        ret = SIGNALING_CONTROLLER_RESULT_FAIL;
-    }
-
-    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
-    {
-        memset( &( httpRequest ), 0, sizeof( HttpRequest_t ) );
-        httpRequest.pUrl = signalingRequest.pUrl;
-        httpRequest.urlLength = signalingRequest.urlLength;
-        httpRequest.pBody = signalingRequest.pBody;
-        httpRequest.bodyLength = signalingRequest.bodyLength;
-        httpRequest.verb = HTTP_POST;
-
-        memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
-        ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
-        if ( ret != SIGNALING_CONTROLLER_RESULT_OK )
-        {
-            LogError( ( "HTTP request failed, error=0x%x", ret ) );
-        }
-    }
-
-    return ret;
-}
-#endif
 
 /*----------------------------------------------------------------------------*/

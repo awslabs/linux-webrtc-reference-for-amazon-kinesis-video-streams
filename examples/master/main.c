@@ -1344,15 +1344,7 @@ int main()
         sslCreds.pDeviceKeyPath = NULL;
     #endif
 
-    #if(  JOIN_STORAGE_SESSION == 1 )
-    {
-        LogInfo( ( "JOIN_STORAGE_SESSION is enabled, result: %d\n", JOIN_STORAGE_SESSION ) );
-    }
-    #else
-    {
-        LogInfo( ( "JOIN_STORAGE_SESSION is NOT enabled" ) );
-    }
-    #endif
+    LogInfo( ( "JOIN_STORAGE_SESSION is %s", JOIN_STORAGE_SESSION != 0 ? "enabled" : "disabled" ) );
 
     connectInfo.awsConfig.pRegion = AWS_REGION;
     connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
