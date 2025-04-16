@@ -169,27 +169,53 @@ static int32_t OnMediaSinkHook( void * pCustom,
     return ret;
 }
 
-static int32_t InitializeGstMediaSource( DemoContext_t * pDemoContext )
+static int32_t InitializeGstMediaSource(DemoContext_t* pDemoContext)
 {
     int32_t ret = 0;
 
-    if( pDemoContext == NULL )
+    if (pDemoContext == NULL)
     {
-        LogError( ( "Invalid input, pDemoContext: %p", pDemoContext ) );
+        LogError(("Invalid input, pDemoContext: %p", pDemoContext));
         ret = -1;
     }
 
-    if( ret == 0 )
+    if (ret == 0)
     {
         ret = GstMediaSource_Init(&pDemoContext->mediaSourceContext,
             OnMediaSinkHook,
             pDemoContext,
             TRUE,  // enable video
-            TRUE);
+            TRUE); // enable audio
+    }
+
+    // Initialize video pipeline
+    if (ret == 0)
+    {
+        ret = GstMediaSource_InitVideoGstreamer(
+            &pDemoContext->mediaSourceContext.videoContext,
+            1280,                // width
+            720,                 // height
+            30,                  // framerate
+            2000,               // bitrate (kbps)
+            NULL                // use default pipeline
+        );
+    }
+
+    // Initialize audio pipeline
+    if (ret == 0)
+    {
+        ret = GstMediaSource_InitAudioGstreamer(
+            &pDemoContext->mediaSourceContext.audioContext,
+            48000,              // sample rate
+            2,                  // channels
+            128,                // bitrate (kbps)
+            NULL                // use default pipeline
+        );
     }
 
     return ret;
 }
+
 
 
 static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
@@ -1402,7 +1428,7 @@ int main()
     {
         ret = InitializeGstMediaSource( &demoContext );
     }
-return 0;
+
     if( ret == 0 )
     {
         for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
