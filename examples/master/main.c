@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include "../demo_config/demo_config.h"
 #include "logging.h"
-#include "../demo_config/demo_data_types.h"
+#include "demo_data_types.h"
 #include "signaling_controller.h"
 #include "sdp_controller.h"
 #include "string_utils.h"

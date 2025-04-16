@@ -1,5 +1,3 @@
-#include <gst/gst.h>
-#include <gst/app/gstappsink.h>
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
@@ -9,7 +7,7 @@
 #include <pthread.h>
 #include "../demo_config/demo_config.h"
 #include "logging.h"
-#include "../demo_config/demo_data_types.h"
+#include "demo_data_types.h"
 #include "signaling_controller.h"
 #include "sdp_controller.h"
 #include "string_utils.h"
@@ -77,9 +75,6 @@
 #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #endif
 
-
-static GstElement* senderPipeline = NULL;
-static volatile int keepRunning = 1;
 DemoContext_t demoContext;
 
 static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
@@ -174,7 +169,7 @@ static int32_t OnMediaSinkHook( void * pCustom,
     return ret;
 }
 
-static int32_t InitializeAppMediaSource( DemoContext_t * pDemoContext )
+static int32_t InitializeGstMediaSource( DemoContext_t * pDemoContext )
 {
     int32_t ret = 0;
 
@@ -186,9 +181,11 @@ static int32_t InitializeAppMediaSource( DemoContext_t * pDemoContext )
 
     if( ret == 0 )
     {
-        ret = AppMediaSource_Init( &pDemoContext->appMediaSourcesContext,
-                                   OnMediaSinkHook,
-                                   pDemoContext );
+        ret = GstMediaSource_Init(&pDemoContext->mediaSourceContext,
+            OnMediaSinkHook,
+            pDemoContext,
+            TRUE,  // enable video
+            TRUE);
     }
 
     return ret;
@@ -702,7 +699,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
     if( ret == 0 )
     {
         pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
-        ret = AppMediaSource_InitVideoTransceiver( &pDemoContext->appMediaSourcesContext,
+        ret = GstMediaSource_InitVideoTransceiver( &pDemoContext->mediaSourceContext,
                                                    pTransceiver );
         if( ret != 0 )
         {
@@ -724,7 +721,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
     if( ret == 0 )
     {
         pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
-        ret = AppMediaSource_InitAudioTransceiver( &pDemoContext->appMediaSourcesContext,
+        ret = GstMediaSource_InitAudioTransceiver( &pDemoContext->mediaSourceContext,
                                                    pTransceiver );
         if( ret != 0 )
         {
@@ -1320,338 +1317,122 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
 
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
-
-// new
-
-
-
-static GstFlowReturn on_new_sample(GstElement* sink, gpointer data, int32_t trackIndex)
-{
-    GstFlowReturn ret = GST_FLOW_OK;
-    GstSample* sample = NULL;
-    GstBuffer* buffer = NULL;
-    GstMapInfo info = {0};
-    GstSegment* segment;
-    GstClockTime buf_pts;
-    webrtc_frame_t frame = {0};
-    DemoContext_t* pDemoContext = (DemoContext_t*)data;
-    gboolean mapped = FALSE;
-
-    if (pDemoContext == NULL) {
-        LogError(("NULL demo context"));
-        return GST_FLOW_ERROR;
-    }
-
-    sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
-    if (sample == NULL) {
-        return GST_FLOW_ERROR;
-    }
-
-    buffer = gst_sample_get_buffer(sample);
-    if (buffer == NULL) {
-        gst_sample_unref(sample);
-        return GST_FLOW_ERROR;
-    }
-
-    uint8_t isDroppable = GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_CORRUPTED) ||
-                         GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_DECODE_ONLY) ||
-                         (GST_BUFFER_FLAGS(buffer) == GST_BUFFER_FLAG_DISCONT) ||
-                         (GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_DISCONT) &&
-                          GST_BUFFER_FLAG_IS_SET(buffer, GST_BUFFER_FLAG_DELTA_UNIT)) ||
-                         !GST_BUFFER_PTS_IS_VALID(buffer);
-
-    if (!isDroppable) {
-        segment = gst_sample_get_segment(sample);
-        buf_pts = gst_segment_to_running_time(segment, GST_FORMAT_TIME, buffer->pts);
-        if (!GST_CLOCK_TIME_IS_VALID(buf_pts)) {
-            LogError(("Frame contains invalid PTS dropping the frame"));
-            goto CleanUp;
-        }
-
-        if (!gst_buffer_map(buffer, &info, GST_MAP_READ)) {
-            LogError(("Gst buffer mapping failed"));
-            goto CleanUp;
-        }
-        mapped = TRUE;
-
-        frame.trackKind = (trackIndex == DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO) ?
-                         TRANSCEIVER_TRACK_KIND_VIDEO : TRANSCEIVER_TRACK_KIND_AUDIO;
-        frame.timestampUs = buf_pts / 1000; // Convert from ns to us
-        frame.size = info.size;
-        frame.pData = info.data;
-        frame.freeData = 0;
-
-        OnMediaSinkHook(pDemoContext, &frame);
-    }
-
-CleanUp:
-    if (mapped) {
-        gst_buffer_unmap(buffer, &info);
-    }
-    if (sample != NULL) {
-        gst_sample_unref(sample);
-    }
-
-    return ret;
-}
-
-static GstFlowReturn on_new_sample_video(GstElement* sink, gpointer data)
-{
-    return on_new_sample(sink, data, DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO);
-}
-
-static GstFlowReturn on_new_sample_audio(GstElement* sink, gpointer data)
-{
-    return on_new_sample(sink, data, DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO);
-}
-
-static int32_t initializeGStreamer(DemoContext_t* pDemoContext)
-{
-    int32_t ret = 0;
-    GError *error = NULL;
-    GstElement *appsinkVideo = NULL, *appsinkAudio = NULL;
-
-    // Initialize GStreamer
-    gst_init(NULL, NULL);
-    LogInfo(("GStreamer initialized"));
-
-    // Create pipeline
-    senderPipeline = gst_parse_launch(
-        "videotestsrc pattern=ball is-live=TRUE ! "
-        "queue ! videorate ! videoscale ! videoconvert ! video/x-raw,width=1280,height=720,framerate=25/1 ! "
-        "clockoverlay halignment=right valignment=top time-format=\"%Y-%m-%d %H:%M:%S\" ! "
-        "x264enc bframes=0 speed-preset=veryfast bitrate=512 byte-stream=TRUE tune=zerolatency ! "
-        "video/x-h264,stream-format=byte-stream,alignment=au,profile=baseline ! "
-        "appsink sync=TRUE emit-signals=TRUE name=appsink-video "
-        "audiotestsrc wave=ticks is-live=TRUE ! "
-        "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! "
-        "opusenc ! audio/x-opus,rate=48000,channels=2 ! "
-        "appsink sync=TRUE emit-signals=TRUE name=appsink-audio",
-        &error);
-
-    if (error != NULL) {
-        LogError(("Failed to create pipeline: %s", error->message));
-        g_error_free(error);
-        return -1;
-    }
-
-    if (senderPipeline == NULL) {
-        LogError(("Failed to create pipeline"));
-        return -1;
-    }
-
-    // Get appsinks and connect callbacks
-    appsinkVideo = gst_bin_get_by_name(GST_BIN(senderPipeline), "appsink-video");
-    appsinkAudio = gst_bin_get_by_name(GST_BIN(senderPipeline), "appsink-audio");
-
-    if (!appsinkVideo || !appsinkAudio) {
-        LogError(("Failed to get appsink elements"));
-        if (appsinkVideo) gst_object_unref(appsinkVideo);
-        if (appsinkAudio) gst_object_unref(appsinkAudio);
-        return -1;
-    }
-
-    g_signal_connect(appsinkVideo, "new-sample", G_CALLBACK(on_new_sample_video), pDemoContext);
-    g_signal_connect(appsinkAudio, "new-sample", G_CALLBACK(on_new_sample_audio), pDemoContext);
-
-    gst_object_unref(appsinkVideo);
-    gst_object_unref(appsinkAudio);
-
-    return ret;
-}
-
-static void* sendGstreamerAudioVideo(void* args)
-{
-    int32_t retStatus = 0;
-    GstBus* bus;
-    GstMessage* msg;
-    DemoContext_t* pDemoContext = (DemoContext_t*)args;
-    GstStateChangeReturn stateRet;
-
-    if (pDemoContext == NULL) {
-        LogError(("NULL demo context"));
-        return (void*)(intptr_t)-1;
-    }
-
-    // Set pipeline to PLAYING state
-    stateRet = gst_element_set_state(senderPipeline, GST_STATE_PLAYING);
-    if (stateRet == GST_STATE_CHANGE_FAILURE) {
-        LogError(("Failed to set pipeline to PLAYING state"));
-        return (void*)(intptr_t)-1;
-    }
-
-    bus = gst_element_get_bus(senderPipeline);
-    while (keepRunning) {
-        msg = gst_bus_timed_pop_filtered(bus, 100 * GST_MSECOND,
-                                       GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
-        if (msg != NULL) {
-            switch (GST_MESSAGE_TYPE(msg)) {
-                case GST_MESSAGE_ERROR: {
-                    GError *err;
-                    gchar *debug;
-                    gst_message_parse_error(msg, &err, &debug);
-                    LogError(("GStreamer error: %s", err->message));
-                    g_error_free(err);
-                    g_free(debug);
-                    keepRunning = 0;
-                    break;
-                }
-                case GST_MESSAGE_EOS:
-                    LogInfo(("End of stream"));
-                    keepRunning = 0;
-                    break;
-                default:
-                    break;
-            }
-            gst_message_unref(msg);
-        }
-
-        // Check for active peer connections
-        uint32_t activeConnections = 0;
-        for (int i = 0; i < AWS_MAX_VIEWER_NUM; i++) {
-            if (pDemoContext->peerConnectionSessions[i].peerConnectionSession.state ==
-                PEER_CONNECTION_SESSION_STATE_CONNECTION_READY) {
-                activeConnections++;
-            }
-        }
-
-        if (activeConnections == 0) {
-            usleep(100000);  // 100ms delay when no connections
-        }
-    }
-
-    gst_object_unref(bus);
-    return (void*)(intptr_t)retStatus;
-}
-
 int main()
 {
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerConnectInfo_t connectInfo = {0};
-    SSLCredentials_t sslCreds = {0};
-    pthread_t gstThread;
+    SignalingControllerConnectInfo_t connectInfo;
+    SSLCredentials_t sslCreds;
+    int i;
 
-    // Initialize random seed
-    srand(time(NULL));
+    srand( time( NULL ) );
 
-    // Initialize SRTP
     srtp_init();
 
     #if ENABLE_SCTP_DATA_CHANNEL
-    Sctp_Init();
-    #endif
+        Sctp_Init();
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     memset( &demoContext, 0, sizeof( DemoContext_t ) );
     memset( &sslCreds, 0, sizeof( SSLCredentials_t ) );
     memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
 
-    // Set up SSL credentials
     sslCreds.pCaCertPath = AWS_CA_CERT_PATH;
-    #if defined(AWS_IOT_THING_ROLE_ALIAS)
-    sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
-    sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
+    #if defined( AWS_IOT_THING_ROLE_ALIAS )
+        sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
+        sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
+    #else
+        sslCreds.pDeviceCertPath = NULL;
+        sslCreds.pDeviceKeyPath = NULL;
     #endif
 
-    // Set up connection info
     connectInfo.awsConfig.pRegion = AWS_REGION;
-    connectInfo.awsConfig.regionLen = strlen(AWS_REGION);
+    connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
     connectInfo.awsConfig.pService = "kinesisvideo";
-    connectInfo.awsConfig.serviceLen = strlen("kinesisvideo");
+    connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
+
     connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
-    connectInfo.channelName.channelNameLength = strlen(AWS_KVS_CHANNEL_NAME);
+    connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
+
     connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
-    connectInfo.userAgentNameLength = strlen(AWS_KVS_AGENT_NAME);
+    connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
+
     connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
-    connectInfo.pMessageReceivedCallbackData = &demoContext;
+    connectInfo.pMessageReceivedCallbackData = NULL;
 
-    #if defined(AWS_ACCESS_KEY_ID)
-    connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
-    connectInfo.awsCreds.accessKeyIdLen = strlen(AWS_ACCESS_KEY_ID);
-    connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-    connectInfo.awsCreds.secretAccessKeyLen = strlen(AWS_SECRET_ACCESS_KEY);
-    #if defined(AWS_SESSION_TOKEN)
-    connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
-    connectInfo.awsCreds.sessionTokenLength = strlen(AWS_SESSION_TOKEN);
-    #endif
-    #endif
+    #if defined( AWS_ACCESS_KEY_ID )
+        connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
+        connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
+        connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+        connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
+        #if defined( AWS_SESSION_TOKEN )
+            connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
+            connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
+        #endif /* #if defined( AWS_SESSION_TOKEN ) */
+    #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
 
-    // Initialize signaling
-    signalingControllerReturn = SignalingController_Init(
-        &demoContext.signalingControllerContext,
-        &sslCreds);
+    #if defined( AWS_IOT_THING_ROLE_ALIAS )
+        connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
+        connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
+        connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
+        connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
+        connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
+        connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
+    #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
 
-    if (signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK) {
-        LogError(("Failed to initialize signaling controller"));
+    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext,
+                                                          &sslCreds );
+
+    if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        LogError( ( "Fail to initialize signaling controller." ) );
         ret = -1;
-        goto CleanUp;
-    }
-
-    // Set up signal handler
-    signal(SIGINT, terminateHandler);
-
-    // Initialize metrics
-    Metric_Init();
-
-    // Initialize GStreamer and media source
-    ret = initializeGStreamer(&demoContext);
-    if (ret != 0) {
-        LogError(("Failed to initialize GStreamer"));
-        goto CleanUp;
     }
 
     if( ret == 0 )
     {
-        ret = InitializeAppMediaSource( &demoContext );
+        /* Set the signal handler to release resource correctly. */
+        signal( SIGINT, terminateHandler );
+
+        /* Initialize metrics. */
+        Metric_Init();
     }
 
-
-    // Initialize peer connection sessions
-    for (int i = 0; i < AWS_MAX_VIEWER_NUM; i++) {
-        ret = InitializePeerConnectionSession(&demoContext, &demoContext.peerConnectionSessions[i]);
-        if (ret != 0) {
-            LogError(("Failed to initialize peer connection session %d", i));
-            goto CleanUp;
+    if( ret == 0 )
+    {
+        ret = InitializeGstMediaSource( &demoContext );
+    }
+return 0;
+    if( ret == 0 )
+    {
+        for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
+        {
+            ret = InitializePeerConnectionSession( &demoContext,
+                                                   &demoContext.peerConnectionSessions[i] );
+            if( ret != 0 )
+            {
+                LogError( ( "Fail to initialize peer connection sessions." ) );
+                break;
+            }
         }
     }
 
-    // Create GStreamer thread
-    if (pthread_create(&gstThread, NULL, sendGstreamerAudioVideo, &demoContext) != 0) {
-        LogError(("Failed to create GStreamer thread"));
-        ret = -1;
-        goto CleanUp;
+    if( ret == 0 )
+    {
+        /* This should never return unless exception happens. */
+        signalingControllerReturn = SignalingController_StartListening( &demoContext.signalingControllerContext,
+                                                                        &connectInfo );
+        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to keep processing signaling controller." ) );
+            ret = -1;
+        }
     }
-    pthread_detach(gstThread);
-
-    // Start signaling
-    signalingControllerReturn = SignalingController_StartListening(
-        &demoContext.signalingControllerContext,
-        &connectInfo);
-
-    if (signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK) {
-        LogError(("Failed to start signaling"));
-        ret = -1;
-        goto CleanUp;
-    }
-
-    // Main loop
-    while (keepRunning) {
-        sleep(1);
-    }
-
-CleanUp:
-    // Clean up GStreamer
-    if (senderPipeline != NULL) {
-        gst_element_set_state(senderPipeline, GST_STATE_NULL);
-        gst_object_unref(senderPipeline);
-    }
-    gst_deinit();
 
     #if ENABLE_SCTP_DATA_CHANNEL
-    Sctp_DeInit();
-    #endif
+        /* TODO_SCTP: Move to a common shutdown function? */
+        Sctp_DeInit();
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
-    LogInfo(("Cleanup completed"));
-
-    return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return 0;
 }
