@@ -1548,6 +1548,7 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     PeerConnectionBufferSessionDescription_t * pTargetRemoteSdp = NULL;
     uint8_t i;
     uint64_t signalStartUpBarrier = 1;
+    ssize_t retWrite;
 
     if( ( pSession == NULL ) ||
         ( pBufferSessionDescription == NULL ) )
@@ -1678,6 +1679,29 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        pSession->rtpConfig.videoRtxSequenceNumber = 0U;
+        pSession->rtpConfig.audioRtxSequenceNumber = 0U;
+        pSession->rtpConfig.twccId = ( uint16_t ) pTargetRemoteSdp->sdpDescription.quickAccess.twccExtId;
+        pSession->rtpConfig.remoteVideoSsrc = pTargetRemoteSdp->sdpDescription.quickAccess.videoSsrc;
+        pSession->rtpConfig.remoteAudioSsrc = pTargetRemoteSdp->sdpDescription.quickAccess.audioSsrc;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        retWrite = write( pSession->startupBarrier, &signalStartUpBarrier, sizeof( signalStartUpBarrier ) );
+        if( retWrite != sizeof( uint64_t ) )
+        {
+            LogError(("Fail to signal start up barrier, errno(%d): %s.", errno, strerror( errno )));
+            ret = PEER_CONNECTION_RESULT_FAIL_SIGNAL_STARTUP_BARRIER;
+        }
+        else
+        {
+            LogInfo( ( "Signaled start up barrier." ) );
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
         LogVerbose( ( "REMOTE Candidates Count : %d", pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount ) );
 
         if( pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount != 0 )
@@ -1706,30 +1730,6 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
                                 pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ] ) );
                 }
             }
-        }
-    }
-
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        pSession->rtpConfig.videoRtxSequenceNumber = 0U;
-        pSession->rtpConfig.audioRtxSequenceNumber = 0U;
-        pSession->rtpConfig.twccId = ( uint16_t ) pTargetRemoteSdp->sdpDescription.quickAccess.twccExtId;
-        pSession->rtpConfig.remoteVideoSsrc = pTargetRemoteSdp->sdpDescription.quickAccess.videoSsrc;
-        pSession->rtpConfig.remoteAudioSsrc = pTargetRemoteSdp->sdpDescription.quickAccess.audioSsrc;
-    }
-
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        ssize_t retWrite;
-        retWrite = write( pSession->startupBarrier, &signalStartUpBarrier, sizeof( signalStartUpBarrier ) );
-        if( retWrite != sizeof( uint64_t ) )
-        {
-            LogError(("Fail to signal start up barrier, errno(%d): %s.", errno, strerror( errno )));
-            ret = PEER_CONNECTION_RESULT_FAIL_SIGNAL_STARTUP_BARRIER;
-        }
-        else
-        {
-            LogInfo( ( "Signaled start up barrier." ) );
         }
     }
 
