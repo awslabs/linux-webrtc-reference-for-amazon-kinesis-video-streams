@@ -1,21 +1,13 @@
 #ifndef PEER_CONNECTION_SCTP_H
 #define PEER_CONNECTION_SCTP_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include "sctp_utils.h"
 #include "peer_connection.h"
 
 #include "peer_connection_data_types.h"
 
 #ifndef DATACHANNEL_CUSTOM_CALLBACK_HOOK
-#define DATACHANNEL_CUSTOM_CALLBACK_HOOK  ( 1U )
+    #define DATACHANNEL_CUSTOM_CALLBACK_HOOK  ( 1U )
 #endif
 
 #define DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE ( 512U )
@@ -53,9 +45,4 @@ void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
                                                                                        uint32_t ulNameLen );
 #endif
 
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 #endif /* PEER_CONNECTION_SCTP_H */

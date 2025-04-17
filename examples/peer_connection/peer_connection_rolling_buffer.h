@@ -1,14 +1,6 @@
 #ifndef PEER_CONNECTION_ROLLING_BUFFER_H
 #define PEER_CONNECTION_ROLLING_BUFFER_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 /* Standard includes. */
 #include <stdint.h>
 
@@ -40,11 +32,5 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SearchRtpSequenceBuffer( Peer
 PeerConnectionResult_t PeerConnectionRollingBuffer_SetPacket( PeerConnectionRollingBuffer_t * pRollingBuffer,
                                                               uint16_t rtpSeq,
                                                               PeerConnectionRollingBufferPacket_t * pPacket );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* PEER_CONNECTION_ROLLING_BUFFER_H */

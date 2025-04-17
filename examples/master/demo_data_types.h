@@ -1,14 +1,6 @@
 #ifndef DEMO_DATA_TYPES_H
 #define DEMO_DATA_TYPES_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include "sdp_controller.h"
 #include "signaling_controller.h"
@@ -49,11 +41,5 @@ typedef struct DemoContext
     DemoPeerConnectionSession_t peerConnectionSessions[ AWS_MAX_VIEWER_NUM ];
     AppMediaSourcesContext_t appMediaSourcesContext;
 } DemoContext_t;
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* DEMO_DATA_TYPES_H */

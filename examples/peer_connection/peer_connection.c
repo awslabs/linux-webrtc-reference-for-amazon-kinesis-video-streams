@@ -19,7 +19,7 @@
 #include "peer_connection_g711_helper.h"
 
 #if ENABLE_SCTP_DATA_CHANNEL
-#include "peer_connection_sctp.h"
+    #include "peer_connection_sctp.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 #define PEER_CONNECTION_SESSION_TASK_NAME "PcSessionTsk"

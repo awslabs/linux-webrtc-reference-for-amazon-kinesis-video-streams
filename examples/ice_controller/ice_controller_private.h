@@ -1,14 +1,6 @@
 #ifndef ICE_CONTROLLER_PRIVATE_H
 #define ICE_CONTROLLER_PRIVATE_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include "ice_controller_data_types.h"
 
 #define ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, natConfig ) ( ( pCtx->natTraversalConfigBitmap & natConfig ) != 0 )
@@ -59,11 +51,5 @@ IceControllerResult_t IceControllerSocketListener_StopPolling( IceControllerCont
                                                     char * pIpBuffer,
                                                     size_t ipBufferLength );
 #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* ICE_CONTROLLER_PRIVATE_H */

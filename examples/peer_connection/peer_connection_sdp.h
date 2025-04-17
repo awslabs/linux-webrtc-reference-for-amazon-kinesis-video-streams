@@ -1,14 +1,6 @@
 #ifndef PEER_CONNECTION_SDP_H
 #define PEER_CONNECTION_SDP_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include <stdint.h>
 
@@ -22,11 +14,5 @@ PeerConnectionResult_t PeerConnectionSdp_PopulateSessionDescription( PeerConnect
                                                                      PeerConnectionBufferSessionDescription_t * pLocalBufferSessionDescription,
                                                                      char * pOutputSerializedSdpMessage,
                                                                      size_t * pOutputSerializedSdpMessageLength );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* PEER_CONNECTION_SDP_H */

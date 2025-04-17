@@ -1,14 +1,6 @@
 #ifndef PEER_CONNECTION_DATA_TYPES_H
 #define PEER_CONNECTION_DATA_TYPES_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 /* Standard includes. */
 #include <stdint.h>
 
@@ -22,7 +14,7 @@ extern "C" {
 #include "srtp.h"
 
 #if ENABLE_SCTP_DATA_CHANNEL
-#include "sctp_utils.h"
+    #include "sctp_utils.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 #include "rtp_data_types.h"
@@ -480,11 +472,5 @@ typedef struct PeerConnectionContext
         void * pOnBandwidthEstimationCallbackContext;
     #endif
 } PeerConnectionContext_t;
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* PEER_CONNECTION_DATA_TYPES_H */

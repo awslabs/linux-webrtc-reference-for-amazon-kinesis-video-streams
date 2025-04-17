@@ -1,14 +1,6 @@
 #ifndef METRIC_H
 #define METRIC_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include <inttypes.h>
 
@@ -69,11 +61,5 @@ void Metric_Init( void );
 void Metric_StartEvent( MetricEvent_t event );
 void Metric_EndEvent( MetricEvent_t event );
 void Metric_PrintMetrics( void );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* METRIC_H */

@@ -42,7 +42,7 @@
 #include "mbedtls/timing.h"
 
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE( array ) ( sizeof( array ) / sizeof *( array ) )
+    #define ARRAY_SIZE( array ) ( sizeof( array ) / sizeof *( array ) )
 #endif
 
 #define MBEDTLS_ERROR_STRING_BUFFER_SIZE 512

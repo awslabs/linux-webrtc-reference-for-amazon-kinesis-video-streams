@@ -1,14 +1,6 @@
 #ifndef SDP_CONTROLLER_H
 #define SDP_CONTROLLER_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include <stdint.h>
 #include "sdp_controller_data_types.h"
@@ -38,12 +30,5 @@ SdpControllerResult_t SdpController_PopulateSessionDescription( SdpControllerSdp
                                                                 SdpControllerSdpDescription_t * pLocalSessionDescription,
                                                                 char ** ppBuffer,
                                                                 size_t * pBufferLength );
-
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* SDP_CONTROLLER_H */

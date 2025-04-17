@@ -15,7 +15,7 @@
 #include "networking_utils.h"
 
 #if ENABLE_SCTP_DATA_CHANNEL
-#include "peer_connection_sctp.h"
+    #include "peer_connection_sctp.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 #define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX "amazonaws.com"
@@ -68,11 +68,11 @@
 #define EMA_ACCUMULATOR_GET_NEXT( a, v ) ( double )( EMA_ALPHA_VALUE * ( v ) + ONE_MINUS_EMA_ALPHA_VALUE * ( a ) )
 
 #ifndef MIN
-#define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+    #define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 #ifndef MAX
-#define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+    #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 DemoContext_t demoContext;
@@ -1260,8 +1260,7 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
 }
 
 #if ENABLE_SCTP_DATA_CHANNEL
-
-#if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
+    #if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
         static void OnDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
                                           uint8_t isBinary,
                                           uint8_t * pMessage,
@@ -1310,9 +1309,7 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
 
             return OnDataChannelMessage;
         }
-
-#endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
-
+    #endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 int main()

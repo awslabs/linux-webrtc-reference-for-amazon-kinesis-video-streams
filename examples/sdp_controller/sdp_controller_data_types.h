@@ -1,14 +1,6 @@
 #ifndef SDP_CONTROLLER_DATA_TYPES_H
 #define SDP_CONTROLLER_DATA_TYPES_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 /* Standard includes. */
 #include <stdint.h>
 #include "transceiver_data_types.h"
@@ -246,11 +238,5 @@ typedef struct SdpControllerPopulateSessionConfiguration
     /* Start/Stop time. */
     SdpControllerTiming_t timingDescription;
 } SdpControllerPopulateSessionConfiguration_t;
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* SDP_CONTROLLER_DATA_TYPES_H */

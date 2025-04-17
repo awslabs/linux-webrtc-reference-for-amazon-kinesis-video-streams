@@ -1463,7 +1463,7 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
 
 #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
 
-#define SWAP_BYTES_16( value )        \
+    #define SWAP_BYTES_16( value )    \
     ( ( ( ( value ) >> 8 ) & 0xFF ) | \
       ( ( ( value ) & 0xFF ) << 8 ) )
 

@@ -1,14 +1,6 @@
 #ifndef TRANSCEIVER_DATA_TYPES_H
 #define TRANSCEIVER_DATA_TYPES_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 /* Standard includes. */
 #include <stdio.h>
 
@@ -119,11 +111,5 @@ typedef struct Transceiver
     TransceiverRtcpStats_t rtcpStats;
     TransceiverRtpSender_t rtpSender;
 } Transceiver_t;
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* TRANSCEIVER_DATA_TYPES_H */

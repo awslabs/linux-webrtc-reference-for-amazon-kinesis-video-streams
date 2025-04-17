@@ -46,12 +46,12 @@
 
 #ifdef MBEDTLS_PSA_CRYPTO_C
 /* MbedTLS PSA Includes */
-#include "psa/crypto.h"
-#include "psa/crypto_values.h"
+    #include "psa/crypto.h"
+    #include "psa/crypto_values.h"
 #endif /* MBEDTLS_PSA_CRYPTO_C */
 
 #ifdef MBEDTLS_DTLS_DEBUG_C
-#include "mbedtls/debug.h"
+    #include "mbedtls/debug.h"
 #endif /* MBEDTLS_DTLS_DEBUG_C */
 
 /* DTLS transport header. */

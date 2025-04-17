@@ -1,14 +1,6 @@
 #ifndef ICE_CONTROLLER_DATA_TYPES_H
 #define ICE_CONTROLLER_DATA_TYPES_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 /* Standard includes. */
 #include <stdint.h>
 #include "demo_config.h"
@@ -354,11 +346,5 @@ typedef struct IceControllerContext
     /* Mutex to ice context while invoking APIs of ICE library. */
     pthread_mutex_t iceMutex;
 } IceControllerContext_t;
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* ICE_CONTROLLER_DATA_TYPES_H */

@@ -1,14 +1,6 @@
 #ifndef PEER_CONNECTION_SRTP_H
 #define PEER_CONNECTION_SRTP_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include <stdint.h>
 
@@ -25,11 +17,5 @@ PeerConnectionResult_t PeerConnectionSrtp_ConstructSrtpPacket( PeerConnectionSes
                                                                RtpPacket_t * pPacketRtp,
                                                                uint8_t * pOutputSrtpPacket,
                                                                size_t * pOutputSrtpPacketLength );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* PEER_CONNECTION_SRTP_H */
