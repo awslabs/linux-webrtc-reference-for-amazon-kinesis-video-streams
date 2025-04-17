@@ -371,6 +371,9 @@ typedef struct PeerConnectionSession
     pthread_t pTaskHandler;
     pthread_t pSocketListener;
 
+    /* Task synchronization using eventfd to block peer connection session until SetRemoteDescription completes.
+     * That ensures ICE Controller processes candidates only after remote description is set, as ICE credentials
+     * (username/password) are obtained from SDP. */
     int startupBarrier;
 
     /* The remote user name, representing the remote peer, from SDP message. */

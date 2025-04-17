@@ -65,13 +65,13 @@ static void PeerConnection_SetTimer( PeerConnectionSession_t * pSession );
 static void * PeerConnection_SessionTask( void * pParameter )
 {
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pParameter;
-    uint64_t barrierResult;
+    uint64_t barrierResult = 0;
     ssize_t retRead;
 
     for( ;; )
     {
         LogInfo( ( "Waiting start up barrier." ) );
-        retRead = read( pSession->startupBarrier, &barrierResult, sizeof(barrierResult));
+        retRead = read( pSession->startupBarrier, &barrierResult, sizeof( barrierResult ) );
         if( retRead != sizeof( uint64_t ) )
         {
             LogError( ( "Unexpected return value from start up barrier, retRead: %ld", retRead ) );
@@ -1691,7 +1691,7 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
         retWrite = write( pSession->startupBarrier, &signalStartUpBarrier, sizeof( signalStartUpBarrier ) );
         if( retWrite != sizeof( uint64_t ) )
         {
-            LogError(("Fail to signal start up barrier, errno(%d): %s.", errno, strerror( errno )));
+            LogError( ( "Fail to signal start up barrier, errno(%d): %s.", errno, strerror( errno ) ) );
             ret = PEER_CONNECTION_RESULT_FAIL_SIGNAL_STARTUP_BARRIER;
         }
         else
