@@ -41,6 +41,9 @@ static const char * ConvertEventToString( MetricEvent_t event )
         case METRIC_EVENT_SIGNALING_GET_CREDENTIALS:
             pRet = "Get Authentication Temporary Credentials";
             break;
+        case METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION:
+            pRet = "Join Storage Session";
+            break;
         case METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES:
             pRet = "Gather ICE Host Candidate";
             break;

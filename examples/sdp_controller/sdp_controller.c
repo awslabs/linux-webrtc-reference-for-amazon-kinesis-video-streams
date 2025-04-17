@@ -2899,7 +2899,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* When populating offer, there is no remote description for reference. */
-        if( populateConfiguration.isOffer != 0 )
+        if( populateConfiguration.isOffer == 0 )
         {
             /* Try to match the mid number in the remote media description. */
             pSourceAttribute = FindAttributeName( pRemoteMediaDescription->attributes,
@@ -2919,8 +2919,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         }
         else
         {
-            written = snprintf( pCurBuffer, remainSize, "%u",
-                                currentMediaIdx );
+            written = snprintf( pCurBuffer, remainSize, "%u", currentMediaIdx );
 
             if( written < 0 )
             {
