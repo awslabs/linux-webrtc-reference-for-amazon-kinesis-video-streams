@@ -15,4 +15,4 @@ jobs:
         uses: FreeRTOS/CI-CD-Github-Actions/formatting@main
         with:
           path: ./
-          exclude-dirs: project, docs, libraries
+          exclude-dirs: project, libraries, examples/app_media_source/samples
