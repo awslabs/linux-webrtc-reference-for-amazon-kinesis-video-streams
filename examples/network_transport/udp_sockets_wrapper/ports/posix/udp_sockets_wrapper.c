@@ -38,7 +38,7 @@
 #include <stdlib.h>
 
 /* FreeRTOS includes. */
-//#include "FreeRTOS.h"
+/*#include "FreeRTOS.h" */
 
 /* LWIP includes */
 #include <sys/socket.h>
@@ -51,7 +51,7 @@
 #include "udp_sockets_wrapper.h"
 
 /* assert() using stuff in task.h */
-//#include "task.h"
+/*#include "task.h" */
 
 struct xSOCKET
 {
@@ -72,6 +72,7 @@ int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
     if( xRet == UDP_SOCKETS_ERRNO_NONE )
     {
         *pUdpSocket = malloc( sizeof( *pUdpSocket ) );
+
         if( *pUdpSocket == NULL )
         {
             LogError( ( "Failed to allow new socket context." ) );
@@ -108,13 +109,14 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
     int xFd = -1;
     int xRet = UDP_SOCKETS_ERRNO_NONE;
     struct addrinfo xHints, * pxAddrList, * pxCur;
-    char xPortStr[6];
+    char xPortStr[ 6 ];
 
     memset( &xHints, 0, sizeof( xHints ) );
     xHints.ai_family = AF_UNSPEC;
     xHints.ai_socktype = SOCK_DGRAM;
     xHints.ai_protocol = IPPROTO_UDP;
     snprintf( xPortStr, sizeof( xPortStr ), "%d", port );
+
     if( getaddrinfo( pHostName, xPortStr, &xHints, &pxAddrList ) != 0 )
     {
         LogError( ( "Failed to connect to server: DNS resolution failed: Hostname=%s.",
@@ -124,9 +126,11 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
 
     /* Try the sockaddrs until a connection succeeds */
     xRet = UDP_SOCKETS_ERRNO_ERROR;
+
     for( pxCur = pxAddrList; pxCur != NULL; pxCur = pxCur->ai_next )
     {
         xFd = ( *pUdpSocket )->xFd;
+
         if( xFd < 0 )
         {
             LogError( ( "Failed to create new socket." ) );
@@ -145,32 +149,32 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
             LogInfo( ( "Connecting failed with %s.", pHostName ) );
         }
 
-        // close(xFd);
+        /* close(xFd); */
         xRet = UDP_SOCKETS_ERRNO_ERROR;
     }
 
     freeaddrinfo( pxAddrList );
 
-    // if (xRet == UDP_SOCKETS_ERRNO_NONE)
-    // {
-    //     *pUdpSocket = pvPortMalloc(sizeof(*pUdpSocket));
-    //     if (*pUdpSocket == NULL)
-    //     {
-    //         LogError(("Failed to allow new socket context."));
-    //         (void)close(xFd);
-    //         xRet = UDP_SOCKETS_ERRNO_ENOMEM;
-    //     }
-    //     else
-    //     {
-    //         (*pUdpSocket)->xFd = xFd;
-    //     }
-    // }
+    /* if (xRet == UDP_SOCKETS_ERRNO_NONE) */
+    /* { */
+    /*     *pUdpSocket = pvPortMalloc(sizeof(*pUdpSocket)); */
+    /*     if (*pUdpSocket == NULL) */
+    /*     { */
+    /*         LogError(("Failed to allow new socket context.")); */
+    /*         (void)close(xFd); */
+    /*         xRet = UDP_SOCKETS_ERRNO_ENOMEM; */
+    /*     } */
+    /*     else */
+    /*     { */
+    /*         (*pUdpSocket)->xFd = xFd; */
+    /*     } */
+    /* } */
 
-    // if (xRet == UDP_SOCKETS_ERRNO_NONE)
-    // {
-    //     setsockopt( xFd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeoutMs, sizeof( receiveTimeoutMs ) );
-    //     setsockopt( xFd, SOL_SOCKET, SO_SNDTIMEO, &sendTimeoutMs, sizeof( sendTimeoutMs ) );
-    // }
+    /* if (xRet == UDP_SOCKETS_ERRNO_NONE) */
+    /* { */
+    /*     setsockopt( xFd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeoutMs, sizeof( receiveTimeoutMs ) ); */
+    /*     setsockopt( xFd, SOL_SOCKET, SO_SNDTIMEO, &sendTimeoutMs, sizeof( sendTimeoutMs ) ); */
+    /* } */
 
     return xRet;
 }
@@ -182,7 +186,7 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
  */
 void UDP_Sockets_Disconnect( Socket_t udpSocket )
 {
-    ( void )shutdown( udpSocket->xFd, SHUT_RDWR );
+    ( void ) shutdown( udpSocket->xFd, SHUT_RDWR );
     free( udpSocket );
 }
 
@@ -210,6 +214,7 @@ int32_t UDP_Sockets_Send( Socket_t xSocket,
     assert( pvBuffer != NULL );
 
     xWriteRet = write( xSocket->xFd, pvBuffer, xBufferLength );
+
     if( xWriteRet >= 0 )
     {
         xReturnStatus = xWriteRet;
@@ -222,11 +227,13 @@ int32_t UDP_Sockets_Send( Socket_t xSocket,
             case ECONNRESET:
                 xReturnStatus = UDP_SOCKETS_ERRNO_ENOTCONN;
                 break;
+
             default:
                 xReturnStatus = UDP_SOCKETS_ERRNO_ERROR;
                 break;
         }
     }
+
     return xReturnStatus;
 }
 
@@ -258,6 +265,7 @@ int32_t UDP_Sockets_Recv( Socket_t xSocket,
     assert( pvBuffer != NULL );
 
     xReadRet = read( xSocket->xFd, pvBuffer, xBufferLength );
+
     if( xReadRet >= 0 )
     {
         xReturnStatus = xReadRet;
@@ -270,15 +278,18 @@ int32_t UDP_Sockets_Recv( Socket_t xSocket,
             case EINTR:
                 xReturnStatus = 0;
                 break;
+
             case EPIPE:
             case ECONNRESET:
                 xReturnStatus = UDP_SOCKETS_ERRNO_ENOTCONN;
                 break;
+
             default:
                 xReturnStatus = UDP_SOCKETS_ERRNO_ERROR;
                 break;
         }
     }
+
     return xReturnStatus;
 }
 

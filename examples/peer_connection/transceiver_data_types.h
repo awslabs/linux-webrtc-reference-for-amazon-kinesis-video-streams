@@ -4,12 +4,12 @@
 /* Standard includes. */
 #include <stdio.h>
 
-#define TRANSCEIVER_STREAM_ID_MAX_LENGTH ( 256 )
-#define TRANSCEIVER_TRACK_ID_MAX_LENGTH ( 256 )
-#define TRANSCEIVER_CODEC_STRING_MAX_LENGTH ( 3 ) /* The maximum value of codec is now 127, which has length 3 in string. */
+#define TRANSCEIVER_STREAM_ID_MAX_LENGTH       ( 256 )
+#define TRANSCEIVER_TRACK_ID_MAX_LENGTH        ( 256 )
+#define TRANSCEIVER_CODEC_STRING_MAX_LENGTH    ( 3 ) /* The maximum value of codec is now 127, which has length 3 in string. */
 
-#define TRANSCEIVER_IS_CODEC_ENABLED( bitmap, bit ) ( bitmap & ( 1 << bit ) )
-#define TRANSCEIVER_ENABLE_CODEC( bitmap, bit ) ( bitmap |= ( 1 << bit ) )
+#define TRANSCEIVER_IS_CODEC_ENABLED( bitmap, bit )    ( bitmap & ( 1 << bit ) )
+#define TRANSCEIVER_ENABLE_CODEC( bitmap, bit )        ( bitmap |= ( 1 << bit ) )
 
 typedef enum TransceiverCallbackEvent
 {
@@ -63,8 +63,8 @@ typedef enum TransceiverRtcCodecBit
 typedef enum TransceiverTrackKind
 {
     TRANSCEIVER_TRACK_KIND_UNKNOWN = 0,
-    TRANSCEIVER_TRACK_KIND_AUDIO, //!< Audio track. Track information is set before add transceiver
-    TRANSCEIVER_TRACK_KIND_VIDEO, //!< Video track. Track information is set before add transceiver
+    TRANSCEIVER_TRACK_KIND_AUDIO, /*!< Audio track. Track information is set before add transceiver */
+    TRANSCEIVER_TRACK_KIND_VIDEO, /*!< Video track. Track information is set before add transceiver */
     TRANSCEIVER_TRACK_KIND_DATA_CHANNEL,
 } TransceiverTrackKind_t;
 
@@ -80,8 +80,8 @@ typedef enum TransceiverDirection
 typedef struct TransceiverRtcpStats
 {
     /* RTCP Sender Report Stats. */
-    uint64_t rtpPacketsTransmitted;    // Total number of bytes sent for this SSRC. Calculated as defined in [RFC3550] section 6.4.1.
-    uint64_t rtpBytesTransmitted;      // The total number of payload octets (i.e., not including header or padding )
+    uint64_t rtpPacketsTransmitted; /* Total number of bytes sent for this SSRC. Calculated as defined in [RFC3550] section 6.4.1. */
+    uint64_t rtpBytesTransmitted;   /* The total number of payload octets (i.e., not including header or padding ) */
 } TransceiverRtcpStats_t;
 
 typedef struct TransceiverRtpSender
@@ -95,9 +95,9 @@ typedef struct Transceiver
 {
     TransceiverTrackKind_t trackKind;
     TransceiverDirection_t direction;
-    uint32_t codecBitMap; // Use TransceiverRtcCodecBit_t to set corresponding bits
+    uint32_t codecBitMap;          /* Use TransceiverRtcCodecBit_t to set corresponding bits */
     uint32_t rollingbufferDurationSec;
-    uint32_t rollingbufferBitRate; // bps
+    uint32_t rollingbufferBitRate; /* bps */
     char streamId[ TRANSCEIVER_STREAM_ID_MAX_LENGTH ];
     size_t streamIdLength;
     char trackId[ TRANSCEIVER_TRACK_ID_MAX_LENGTH ];

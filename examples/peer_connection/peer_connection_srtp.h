@@ -6,7 +6,7 @@
 
 #include "peer_connection_data_types.h"
 
-#define PEER_CONNECTION_SRTP_RTP_PACKET_MAX_LENGTH      ( 1400 )
+#define PEER_CONNECTION_SRTP_RTP_PACKET_MAX_LENGTH    ( 1400 )
 
 PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSession );
 PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSession );

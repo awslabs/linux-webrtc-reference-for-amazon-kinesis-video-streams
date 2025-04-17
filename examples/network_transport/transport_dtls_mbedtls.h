@@ -42,29 +42,29 @@
 #include "mbedtls/timing.h"
 
 #ifndef ARRAY_SIZE
-    #define ARRAY_SIZE( array ) ( sizeof( array ) / sizeof *( array ) )
+    #define ARRAY_SIZE( array )    ( sizeof( array ) / sizeof *( array ) )
 #endif
 
-#define MBEDTLS_ERROR_STRING_BUFFER_SIZE 512
+#define MBEDTLS_ERROR_STRING_BUFFER_SIZE    512
 
-#define MBEDTLS_ERROR_DESCRIPTION( err )                                               \
-    do {                                                                               \
-        char _error_string[MBEDTLS_ERROR_STRING_BUFFER_SIZE];                          \
-        mbedtls_strerror( err,                                                         \
-                          _error_string,                                               \
-                          sizeof( _error_string ) );                                   \
-        LogError( ( "Error 0x%04x: %s\n", ( unsigned int )-( err ), _error_string ) ); \
+#define MBEDTLS_ERROR_DESCRIPTION( err )                                                \
+    do {                                                                                \
+        char _error_string[ MBEDTLS_ERROR_STRING_BUFFER_SIZE ];                         \
+        mbedtls_strerror( err,                                                          \
+                          _error_string,                                                \
+                          sizeof( _error_string ) );                                    \
+        LogError( ( "Error 0x%04x: %s\n", ( unsigned int ) -( err ), _error_string ) ); \
     } while( 0 )
 
 /* Include header that defines log levels. */
 #include "logging.h"
 
 /* SRTP */
-#define CERTIFICATE_FINGERPRINT_LENGTH 160
-#define MAX_SRTP_MASTER_KEY_LEN 16
-#define MAX_SRTP_SALT_KEY_LEN 14
-#define MAX_DTLS_RANDOM_BYTES_LEN 32
-#define MAX_DTLS_MASTER_KEY_LEN 48
+#define CERTIFICATE_FINGERPRINT_LENGTH    160
+#define MAX_SRTP_MASTER_KEY_LEN           16
+#define MAX_SRTP_SALT_KEY_LEN             14
+#define MAX_DTLS_RANDOM_BYTES_LEN         32
+#define MAX_DTLS_MASTER_KEY_LEN           48
 
 typedef int32_t (* OnTransportDtlsSendHook_t)( void * pCustomContext,
                                                const uint8_t * pInputBuffer,
@@ -79,13 +79,13 @@ typedef int32_t (* OnTransportDtlsSendHook_t)( void * pCustomContext,
  * Reminder: if this list is expanded mbedtls_ssl_check_srtp_profile_value
  * must be updated too.
  */
-// #define MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80     ( ( uint16_t ) 0x0001 )
-// #define MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32     ( ( uint16_t ) 0x0002 )
-// #define MBEDTLS_TLS_SRTP_NULL_HMAC_SHA1_80          ( ( uint16_t ) 0x0005 )
-// #define MBEDTLS_TLS_SRTP_NULL_HMAC_SHA1_32          ( ( uint16_t ) 0x0006 )
+/* #define MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80     ( ( uint16_t ) 0x0001 ) */
+/* #define MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32     ( ( uint16_t ) 0x0002 ) */
+/* #define MBEDTLS_TLS_SRTP_NULL_HMAC_SHA1_80          ( ( uint16_t ) 0x0005 ) */
+/* #define MBEDTLS_TLS_SRTP_NULL_HMAC_SHA1_32          ( ( uint16_t ) 0x0006 ) */
 
 /* This one is not iana defined, but for code readability. */
-//#define MBEDTLS_TLS_SRTP_UNSET                      ( ( uint16_t ) 0x0000 )
+/*#define MBEDTLS_TLS_SRTP_UNSET                      ( ( uint16_t ) 0x0000 ) */
 
 typedef enum
 {
@@ -95,9 +95,9 @@ typedef enum
 
 typedef struct
 {
-    uint8_t masterSecret[MAX_DTLS_MASTER_KEY_LEN];
-    // client random bytes + server random bytes
-    uint8_t randBytes[2 * MAX_DTLS_RANDOM_BYTES_LEN];
+    uint8_t masterSecret[ MAX_DTLS_MASTER_KEY_LEN ];
+    /* client random bytes + server random bytes */
+    uint8_t randBytes[ 2 * MAX_DTLS_RANDOM_BYTES_LEN ];
     mbedtls_tls_prf_types tlsProfile;
 } TlsKeys;
 
@@ -124,11 +124,11 @@ typedef int (* mbedtls_get_delay_fptr)( void * );
 
 typedef struct DtlsSessionTimer
 {
-    uint32_t int_ms;                  // Intermediate delay in milliseconds
-    uint32_t fin_ms;                  // Final delay in milliseconds
-    int64_t start_ticks;              // Start tick count
-    mbedtls_set_delay_fptr set_delay; // Function pointer to set delay
-    mbedtls_get_delay_fptr get_delay; // Function pointer to get delay
+    uint32_t int_ms;                  /* Intermediate delay in milliseconds */
+    uint32_t fin_ms;                  /* Final delay in milliseconds */
+    int64_t start_ticks;              /* Start tick count */
+    mbedtls_set_delay_fptr set_delay; /* Function pointer to set delay */
+    mbedtls_get_delay_fptr get_delay; /* Function pointer to get delay */
 } DtlsSessionTimer_t;
 
 typedef struct DtlsRetransmissionParams
@@ -179,12 +179,12 @@ struct DtlsNetworkContext
 typedef struct DtlsNetworkContext DtlsNetworkContext_t;
 
 
-// DtlsKeyingMaterial is information extracted via https://tools.ietf.org/html/rfc5705
-// also includes the use_srtp value from Handshake
+/* DtlsKeyingMaterial is information extracted via https://tools.ietf.org/html/rfc5705 */
+/* also includes the use_srtp value from Handshake */
 typedef struct
 {
-    uint8_t clientWriteKey[MAX_SRTP_MASTER_KEY_LEN + MAX_SRTP_SALT_KEY_LEN];
-    uint8_t serverWriteKey[MAX_SRTP_MASTER_KEY_LEN + MAX_SRTP_SALT_KEY_LEN];
+    uint8_t clientWriteKey[ MAX_SRTP_MASTER_KEY_LEN + MAX_SRTP_SALT_KEY_LEN ];
+    uint8_t serverWriteKey[ MAX_SRTP_MASTER_KEY_LEN + MAX_SRTP_SALT_KEY_LEN ];
     uint8_t key_length;
 
     KVS_SRTP_PROFILE srtpProfile;
@@ -211,9 +211,9 @@ typedef struct DtlsNetworkCredentials
      */
     int disableSni;
 
-    const uint8_t * pRootCa;     /**< @brief String representing a trusted server root certificate. */
-    size_t rootCaSize;          /**< @brief Size associated with #NetworkCredentials.pRootCa. */
-    mbedtls_x509_crt * pClientCert;             /**< @brief Client certificate context. */
+    const uint8_t * pRootCa;        /**< @brief String representing a trusted server root certificate. */
+    size_t rootCaSize;              /**< @brief Size associated with #NetworkCredentials.pRootCa. */
+    mbedtls_x509_crt * pClientCert; /**< @brief Client certificate context. */
     mbedtls_pk_context * pPrivateKey;
 
     DtlsKeyingMaterial dtlsKeyingMaterial; /**< @brief derivated SRTP keys */
@@ -232,19 +232,19 @@ typedef struct DtlsSession
  */
 typedef enum DtlsTransportStatus
 {
-    DTLS_SUCCESS = 0,                                /**< Function successfully completed. */
+    DTLS_SUCCESS = 0, /**< Function successfully completed. */
 
     /* Common error code. */
-    DTLS_INVALID_PARAMETER,                          /**< At least one parameter was invalid. */
-    DTLS_OUT_OF_MEMORY,                              /**< Fail to allocate memory by malloc. */
+    DTLS_INVALID_PARAMETER, /**< At least one parameter was invalid. */
+    DTLS_OUT_OF_MEMORY,     /**< Fail to allocate memory by malloc. */
 
     /* Transport error code */
-    DTLS_TRANSPORT_INSUFFICIENT_MEMORY,              /**< Insufficient memory required to establish connection. */
-    DTLS_TRANSPORT_INVALID_CREDENTIALS,              /**< Provided credentials were invalid. */
-    DTLS_TRANSPORT_HANDSHAKE_FAILED,                 /**< Performing TLS handshake with server failed. */
-    DTLS_TRANSPORT_INTERNAL_ERROR,                   /**< A call to a system API resulted in an internal error. */
-    DTLS_TRANSPORT_CONNECT_FAILURE,                  /**< Initial connection to the server failed. */
-    DTLS_TRANSPORT_PROCESS_FAILURE,                  /**< Fail while processing received packet. */
+    DTLS_TRANSPORT_INSUFFICIENT_MEMORY, /**< Insufficient memory required to establish connection. */
+    DTLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid. */
+    DTLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server failed. */
+    DTLS_TRANSPORT_INTERNAL_ERROR,      /**< A call to a system API resulted in an internal error. */
+    DTLS_TRANSPORT_CONNECT_FAILURE,     /**< Initial connection to the server failed. */
+    DTLS_TRANSPORT_PROCESS_FAILURE,     /**< Fail while processing received packet. */
 
     /* Error code for key and certificate generation. */
     DTLS_INITIALIZE_PK_FAILURE,                      /**< Fail to initialize SSL context before generating RSA key. */
@@ -262,27 +262,27 @@ typedef enum DtlsTransportStatus
     DTLS_SSL_UNKNOWN_SRTP_PROFILE,                   /**< The SRTP profile is unknown. */
 
     /* User info. */
-    DTLS_HANDSHAKE_COMPLETE, /**< Just complete the DTLS handshaking. */
+    DTLS_HANDSHAKE_COMPLETE,         /**< Just complete the DTLS handshaking. */
     DTLS_HANDSHAKE_ALREADY_COMPLETE, /**< DTLS handshaking is done before calling. */
     DTLS_CONNECTION_HAS_BEEN_CLOSED, /**< The DTLS connection has been closed. */
 } DtlsTransportStatus_t;
 
-#define DTLS_RSA_F4 0x10001L
+#define DTLS_RSA_F4                       0x10001L
 
-#define PRIVATE_KEY_PCS_PEM_SIZE  228
+#define PRIVATE_KEY_PCS_PEM_SIZE          228
 
-#define GENERATED_CERTIFICATE_MAX_SIZE 4096
-#define GENERATED_CERTIFICATE_BITS 2048
-#define DTLS_CERT_MIN_SERIAL_NUM_SIZE 8
-#define DTLS_CERT_MAX_SERIAL_NUM_SIZE 20
-#define GENERATED_CERTIFICATE_DAYS 365
-#define DTLS_SECONDS_IN_A_DAY ( 86400 )
-#define GENERATED_CERTIFICATE_NAME "KVS-WebRTC-Client"
-#define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
+#define GENERATED_CERTIFICATE_MAX_SIZE    4096
+#define GENERATED_CERTIFICATE_BITS        2048
+#define DTLS_CERT_MIN_SERIAL_NUM_SIZE     8
+#define DTLS_CERT_MAX_SERIAL_NUM_SIZE     20
+#define GENERATED_CERTIFICATE_DAYS        365
+#define DTLS_SECONDS_IN_A_DAY             ( 86400 )
+#define GENERATED_CERTIFICATE_NAME        "KVS-WebRTC-Client"
+#define KEYING_EXTRACTOR_LABEL            "EXTRACTOR-dtls_srtp"
 
-/////////////////////////////////////////////////////
-/// DTLS related status codes
-/////////////////////////////////////////////////////
+/*/////////////////////////////////////////////////// */
+/*/ DTLS related status codes */
+/*/////////////////////////////////////////////////// */
 
 /**
  * @brief Initialise DTLS network context with provided credentials

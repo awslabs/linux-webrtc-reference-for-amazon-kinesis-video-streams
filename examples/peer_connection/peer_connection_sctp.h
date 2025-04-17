@@ -7,12 +7,12 @@
 #include "peer_connection_data_types.h"
 
 #ifndef DATACHANNEL_CUSTOM_CALLBACK_HOOK
-    #define DATACHANNEL_CUSTOM_CALLBACK_HOOK  ( 1U )
+    #define DATACHANNEL_CUSTOM_CALLBACK_HOOK           ( 1U )
 #endif
 
-#define DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE ( 512U )
+#define DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE    ( 512U )
 
-#define MASTER_DATA_CHANNEL_MESSAGE "This message is from the FreeRTOS-WebRTC-Application KVS Master"
+#define MASTER_DATA_CHANNEL_MESSAGE                    "This message is from the FreeRTOS-WebRTC-Application KVS Master"
 
 PeerConnectionDataChannel_t * PeerConnectionSCTP_AllocateDataChannel( void );
 

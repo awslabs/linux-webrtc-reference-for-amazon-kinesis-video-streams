@@ -81,9 +81,9 @@ typedef struct IceServerConfig
     uint32_t ttlSeconds;
     IceServerUri_t iceServerUris[ SIGNALING_CONTROLLER_ICE_SERVER_MAX_URIS_COUNT ];
     size_t iceServerUriCount;
-    char userName[ SIGNALING_CONTROLLER_ICE_SERVER_USER_NAME_BUFFER_LENGTH + 1];
+    char userName[ SIGNALING_CONTROLLER_ICE_SERVER_USER_NAME_BUFFER_LENGTH + 1 ];
     size_t userNameLength;
-    char password[ SIGNALING_CONTROLLER_ICE_SERVER_PASSWORD_BUFFER_LENGTH + 1];
+    char password[ SIGNALING_CONTROLLER_ICE_SERVER_PASSWORD_BUFFER_LENGTH + 1 ];
     size_t passwordLength;
 } IceServerConfig_t;
 

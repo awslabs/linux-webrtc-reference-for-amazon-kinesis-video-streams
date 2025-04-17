@@ -7,7 +7,7 @@
 #include "peer_connection_data_types.h"
 
 /* 28 Bytes of RTCP with 0 Reception Reports + 14 bytes of SRTCP */
-#define PEER_CONNECTION_SRTCP_RTCP_PACKET_MIN_LENGTH      ( 42 )
+#define PEER_CONNECTION_SRTCP_RTCP_PACKET_MIN_LENGTH    ( 42 )
 
 PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSession_t * pSession,
                                                              uint8_t * pBuffer,

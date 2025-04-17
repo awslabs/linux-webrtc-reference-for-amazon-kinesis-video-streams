@@ -7,7 +7,7 @@
 #include "peer_connection_sctp.h"
 /*-----------------------------------------------------------*/
 
-static PeerConnectionDataChannel_t globalDataChannels[MAX_SCTP_DATA_CHANNELS];
+static PeerConnectionDataChannel_t globalDataChannels[ MAX_SCTP_DATA_CHANNELS ];
 static int uKVSDataChannelCount = 0;
 /*-----------------------------------------------------------*/
 
@@ -31,28 +31,26 @@ static SctpUtilsResult_t OnSCTPSessionDataChannelAckOpen( void * customData,
 /* Allocate a SCTP data channel from the global array of data channel */
 PeerConnectionDataChannel_t * PeerConnectionSCTP_AllocateDataChannel( void )
 {
-
     PeerConnectionDataChannel_t * pChannel = NULL;
 
     if( uKVSDataChannelCount < MAX_SCTP_DATA_CHANNELS )
     {
         uint32_t ulIter = 0;
-        for(; ulIter < MAX_SCTP_DATA_CHANNELS; ulIter++ )
+
+        for( ; ulIter < MAX_SCTP_DATA_CHANNELS; ulIter++ )
         {
-            if( globalDataChannels[ulIter].ucChannelActive == 0 )
+            if( globalDataChannels[ ulIter ].ucChannelActive == 0 )
             {
-                pChannel = &globalDataChannels[ulIter];
+                pChannel = &globalDataChannels[ ulIter ];
                 memset( pChannel, 0, sizeof( PeerConnectionDataChannel_t ) );
-                globalDataChannels[ulIter].ucChannelActive = 1;
+                globalDataChannels[ ulIter ].ucChannelActive = 1;
                 uKVSDataChannelCount++;
                 break;
             }
-
         }
     }
 
     return pChannel;
-
 }
 /*-----------------------------------------------------------*/
 
@@ -60,6 +58,7 @@ PeerConnectionDataChannel_t * PeerConnectionSCTP_AllocateDataChannel( void )
 PeerConnectionResult_t PeerConnectionSCTP_DeallocateDataChannel( PeerConnectionDataChannel_t * pChannel )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
     if( pChannel == NULL )
     {
         LogError( ( "Invalid input, pChannel: %p", pChannel ) );
@@ -68,6 +67,7 @@ PeerConnectionResult_t PeerConnectionSCTP_DeallocateDataChannel( PeerConnectionD
     else
     {
         pChannel->ucChannelActive = 0;
+
         if( uKVSDataChannelCount > 0 )
         {
             uKVSDataChannelCount--;
@@ -75,7 +75,6 @@ PeerConnectionResult_t PeerConnectionSCTP_DeallocateDataChannel( PeerConnectionD
     }
 
     return ret;
-
 }
 /*-----------------------------------------------------------*/
 
@@ -86,7 +85,6 @@ PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSessi
                                                              SctpDataChannelInitInfo_t * pDataChannelInitInfo,
                                                              PeerConnectionDataChannel_t ** ppChannel )
 {
-
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     PeerConnectionDataChannel_t * pChannel;
     PeerConnectionDataChannel_t * pxDataChannelIterator = NULL;
@@ -99,6 +97,7 @@ PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSessi
     else
     {
         pChannel = PeerConnectionSCTP_AllocateDataChannel();
+
         if( pChannel == NULL )
         {
             LogError( ( "No free data channel available input." ) );
@@ -122,6 +121,7 @@ PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSessi
                 pChannel->dataChannelInitInfo.maxLifetimeInMilliseconds = 0;
                 pChannel->dataChannelInitInfo.numRetransmissions = 0;
             }
+
             pChannel->pPeerConnection = pSession;
 
             if( pSession->pDataChannels == NULL )
@@ -134,6 +134,7 @@ PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSessi
             else
             {
                 pxDataChannelIterator = pSession->pDataChannels;
+
                 for( ; ; )
                 {
                     if( pxDataChannelIterator == pChannel )
@@ -152,6 +153,7 @@ PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSessi
                     pxDataChannelIterator = pxDataChannelIterator->pxNext;
                 }
             }
+
             pSession->uKvsDataChannelCount++;
 
             *ppChannel = pChannel;
@@ -184,7 +186,6 @@ PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataCha
     }
     else
     {
-
         pSctpSession = &( pChannel->pPeerConnection->sctpSession );
 
         if( Sctp_SendMessage( pSctpSession, &( pChannel->dataChannel ), isBinary, pMessage, pMessageLen ) != SCTP_UTILS_RESULT_OK )
@@ -206,8 +207,9 @@ PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataCha
                                       uint8_t * pMessage,
                                       uint32_t pMessageLen )
     {
-        char ucSendMessage[DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE];
+        char ucSendMessage[ DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE ];
         PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
+
         if( ( pMessage == NULL ) || ( pDataChannel == NULL ) )
         {
             LogError( ( "No message or pDataChannel received in OnDataChannelMessage" ) );
@@ -218,7 +220,8 @@ PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataCha
         {
             LogWarn( ( "=============>>>DataChannel Binary Message" ) );
         }
-        else {
+        else
+        {
             LogWarn( ( "=============>>> DataChannel String Message: %.*s\n", ( int ) pMessageLen, pMessage ) );
             /* Send a response to the message sent by the viewer */
             sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) ? ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
@@ -229,7 +232,6 @@ PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataCha
         {
             LogInfo( ( "[KVS Master] dataChannelSend(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
         }
-
     }
 /*-----------------------------------------------------------*/
 
@@ -238,7 +240,6 @@ PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataCha
 /* Allocate SCTP and initiate session creation */
 PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t * pSession )
 {
-
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
 
     /* Create the SCTP Session */
@@ -271,17 +272,18 @@ PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t 
             else
             {
                 #if DATACHANNEL_CUSTOM_CALLBACK_HOOK
-                    {
-                        pxIterator->onDataChannelMessage = PeerConnectionSCTP_SetChannelOnMessageCallbackHook(       \
-                            pSession, pxIterator->dataChannel.channelId, ( uint8_t * )pxIterator->ucDataChannelName, \
-                            ( uint32_t ) strlen( pxIterator->ucDataChannelName ) );
-                    }
+                {
+                    pxIterator->onDataChannelMessage = PeerConnectionSCTP_SetChannelOnMessageCallbackHook(        \
+                        pSession, pxIterator->dataChannel.channelId, ( uint8_t * ) pxIterator->ucDataChannelName, \
+                        ( uint32_t ) strlen( pxIterator->ucDataChannelName ) );
+                }
                 #else
-                    {
-                        pxIterator->onDataChannelMessage = OnDataChannelMessage;
-                    }
-                #endif     /* DATACHANNEL_CUSTOM_CALLBACK_HOOK */
+                {
+                    pxIterator->onDataChannelMessage = OnDataChannelMessage;
+                }
+                #endif /* DATACHANNEL_CUSTOM_CALLBACK_HOOK */
             }
+
             pxIterator = pxIterator->pxNext;
         }
 
@@ -289,12 +291,9 @@ PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t 
         {
             ret = PEER_CONNECTION_RESULT_OK;
         }
-
     }
 
-
     return ret;
-
 }
 /*-----------------------------------------------------------*/
 
@@ -303,12 +302,10 @@ void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
                                          uint8_t * receiveBuffer,
                                          int readBytes )
 {
-
     if( Sctp_ProcessMessage( &( pSession->sctpSession ), receiveBuffer, readBytes ) != SCTP_UTILS_RESULT_OK )
     {
         LogWarn( ( "Failed to process SCTP packet" ) );
     }
-
 }
 /*-----------------------------------------------------------*/
 
@@ -319,12 +316,14 @@ PeerConnectionDataChannel_t * pxGetDataChannelWithID( PeerConnectionSession_t * 
     PeerConnectionDataChannel_t * pxIterator;
 
     pxIterator = pSession->pDataChannels;
+
     while( pxIterator != NULL )
     {
         if( pxIterator->dataChannel.channelId == channelId )
         {
             break;
         }
+
         pxIterator = pxIterator->pxNext;
     }
 
@@ -340,8 +339,8 @@ static void OnSCTPSessionOutboundPacket( void * customData,
                                          uint8_t * pPacket,
                                          uint32_t packetLen )
 {
-
     PeerConnectionSession_t * pPeerConnectionSession = NULL;
+
     if( customData == NULL )
     {
         LogError( ( "No context found" ) );
@@ -354,7 +353,6 @@ static void OnSCTPSessionOutboundPacket( void * customData,
     {
         LogError( ( "SCTP encrypt error" ) );
     }
-
 }
 /*-----------------------------------------------------------*/
 
@@ -386,7 +384,6 @@ static void OnSCTPSessionDataChannelMessage( void * customData,
     {
         LogError( ( "No channel or message handler found" ) );
     }
-
 }
 /*-----------------------------------------------------------*/
 
@@ -411,7 +408,6 @@ static SctpUtilsResult_t OnSCTPSessionDataChannelAckOpen( void * customData,
     }
 
     return ret;
-
 }
 /*-----------------------------------------------------------*/
 
@@ -431,8 +427,8 @@ static void OnSCTPSessionDataChannelOpen( void * customData,
         return;
     }
 
-    if( ( pPeerConnectionSession->uKvsDataChannelCount < PEER_CONNECTION_MAX_SCTP_DATA_CHANNELS_PER_PEER ) \
-        && ( ( pChannel = PeerConnectionSCTP_AllocateDataChannel() ) != NULL ) )
+    if( ( pPeerConnectionSession->uKvsDataChannelCount < PEER_CONNECTION_MAX_SCTP_DATA_CHANNELS_PER_PEER ) && \
+        ( ( pChannel = PeerConnectionSCTP_AllocateDataChannel() ) != NULL ) )
     {
         PeerConnectionDataChannel_t * pxIterator = NULL;
 
@@ -441,14 +437,14 @@ static void OnSCTPSessionDataChannelOpen( void * customData,
         pChannel->dataChannel.channelId = channelId;
 
         #if DATACHANNEL_CUSTOM_CALLBACK_HOOK
-            {
-                pChannel->onDataChannelMessage = PeerConnectionSCTP_SetChannelOnMessageCallbackHook( pPeerConnectionSession, channelId, pName, nameLen );
-            }
+        {
+            pChannel->onDataChannelMessage = PeerConnectionSCTP_SetChannelOnMessageCallbackHook( pPeerConnectionSession, channelId, pName, nameLen );
+        }
         #else
-            {
-                pChannel->onDataChannelMessage = OnDataChannelMessage;
-            }
-        #endif     /* DATACHANNEL_CUSTOM_CALLBACK_HOOK */
+        {
+            pChannel->onDataChannelMessage = OnDataChannelMessage;
+        }
+        #endif /* DATACHANNEL_CUSTOM_CALLBACK_HOOK */
 
         pChannel->ucChannelOpen = 1U;
 
@@ -462,6 +458,7 @@ static void OnSCTPSessionDataChannelOpen( void * customData,
         else
         {
             pxIterator = pPeerConnectionSession->pDataChannels;
+
             for( ; ; )
             {
                 if( pxIterator == pChannel )
@@ -487,7 +484,6 @@ static void OnSCTPSessionDataChannelOpen( void * customData,
     {
         LogError( ( "All %d data channel handles are open, no free handles available", MAX_SCTP_DATA_CHANNELS ) );
     }
-
 }
 /*-----------------------------------------------------------*/
 
@@ -496,23 +492,24 @@ PeerConnectionResult_t PeerConnectionSCTP_CloseDataChannel( PeerConnectionDataCh
     PeerConnectionSession_t * pPeerConnectionSession = pChannel->pPeerConnection;
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
-    if( Sctp_CloseDataChannel( &( pPeerConnectionSession->sctpSession ), &( pChannel->dataChannel  ) ) != SCTP_UTILS_RESULT_OK )
+    if( Sctp_CloseDataChannel( &( pPeerConnectionSession->sctpSession ), &( pChannel->dataChannel ) ) != SCTP_UTILS_RESULT_OK )
     {
         ret = PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE;
     }
     else
     {
-
         PeerConnectionDataChannel_t * pxIterator = pPeerConnectionSession->pDataChannels;
         PeerConnectionDataChannel_t * pxPrev = NULL;
 
         pChannel->ucChannelOpen = 0U;
+
         while( pxIterator != NULL )
         {
             if( pxIterator == pChannel )
             {
                 break;
             }
+
             pxPrev = pxIterator;
             pxIterator = pxIterator->pxNext;
         }
@@ -536,6 +533,7 @@ PeerConnectionResult_t PeerConnectionSCTP_CloseDataChannel( PeerConnectionDataCh
 
         ret = PeerConnectionSCTP_DeallocateDataChannel( pChannel );
     }
+
     return ret;
 }
 /*-----------------------------------------------------------*/
@@ -561,7 +559,6 @@ PeerConnectionResult_t PeerConnectionSCTP_DeallocateSCTP( PeerConnectionSession_
     }
 
     return ret;
-
 }
 /*-----------------------------------------------------------*/
 

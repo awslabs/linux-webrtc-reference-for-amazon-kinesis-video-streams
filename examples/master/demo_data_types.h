@@ -7,10 +7,10 @@
 #include "peer_connection.h"
 #include "app_media_source.h"
 
-#define DEMO_SDP_BUFFER_MAX_LENGTH ( 10000 )
-#define DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ( 0 )
-#define DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ( 1 )
-#define REMOTE_ID_MAX_LENGTH    ( 256 )
+#define DEMO_SDP_BUFFER_MAX_LENGTH            ( 10000 )
+#define DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO    ( 0 )
+#define DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO    ( 1 )
+#define REMOTE_ID_MAX_LENGTH                  ( 256 )
 
 typedef struct DemoPeerConnectionSession
 {

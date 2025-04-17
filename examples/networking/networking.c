@@ -6,13 +6,13 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define STATIC_CRED_EXPIRES_SECONDS ( 604800 )
+#define STATIC_CRED_EXPIRES_SECONDS    ( 604800 )
 #ifndef MIN
-    #define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+    #define MIN( a, b )    ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 #ifndef MAX
-    #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+    #define MAX( a, b )    ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -99,6 +99,7 @@ static int GetHostFromUrl( const char * pUrl,
     if( ret == 0 )
     {
         pStart = strstr( pUrl, "://" );
+
         if( pStart == NULL )
         {
             ret = -1;
@@ -131,6 +132,7 @@ static int GetHostFromUrl( const char * pUrl,
                 case '?':
                     foundEndMark = 1;
                     break;
+
                 default:
                     pCurPtr++;
                     break;
@@ -481,6 +483,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
             snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                                        remainingLength,
                                        "&X-Amz-ChannelARN=" );
+
             if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
             {
                 LogError( ( "Failed to write X-Amz-ChannelARN key!" ) );
@@ -500,6 +503,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              channelArnValueLength,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -519,6 +523,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                                    remainingLength,
                                    "&X-Amz-Credential=" );
+
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-Credential key!" ) );
@@ -537,6 +542,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              pAwsCredentials->accessKeyIdLen,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -556,6 +562,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              1,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -575,6 +582,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              8, /* Only the date part. */
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -594,6 +602,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              1,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -613,6 +622,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              pAwsConfig->regionLen,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -632,6 +642,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              1,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -651,6 +662,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              pAwsConfig->serviceLen,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -670,6 +682,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              strlen( "/aws4_request" ),
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -691,6 +704,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                                    "&X-Amz-Date=%.*s",
                                    ( int ) pWebsocketCtx->iso8601TimeLength,
                                    &( pWebsocketCtx->iso8601Time[ 0 ] ) );
+
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-Date!" ) );
@@ -719,6 +733,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                                    remainingLength,
                                    "&X-Amz-Expires=%lu",
                                    expirationSeconds );
+
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-Expires!" ) );
@@ -739,6 +754,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                                    remainingLength,
                                    "&X-Amz-Security-Token=" );
+
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-Security-Token key!" ) );
@@ -757,6 +773,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                              pAwsCredentials->sessionTokenLength,
                              &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                              &( encodedLength ) );
+
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -776,6 +793,7 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
                                    remainingLength,
                                    "&X-Amz-SignedHeaders=host" );
+
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-SignedHeaders!" ) );
@@ -931,33 +949,26 @@ static int LwsHttpCallback( struct lws * pWsi,
     switch( reason )
     {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
             pHttpContext->httpStatusCode = -1;
             LogError( ( "HTTP connection error!" ) );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_CLOSED_CLIENT_HTTP:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
             LogDebug( ( "HTTP connection closed." ) );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
             pHttpContext->httpStatusCode = lws_http_client_http_response( pWsi );
             LogDebug( ( "Connected with HTTP server. Response: %d.", pHttpContext->httpStatusCode ) );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_RECEIVE_CLIENT_HTTP_READ:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
 
@@ -978,11 +989,10 @@ static int LwsHttpCallback( struct lws * pWsi,
                     pHttpContext->pResponse->contentLength = dataLength;
                 }
             }
-        }
-        break;
+
+            break;
 
         case LWS_CALLBACK_RECEIVE_CLIENT_HTTP:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
 
@@ -995,17 +1005,14 @@ static int LwsHttpCallback( struct lws * pWsi,
                 LogError( ( "lws_http_client_read failed!" ) );
                 ret = -1;
             }
-        }
-        break;
+
+            break;
 
         case LWS_CALLBACK_COMPLETED_CLIENT_HTTP:
-        {
             LogDebug( ( "LWS_CALLBACK_COMPLETED_CLIENT_HTTP callback." ) );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
 
@@ -1054,11 +1061,9 @@ static int LwsHttpCallback( struct lws * pWsi,
 
             lws_client_http_body_pending( pWsi, 1 );
             lws_callback_on_writable( pWsi );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_CLIENT_HTTP_WRITEABLE:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
 
@@ -1089,19 +1094,17 @@ static int LwsHttpCallback( struct lws * pWsi,
                 /* Finished sending the body. */
                 lws_client_http_body_pending( pWsi, 0 );
             }
-        }
-        break;
+
+            break;
 
         case LWS_CALLBACK_WSI_DESTROY:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
 
             LogDebug( ( "LWS_CALLBACK_WSI_DESTROY callback." ) );
 
             pHttpContext->connectionClosed = 1;
-        }
-        break;
+            break;
 
         default:
             break;
@@ -1130,50 +1133,41 @@ static int LwsWebsocketCallback( struct lws * pWsi,
     switch( reason )
     {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
 
             pWebsocketContext->connectionEstablished = 0;
             pWebsocketContext->connectionClosed = 1;
             LogError( ( "LWS_CALLBACK_CLIENT_CONNECTION_ERROR callback!" ) );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
 
             pWebsocketContext->connectionEstablished = 1;
             LogDebug( ( "WSS connection established." ) );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_CLIENT_CLOSED:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
 
             pWebsocketContext->connectionEstablished = 0;
             pWebsocketContext->connectionClosed = 1;
             LogDebug( ( "WSS client closed the connection." ) );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
 
             pWebsocketContext->connectionEstablished = 0;
             pWebsocketContext->connectionClosed = 1;
             LogDebug( ( "WSS peer closed the connection." ) );
-        }
-        break;
+            break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
 
@@ -1220,64 +1214,64 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                     ret = 1;
                 }
             }
-        }
-        break;
+
+            break;
 
         case LWS_CALLBACK_CLIENT_WRITEABLE:
-        {
-            RingBufferElement_t * pElement;
-            RingBufferResult_t ringBufferResult;
-            size_t remainingLength;
-            int writtenLength;
+           {
+               RingBufferElement_t * pElement;
+               RingBufferResult_t ringBufferResult;
+               size_t remainingLength;
+               int writtenLength;
 
-            pLwsProtocol = lws_get_protocol( pWsi );
-            pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
+               pLwsProtocol = lws_get_protocol( pWsi );
+               pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
 
-            LogDebug( ( "LWS_CALLBACK_CLIENT_WRITEABLE callback." ) );
+               LogDebug( ( "LWS_CALLBACK_CLIENT_WRITEABLE callback." ) );
 
-            ringBufferResult = RingBuffer_GetHeadEntry( &( pWebsocketContext->ringBuffer ),
-                                                        &( pElement ) );
+               ringBufferResult = RingBuffer_GetHeadEntry( &( pWebsocketContext->ringBuffer ),
+                                                           &( pElement ) );
 
-            if( ringBufferResult == RING_BUFFER_RESULT_OK )
-            {
-                remainingLength = pElement->bufferLength - pElement->currentIndex;
+               if( ringBufferResult == RING_BUFFER_RESULT_OK )
+               {
+                   remainingLength = pElement->bufferLength - pElement->currentIndex;
 
-                writtenLength = lws_write( pWsi,
-                                           ( unsigned char * ) &( pElement->pBuffer[ LWS_PRE + pElement->currentIndex ] ),
-                                           remainingLength,
-                                           LWS_WRITE_TEXT );
+                   writtenLength = lws_write( pWsi,
+                                              ( unsigned char * ) &( pElement->pBuffer[ LWS_PRE + pElement->currentIndex ] ),
+                                              remainingLength,
+                                              LWS_WRITE_TEXT );
 
-                if( writtenLength < 0 )
-                {
-                    LogError( ( "lws_write failed in LWS_CALLBACK_CLIENT_WRITEABLE callback, result: %d!", writtenLength ) );
-                    ret = 1;
-                }
-                else if( writtenLength == remainingLength )
-                {
-                    free( pElement->pBuffer );
-                    if( RingBuffer_RemoveHeadEntry( &( pWebsocketContext->ringBuffer ),
-                                                    pElement ) != RING_BUFFER_RESULT_OK )
-                    {
-                        LogError( ( "Failed to remove element from the ring buffer!" ) );
-                        ret = 1;
-                    }
-                    else
-                    {
-                        /* Check if there is any data remain in ringbuffer at next iteration. */
-                        lws_callback_on_writable( pWsi );
-                    }
-                }
-                else
-                {
-                    pElement->currentIndex += writtenLength;
-                    lws_callback_on_writable( pWsi );
-                }
-            }
-        }
-        break;
+                   if( writtenLength < 0 )
+                   {
+                       LogError( ( "lws_write failed in LWS_CALLBACK_CLIENT_WRITEABLE callback, result: %d!", writtenLength ) );
+                       ret = 1;
+                   }
+                   else if( writtenLength == remainingLength )
+                   {
+                       free( pElement->pBuffer );
+
+                       if( RingBuffer_RemoveHeadEntry( &( pWebsocketContext->ringBuffer ),
+                                                       pElement ) != RING_BUFFER_RESULT_OK )
+                       {
+                           LogError( ( "Failed to remove element from the ring buffer!" ) );
+                           ret = 1;
+                       }
+                       else
+                       {
+                           /* Check if there is any data remain in ringbuffer at next iteration. */
+                           lws_callback_on_writable( pWsi );
+                       }
+                   }
+                   else
+                   {
+                       pElement->currentIndex += writtenLength;
+                       lws_callback_on_writable( pWsi );
+                   }
+               }
+           }
+           break;
 
         case LWS_CALLBACK_EVENT_WAIT_CANCELLED:
-        {
             pLwsProtocol = lws_get_protocol( pWsi );
             pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
 
@@ -1287,8 +1281,8 @@ static int LwsWebsocketCallback( struct lws * pWsi,
             {
                 lws_callback_on_writable( pWebsocketContext->pWsi );
             }
-        }
-        break;
+
+            break;
 
         default:
             break;
@@ -1306,7 +1300,7 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
     struct lws_context_creation_info creationInfo;
     const lws_retry_bo_t retryPolicy =
     {
-        .secs_since_valid_ping = 10,
+        .secs_since_valid_ping   = 10,
         .secs_since_valid_hangup = 7200,
     };
 
@@ -1367,7 +1361,7 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
     struct lws_context_creation_info creationInfo;
     const lws_retry_bo_t retryPolicy =
     {
-        .secs_since_valid_ping = 10,
+        .secs_since_valid_ping   = 10,
         .secs_since_valid_hangup = 7200,
     };
 
@@ -1591,6 +1585,7 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         ( void ) lws_client_connect_via_info( &( connectInfo ) );
 
         pHttpCtx->connectionClosed = 0U;
+
         while( pHttpCtx->connectionClosed == 0U )
         {
             ( void ) lws_service( pHttpCtx->pLwsContext, 0 );
@@ -1701,6 +1696,7 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
 
         pWebsocketCtx->connectionEstablished = 0U;
         pWebsocketCtx->connectionClosed = 0U;
+
         while( ( pWebsocketCtx->connectionEstablished == 0U ) &&
                ( pWebsocketCtx->connectionClosed == 0U ) )
         {

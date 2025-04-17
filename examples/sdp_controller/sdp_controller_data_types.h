@@ -5,10 +5,10 @@
 #include <stdint.h>
 #include "transceiver_data_types.h"
 
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT ( 2 )
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT ( 2 )
-#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ( 256 )
-#define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ( 5 )
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT        ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT      ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT            ( 256 )
+#define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT    ( 5 )
 
 typedef enum SdpControllerResult
 {
@@ -104,15 +104,15 @@ typedef struct SdpControllerAttributes
 
 typedef struct SdpControllerMediaDescription
 {
-    // m=<media> <port>/<number of ports> <proto> <fmt> ...
-    // https://tools.ietf.org/html/rfc4566#section-5.14
+    /* m=<media> <port>/<number of ports> <proto> <fmt> ... */
+    /* https://tools.ietf.org/html/rfc4566#section-5.14 */
     const char * pMediaName;
     size_t mediaNameLength;
 
-    // i=<session description>
-    // https://tools.ietf.org/html/rfc4566#section-5.4. Given these are free-form strings, the length could be anything.
-    // Although our SDK parses this information, the SDK does not use it. Leaving this attribute in if SDK uses it in
-    // the future
+    /* i=<session description> */
+    /* https://tools.ietf.org/html/rfc4566#section-5.4. Given these are free-form strings, the length could be anything. */
+    /* Although our SDK parses this information, the SDK does not use it. Leaving this attribute in if SDK uses it in */
+    /* the future */
     const char * pMediaTitle;
     size_t mediaTitleLength;
 
@@ -149,33 +149,33 @@ typedef struct SdpControllerQuickAccess
 
 typedef struct SdpControllerSdpOffer
 {
-    // https://tools.ietf.org/html/rfc4566#section-5.1
+    /* https://tools.ietf.org/html/rfc4566#section-5.1 */
     uint32_t version;
 
     SdpControllerOrigin_t origin;
 
-    // s=<session name>
-    // https://tools.ietf.org/html/rfc4566#section-5.3
+    /* s=<session name> */
+    /* https://tools.ietf.org/html/rfc4566#section-5.3 */
     const char * pSessionName;
     size_t sessionNameLength;
 
-    // i=<session description>
-    // https://tools.ietf.org/html/rfc4566#section-5.4
+    /* i=<session description> */
+    /* https://tools.ietf.org/html/rfc4566#section-5.4 */
     const char * pSessionInformation;
     size_t sessionInformationLength;
 
-    // u=<uri>
-    // https://tools.ietf.org/html/rfc4566#section-5.5
+    /* u=<uri> */
+    /* https://tools.ietf.org/html/rfc4566#section-5.5 */
     const char * pUri;
     size_t uriLength;
 
-    // e=<email-address>
-    // https://tools.ietf.org/html/rfc4566#section-5.6
+    /* e=<email-address> */
+    /* https://tools.ietf.org/html/rfc4566#section-5.6 */
     const char * pEmailAddress;
     size_t emailAddressLength;
 
-    // p=<phone-number>
-    // https://tools.ietf.org/html/rfc4566#section-5.6
+    /* p=<phone-number> */
+    /* https://tools.ietf.org/html/rfc4566#section-5.6 */
     const char * pPhoneNumber;
     size_t phoneNumberLength;
 

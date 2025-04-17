@@ -22,30 +22,30 @@
 #include "rtcp_data_types.h"
 #include "rtcp_twcc_manager.h"
 
-#define PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ( 2 )
-#define PEER_CONNECTION_USER_NAME_LENGTH ( 32 )
-#define PEER_CONNECTION_PASSWORD_LENGTH ( 32 )
-#define PEER_CONNECTION_CNAME_LENGTH ( 16 )
-#define PEER_CONNECTION_CERTIFICATE_FINGERPRINT_LENGTH ( CERTIFICATE_FINGERPRINT_LENGTH )
-#define PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM ( 1000 )
-#define PEER_CONNECTION_FRAME_BUFFER_SIZE ( 16384 )
+#define PEER_CONNECTION_TRANSCEIVER_MAX_COUNT                  ( 2 )
+#define PEER_CONNECTION_USER_NAME_LENGTH                       ( 32 )
+#define PEER_CONNECTION_PASSWORD_LENGTH                        ( 32 )
+#define PEER_CONNECTION_CNAME_LENGTH                           ( 16 )
+#define PEER_CONNECTION_CERTIFICATE_FINGERPRINT_LENGTH         ( CERTIFICATE_FINGERPRINT_LENGTH )
+#define PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM            ( 1000 )
+#define PEER_CONNECTION_FRAME_BUFFER_SIZE                      ( 16384 )
 
-#define PEER_CONNECTION_FRAME_CURRENT_VERSION ( 0 )
+#define PEER_CONNECTION_FRAME_CURRENT_VERSION                  ( 0 )
 
-#define PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH ( 10000 )
+#define PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH      ( 10000 )
 
-#define PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY ( 100 )
+#define PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY                    ( 100 )
 
-#define PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ( 2048 )
+#define PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH         ( 2048 )
 
-#define MAX_SCTP_DATA_CHANNELS          4
-#define PEER_CONNECTION_MAX_SCTP_DATA_CHANNELS_PER_PEER 2
+#define MAX_SCTP_DATA_CHANNELS                                 4
+#define PEER_CONNECTION_MAX_SCTP_DATA_CHANNELS_PER_PEER        2
 
-#define PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US        1000 * 10000  //1,000,000 microseconds.
-#define PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS                     512     // Unit kilobits/sec. Value could change based on codec.
-#define PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS                     2048000 // Unit kilobits/sec. Value could change based on codec.
-#define PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS                      4000    // Unit bits/sec. Value could change based on codec.
-#define PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS                      650000  // Unit bits/sec. Value could change based on codec.
+#define PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US    1000 * 10000 /*1,000,000 microseconds. */
+#define PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS                 512          /* Unit kilobits/sec. Value could change based on codec. */
+#define PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS                 2048000      /* Unit kilobits/sec. Value could change based on codec. */
+#define PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS                  4000         /* Unit bits/sec. Value could change based on codec. */
+#define PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS                  650000       /* Unit bits/sec. Value could change based on codec. */
 
 typedef enum PeerConnectionResult
 {
@@ -167,7 +167,7 @@ typedef struct PeerConnectionFrame
 } PeerConnectionFrame_t;
 
 typedef struct PeerConnectionJitterBufferPacket PeerConnectionJitterBufferPacket_t;
-typedef struct PeerConnectionJitterBuffer PeerConnectionJitterBuffer_t;
+typedef struct PeerConnectionJitterBuffer       PeerConnectionJitterBuffer_t;
 
 typedef PeerConnectionResult_t (* OnFrameReadyCallback_t)( void * pCustomContext,
                                                            PeerConnectionFrame_t * pFrame );
@@ -197,7 +197,7 @@ typedef struct PeerConnectionRollingBuffer
 {
     RtpPacketQueue_t packetQueue;
     size_t maxSizePerPacket;
-    size_t capacity;     /* Buffer duration * highest expected bitrate (in bps) / 8 / maxPacketSize. */
+    size_t capacity; /* Buffer duration * highest expected bitrate (in bps) / 8 / maxPacketSize. */
 } PeerConnectionRollingBuffer_t;
 
 typedef struct PeerConnectionJitterBufferPacket
@@ -212,18 +212,18 @@ typedef struct PeerConnectionJitterBufferPacket
 
 typedef struct PeerConnectionJitterBuffer
 {
-    uint8_t isStart;     /* The jitter buffer starts to receive packet or not. */
-    size_t capacity;     /* The total number of packets that packet queue can store. */
-    uint32_t clockRate;     /* The clock rate based on the codec. For example: the clock rate is 90000 if the chosen RTP is H264/90000. */
-    uint32_t codec;     /* The codec. For example: the codec is set to H264 if the chosen RTP is H264/90000. */
-    uint32_t tolerenceRtpTimeStamp;     /* The buffer time in RTP time stamp format. */
-    uint32_t lastPopRtpTimestamp;     /* The timestamp in last pop RTP packet. */
-    uint64_t lastPopTick;     /* The receive time ticks in last pop RTP packet. */
-    uint16_t lastPopSequenceNumber;     /* The RTP sequence number in last pop RTP packet. */
-    uint16_t oldestReceivedSequenceNumber;     /* The oldest RTP sequence number that received in the packet queue. */
-    uint16_t newestReceivedSequenceNumber;     /* The newest RTP sequence number that received in the packet queue. */
-    uint32_t newestReceivedTimestamp;     /* The newest timestamp in packet queue. */
-    PeerConnectionJitterBufferPacket_t rtpPackets[ PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM ];     /* The buffer for packet queue. */
+    uint8_t isStart;                                                                              /* The jitter buffer starts to receive packet or not. */
+    size_t capacity;                                                                              /* The total number of packets that packet queue can store. */
+    uint32_t clockRate;                                                                           /* The clock rate based on the codec. For example: the clock rate is 90000 if the chosen RTP is H264/90000. */
+    uint32_t codec;                                                                               /* The codec. For example: the codec is set to H264 if the chosen RTP is H264/90000. */
+    uint32_t tolerenceRtpTimeStamp;                                                               /* The buffer time in RTP time stamp format. */
+    uint32_t lastPopRtpTimestamp;                                                                 /* The timestamp in last pop RTP packet. */
+    uint64_t lastPopTick;                                                                         /* The receive time ticks in last pop RTP packet. */
+    uint16_t lastPopSequenceNumber;                                                               /* The RTP sequence number in last pop RTP packet. */
+    uint16_t oldestReceivedSequenceNumber;                                                        /* The oldest RTP sequence number that received in the packet queue. */
+    uint16_t newestReceivedSequenceNumber;                                                        /* The newest RTP sequence number that received in the packet queue. */
+    uint32_t newestReceivedTimestamp;                                                             /* The newest timestamp in packet queue. */
+    PeerConnectionJitterBufferPacket_t rtpPackets[ PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM ]; /* The buffer for packet queue. */
 
     /* Callback functions & custom contexts. */
     OnJitterBufferFrameReadyCallback_t onFrameReadyCallbackFunc;
@@ -255,9 +255,10 @@ typedef struct PeerConnectionSessionRequestMessage
     /* Decode the request message based on request type. */
     union
     {
-        IceControllerCandidate_t remoteCandidate;     /* PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE */
-        struct {
-            uint64_t currentTimeUs;           /* PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT */
+        IceControllerCandidate_t remoteCandidate; /* PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE */
+        struct
+        {
+            uint64_t currentTimeUs; /* PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT */
             const Transceiver_t * pTransceiver;
         } rtcpContent;
     } peerConnectionSessionRequestContent;
@@ -324,10 +325,10 @@ typedef struct PeerConnectionSrtpReceiver
         uint64_t updatedAudioBitrate;
         double averagePacketLoss;
     } PeerConnectionTwccMetaData_t;
-#endif
+#endif /* if ENABLE_TWCC_SUPPORT */
 
-typedef struct PeerConnectionContext PeerConnectionContext_t;
-typedef struct PeerConnectionSession PeerConnectionSession_t;
+typedef struct PeerConnectionContext     PeerConnectionContext_t;
+typedef struct PeerConnectionSession     PeerConnectionSession_t;
 typedef struct PeerConnectionDataChannel PeerConnectionDataChannel_t;
 
 typedef void (* OnDataChannelMessageReceived_t)( PeerConnectionDataChannel_t * pDataChannel,
@@ -340,7 +341,7 @@ typedef void (* OnDataChannelMessageReceived_t)( PeerConnectionDataChannel_t * p
     {
         uint8_t ucChannelActive;
         uint8_t ucChannelOpen;
-        char ucDataChannelName[MAX_DATA_CHANNEL_NAME_LEN + 1];
+        char ucDataChannelName[ MAX_DATA_CHANNEL_NAME_LEN + 1 ];
         PeerConnectionSession_t * pPeerConnection;
         SctpDataChannel_t dataChannel;
         SctpDataChannelInitInfo_t dataChannelInitInfo;
@@ -362,6 +363,7 @@ typedef struct PeerConnectionSession
     char remoteUserName[ PEER_CONNECTION_USER_NAME_LENGTH + 1 ];
     /* The remote password, representing password of the remote peer, from SDP message. */
     char remotePassword[ PEER_CONNECTION_PASSWORD_LENGTH + 1 ];
+
     /* The combine name to respond back in SDP message.
      * Reserve 1 space for NULL terminator, the other one is for ':' between remote username & local username */
     char combinedName[ ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) + 2 ];
@@ -446,8 +448,8 @@ typedef struct PeerConnectionDtlsContext
     uint8_t isInitialized;
     mbedtls_x509_crt localCert;
     mbedtls_pk_context localKey;
-    char localCertFingerprint[CERTIFICATE_FINGERPRINT_LENGTH];
-    unsigned char privateKeyPcsPem[PRIVATE_KEY_PCS_PEM_SIZE];
+    char localCertFingerprint[ CERTIFICATE_FINGERPRINT_LENGTH ];
+    unsigned char privateKeyPcsPem[ PRIVATE_KEY_PCS_PEM_SIZE ];
 } PeerConnectionDtlsContext_t;
 
 typedef struct PeerConnectionContext

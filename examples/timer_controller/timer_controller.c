@@ -32,17 +32,17 @@ TimerControllerResult_t TimerController_Create( TimerHandler_t * pTimerHandler,
 
     if( ret == TIMER_CONTROLLER_RESULT_OK )
     {
-        // Set timer handler
+        /* Set timer handler */
         pTimerHandler->onTimerExpire = onTimerExpire;
         pTimerHandler->pUserContext = pUserContext;
 
-        // Set up the signal handler
+        /* Set up the signal handler */
         memset( &sigEvent, 0, sizeof( sigEvent ) );
         sigEvent.sigev_notify = SIGEV_THREAD;
         sigEvent.sigev_notify_function = &generalTimerCallback;
         sigEvent.sigev_value.sival_ptr = pTimerHandler;
 
-        // Create the timer
+        /* Create the timer */
         if( timer_create( CLOCK_REALTIME, &sigEvent, &pTimerHandler->timerId ) != 0 )
         {
             LogError( ( "Fail to create timer, errno: %s", strerror( errno ) ) );
@@ -67,13 +67,13 @@ TimerControllerResult_t TimerController_SetTimer( TimerHandler_t * pTimerHandler
 
     if( ret == TIMER_CONTROLLER_RESULT_OK )
     {
-        // Set the timer interval
+        /* Set the timer interval */
         its.it_value.tv_sec = initialTimeMs / 1000;
         its.it_value.tv_nsec = ( initialTimeMs % 1000 ) * 1000000;
         its.it_interval.tv_sec = repeatTimeMs / 1000;
         its.it_interval.tv_nsec = ( repeatTimeMs % 1000 ) * 1000000;
 
-        // Start the timer
+        /* Start the timer */
         if( timer_settime( pTimerHandler->timerId, 0, &its, NULL ) != 0 )
         {
             LogError( ( "Fail to set timer, errno: %s", strerror( errno ) ) );
@@ -88,7 +88,7 @@ void TimerController_Reset( TimerHandler_t * pTimerHandler )
 {
     if( pTimerHandler != NULL )
     {
-        // Cancel the timer
+        /* Cancel the timer */
         if( TimerController_SetTimer( pTimerHandler, 0U, 0U ) != TIMER_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to reset timer, errno: %s", strerror( errno ) ) );
@@ -100,7 +100,7 @@ void TimerController_Delete( TimerHandler_t * pTimerHandler )
 {
     if( pTimerHandler != NULL )
     {
-        // Delete the timer
+        /* Delete the timer */
         if( timer_delete( pTimerHandler->timerId ) != 0 )
         {
             LogError( ( "Fail to delete timer, errno: %s", strerror( errno ) ) );

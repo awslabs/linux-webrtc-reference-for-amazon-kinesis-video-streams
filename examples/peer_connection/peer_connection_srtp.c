@@ -17,9 +17,10 @@
 #include "networking_utils.h"
 
 /* At write frame, we reserve 2 bytes at the beginning of payload buffer for re-transmission if RTX is enabled. */
+
 /* The format of a retransmission packet is shown below:
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *  0                   1                   2                   3
+ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  |                         RTP Header                            |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -29,12 +30,12 @@
  |                                                               |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-#define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES ( 2 )
+#define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES               ( 2 )
 
-#define PEER_CONNECTION_SRTP_H264_MAX_NALUS_IN_A_FRAME        ( 64 )
-#define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH      ( 1200 )
+#define PEER_CONNECTION_SRTP_H264_MAX_NALUS_IN_A_FRAME              ( 64 )
+#define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH                 ( 1200 )
 
-#define PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND ( 2 )
+#define PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND    ( 2 )
 
 
 /*-----------------------------------------------------------*/
@@ -136,6 +137,7 @@ PeerConnectionResult_t PeerConnectionSrtp_ConstructSrtpPacket( PeerConnectionSes
                                    pPacketRtp,
                                    pOutputSrtpPacket,
                                    &rtpBufferLength );
+
         if( resultRtp != RTP_RESULT_OK )
         {
             LogError( ( "Fail to serialize RTP packet, result: %d", resultRtp ) );
@@ -152,6 +154,7 @@ PeerConnectionResult_t PeerConnectionSrtp_ConstructSrtpPacket( PeerConnectionSes
                                     pOutputSrtpPacket,
                                     pOutputSrtpPacketLength,
                                     0 );
+
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to encrypt Tx SRTP packet, errorStatus: %d", errorStatus ) );
@@ -166,6 +169,7 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     srtp_policy_t receivePolicy, transmitPolicy;
+
     void (* srtp_policy_setter)( srtp_crypto_policy_t * ) = NULL;
     void (* srtcp_policy_setter)( srtp_crypto_policy_t * ) = NULL;
     srtp_err_status_t errorStatus;
@@ -188,10 +192,12 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
                 srtp_policy_setter = srtp_crypto_policy_set_rtp_default;
                 srtcp_policy_setter = srtp_crypto_policy_set_rtp_default;
                 break;
+
             case KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_32:
                 srtp_policy_setter = srtp_crypto_policy_set_aes_cm_128_hmac_sha1_32;
                 srtcp_policy_setter = srtp_crypto_policy_set_rtp_default;
                 break;
+
             default:
                 LogError( ( "Unknown SRTP profile: %d", pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.srtpProfile ) );
                 ret = PEER_CONNECTION_RESULT_UNKNOWN_SRTP_PROFILE;
@@ -211,6 +217,7 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
 
         errorStatus = srtp_create( &( pSession->srtpReceiveSession ),
                                    &receivePolicy );
+
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to create Rx SRTP session, errorStatus: %d", errorStatus ) );
@@ -230,6 +237,7 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
 
         errorStatus = srtp_create( &( pSession->srtpTransmitSession ),
                                    &transmitPolicy );
+
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to create Tx SRTP session, errorStatus: %d", errorStatus ) );
@@ -242,43 +250,47 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         /* Initialize Rolling buffers. */
         for( i = 0; i < pSession->transceiverCount; i++ )
         {
-            if( ( pSession->pTransceivers[i]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) &&
-                ( ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
-                  ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDONLY ) ) )
+            if( ( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) &&
+                ( ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
+                  ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDONLY ) ) )
             {
                 pSrtpSender = &pSession->videoSrtpSender;
+
                 if( ( pSession->rtpConfig.videoCodecRtxPayload != 0 ) &&
                     ( pSession->rtpConfig.videoCodecRtxPayload != pSession->rtpConfig.videoCodecPayload ) )
                 {
                     /* If we're using different payload type in re-transmission, we create the rolling buffer just for RTP payload. */
                     maxSizePerPacket = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
                 }
+
                 ret = PeerConnectionRollingBuffer_Create( &pSession->videoSrtpSender.txRollingBuffer,
-                                                          pSession->pTransceivers[i]->rollingbufferBitRate, // bps
-                                                          pSession->pTransceivers[i]->rollingbufferDurationSec, // duration in seconds
+                                                          pSession->pTransceivers[ i ]->rollingbufferBitRate,     /* bps */
+                                                          pSession->pTransceivers[ i ]->rollingbufferDurationSec, /* duration in seconds */
                                                           maxSizePerPacket );
             }
-            else if( ( pSession->pTransceivers[i]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO ) &&
-                     ( ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
-                       ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDONLY ) ) )
+            else if( ( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO ) &&
+                     ( ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
+                       ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDONLY ) ) )
             {
                 pSrtpSender = &pSession->audioSrtpSender;
+
                 if( ( pSession->rtpConfig.audioCodecRtxPayload != 0 ) &&
                     ( pSession->rtpConfig.audioCodecRtxPayload != pSession->rtpConfig.audioCodecPayload ) )
                 {
                     /* If we're using different payload type in re-transmission, we create the rolling buffer just for RTP payload. */
                     maxSizePerPacket = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
                 }
+
                 ret = PeerConnectionRollingBuffer_Create( &pSession->audioSrtpSender.txRollingBuffer,
-                                                          pSession->pTransceivers[i]->rollingbufferBitRate, // bps
-                                                          pSession->pTransceivers[i]->rollingbufferDurationSec, // duration in seconds
+                                                          pSession->pTransceivers[ i ]->rollingbufferBitRate,     /* bps */
+                                                          pSession->pTransceivers[ i ]->rollingbufferDurationSec, /* duration in seconds */
                                                           maxSizePerPacket );
             }
             else
             {
                 LogInfo( ( "No send needed for this transceiver, kind: %d, direction: %d",
-                           pSession->pTransceivers[i]->trackKind,
-                           pSession->pTransceivers[i]->direction ) );
+                           pSession->pTransceivers[ i ]->trackKind,
+                           pSession->pTransceivers[ i ]->direction ) );
             }
 
             if( ret != PEER_CONNECTION_RESULT_OK )
@@ -301,9 +313,9 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         /* Initialize Jitter buffers. */
         for( i = 0; i < pSession->transceiverCount; i++ )
         {
-            if( ( pSession->pTransceivers[i]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) &&
-                ( ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
-                  ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_RECVONLY ) ) )
+            if( ( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) &&
+                ( ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
+                  ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_RECVONLY ) ) )
             {
                 LogInfo( ( "Setting video receiver." ) );
                 pSrtpReceiver = &pSession->videoSrtpReceiver;
@@ -312,36 +324,38 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
                                                          pSrtpReceiver,
                                                          OnJitterBufferFrameDrop,
                                                          pSrtpReceiver,
-                                                         PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND,   // buffer time in seconds
-                                                         pSession->pTransceivers[i]->codecBitMap,
+                                                         PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND, /* buffer time in seconds */
+                                                         pSession->pTransceivers[ i ]->codecBitMap,
                                                          PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE );
             }
-            else if( ( pSession->pTransceivers[i]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO ) &&
-                     ( ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
-                       ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_RECVONLY ) ) )
+            else if( ( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO ) &&
+                     ( ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
+                       ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_RECVONLY ) ) )
             {
                 LogInfo( ( "Setting audio receiver." ) );
                 pSrtpReceiver = &pSession->audioSrtpReceiver;
+
                 if( ( pSession->rtpConfig.audioCodecRtxPayload != 0 ) &&
                     ( pSession->rtpConfig.audioCodecRtxPayload != pSession->rtpConfig.audioCodecPayload ) )
                 {
                     /* If we're using different payload type in re-transmission, we create the rolling buffer just for RTP payload. */
                     maxSizePerPacket = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
                 }
+
                 ret = PeerConnectionJitterBuffer_Create( &pSrtpReceiver->rxJitterBuffer,
                                                          OnJitterBufferFrameReady,
                                                          pSrtpReceiver,
                                                          OnJitterBufferFrameDrop,
                                                          pSrtpReceiver,
-                                                         PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND,   // buffer time in seconds
-                                                         pSession->pTransceivers[i]->codecBitMap,
+                                                         PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND, /* buffer time in seconds */
+                                                         pSession->pTransceivers[ i ]->codecBitMap,
                                                          PEER_CONNECTION_SRTP_PCM_CLOCKRATE );
             }
             else
             {
                 LogInfo( ( "No recv needed for this transceiver, kind: %d, direction: %d",
-                           pSession->pTransceivers[i]->trackKind,
-                           pSession->pTransceivers[i]->direction ) );
+                           pSession->pTransceivers[ i ]->trackKind,
+                           pSession->pTransceivers[ i ]->direction ) );
             }
 
             if( ret != PEER_CONNECTION_RESULT_OK )
@@ -369,22 +383,26 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
     if( pSession->srtpReceiveSession != NULL )
     {
         errorStatus = srtp_dealloc( pSession->srtpReceiveSession );
+
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to deallocate Rx SRTP session, errorStatus: %d", errorStatus ) );
             ret = PEER_CONNECTION_RESULT_FAIL_DECRYPT_SRTP_RTP_PACKET;
         }
+
         pSession->srtpReceiveSession = NULL;
     }
 
     if( pSession->srtpTransmitSession != NULL )
     {
         errorStatus = srtp_dealloc( pSession->srtpTransmitSession );
+
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to deallocate Tx SRTP session, errorStatus: %d", errorStatus ) );
             ret = PEER_CONNECTION_RESULT_FAIL_ENCRYPT_SRTP_RTP_PACKET;
         }
+
         pSession->srtpTransmitSession = NULL;
     }
 
@@ -449,6 +467,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSessio
                                       bufferLength,
                                       rtpBuffer,
                                       &rtpBufferLength );
+
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to decrypt Rx SRTP packet, errorStatus: %d", errorStatus ) );
@@ -467,6 +486,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSessio
                                      rtpBuffer,
                                      rtpBufferLength,
                                      &rtpPacket );
+
         if( resultRtp != RTP_RESULT_OK )
         {
             LogError( ( "Fail to deserialize RTP packet, result: %d", resultRtp ) );
@@ -502,15 +522,15 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSessio
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memcpy( pJitterBufferPacket->pPacketBuffer, rtpPacket.pPayload, rtpPacket.payloadLength );
-        pJitterBufferPacket->receiveTick = time( NULL ); //xTaskGetTickCount();
+        pJitterBufferPacket->receiveTick = time( NULL ); /*xTaskGetTickCount(); */
         pJitterBufferPacket->rtpTimestamp = rtpPacket.header.timestamp;
         pJitterBufferPacket->sequenceNumber = rtpPacket.header.sequenceNumber;
-        // LogInfo( ( "Dumping RTP payload: %u, seq: %u, timestamp: %lu", rtpPacket.payloadLength, rtpPacket.header.sequenceNumber, rtpPacket.header.timestamp ) );
-        // for( int i = 0; i < rtpPacket.payloadLength; i++ )
-        // {
-        //     printf( "%02x ", rtpPacket.pPayload[i] );
-        // }
-        // printf( "\n" );
+        /* LogInfo( ( "Dumping RTP payload: %u, seq: %u, timestamp: %lu", rtpPacket.payloadLength, rtpPacket.header.sequenceNumber, rtpPacket.header.timestamp ) ); */
+        /* for( int i = 0; i < rtpPacket.payloadLength; i++ ) */
+        /* { */
+        /*     printf( "%02x ", rtpPacket.pPayload[i] ); */
+        /* } */
+        /* printf( "\n" ); */
 
         ret = PeerConnectionJitterBuffer_Push( &pSrtpReceiver->rxJitterBuffer,
                                                pJitterBufferPacket );

@@ -5,12 +5,13 @@
 #include "message_queue.h"
 #include "peer_connection.h"
 
-typedef struct {
+typedef struct
+{
     uint8_t * pData;
     uint32_t size;
     uint64_t timestampUs;
     TransceiverTrackKind_t trackKind;
-    uint8_t freeData;  /* indicate user need to free pData after using it */
+    uint8_t freeData; /* indicate user need to free pData after using it */
 } webrtc_frame_t;
 
 typedef struct AppMediaSourcesContext AppMediaSourcesContext_t;

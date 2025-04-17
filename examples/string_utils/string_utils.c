@@ -14,11 +14,11 @@ StringUtilsResult_t StringUtils_ConvertStringToUl( const char * pStr,
 
     if( ret == STRING_UTILS_RESULT_OK )
     {
-        for( i = 0; pStr[i] != '\0' && i < strLength; i++ )
+        for( i = 0; pStr[ i ] != '\0' && i < strLength; i++ )
         {
-            if( ( pStr[i] >= '0' ) && ( pStr[i] <= '9' ) )
+            if( ( pStr[ i ] >= '0' ) && ( pStr[ i ] <= '9' ) )
             {
-                result = result * 10 + ( pStr[i] - '0' );
+                result = result * 10 + ( pStr[ i ] - '0' );
             }
             else if( i == 0 )
             {
@@ -55,6 +55,7 @@ StringUtilsResult_t StringUtils_ConvertStringToHex( const char * pStr,
     if( ret == STRING_UTILS_RESULT_OK )
     {
         result = sscanf( pStr, "%x", pOutUl );
+
         if( result < 1 )
         {
             ret = STRING_UTILS_RESULT_NON_NUMBERIC_STRING;
@@ -82,9 +83,10 @@ const char * StringUtils_StrStr( const char * pStr,
     {
         for( i = 0; i <= strLength - patternLength; i++ )
         {
-            pCurrentStr = &pStr[i];
+            pCurrentStr = &pStr[ i ];
             pCurrentPattern = pPattern;
             checkedLength = 0;
+
             while( pCurrentStr[ checkedLength ] == pCurrentPattern[ checkedLength ] && checkedLength < patternLength )
             {
                 checkedLength++;
@@ -93,7 +95,7 @@ const char * StringUtils_StrStr( const char * pStr,
             if( checkedLength == patternLength )
             {
                 /* Found pattern. */
-                pRet = &pStr[i];
+                pRet = &pStr[ i ];
                 break;
             }
         }

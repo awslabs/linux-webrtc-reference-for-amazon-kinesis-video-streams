@@ -3,7 +3,7 @@
 
 #include "ice_controller_data_types.h"
 
-#define ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, natConfig ) ( ( pCtx->natTraversalConfigBitmap & natConfig ) != 0 )
+#define ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, natConfig )    ( ( pCtx->natTraversalConfigBitmap & natConfig ) != 0 )
 
 void IceController_UpdateState( IceControllerContext_t * pCtx,
                                 IceControllerState_t newState );

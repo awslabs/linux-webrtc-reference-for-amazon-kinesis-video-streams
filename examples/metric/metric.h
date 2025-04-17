@@ -5,8 +5,8 @@
 #include <inttypes.h>
 
 /* FreeRTOS includes. */
-// #include "FreeRTOS.h"
-// #include "semphr.h"
+/* #include "FreeRTOS.h" */
+/* #include "semphr.h" */
 #include <pthread.h>
 
 typedef enum MetricEvent

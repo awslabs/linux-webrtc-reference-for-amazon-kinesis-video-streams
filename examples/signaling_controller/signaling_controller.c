@@ -8,7 +8,7 @@
 /*----------------------------------------------------------------------------*/
 
 #ifndef MIN
-    #define MIN( a,b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+    #define MIN( a, b )    ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -55,6 +55,7 @@ static int OnWssMessageReceived( char * pMessage,
     Base64Result_t base64Result;
 
     signalingResult = Signaling_ParseWssRecvMessage( pMessage, messageLength, &( wssRecvMessage ) );
+
     if( signalingResult != SIGNALING_RESULT_OK )
     {
         LogError( ( "Failed to parse the WSS message. Result: %d!", signalingResult ) );
@@ -81,24 +82,24 @@ static int OnWssMessageReceived( char * pMessage,
         switch( wssRecvMessage.messageType )
         {
             case SIGNALING_TYPE_MESSAGE_GO_AWAY:
-            {
-                LogInfo( ( "Received GOAWAY message from server. Closing connection." ) );
-                ret = 1;
-            }
-            break;
+               {
+                   LogInfo( ( "Received GOAWAY message from server. Closing connection." ) );
+                   ret = 1;
+               }
+               break;
 
             case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
-            {
-                if( strcmp( wssRecvMessage.statusResponse.pStatusCode,"200" ) != 0 )
-                {
-                    LogWarn( ( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s!",
-                               wssRecvMessage.statusResponse.pCorrelationId,
-                               wssRecvMessage.statusResponse.pErrorType,
-                               wssRecvMessage.statusResponse.pStatusCode,
-                               wssRecvMessage.statusResponse.pDescription ) );
-                }
-            }
-            break;
+               {
+                   if( strcmp( wssRecvMessage.statusResponse.pStatusCode, "200" ) != 0 )
+                   {
+                       LogWarn( ( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s!",
+                                  wssRecvMessage.statusResponse.pCorrelationId,
+                                  wssRecvMessage.statusResponse.pErrorType,
+                                  wssRecvMessage.statusResponse.pStatusCode,
+                                  wssRecvMessage.statusResponse.pDescription ) );
+                   }
+               }
+               break;
 
             default:
                 break;
@@ -226,7 +227,6 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
         {
             LogError( ( "Failed to fetch temporary credentials!" ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
-
         }
     }
 
@@ -404,10 +404,12 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
     endpointRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
     endpointRequestInfo.protocols = SIGNALING_PROTOCOL_WEBSOCKET_SECURE |
                                     SIGNALING_PROTOCOL_HTTPS;
+
     if( enableSessionStorage != 0 )
     {
         endpointRequestInfo.protocols |= SIGNALING_PROTOCOL_WEBRTC;
     }
+
     endpointRequestInfo.role = SIGNALING_ROLE_MASTER;
 
     signalingResult = Signaling_ConstructGetSignalingChannelEndpointRequest( &( awsRegion ),
@@ -551,6 +553,7 @@ static SignalingControllerResult_t JoinStorageSession( SignalingControllerContex
 
         memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
         ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
+
         if( ret != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "HTTP request failed, error=0x%x", ret ) );
@@ -666,7 +669,7 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
             pCtx->iceServerConfigs[ i ].passwordLength = iceServers[ i ].passwordLength;
             pCtx->iceServerConfigs[ i ].ttlSeconds = iceServers[ i ].messageTtlSeconds;
 
-            minTtl = MIN( minTtl, pCtx->iceServerConfigs[i].ttlSeconds );
+            minTtl = MIN( minTtl, pCtx->iceServerConfigs[ i ].ttlSeconds );
 
             for( j = 0; j < iceServers[ i ].urisNum; j++ )
             {
@@ -765,7 +768,7 @@ static SignalingControllerResult_t ConnectToWssEndpoint( SignalingControllerCont
         wssConnectInfo.rxCallback = OnWssMessageReceived;
         wssConnectInfo.pRxCallbackData = pCtx;
 
-        awsCreds.pAccessKeyId = &( pCtx->accessKeyId[ 0 ] );;
+        awsCreds.pAccessKeyId = &( pCtx->accessKeyId[ 0 ] );
         awsCreds.accessKeyIdLen = pCtx->accessKeyIdLength;
 
         awsCreds.pSecretAccessKey = &( pCtx->secretAccessKey[ 0 ] );
@@ -915,6 +918,7 @@ static void LogSignalingInfo( SignalingControllerContext_t * pCtx )
     /* Ice server list */
     LogInfo( ( "======================================== Ice Server List ========================================" ) );
     LogInfo( ( "Ice Server Count: %lu", pCtx->iceServerConfigsCount ) );
+
     for( i = 0; i < pCtx->iceServerConfigsCount; i++ )
     {
         LogInfo( ( "======================================== Ice Server[%lu] ========================================", i ) );
@@ -989,7 +993,7 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
     SignalingControllerResult_t ret;
     NetworkingResult_t networkingResult;
 
-    for( ;; )
+    for( ; ; )
     {
         ret = SIGNALING_CONTROLLER_RESULT_OK;
         networkingResult = NETWORKING_RESULT_OK;
@@ -1050,7 +1054,6 @@ SignalingControllerResult_t SignalingController_SendMessage( SignalingController
                 LogError( ( "Failed to base64 encode signaling message. Result: %d!", base64Result ) );
                 ret = SIGNALING_CONTROLLER_RESULT_FAIL;
             }
-
 
             if( ret == SIGNALING_CONTROLLER_RESULT_OK )
             {

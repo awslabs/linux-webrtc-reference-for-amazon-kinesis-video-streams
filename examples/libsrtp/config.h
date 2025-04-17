@@ -3,10 +3,10 @@
 /* clang-format off */
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_VERSION "3.0.0-pre"
+#define PACKAGE_VERSION    "3.0.0-pre"
 
 /* Define to the version of this package. */
-#define PACKAGE_STRING "libsrtp3 3.0.0-pre"
+#define PACKAGE_STRING     "libsrtp3 3.0.0-pre"
 
 /* Define to enabled debug logging for all mudules. */
 /* #undef ENABLE_DEBUG_LOGGING */
@@ -21,27 +21,27 @@
 /* #undef OPENSSL */
 
 /* Define this to use AES-GCM. */
-#define GCM 1
+#define GCM        1
 
 /* Define this to use MBEDTLS. */
-#define MBEDTLS 1
+#define MBEDTLS    1
 
 /* Define if building for a CISC machine (e.g. Intel). */
 /* #undef CPU_CISC */
 
 /* Define if building for a RISC machine (assume slow byte access). */
-#define CPU_RISC 1
+#define CPU_RISC    1
 
 /* Define to use X86 inlined assembly code */
 /* #undef HAVE_X86 */
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
-   significant byte first (like Motorola and SPARC, unlike Intel). */
+ * significant byte first (like Motorola and SPARC, unlike Intel). */
 /* #undef WORDS_BIGENDIAN */
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 /* #undef HAVE_ARPA_INET_H */
-#define HAVE_ARPA_INET_H 1
+#define HAVE_ARPA_INET_H    1
 
 /* Define to 1 if you have the <byteswap.h> header file. */
 /* #undef HAVE_BYTESWAP_H */
@@ -54,13 +54,13 @@
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
 /* #undef HAVE_NETINET_IN_H */
-#define HAVE_NETINET_IN_H 1
+#define HAVE_NETINET_IN_H    1
 
 /* Define to 1 if you have the <stdint.h> header file. */
-#define HAVE_STDINT_H 1
+#define HAVE_STDINT_H        1
 
 /* Define to 1 if you have the <stdlib.h> header file. */
-#define HAVE_STDLIB_H 1
+#define HAVE_STDLIB_H        1
 
 /* Define to 1 if you have the <sys/int_types.h> header file. */
 /* #undef HAVE_SYS_INT_TYPES_H */
@@ -90,32 +90,32 @@
 /* #undef HAVE_USLEEP */
 
 /* Define to 1 if the system has the type `uint8_t'. */
-#define HAVE_UINT8_T 1
+#define HAVE_UINT8_T                 1
 
 /* Define to 1 if the system has the type `uint16_t'. */
-#define HAVE_UINT16_T 1
+#define HAVE_UINT16_T                1
 
 /* Define to 1 if the system has the type `uint32_t'. */
-#define HAVE_UINT32_T 1
+#define HAVE_UINT32_T                1
 
 /* Define to 1 if the system has the type `uint64_t'. */
-#define HAVE_UINT64_T 1
+#define HAVE_UINT64_T                1
 
 /* Define to 1 if the system has the type `int32_t'. */
-#define HAVE_INT32_T 1
+#define HAVE_INT32_T                 1
 
 /* The size of `unsigned long', as computed by sizeof. */
-#define SIZEOF_UNSIGNED_LONG 4
+#define SIZEOF_UNSIGNED_LONG         4
 
 /* The size of `unsigned long long', as computed by sizeof. */
-#define SIZEOF_UNSIGNED_LONG_LONG 8
+#define SIZEOF_UNSIGNED_LONG_LONG    8
 
 /* Define inline to what is supported by compiler  */
-#define HAVE_INLINE 1
+#define HAVE_INLINE                  1
 /* #undef HAVE___INLINE */
 #ifndef HAVE_INLINE
     #ifdef HAVE___INLINE
-        #define inline __inline
+        #define inline    __inline
     #else
         #define inline
     #endif
@@ -126,17 +126,17 @@
 #define debug_print( mod, format, arg )
 #define debug_print2( mod, format, arg1, arg2 )
 
-// /* Provide htons, htonl, ntohs and ntohl - these are needed by libsrtp. */
+/* / * Provide htons, htonl, ntohs and ntohl - these are needed by libsrtp. * / */
 
-// #include <lwip/def.h>
-// #define htons( x ) lwip_htons( x )
-// #define ntohs( x ) lwip_ntohs( x )
-// #define htonl( x ) lwip_htonl( x )
-// #define ntohl( x ) lwip_ntohl( x )
+/* #include <lwip/def.h> */
+/* #define htons( x ) lwip_htons( x ) */
+/* #define ntohs( x ) lwip_ntohs( x ) */
+/* #define htonl( x ) lwip_htonl( x ) */
+/* #define ntohl( x ) lwip_ntohl( x ) */
 
-// /* Map malloc and free to FreeRTOS versions. */
-// #include "FreeRTOS.h"
-// #define malloc  pvPortMalloc
-// #define free    vPortFree
+/* / * Map malloc and free to FreeRTOS versions. * / */
+/* #include "FreeRTOS.h" */
+/* #define malloc  pvPortMalloc */
+/* #define free    vPortFree */
 
 #endif /* #ifndef LIBSRTP_CONFIG_H */

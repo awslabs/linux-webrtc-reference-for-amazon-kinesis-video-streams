@@ -100,6 +100,7 @@ MessageQueueResult_t MessageQueue_Recv( MessageQueueHandler_t * pMessageQueueHan
     if( ret == MESSAGE_QUEUE_RESULT_OK )
     {
         recvLength = mq_receive( pMessageQueueHandler->messageQueue, pMessage, *pMessageLength, &recvPriority );
+
         if( recvLength == -1 )
         {
             LogError( ( "mq_receive returns failed" ) );

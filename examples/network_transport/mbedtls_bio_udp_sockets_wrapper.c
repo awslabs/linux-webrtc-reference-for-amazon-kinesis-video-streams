@@ -31,7 +31,7 @@
 
 #include <assert.h>
 
-//#include "threading_alt.h"
+/*#include "threading_alt.h" */
 #include "mbedtls/entropy.h"
 #include "mbedtls/ssl.h"
 

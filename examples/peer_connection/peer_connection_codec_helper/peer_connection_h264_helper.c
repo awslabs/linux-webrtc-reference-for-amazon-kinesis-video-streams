@@ -21,6 +21,7 @@ PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferPacket_t
         resultH264 = H264Depacketizer_GetPacketProperties( pPacket->pPacketBuffer,
                                                            pPacket->packetBufferLength,
                                                            &properties );
+
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to get H264 packet properties, result: %d", resultH264 ) );
@@ -31,6 +32,7 @@ PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferPacket_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         *pIsStartPacket = 0U;
+
         if( ( properties & H264_PACKET_PROPERTY_START_PACKET ) != 0 )
         {
             *pIsStartPacket = 1U;
@@ -71,6 +73,7 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
         resultH264 = H264Depacketizer_Init( &h264DepacketizerContext,
                                             h264Packets,
                                             PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to initialize H264 depacketizer, result: %d", resultH264 ) );
@@ -91,6 +94,7 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
 
             resultH264 = H264Depacketizer_AddPacket( &h264DepacketizerContext,
                                                      &h264Packet );
+
             if( resultH264 != H264_RESULT_OK )
             {
                 LogError( ( "Fail to add H264 depacketizer packet, result: %d", resultH264 ) );
@@ -106,12 +110,12 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
         frame.frameDataLength = *pOutBufferLength;
         resultH264 = H264Depacketizer_GetFrame( &h264DepacketizerContext,
                                                 &frame );
+
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to get H264 depacketizer frame, result: %d", resultH264 ) );
             ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
         }
-
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -146,7 +150,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
     uint32_t * pSsrc = NULL;
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
-    uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+    uint32_t randomRtpTimeoffset = 0; /* TODO : Spec required random rtp time offset ( current implementation of KVS SDK ) */
 
     /* For TWCC ID extension info. */
     uint32_t extensionPayload;
@@ -171,6 +175,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
         resultH264 = H264Packetizer_Init( &h264PacketizerContext,
                                           nalusArray,
                                           PEER_CONNECTION_SRTP_H264_MAX_NALUS_IN_A_FRAME );
+
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to init H264 packetizer, result: %d", resultH264 ) );
@@ -184,6 +189,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
         h264Frame.frameDataLength = pFrame->dataLength;
         resultH264 = H264Packetizer_AddFrame( &h264PacketizerContext,
                                               &h264Frame );
+
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to add H264 packetizer, result: %d", resultH264 ) );
@@ -197,6 +203,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
         pSrtpSender = &pSession->videoSrtpSender;
         pRtpSeq = &pSession->rtpConfig.videoSequenceNumber;
         payloadType = pSession->rtpConfig.videoCodecPayload;
+
         if( ( pSession->rtpConfig.videoCodecRtxPayload != 0 ) &&
             ( pSession->rtpConfig.videoCodecRtxPayload != pSession->rtpConfig.videoCodecPayload ) )
         {
@@ -224,6 +231,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
         ret = PeerConnectionRollingBuffer_GetRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
                                                                 *pRtpSeq,
                                                                 &pRollingBufferPacket );
+
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "Fail to get RTP buffer for seq: %u", *pRtpSeq ) );
@@ -252,6 +260,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
 
         resultH264 = H264Packetizer_GetPacket( &h264PacketizerContext,
                                                &packetH264 );
+
         if( resultH264 == H264_RESULT_NO_MORE_PACKETS )
         {
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
@@ -266,6 +275,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
             pRollingBufferPacket->rtpPacket.header.payloadType = payloadType;
             pRollingBufferPacket->rtpPacket.header.sequenceNumber = *pRtpSeq;
             pRollingBufferPacket->rtpPacket.header.ssrc = *pSsrc;
+
             if( h264PacketizerContext.naluCount == 0 )
             {
                 /* This is the last packet, set the marker. */
@@ -332,6 +342,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
             resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
                                                                   pSrtpPacket,
                                                                   srtpPacketLength );
+
             if( resultIceController != ICE_CONTROLLER_RESULT_OK )
             {
                 LogWarn( ( "Fail to send RTP packet, ret: %d", resultIceController ) );

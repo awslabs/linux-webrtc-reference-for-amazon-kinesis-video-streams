@@ -4,17 +4,17 @@
 /* Standard Include. */
 #include <stdio.h>
 #include <string.h>
-//#include "log_service.h"
+/*#include "log_service.h" */
 
-#define LOG_NONE     0
-#define LOG_ERROR    1
-#define LOG_WARN     2
-#define LOG_INFO     3
-#define LOG_DEBUG    4
-#define LOG_VERBOSE  5
+#define LOG_NONE                 0
+#define LOG_ERROR                1
+#define LOG_WARN                 2
+#define LOG_INFO                 3
+#define LOG_DEBUG                4
+#define LOG_VERBOSE              5
 
 #ifndef LIBRARY_LOG_LEVEL
-    #define LIBRARY_LOG_LEVEL LOG_INFO
+    #define LIBRARY_LOG_LEVEL    LOG_INFO
 #endif
 
 /* Metadata information to prepend to every log message. */
@@ -27,7 +27,7 @@
 #endif
 
 #ifndef SdkLog
-    #define SdkLog( message ) printf message
+    #define SdkLog( message )    printf message
 #endif
 
 /**
@@ -46,10 +46,10 @@
 #else
     #if LIBRARY_LOG_LEVEL == LOG_VERBOSE
 /* All log level messages will logged. */
-        #define LogError( message )    SdkLog( ( "[ERROR]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogWarn( message )     SdkLog( ( "[WARN]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogInfo( message )     SdkLog( ( "[INFO]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogDebug( message )    SdkLog( ( "[DEBUG]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        #define LogError( message )      SdkLog( ( "[ERROR]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        #define LogWarn( message )       SdkLog( ( "[WARN]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        #define LogInfo( message )       SdkLog( ( "[INFO]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        #define LogDebug( message )      SdkLog( ( "[DEBUG]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
         #define LogVerbose( message )    SdkLog( ( "[VERBOSE]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
 
     #elif LIBRARY_LOG_LEVEL == LOG_DEBUG

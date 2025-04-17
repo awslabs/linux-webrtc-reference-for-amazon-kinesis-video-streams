@@ -22,12 +22,12 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define ISO8601_TIME_LENGTH                 17
-#define REQUIRED_HEADER_USER_AGENT_IDX      0
-#define REQUIRED_HEADER_ISO8601_TIME_IDX    1
-#define REQUIRED_HEADER_SESSION_TOKEN_IDX   2
-#define REQUIRED_HEADER_AUTHORIZATION_IDX   3
-#define NUM_REQUIRED_HEADERS                4
+#define ISO8601_TIME_LENGTH                  17
+#define REQUIRED_HEADER_USER_AGENT_IDX       0
+#define REQUIRED_HEADER_ISO8601_TIME_IDX     1
+#define REQUIRED_HEADER_SESSION_TOKEN_IDX    2
+#define REQUIRED_HEADER_AUTHORIZATION_IDX    3
+#define NUM_REQUIRED_HEADERS                 4
 
 /*----------------------------------------------------------------------------*/
 

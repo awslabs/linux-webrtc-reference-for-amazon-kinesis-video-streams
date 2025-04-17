@@ -38,7 +38,7 @@
 #include <stdlib.h>
 
 /* FreeRTOS includes. */
-//#include "FreeRTOS.h"
+/*#include "FreeRTOS.h" */
 
 /* LWIP includes */
 #include <sys/socket.h>
@@ -51,7 +51,7 @@
 #include "tcp_sockets_wrapper.h"
 
 /* assert() using stuff in task.h */
-//#include "task.h"
+/*#include "task.h" */
 
 /**
  * @brief Establish a connection to server.
@@ -75,13 +75,14 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
     int xFd = -1;
     int32_t xRet = TCP_SOCKETS_ERRNO_NONE;
     struct addrinfo xHints, * pxAddrList, * pxCur;
-    char xPortStr[6];
+    char xPortStr[ 6 ];
 
     memset( &xHints, 0, sizeof( xHints ) );
     xHints.ai_family = AF_UNSPEC;
     xHints.ai_socktype = SOCK_STREAM;
     xHints.ai_protocol = IPPROTO_TCP;
     snprintf( xPortStr, sizeof( xPortStr ), "%d", port );
+
     if( getaddrinfo( pHostName, xPortStr, &xHints, &pxAddrList ) != 0 )
     {
         LogError( ( "Failed to connect to server: DNS resolution failed: Hostname=%s.",
@@ -91,10 +92,12 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
 
     /* Try the sockaddrs until a connection succeeds */
     xRet = TCP_SOCKETS_ERRNO_ERROR;
+
     for( pxCur = pxAddrList; pxCur != NULL; pxCur = pxCur->ai_next )
     {
         xFd = socket( pxCur->ai_family, pxCur->ai_socktype,
                       pxCur->ai_protocol );
+
         if( xFd < 0 )
         {
             LogError( ( "Failed to create new socket." ) );
@@ -118,10 +121,11 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
     if( xRet == TCP_SOCKETS_ERRNO_NONE )
     {
         *pTcpSocket = malloc( sizeof( *pTcpSocket ) );
+
         if( *pTcpSocket == NULL )
         {
             LogError( ( "Failed to allow new socket context." ) );
-            ( void )close( xFd );
+            ( void ) close( xFd );
             xRet = TCP_SOCKETS_ERRNO_ENOMEM;
         }
         else
@@ -146,8 +150,8 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
  */
 void TCP_Sockets_Disconnect( Socket_t tcpSocket )
 {
-    ( void )shutdown( tcpSocket->xFd, SHUT_RDWR );
-    ( void )close( tcpSocket->xFd );
+    ( void ) shutdown( tcpSocket->xFd, SHUT_RDWR );
+    ( void ) close( tcpSocket->xFd );
     free( tcpSocket );
 }
 
@@ -175,6 +179,7 @@ int32_t TCP_Sockets_Send( Socket_t xSocket,
     assert( pvBuffer != NULL );
 
     xWriteRet = write( xSocket->xFd, pvBuffer, xBufferLength );
+
     if( xWriteRet >= 0 )
     {
         xReturnStatus = xWriteRet;
@@ -189,15 +194,18 @@ int32_t TCP_Sockets_Send( Socket_t xSocket,
             case ENOSPC:
                 xReturnStatus = TCP_SOCKETS_ERRNO_EWOULDBLOCK;
                 break;
+
             case EPIPE:
             case ECONNRESET:
                 xReturnStatus = TCP_SOCKETS_ERRNO_ENOTCONN;
                 break;
+
             default:
                 xReturnStatus = TCP_SOCKETS_ERRNO_ERROR;
                 break;
         }
     }
+
     return xReturnStatus;
 }
 
@@ -229,6 +237,7 @@ int32_t TCP_Sockets_Recv( Socket_t xSocket,
     assert( pvBuffer != NULL );
 
     xReadRet = read( xSocket->xFd, pvBuffer, xBufferLength );
+
     if( xReadRet >= 0 )
     {
         xReturnStatus = xReadRet;
@@ -241,16 +250,19 @@ int32_t TCP_Sockets_Recv( Socket_t xSocket,
             case EINTR:
                 xReturnStatus = 0;
                 break;
+
             case EPIPE:
             case ECONNRESET:
                 xReturnStatus = TCP_SOCKETS_ERRNO_ENOTCONN;
                 break;
+
             default:
                 LogInfo( ( "error code %d, %s", errno, strerror( errno ) ) );
                 xReturnStatus = TCP_SOCKETS_ERRNO_ERROR;
                 break;
         }
     }
+
     return xReturnStatus;
 }
 

@@ -14,19 +14,19 @@
 
 /*-----------------------------------------------------------*/
 
-// https://datatracker.ietf.org/doc/html/rfc3550#section-6.4
-#define PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM ( 31 )
-#define PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM ( 128 )
-#define PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM ( 255 )
+/* https://datatracker.ietf.org/doc/html/rfc3550#section-6.4 */
+#define PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM    ( 31 )
+#define PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM                       ( 128 )
+#define PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM                      ( 255 )
 
-// https://datatracker.ietf.org/doc/html/rfc3550#section-6.4.1
-#define PEER_CONNECTION_SRTCP_DLSR_TIMESCALE   65536
+/* https://datatracker.ietf.org/doc/html/rfc3550#section-6.4.1 */
+#define PEER_CONNECTION_SRTCP_DLSR_TIMESCALE                         65536
 
-// https://tools.ietf.org/html/rfc3550#section-4
-// In some fields where a more compact representation is
-//   appropriate, only the middle 32 bits are used; that is, the low 16
-//   bits of the integer part and the high 16 bits of the fractional part.
-#define PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP ) ( uint32_t )( ( currentTimeNTP >> 16U ) & 0xffffffffULL )
+/* https://tools.ietf.org/html/rfc3550#section-4 */
+/* In some fields where a more compact representation is */
+/*   appropriate, only the middle 32 bits are used; that is, the low 16 */
+/*   bits of the integer part and the high 16 bits of the fractional part. */
+#define PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP )    ( uint32_t ) ( ( currentTimeNTP >> 16U ) & 0xffffffffULL )
 
 /*-----------------------------------------------------------*/
 
@@ -80,10 +80,12 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         pRtpSeq = &rtpSeq;
+
         if( pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
         {
             pSrtpSender = &pSession->videoSrtpSender;
             payloadType = pSession->rtpConfig.videoCodecPayload;
+
             if( ( pSession->rtpConfig.videoCodecRtxPayload != 0 ) &&
                 ( pSession->rtpConfig.videoCodecRtxPayload != pSession->rtpConfig.videoCodecPayload ) )
             {
@@ -98,6 +100,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         {
             pSrtpSender = &pSession->audioSrtpSender;
             payloadType = pSession->rtpConfig.audioCodecPayload;
+
             if( ( pSession->rtpConfig.audioCodecRtxPayload != 0 ) &&
                 ( pSession->rtpConfig.audioCodecRtxPayload != pSession->rtpConfig.audioCodecPayload ) )
             {
@@ -126,6 +129,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         ret = PeerConnectionRollingBuffer_SearchRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
                                                                    rtpSeq,
                                                                    &pRollingBufferPacket );
+
         if( ( ret != PEER_CONNECTION_RESULT_OK ) || ( pRollingBufferPacket == NULL ) )
         {
             LogWarn( ( "Fail to find target buffer, seq: %u", rtpSeq ) );
@@ -178,6 +182,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
                                                               pSrtpPacket,
                                                               srtpPacketLength );
+
         if( resultIceController != ICE_CONTROLLER_RESULT_OK )
         {
             LogWarn( ( "Fail to re-send RTP packet, ret: %d, seq: %u, SSRC: 0x%x", resultIceController, rtpSeq, ssrc ) );
@@ -219,6 +224,7 @@ static PeerConnectionResult_t OnRtcpFirEvent( PeerConnectionSession_t * pSession
         resultRtcp = Rtcp_ParseFirPacket( &pSession->pCtx->rtcpContext,
                                           pRtcpPacket,
                                           &firPacket );
+
         if( resultRtcp != RTCP_RESULT_OK )
         {
             LogError( ( "Fail to parse RTCP FIR packet, result: %d", resultRtcp ) );
@@ -235,9 +241,9 @@ static PeerConnectionResult_t OnRtcpFirEvent( PeerConnectionSession_t * pSession
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        // Increase the FIR Counter as per our application design.
+        /* Increase the FIR Counter as per our application design. */
 
-        // Initiate a callback to transmit an intra-picture to achieve resynchronization.
+        /* Initiate a callback to transmit an intra-picture to achieve resynchronization. */
     }
     else if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
     {
@@ -276,6 +282,7 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
         resultRtcp = Rtcp_ParseNackPacket( &pSession->pCtx->rtcpContext,
                                            pRtcpPacket,
                                            &nackPacket );
+
         if( resultRtcp != RTCP_RESULT_OK )
         {
             LogError( ( "Fail to parse RTCP NACK packet, result: %d", resultRtcp ) );
@@ -297,8 +304,9 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
             /* Retransmit matching sequence number one by one. */
             ret = ResendSrtpPacket( pSession,
                                     pTransceiver,
-                                    nackPacket.pSeqNumList[i],
+                                    nackPacket.pSeqNumList[ i ],
                                     nackPacket.senderSsrc );
+
             if( ret != PEER_CONNECTION_RESULT_OK )
             {
                 break;
@@ -341,6 +349,7 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
             resultRtcp = Rtcp_ParseTwccPacket( &pSession->pCtx->rtcpContext,
                                                pRtcpPacket,
                                                &twccPacket );
+
             if( resultRtcp != RTCP_RESULT_OK )
             {
                 LogError( ( "Fail to parse RTCP TWCC packet, result: %d", resultRtcp ) );
@@ -356,12 +365,12 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
                 resultRtcpTwccManager = RtcpTwccManager_FindPacketInfo( &pSession->pCtx->rtcpTwccManager,
                                                                         twccPacket.pArrivalInfoList[ i ].seqNum,
                                                                         &pTwccPacketInfo );
+
                 if( resultRtcpTwccManager == RTCP_TWCC_MANAGER_RESULT_OK )
                 {
                     pTwccPacketInfo->localSentTime = twccPacket.pArrivalInfoList[ i ].remoteArrivalTime;
                 }
             }
-
         }
 
         if( ret == PEER_CONNECTION_RESULT_OK )
@@ -369,6 +378,7 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
             resultRtcpTwccManager = RtcpTwccManager_HandleTwccPacket( &pSession->pCtx->rtcpTwccManager,
                                                                       &twccPacket,
                                                                       &twccBandwidthInfo );
+
             if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
             {
                 LogError( ( "Fail to handle RTCP TWCC packet, result: %d", resultRtcpTwccManager ) );
@@ -385,13 +395,12 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
                                                                &twccBandwidthInfo );
             }
 
-
             LogDebug( ( "TWCC Bandwidth Info : SentBytes - %lu, ReceivedBytes - %lu, SentPackets - %lu, ReceivedPackets - %lu, Duration - %ld", twccBandwidthInfo.sentBytes, twccBandwidthInfo.receivedBytes, twccBandwidthInfo.sentPackets, twccBandwidthInfo.receivedPackets, twccBandwidthInfo.duration ) );
         }
 
         return ret;
     }
-#endif
+#endif /* if ENABLE_TWCC_SUPPORT */
 static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession,
                                               RtcpPacket_t * pRtcpPacket )
 {
@@ -414,6 +423,7 @@ static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession
         resultRtcp = Rtcp_ParsePliPacket( &pSession->pCtx->rtcpContext,
                                           pRtcpPacket,
                                           &pliPacket );
+
         if( resultRtcp != RTCP_RESULT_OK )
         {
             LogError( ( "Fail to parse RTCP PLI packet, result: %d", resultRtcp ) );
@@ -449,7 +459,7 @@ static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession
     return ret;
 }
 
-// TODO handle SLI packet https://tools.ietf.org/html/rfc4585#section-6.3.2
+/* TODO handle SLI packet https://tools.ietf.org/html/rfc4585#section-6.3.2 */
 static PeerConnectionResult_t OnRtcpSliEvent( PeerConnectionSession_t * pSession,
                                               RtcpPacket_t * pRtcpPacket )
 {
@@ -472,6 +482,7 @@ static PeerConnectionResult_t OnRtcpSliEvent( PeerConnectionSession_t * pSession
         resultRtcp = Rtcp_ParseSliPacket( &pSession->pCtx->rtcpContext,
                                           pRtcpPacket,
                                           &sliPacket );
+
         if( resultRtcp != RTCP_RESULT_OK )
         {
             LogError( ( "Fail to parse RTCP SLI packet, result: %d", resultRtcp ) );
@@ -488,7 +499,7 @@ static PeerConnectionResult_t OnRtcpSliEvent( PeerConnectionSession_t * pSession
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        // Increase the Sli Counter as per our application design.
+        /* Increase the Sli Counter as per our application design. */
     }
     else if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
     {
@@ -528,6 +539,7 @@ static PeerConnectionResult_t OnRtcpRembEvent( PeerConnectionSession_t * pSessio
         resultRtcp = Rtcp_ParseRembPacket( &pSession->pCtx->rtcpContext,
                                            pRtcpPacket,
                                            &rembPacket );
+
         if( resultRtcp != RTCP_RESULT_OK )
         {
             LogError( ( "Fail to parse RTCP REMB packet, result: %d", resultRtcp ) );
@@ -545,7 +557,7 @@ static PeerConnectionResult_t OnRtcpRembEvent( PeerConnectionSession_t * pSessio
 
             if( ret == PEER_CONNECTION_RESULT_OK )
             {
-                // Initiate a callback to update the estimated maximum bitrate to adjust sending rate based on receiver's feedback.
+                /* Initiate a callback to update the estimated maximum bitrate to adjust sending rate based on receiver's feedback. */
             }
             else if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
             {
@@ -561,7 +573,7 @@ static PeerConnectionResult_t OnRtcpRembEvent( PeerConnectionSession_t * pSessio
     return ret;
 }
 
-// TODO better sender report handling https://tools.ietf.org/html/rfc3550#section-6.4.1
+/* TODO better sender report handling https://tools.ietf.org/html/rfc3550#section-6.4.1 */
 static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t * pSession,
                                                        RtcpPacket_t * pRtcpPacket )
 {
@@ -591,12 +603,12 @@ static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t *
         }
         else if( pRtcpPacket->payloadLength != RTCP_SENDER_REPORT_MIN_PAYLOAD_LENGTH )
         {
-            // TODO: handle sender report containing receiver report blocks
+            /* TODO: handle sender report containing receiver report blocks */
             LogWarn( ( "Received Sender report with containing receiver report blocks, not supported yet." ) );
 
             /* Based on the RFC 3550 document, SR (Sender Report) receives report blocks when a sender is also receiving RTP data from other participants in the session.
-               Since Currently the Master isn't parsing RTP data packets from multiple sources (multiple SSRCs) since the last report.
-               In case this log gets printed we can encounter that even when the funcionality is not added, we are getting report blocks, so something is wrong. */
+             * Since Currently the Master isn't parsing RTP data packets from multiple sources (multiple SSRCs) since the last report.
+             * In case this log gets printed we can encounter that even when the funcionality is not added, we are getting report blocks, so something is wrong. */
         }
         else
         {
@@ -661,15 +673,15 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
             ret = PEER_CONNECTION_RESULT_FAIL_RTCP_PARSE_RECEIVER_REPORT;
         }
 
-        // https://tools.ietf.org/html/rfc3550#section-6.4.2
+        /* https://tools.ietf.org/html/rfc3550#section-6.4.2 */
         /* One Report Block for Audio SSRC and One Report Block for Video SSRC */
         if( receiverReport.numReceptionReports > 2 )
         {
-            // TODO: handle multiple receiver report blocks
+            /* TODO: handle multiple receiver report blocks */
             LogWarn( ( "Received receiver report with multiple reception reports, not supported yet." ) );
 
             /* Since Currently the Master isn't parsing RTP data packets from multiple sources (multiple SSRCs) since the last report.
-               Each reception report block provides statistics about the data received from a particular source. */
+             * Each reception report block provides statistics about the data received from a particular source. */
         }
     }
 
@@ -692,16 +704,16 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
 
             if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( receiverReport.pReceptionReports[ i ].lastSR != 0 ) )
             {
-                // https://tools.ietf.org/html/rfc3550#section-6.4.1
-                //      Source SSRC_n can compute the round-trip propagation delay to
-                //      SSRC_r by recording the time A when this reception report block is
-                //      received.  It calculates the total round-trip time A-LSR using the
-                //      last SR timestamp (LSR) field, and then subtracting this field to
-                //      leave the round-trip propagation delay as (A - LSR - DLSR).
+                /* https://tools.ietf.org/html/rfc3550#section-6.4.1 */
+                /*      Source SSRC_n can compute the round-trip propagation delay to */
+                /*      SSRC_r by recording the time A when this reception report block is */
+                /*      received.  It calculates the total round-trip time A-LSR using the */
+                /*      last SR timestamp (LSR) field, and then subtracting this field to */
+                /*      leave the round-trip propagation delay as (A - LSR - DLSR). */
                 currentTimeNTP = NetworkingUtils_GetNTPTimeFromUnixTimeUs( NetworkingUtils_GetCurrentTimeUs( NULL ) );
                 currentTimeNTP = PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP );
                 roundTripPropagationDelay = currentTimeNTP - receiverReport.pReceptionReports[ 0 ].lastSR - receiverReport.pReceptionReports[ 0 ].delaySinceLastSR;
-                roundTripPropagationDelay = ( roundTripPropagationDelay * 1000 ) / PEER_CONNECTION_SRTCP_DLSR_TIMESCALE;                             /* The Round Trip Propogation Delay is in ms unit. */
+                roundTripPropagationDelay = ( roundTripPropagationDelay * 1000 ) / PEER_CONNECTION_SRTCP_DLSR_TIMESCALE; /* The Round Trip Propogation Delay is in ms unit. */
 
                 if( pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
                 {
@@ -756,6 +768,7 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
                                                  pSenderReport,
                                                  pOutputSrtcpPacket,
                                                  &rtcpBufferLength );
+
         if( resultRtcp != RTP_RESULT_OK )
         {
             LogError( ( "Fail to serialize RTCP Sender Report, result: %d", resultRtcp ) );
@@ -772,6 +785,7 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
                                          pOutputSrtcpPacket,
                                          pOutputSrtcpPacketLength,
                                          0 );
+
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to encrypt Tx SRTCP packet, errorStatus: %d", errorStatus ) );
@@ -806,6 +820,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
                                            bufferLength,
                                            rtcpBuffer,
                                            &rtcpBufferLength );
+
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to decrypt Rx SRTCP packet, errorStatus: %d", errorStatus ) );
@@ -823,6 +838,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
                                              rtcpBuffer,
                                              rtcpBufferLength,
                                              &rtcpPacket );
+
         if( resultRtcp != RTCP_RESULT_OK )
         {
             LogError( ( "Fail to deserialize RTCP packet, result: %d", resultRtcp ) );
@@ -833,42 +849,51 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         LogDebug( ( "Receiving RTCP type: %d", rtcpPacket.header.packetType ) );
+
         switch( rtcpPacket.header.packetType )
         {
             case RTCP_PACKET_FIR:
                 ret = OnRtcpFirEvent( pSession,
                                       &rtcpPacket );
                 break;
+
             case RTCP_PACKET_TRANSPORT_FEEDBACK_NACK:
                 ret = OnRtcpNackEvent( pSession,
                                        &rtcpPacket );
                 break;
+
             case RTCP_PACKET_TRANSPORT_FEEDBACK_TWCC:
                 #if ENABLE_TWCC_SUPPORT
                     ret = OnRtcpTwccEvent( pSession,
                                            &rtcpPacket );
                 #endif
                 break;
+
             case RTCP_PACKET_PAYLOAD_FEEDBACK_PLI:
                 ret = OnRtcpPliEvent( pSession,
                                       &rtcpPacket );
                 break;
+
             case RTCP_PACKET_PAYLOAD_FEEDBACK_SLI:
                 ret = OnRtcpSliEvent( pSession,
                                       &rtcpPacket );
                 break;
+
             case RTCP_PACKET_PAYLOAD_FEEDBACK_REMB:
                 ret = OnRtcpRembEvent( pSession,
                                        &rtcpPacket );
                 break;
+
             case RTCP_PACKET_SENDER_REPORT:
                 ret = OnRtcpSenderReportEvent( pSession,
                                                &rtcpPacket );
                 break;
+
             case RTCP_PACKET_RECEIVER_REPORT:
                 ret = OnRtcpReceiverReportEvent( pSession,
                                                  &rtcpPacket );
                 break;
+
             default:
                 LogWarn( ( "unhandled packet type %d", rtcpPacket.header.packetType ) );
                 break;

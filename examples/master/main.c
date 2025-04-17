@@ -18,44 +18,45 @@
     #include "peer_connection_sctp.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
-#define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX "amazonaws.com"
-#define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX_CN "amazonaws.com.cn"
-#define AWS_DEFAULT_STUN_SERVER_URL "stun.kinesisvideo.%s.%s"
+#define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX       "amazonaws.com"
+#define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX_CN    "amazonaws.com.cn"
+#define AWS_DEFAULT_STUN_SERVER_URL               "stun.kinesisvideo.%s.%s"
 
-#define IS_USERNAME_FOUND_BIT ( 1 << 0 )
-#define IS_PASSWORD_FOUND_BIT ( 1 << 1 )
-#define SET_REMOTE_INFO_USERNAME_FOUND( isFoundBit ) ( isFoundBit |= IS_USERNAME_FOUND_BIT )
-#define SET_REMOTE_INFO_PASSWORD_FOUND( isFoundBit ) ( isFoundBit |= IS_PASSWORD_FOUND_BIT )
-#define IS_REMOTE_INFO_ALL_FOUND( isFoundBit ) ( isFoundBit & IS_USERNAME_FOUND_BIT && isFoundBit & IS_PASSWORD_FOUND_BIT )
+#define IS_USERNAME_FOUND_BIT                     ( 1 << 0 )
+#define IS_PASSWORD_FOUND_BIT                     ( 1 << 1 )
+#define SET_REMOTE_INFO_USERNAME_FOUND( isFoundBit )    ( isFoundBit |= IS_USERNAME_FOUND_BIT )
+#define SET_REMOTE_INFO_PASSWORD_FOUND( isFoundBit )    ( isFoundBit |= IS_PASSWORD_FOUND_BIT )
+#define IS_REMOTE_INFO_ALL_FOUND( isFoundBit )          ( isFoundBit & IS_USERNAME_FOUND_BIT && isFoundBit & IS_PASSWORD_FOUND_BIT )
 
-#define DEMO_JSON_CANDIDATE_MAX_LENGTH ( 512 )
+#define DEMO_JSON_CANDIDATE_MAX_LENGTH           ( 512 )
 
-#define DEMO_CANDIDATE_TYPE_HOST_STRING "host"
-#define DEMO_CANDIDATE_TYPE_SRFLX_STRING "srflx"
-#define DEMO_CANDIDATE_TYPE_PRFLX_STRING "prflx"
-#define DEMO_CANDIDATE_TYPE_RELAY_STRING "relay"
-#define DEMO_CANDIDATE_TYPE_UNKNOWN_STRING "unknown"
+#define DEMO_CANDIDATE_TYPE_HOST_STRING          "host"
+#define DEMO_CANDIDATE_TYPE_SRFLX_STRING         "srflx"
+#define DEMO_CANDIDATE_TYPE_PRFLX_STRING         "prflx"
+#define DEMO_CANDIDATE_TYPE_RELAY_STRING         "relay"
+#define DEMO_CANDIDATE_TYPE_UNKNOWN_STRING       "unknown"
 
-#define DEMO_ICE_CANDIDATE_JSON_TEMPLATE "{\"candidate\":\"%.*s\",\"sdpMid\":\"0\",\"sdpMLineIndex\":0}"
-#define DEMO_ICE_CANDIDATE_JSON_MAX_LENGTH ( 1024 )
-#define DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE "candidate:%lu 1 udp %u %d.%d.%d.%d %d typ %s raddr 0.0.0.0 rport 0 generation 0 network-cost 999"
-#define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X " \
-                                              "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
+#define DEMO_ICE_CANDIDATE_JSON_TEMPLATE         "{\"candidate\":\"%.*s\",\"sdpMid\":\"0\",\"sdpMLineIndex\":0}"
+#define DEMO_ICE_CANDIDATE_JSON_MAX_LENGTH       ( 1024 )
+#define DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE    "candidate:%lu 1 udp %u %d.%d.%d.%d %d typ %s raddr 0.0.0.0 rport 0 generation 0 network-cost 999"
+#define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE                                                         \
+    "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X " \
+    "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
 
-#define ICE_SERVER_TYPE_STUN "stun:"
-#define ICE_SERVER_TYPE_STUN_LENGTH ( 5 )
-#define ICE_SERVER_TYPE_TURN "turn:"
-#define ICE_SERVER_TYPE_TURN_LENGTH ( 5 )
-#define ICE_SERVER_TYPE_TURNS "turns:"
-#define ICE_SERVER_TYPE_TURNS_LENGTH ( 6 )
+#define ICE_SERVER_TYPE_STUN                     "stun:"
+#define ICE_SERVER_TYPE_STUN_LENGTH              ( 5 )
+#define ICE_SERVER_TYPE_TURN                     "turn:"
+#define ICE_SERVER_TYPE_TURN_LENGTH              ( 5 )
+#define ICE_SERVER_TYPE_TURNS                    "turns:"
+#define ICE_SERVER_TYPE_TURNS_LENGTH             ( 6 )
 
-#define SIGNALING_CONNECT_STATE_TIMEOUT_SEC ( 15 )
+#define SIGNALING_CONNECT_STATE_TIMEOUT_SEC      ( 15 )
 
 /**
  * EMA (Exponential Moving Average) alpha value and 1-alpha value - over appx 20 samples
  */
-#define EMA_ALPHA_VALUE           ( ( double ) 0.05 )
-#define ONE_MINUS_EMA_ALPHA_VALUE ( ( double ) ( 1 - EMA_ALPHA_VALUE ) )
+#define EMA_ALPHA_VALUE                          ( ( double ) 0.05 )
+#define ONE_MINUS_EMA_ALPHA_VALUE                ( ( double ) ( 1 - EMA_ALPHA_VALUE ) )
 
 /**
  * Calculates the EMA (Exponential Moving Average) accumulator value
@@ -65,14 +66,14 @@
  *
  * @return the new Accumulator value
  */
-#define EMA_ACCUMULATOR_GET_NEXT( a, v ) ( double )( EMA_ALPHA_VALUE * ( v ) + ONE_MINUS_EMA_ALPHA_VALUE * ( a ) )
+#define EMA_ACCUMULATOR_GET_NEXT( a, v )    ( double ) ( EMA_ALPHA_VALUE * ( v ) + ONE_MINUS_EMA_ALPHA_VALUE * ( a ) )
 
 #ifndef MIN
-    #define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+    #define MIN( a, b )                     ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 #ifndef MAX
-    #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+    #define MAX( a, b )    ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 DemoContext_t demoContext;
@@ -105,8 +106,8 @@ static const char * GetCandidateTypeString( IceCandidateType_t candidateType );
 
 static void terminateHandler( int sig )
 {
-    //SignalingController_Deinit( &demoContext.signalingControllerContext );
-    //IceController_Deinit( &demoContext.iceControllerContext );
+    /*SignalingController_Deinit( &demoContext.signalingControllerContext ); */
+    /*IceController_Deinit( &demoContext.iceControllerContext ); */
     exit( 0 );
 }
 
@@ -238,6 +239,7 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
         pNext = memchr( pCurr,
                         ':',
                         pTail - pCurr );
+
         if( pNext == NULL )
         {
             LogWarn( ( "Unable to find second ':', drop it, URI: %.*s", ( int ) uriLength, pUri ) );
@@ -270,6 +272,7 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
         pNext = memchr( pCurr,
                         '?',
                         pTail - pCurr );
+
         if( pNext == NULL )
         {
             portStringLength = pTail - pCurr;
@@ -282,6 +285,7 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
         retString = StringUtils_ConvertStringToUl( pCurr,
                                                    portStringLength,
                                                    &port );
+
         if( ( retString != STRING_UTILS_RESULT_OK ) || ( port > UINT16_MAX ) )
         {
             LogWarn( ( "No valid port number, parsed string: %.*s", ( int ) portStringLength, pCurr ) );
@@ -318,7 +322,7 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
             }
             else
             {
-                LogWarn( ( "Unknown transport string found, protocol: %.*s", ( int )( pTail - pCurr ), pCurr ) );
+                LogWarn( ( "Unknown transport string found, protocol: %.*s", ( int ) ( pTail - pCurr ), pCurr ) );
                 ret = -1;
             }
         }
@@ -372,6 +376,7 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
         signalingControllerReturn = SignalingController_QueryIceServerConfigs( &pDemoContext->signalingControllerContext,
                                                                                &pIceServerConfigs,
                                                                                &iceServerConfigsCount );
+
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to get Ice server configs, result: %d", signalingControllerReturn ) );
@@ -468,6 +473,7 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
                 parseResult = ParseIceServerUri( &pOutputIceServers[ currentIceServerIndex ],
                                                  pIceServerConfigs[ i ].iceServerUris[ j ].uri,
                                                  pIceServerConfigs[ i ].iceServerUris[ j ].uriLength );
+
                 if( parseResult != 0 )
                 {
                     continue;
@@ -495,10 +501,11 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
 }
 
 #if ENABLE_TWCC_SUPPORT
+
 /* Sample callback for TWCC. The average packet loss is tracked using an exponential moving average (EMA).
-   - If packet loss stays at or below 5%, the bitrate increases by 5%.
-   - If packet loss exceeds 5%, the bitrate decreases by the same percentage as the loss.
-   The bitrate is adjusted once per second, ensuring it stays within predefined limits. */
+ * - If packet loss stays at or below 5%, the bitrate increases by 5%.
+ * - If packet loss exceeds 5%, the bitrate decreases by the same percentage as the loss.
+ * The bitrate is adjusted once per second, ensuring it stays within predefined limits. */
     static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
                                                         TwccBandwidthInfo_t * pTwccBandwidthInfo )
     {
@@ -520,7 +527,7 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
             ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
         }
 
-        // Calculate packet loss
+        /* Calculate packet loss */
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             pTwccMetaData = ( PeerConnectionTwccMetaData_t * ) pCustomContext;
@@ -530,12 +537,12 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
 
             currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
             lostPacketCount = pTwccBandwidthInfo->sentPackets - pTwccBandwidthInfo->receivedPackets;
-            percentLost = ( double ) ( ( pTwccBandwidthInfo->sentPackets > 0 ) ? ( ( double ) ( lostPacketCount * 100 ) / ( double )pTwccBandwidthInfo->sentPackets ) : 0.0 );
+            percentLost = ( double ) ( ( pTwccBandwidthInfo->sentPackets > 0 ) ? ( ( double ) ( lostPacketCount * 100 ) / ( double ) pTwccBandwidthInfo->sentPackets ) : 0.0 );
             timeDifference = currentTimeUs - pTwccMetaData->lastAdjustmentTimeUs;
 
             if( timeDifference < PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US )
             {
-                // Too soon for another adjustment
+                /* Too soon for another adjustment */
                 ret = PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT;
             }
         }
@@ -560,7 +567,7 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
 
             if( pTwccMetaData->averagePacketLoss <= 5 )
             {
-                // Increase encoder bitrates by 5 percent with cap at MAX_BITRATE
+                /* Increase encoder bitrates by 5 percent with cap at MAX_BITRATE */
                 videoBitrate = ( uint64_t ) MIN( videoBitrate * 1.05,
                                                  PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS );
                 audioBitrate = ( uint64_t ) MIN( audioBitrate * 1.05,
@@ -568,7 +575,7 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
             }
             else
             {
-                // Decrease encoder bitrate by average packet loss percent, with a cap at MIN_BITRATE
+                /* Decrease encoder bitrate by average packet loss percent, with a cap at MIN_BITRATE */
                 videoBitrate = ( uint64_t ) MAX( videoBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
                                                  PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS );
                 audioBitrate = ( uint64_t ) MAX( audioBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
@@ -582,19 +589,18 @@ static int32_t GetIceServerList( DemoContext_t * pDemoContext,
         if( isLocked != 0 )
         {
             pthread_mutex_unlock( &( pTwccMetaData->twccBitrateMutex ) );
-
         }
+
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             pTwccMetaData->lastAdjustmentTimeUs = currentTimeUs;
 
-            LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pTwccMetaData->averagePacketLoss, timeDifference  ) );
+            LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pTwccMetaData->averagePacketLoss, timeDifference ) );
             LogInfo( ( "Suggested video bitrate: %lu kbps, suggested audio bitrate: %lu bps, sent: %lu bytes, %lu packets,   received: %lu bytes, %lu packets, in %llu msec ",
                        videoBitrate, audioBitrate, pTwccBandwidthInfo->sentBytes, pTwccBandwidthInfo->sentPackets, pTwccBandwidthInfo->receivedBytes, pTwccBandwidthInfo->receivedPackets, pTwccBandwidthInfo->duration / 10000ULL ) );
         }
-
     }
-#endif
+#endif /* if ENABLE_TWCC_SUPPORT */
 
 static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
                                                 DemoPeerConnectionSession_t * pDemoSession )
@@ -609,6 +615,7 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
 
     peerConnectionResult = PeerConnection_Init( &pDemoSession->peerConnectionSession,
                                                 &pcConfig );
+
     if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
     {
         LogWarn( ( "PeerConnection_Init fail, result: %d", peerConnectionResult ) );
@@ -622,13 +629,14 @@ static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
             peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pDemoSession->peerConnectionSession,
                                                                                         SampleSenderBandwidthEstimationHandler,
                                                                                         &pDemoSession->peerConnectionSession.twccMetaData );
+
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
                 LogError( ( "Fail to set Sender Bandwidth Estimation Callback, result: %d", peerConnectionResult ) );
                 ret = -1;
             }
         }
-    #endif
+    #endif /* if ENABLE_TWCC_SUPPORT */
     return ret;
 }
 
@@ -674,6 +682,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
     {
         peerConnectionResult = PeerConnection_AddIceServerConfig( &pDemoSession->peerConnectionSession,
                                                                   &pcConfig );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_AddIceServerConfig fail, result: %d", peerConnectionResult ) );
@@ -686,6 +695,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
         peerConnectionResult = PeerConnection_SetOnLocalCandidateReady( &pDemoSession->peerConnectionSession,
                                                                         HandleLocalCandidateReady,
                                                                         pDemoSession );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_SetOnLocalCandidateReady fail, result: %d", peerConnectionResult ) );
@@ -699,6 +709,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
         pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
         ret = AppMediaSource_InitVideoTransceiver( &pDemoContext->appMediaSourcesContext,
                                                    pTransceiver );
+
         if( ret != 0 )
         {
             LogError( ( "Fail to get video transceiver." ) );
@@ -707,6 +718,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
         {
             peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession,
                                                                   pTransceiver );
+
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
                 LogError( ( "Fail to add video transceiver, result = %d.", peerConnectionResult ) );
@@ -721,6 +733,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
         pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
         ret = AppMediaSource_InitAudioTransceiver( &pDemoContext->appMediaSourcesContext,
                                                    pTransceiver );
+
         if( ret != 0 )
         {
             LogError( ( "Fail to get audio transceiver." ) );
@@ -729,6 +742,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
         {
             peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession,
                                                                   pTransceiver );
+
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
                 LogError( ( "Fail to add audio transceiver, result = %d.", peerConnectionResult ) );
@@ -742,6 +756,7 @@ static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
         pDemoSession->remoteClientIdLength = remoteClientIdLength;
         memcpy( pDemoSession->remoteClientId, pRemoteClientId, remoteClientIdLength );
         peerConnectionResult = PeerConnection_Start( &pDemoSession->peerConnectionSession );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogError( ( "Fail to start peer connection, result = %d.", peerConnectionResult ) );
@@ -763,19 +778,19 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
 
     for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
     {
-        if( ( pDemoContext->peerConnectionSessions[i].remoteClientIdLength == remoteClientIdLength ) &&
-            ( strncmp( pDemoContext->peerConnectionSessions[i].remoteClientId, pRemoteClientId, remoteClientIdLength ) == 0 ) )
+        if( ( pDemoContext->peerConnectionSessions[ i ].remoteClientIdLength == remoteClientIdLength ) &&
+            ( strncmp( pDemoContext->peerConnectionSessions[ i ].remoteClientId, pRemoteClientId, remoteClientIdLength ) == 0 ) )
         {
             /* Found existing session. */
-            pRet = &pDemoContext->peerConnectionSessions[i];
+            pRet = &pDemoContext->peerConnectionSessions[ i ];
             break;
         }
         else if( ( allowCreate != 0 ) &&
                  ( pRet == NULL ) &&
-                 ( pDemoContext->peerConnectionSessions[i].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
+                 ( pDemoContext->peerConnectionSessions[ i ].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
         {
             /* Found free session, keep looping to find existing one. */
-            pRet = &pDemoContext->peerConnectionSessions[i];
+            pRet = &pDemoContext->peerConnectionSessions[ i ];
         }
         else
         {
@@ -795,6 +810,7 @@ static DemoPeerConnectionSession_t * GetCreatePeerConnectionSession( DemoContext
                                                  pRet,
                                                  pRemoteClientId,
                                                  remoteClientIdLength );
+
         if( initResult != 0 )
         {
             pRet = NULL;
@@ -822,9 +838,9 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
             ( void ) OnMediaSinkHook( pCustomContext,
                                       &frame );
         }
-
     #else /* ifdef ENABLE_STREAMING_LOOPBACK */
         ( void ) pCustomContext;
+
         if( pFrame != NULL )
         {
             LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
@@ -852,9 +868,9 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
             ( void ) OnMediaSinkHook( pCustomContext,
                                       &frame );
         }
-
     #else /* ifdef ENABLE_STREAMING_LOOPBACK */
         ( void ) pCustomContext;
+
         if( pFrame != NULL )
         {
             LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
@@ -892,6 +908,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                                                              pSignalingMessage->messageLength,
                                                                                              &pSdpOfferMessage,
                                                                                              &sdpOfferMessageLength );
+
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to parse SDP offer content, result: %d, event message(%lu): %.*s.",
@@ -912,6 +929,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                                                       sdpOfferMessageLength,
                                                                                       pDemoContext->sdpBuffer,
                                                                                       &formalSdpMessageLength );
+
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to deserialize SDP offer newline, result: %d, event message(%lu): %.*s.",
@@ -929,6 +947,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                      pSignalingMessage->pRemoteClientId,
                                                      pSignalingMessage->remoteClientIdLength,
                                                      1U );
+
         if( pPcSession == NULL )
         {
             LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -946,6 +965,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
         bufferSessionDescription.type = SDP_CONTROLLER_MESSAGE_TYPE_OFFER;
         peerConnectionResult = PeerConnection_SetRemoteDescription( &pPcSession->peerConnectionSession,
                                                                     &bufferSessionDescription );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_AddRemoteCandidate fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
@@ -957,6 +977,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
         peerConnectionResult = PeerConnection_SetVideoOnFrame( &pPcSession->peerConnectionSession,
                                                                HandleRxVideoFrame,
                                                                pDemoContext );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_SetVideoOnFrame fail, result: %d.", peerConnectionResult ) );
@@ -969,6 +990,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
         peerConnectionResult = PeerConnection_SetAudioOnFrame( &pPcSession->peerConnectionSession,
                                                                HandleRxAudioFrame,
                                                                pDemoContext );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_SetAudioOnFrame fail, result: %d.", peerConnectionResult ) );
@@ -983,6 +1005,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
         bufferSessionDescription.sdpBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
         peerConnectionResult = PeerConnection_SetLocalDescription( &pPcSession->peerConnectionSession,
                                                                    &bufferSessionDescription );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_SetLocalDescription fail, result: %d.", peerConnectionResult ) );
@@ -997,6 +1020,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                             &bufferSessionDescription,
                                                             pDemoContext->sdpConstructedBuffer,
                                                             &pDemoContext->sdpConstructedBufferLength );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_CreateAnswer fail, result: %d.", peerConnectionResult ) );
@@ -1012,6 +1036,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                                                     pDemoContext->sdpConstructedBufferLength,
                                                                                     pDemoContext->sdpBuffer,
                                                                                     &sdpAnswerMessageLength );
+
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to deserialize SDP offer newline, result: %d, constructed buffer(%lu): %.*s",
@@ -1035,6 +1060,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
 
         signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext,
                                                                      &signalingMessageSdpAnswer );
+
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             skipProcess = 1;
@@ -1054,6 +1080,7 @@ static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
                                                  pSignalingMessage->pRemoteClientId,
                                                  pSignalingMessage->remoteClientIdLength,
                                                  1U );
+
     if( pPcSession == NULL )
     {
         LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -1068,6 +1095,7 @@ static void HandleRemoteCandidate( DemoContext_t * pDemoContext,
         peerConnectionResult = PeerConnection_AddRemoteCandidate( &pPcSession->peerConnectionSession,
                                                                   pSignalingMessage->pMessage,
                                                                   pSignalingMessage->messageLength );
+
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_AddRemoteCandidate fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
@@ -1109,15 +1137,19 @@ static const char * GetCandidateTypeString( IceCandidateType_t candidateType )
         case ICE_CANDIDATE_TYPE_HOST:
             ret = DEMO_CANDIDATE_TYPE_HOST_STRING;
             break;
+
         case ICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
             ret = DEMO_CANDIDATE_TYPE_PRFLX_STRING;
             break;
+
         case ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
             ret = DEMO_CANDIDATE_TYPE_SRFLX_STRING;
             break;
+
         case ICE_CANDIDATE_TYPE_RELAY:
             ret = DEMO_CANDIDATE_TYPE_RELAY_STRING;
             break;
+
         default:
             ret = DEMO_CANDIDATE_TYPE_UNKNOWN_STRING;
             break;
@@ -1130,7 +1162,7 @@ static void HandleLocalCandidateReady( void * pCustomContext,
                                        PeerConnectionIceLocalCandidate_t * pIceLocalCandidate )
 {
     uint8_t skipProcess = 0;
-    DemoPeerConnectionSession_t * pPcSession = ( DemoPeerConnectionSession_t * )pCustomContext;
+    DemoPeerConnectionSession_t * pPcSession = ( DemoPeerConnectionSession_t * ) pCustomContext;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingMessage_t signalingMessage;
     int written;
@@ -1155,7 +1187,7 @@ static void HandleLocalCandidateReady( void * pCustomContext,
             written = snprintf( candidateStringBuffer, DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE,
                                 pIceLocalCandidate->localCandidateIndex,
                                 pIceLocalCandidate->pLocalCandidate->priority,
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[0], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[1], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[2], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[3],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 0 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 1 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 2 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 3 ],
                                 pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.port,
                                 GetCandidateTypeString( pIceLocalCandidate->pLocalCandidate->candidateType ) );
         }
@@ -1164,10 +1196,10 @@ static void HandleLocalCandidateReady( void * pCustomContext,
             written = snprintf( candidateStringBuffer, DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE,
                                 pIceLocalCandidate->localCandidateIndex,
                                 pIceLocalCandidate->pLocalCandidate->priority,
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[0], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[1], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[2], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[3],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[4], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[5], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[6], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[7],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[8], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[9], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[10], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[11],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[12], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[13], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[14], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[15],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 0 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 1 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 2 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 3 ],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 4 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 5 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 6 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 7 ],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 8 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 9 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 10 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 11 ],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 12 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 13 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 14 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 15 ],
                                 pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.port,
                                 GetCandidateTypeString( pIceLocalCandidate->pLocalCandidate->candidateType ) );
         }
@@ -1206,6 +1238,7 @@ static void HandleLocalCandidateReady( void * pCustomContext,
 
         signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext,
                                                                      &signalingMessage );
+
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Send signaling message fail, result: %d", signalingControllerReturn ) );
@@ -1240,18 +1273,23 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
             HandleSdpOffer( &demoContext,
                             pSignalingMessage );
             break;
+
         case SIGNALING_TYPE_MESSAGE_SDP_ANSWER:
             break;
+
         case SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE:
             HandleRemoteCandidate( &demoContext,
                                    pSignalingMessage );
             break;
+
         case SIGNALING_TYPE_MESSAGE_RECONNECT_ICE_SERVER:
             HandleIceServerReconnect( &demoContext,
                                       pSignalingMessage );
             break;
+
         case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
             break;
+
         default:
             break;
     }
@@ -1266,8 +1304,9 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                                           uint8_t * pMessage,
                                           uint32_t pMessageLen )
         {
-            char ucSendMessage[DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE];
+            char ucSendMessage[ DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE ];
             PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
+
             if( ( pMessage == NULL ) || ( pDataChannel == NULL ) )
             {
                 LogError( ( "No message or pDataChannel received in OnDataChannelMessage" ) );
@@ -1280,7 +1319,8 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                            pDataChannel->pPeerConnection->combinedName,
                            pDataChannel->ucDataChannelName ) );
             }
-            else {
+            else
+            {
                 LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel String Message: %.*s\n",
                            pDataChannel->pPeerConnection->combinedName,
                            pDataChannel->ucDataChannelName,
@@ -1294,7 +1334,6 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
             {
                 LogWarn( ( "[KVS Master] OnDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
             }
-
         }
 
         OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
@@ -1407,7 +1446,8 @@ int main()
         for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
         {
             ret = InitializePeerConnectionSession( &demoContext,
-                                                   &demoContext.peerConnectionSessions[i] );
+                                                   &demoContext.peerConnectionSessions[ i ] );
+
             if( ret != 0 )
             {
                 LogError( ( "Fail to initialize peer connection sessions." ) );
@@ -1421,6 +1461,7 @@ int main()
         /* This should never return unless exception happens. */
         signalingControllerReturn = SignalingController_StartListening( &demoContext.signalingControllerContext,
                                                                         &connectInfo );
+
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to keep processing signaling controller." ) );

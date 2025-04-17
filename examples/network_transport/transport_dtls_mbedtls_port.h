@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 
-// include for retransmission timer
-//#include "timers.h"
+/* include for retransmission timer */
+/*#include "timers.h" */
 
-// need for x509 cert generation
+/* need for x509 cert generation */
 #include "time.h"
 
 void mbedtls_timing_set_delay( void * data,

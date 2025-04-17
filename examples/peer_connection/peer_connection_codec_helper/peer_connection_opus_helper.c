@@ -32,6 +32,7 @@ PeerConnectionResult_t GetOpusPacketProperty( PeerConnectionJitterBufferPacket_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         *pIsStartPacket = 0U;
+
         if( ( properties & OPUS_PACKET_PROPERTY_START_PACKET ) != 0 )
         {
             *pIsStartPacket = 1U;
@@ -72,6 +73,7 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
         resultOpus = OpusDepacketizer_Init( &opusDepacketizerContext,
                                             opusPackets,
                                             PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+
         if( resultOpus != OPUS_RESULT_OK )
         {
             LogError( ( "Fail to initialize OPUS depacketizer, result: %d", resultOpus ) );
@@ -92,6 +94,7 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
 
             resultOpus = OpusDepacketizer_AddPacket( &opusDepacketizerContext,
                                                      &opusPacket );
+
             if( resultOpus != OPUS_RESULT_OK )
             {
                 LogError( ( "Fail to add OPUS depacketizer packet, result: %d", resultOpus ) );
@@ -107,12 +110,12 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
         frame.frameDataLength = *pOutBufferLength;
         resultOpus = OpusDepacketizer_GetFrame( &opusDepacketizerContext,
                                                 &frame );
+
         if( resultOpus != OPUS_RESULT_OK )
         {
             LogError( ( "Fail to get OPUS depacketizer frame, result: %d", resultOpus ) );
             ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
         }
-
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -146,7 +149,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
     uint32_t * pSsrc = NULL;
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
-    uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+    uint32_t randomRtpTimeoffset = 0; /* TODO : Spec required random rtp time offset ( current implementation of KVS SDK ) */
 
     /* For TWCC ID extension info. */
     uint32_t extensionPayload;
@@ -172,6 +175,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         opusFrame.frameDataLength = pFrame->dataLength;
         resultOpus = OpusPacketizer_Init( &opusPacketizerContext,
                                           &opusFrame );
+
         if( resultOpus != OPUS_RESULT_OK )
         {
             LogError( ( "Fail to init Opus packetizer, result: %d", resultOpus ) );
@@ -185,6 +189,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         pSrtpSender = &pSession->audioSrtpSender;
         pRtpSeq = &pSession->rtpConfig.audioSequenceNumber;
         payloadType = pSession->rtpConfig.audioCodecPayload;
+
         if( ( pSession->rtpConfig.audioCodecRtxPayload != 0 ) &&
             ( pSession->rtpConfig.audioCodecRtxPayload != pSession->rtpConfig.audioCodecPayload ) )
         {
@@ -212,6 +217,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         ret = PeerConnectionRollingBuffer_GetRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
                                                                 *pRtpSeq,
                                                                 &pRollingBufferPacket );
+
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "Fail to get RTP buffer for seq: %u", *pRtpSeq ) );
@@ -240,6 +246,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
 
         resultOpus = OpusPacketizer_GetPacket( &opusPacketizerContext,
                                                &packetOpus );
+
         if( resultOpus == OPUS_RESULT_NO_MORE_PACKETS )
         {
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
@@ -320,6 +327,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
             resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
                                                                   pSrtpPacket,
                                                                   srtpPacketLength );
+
             if( resultIceController != ICE_CONTROLLER_RESULT_OK )
             {
                 LogWarn( ( "Fail to send RTP packet, ret: %d", resultIceController ) );
