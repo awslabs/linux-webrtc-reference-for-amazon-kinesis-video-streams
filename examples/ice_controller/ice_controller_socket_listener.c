@@ -94,55 +94,135 @@ static int32_t RecvPacketTls( IceControllerSocketContext_t * pSocketContext,
     return ret;
 }
 
-static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
-                                 IceControllerSocketContext_t * pChosenSocketContext )
+static IceCandidatePair_t * FindCandidatePairByRemoteIceEndpoint( IceControllerContext_t * pCtx,
+                                                                  IceControllerSocketContext_t * pSocketContext,
+                                                                  IceEndpoint_t * pRemoteIceEndpoint )
 {
-    uint8_t skipProcess = 0;
-    int i;
+    IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
+    IceCandidatePair_t * pCandidatePair = NULL;
+    IceResult_t iceResult;
+    size_t count;
+    size_t i;
+    uint8_t isLocked = 0U;
 
-    if( ( pCtx == NULL ) || ( pChosenSocketContext == NULL ) )
+    /* Take ice lock. */
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
     {
-        LogError( ( "Invalid input, pCtx: %p, pChosenSocketContext: %p", pCtx, pChosenSocketContext ) );
-        skipProcess = 1;
+        isLocked = 1U;
+    }
+    else
+    {
+        LogError( ( "Failed to process candidate pairs: mutex lock acquisition." ) );
+        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
     }
 
-    if( skipProcess == 0 )
+    if( result == ICE_CONTROLLER_RESULT_OK )
     {
-        LogDebug( ( "Closing sockets other than local candidate ID: 0x%04x", pChosenSocketContext->pLocalCandidate->candidateId ) );
-        for( i = 0; i < pCtx->socketsContextsCount; i++ )
+        iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
+                                               &count );
+        if( iceResult != ICE_RESULT_OK )
         {
-            if( pCtx->socketsContexts[i].socketFd != pChosenSocketContext->socketFd )
+            LogError( ( "Fail to query valid candidate pair count, result: %d", iceResult ) );
+            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_CANDIDATE_PAIR_COUNT;
+        }
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < count; i++ )
+        {
+            if( ( memcmp( &pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->endpoint.transportAddress,
+                          &pSocketContext->pLocalCandidate->endpoint.transportAddress,
+                          sizeof( IceTransportAddress_t ) ) == 0 ) &&
+                ( memcmp( &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint.transportAddress,
+                          &pRemoteIceEndpoint->transportAddress,
+                          sizeof( IceTransportAddress_t ) ) == 0 ) )
             {
-                if( ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) && ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
-                {
-                    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
-                    {
-                        /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
-                         * Thus keep the socket alive until it's terminated. */
-                        Ice_CloseCandidate( &pCtx->iceContext,
-                                            pCtx->socketsContexts[i].pLocalCandidate );
-                        pthread_mutex_unlock( &( pCtx->iceMutex ) );
-                        LogDebug( ( "Keep socket of local relay candidate ID: 0x%04x for terminating TURN resource", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
-                    }
-                    else
-                    {
-                        LogError( ( "Failed to close ICE candidate: mutex lock acquisition." ) );
-                    }
-                }
-                else
-                {
-                    /* Release all unused socket contexts. */
-                    LogDebug( ( "Closing socket for local candidate ID: 0x%04x", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
-                    IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
-                }
+                pCandidatePair = &pCtx->iceContext.pCandidatePairs[i];
+                break;
             }
         }
     }
 
-    if( skipProcess == 0 )
+    if( isLocked != 0U )
     {
-        IceController_CloseOtherCandidatePairs( pCtx, pChosenSocketContext->pCandidatePair );
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
     }
+
+    return pCandidatePair;
+}
+
+static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_t * pCtx,
+                                                           IceControllerSocketContext_t * pSocketContext,
+                                                           IceCandidatePair_t * pCandidatePair,
+                                                           IceEndpoint_t * pRemoteIceEndpoint )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceCandidatePair_t * pOriginalCandidatePair = NULL;
+
+    /* Find valid candidate pair pointer for current packet.
+     * There are two scenarios:
+     *   1. Host/Server Reflexive Candidates: The candidate pair pointer is NULL because we haven't mapped the remote endpoint.
+     *   2. Peer/Client Reflexive Candidates: The candidate pair must be valid because we should extract it from Ice_HandleTurnPacket.
+     */
+    if( ( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_HOST ) ||
+        ( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE ) )
+    {
+        if( pCandidatePair == NULL )
+        {
+            pCandidatePair = FindCandidatePairByRemoteIceEndpoint( pCtx, pSocketContext, pRemoteIceEndpoint );
+            if( pCandidatePair == NULL )
+            {
+                LogWarn( ( "Invalid to find candidate pair for the remote endpoint." ) );
+                ret = ICE_CONTROLLER_RESULT_INVALID_PACKET;
+            }
+        }
+        else
+        {
+            LogWarn( ( "ICE Candidate Pair Error: Host/Srflx candidate contains valid pair pointer when it should be NULL." ) );
+            ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+        }
+    }
+    else
+    {
+        /* Relay candidate. */
+        if( pCandidatePair == NULL )
+        {
+            LogWarn( ( "ICE Candidate Pair Error: Relay candidate contains NULL pair pointer when it should be valid." ) );
+            ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Update nominated socket context. */
+        if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
+        {
+            pOriginalCandidatePair = pCtx->pNominatedSocketContext->pCandidatePair;
+            pCtx->pNominatedSocketContext = pSocketContext;
+            pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
+            pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
+            pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
+
+            ( void ) pOriginalCandidatePair;
+
+            /* We have finished accessing the shared resource.  Release the mutex. */
+            pthread_mutex_unlock( &( pCtx->socketMutex ) );
+
+            LogInfo( ( "Nominated pair is changed from local/remote candidate ID: 0x%04x / 0x%04x to local/remote candidate ID: 0x%04x / 0x%04x",
+                       pOriginalCandidatePair->pLocalCandidate->candidateId,
+                       pOriginalCandidatePair->pRemoteCandidate->candidateId,
+                       pCandidatePair->pLocalCandidate->candidateId,
+                       pCandidatePair->pRemoteCandidate->candidateId ) );
+        }
+        else
+        {
+            LogError( ( "Failed to update nominated socket context: mutex lock acquisition." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+        }
+    }
+
+    return ret;
 }
 
 static void HandleRxPacket( IceControllerContext_t * pCtx,
@@ -259,11 +339,26 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                 ( ( pProcessingBuffer[ 0 ] > 19 ) && ( pProcessingBuffer[ 0 ] < 64 ) ) )
             {
                 /* It's not STUN packet, deliever to peer connection to handle RTP or DTLS packet. */
+                /* When ICE controlling agent sends all binding requests with USE-CANDIDATE flag in connectivity stage,
+                 * it's possible to pick different agent between local and remote peer. Thus we update nominated pair pointer
+                 * to handle current packet. */
                 if( onRecvNonStunPacketFunc )
                 {
-                    ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext,
-                                                      pProcessingBuffer,
-                                                      processingBufferLength );
+                    if( pCtx->pNominatedSocketContext != pSocketContext )
+                    {
+                        ret = UpdateNominatedSocketContext( pCtx, pSocketContext, pCandidatePair, &remoteIceEndpoint );
+                    }
+
+                    if( ret == ICE_CONTROLLER_RESULT_OK )
+                    {
+                        ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext,
+                                                          pProcessingBuffer,
+                                                          processingBufferLength );
+                    }
+                    else
+                    {
+                        LogWarn( ( "DTLS packet rejected: Received from non-selected ICE candidate pair" ) );
+                    }
                 }
                 else
                 {
@@ -287,9 +382,6 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                     IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
                     pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
 
-                    ReleaseOtherSockets( pCtx, pSocketContext );
-                    LogDebug( ( "Released all other socket contexts" ) );
-
                     /* Found nominated pair, execute DTLS handshake and release all other resources. */
                     if( onIceEventCallbackFunc )
                     {
@@ -305,7 +397,6 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                     {
                         LogWarn( ( "No callback function to handle P2P connection found event." ) );
                     }
-                    LogDebug( ( "Released all other socket contexts" ) );
                 }
                 else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
                 {

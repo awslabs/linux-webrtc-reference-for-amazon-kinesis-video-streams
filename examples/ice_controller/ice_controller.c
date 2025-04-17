@@ -652,6 +652,83 @@ static void PrintCandidatePairsStatus( IceControllerContext_t * pCtx )
     }
 }
 
+static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
+                                 IceControllerSocketContext_t * pChosenSocketContext )
+{
+    uint8_t skipProcess = 0;
+    int i;
+
+    if( ( pCtx == NULL ) || ( pChosenSocketContext == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: %p, pChosenSocketContext: %p", pCtx, pChosenSocketContext ) );
+        skipProcess = 1;
+    }
+
+    if( skipProcess == 0 )
+    {
+        LogDebug( ( "Closing sockets other than local candidate ID: 0x%04x", pChosenSocketContext->pLocalCandidate->candidateId ) );
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
+        {
+            if( pCtx->socketsContexts[i].socketFd != pChosenSocketContext->socketFd )
+            {
+                if( ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) && ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
+                {
+                    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+                    {
+                        /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
+                         * Thus keep the socket alive until it's terminated. */
+                        Ice_CloseCandidate( &pCtx->iceContext,
+                                            pCtx->socketsContexts[i].pLocalCandidate );
+                        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+                        LogDebug( ( "Keep socket of local relay candidate ID: 0x%04x for terminating TURN resource", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
+                    }
+                    else
+                    {
+                        LogError( ( "Failed to close ICE candidate: mutex lock acquisition." ) );
+                    }
+                }
+                else
+                {
+                    /* Release all unused socket contexts. */
+                    LogDebug( ( "Closing socket for local candidate ID: 0x%04x", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
+                    IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
+                }
+            }
+        }
+    }
+
+    if( skipProcess == 0 )
+    {
+        IceController_CloseOtherCandidatePairs( pCtx, pChosenSocketContext->pCandidatePair );
+    }
+}
+
+void IceController_HandleEvent( IceControllerContext_t * pCtx,
+                                IceControllerEvent_t event )
+{
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+    }
+    else
+    {
+        switch( event )
+        {
+            case ICE_CONTROLLER_EVENT_DTLS_HANDSHAKE_DONE:
+            {
+                ReleaseOtherSockets( pCtx, pCtx->pNominatedSocketContext );
+                LogDebug( ( "Released all other socket contexts" ) );
+                break;
+            }
+            default:
+            {
+                LogError( ( "Unknown ICE event: %d", event ) );
+                break;
+            }
+        }
+    }
+}
+
 IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t * pCtx,
                                                         IceRemoteCandidateInfo_t * pRemoteCandidate )
 {

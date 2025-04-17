@@ -864,6 +864,11 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
         }
     }
 
+    if( ret == 0 )
+    {
+        IceController_HandleEvent( &pSession->iceControllerContext, ICE_CONTROLLER_EVENT_DTLS_HANDSHAKE_DONE );
+    }
+
     return ret;
 }
 
@@ -2233,7 +2238,7 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
             else
             {
                 LogDebug( ( "Send RTCP Sender Report with Status : %u  to SSRC :  %u, NTP Time :  %lu, RTP Time:  %u,  PacketCount : %u, OctetCount : %u",ret,
-                             rtcpSenderReport.senderSsrc, rtcpSenderReport.senderInfo.ntpTime, rtcpSenderReport.senderInfo.rtpTime, rtcpSenderReport.senderInfo.packetCount, rtcpSenderReport.senderInfo.octetCount ) );
+                            rtcpSenderReport.senderSsrc, rtcpSenderReport.senderInfo.ntpTime, rtcpSenderReport.senderInfo.rtpTime, rtcpSenderReport.senderInfo.packetCount, rtcpSenderReport.senderInfo.octetCount ) );
             }
         }
 

@@ -39,6 +39,8 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
 IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t * pCtx,
                                                         IceControllerIceServerConfig_t * pIceServersConfig );
 IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_t * pCtx );
+void IceController_HandleEvent( IceControllerContext_t * pCtx,
+                                IceControllerEvent_t event );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
