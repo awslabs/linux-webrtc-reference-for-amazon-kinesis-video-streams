@@ -75,6 +75,7 @@ static void * PeerConnection_SessionTask( void * pParameter )
         if( retRead != sizeof( uint64_t ) )
         {
             LogError( ( "Unexpected return value from start up barrier, retRead: %ld", retRead ) );
+            break;
         }
 
         LogDebug( ( "Start peer connection session task." ) );
