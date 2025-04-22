@@ -3,6 +3,7 @@
 
 /* Standard includes. */
 #include <stdint.h>
+#include <sys/eventfd.h>
 
 #include "transport_dtls_mbedtls.h"
 
@@ -50,10 +51,13 @@
 typedef enum PeerConnectionResult
 {
     PEER_CONNECTION_RESULT_OK = 0,
+    PEER_CONNECTION_RESULT_CLOSING,
     PEER_CONNECTION_RESULT_BAD_PARAMETER,
     PEER_CONNECTION_RESULT_NO_FREE_TRANSCEIVER,
     PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_CONTROLLER,
     PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_SOCK_LISTENER,
+    PEER_CONNECTION_RESULT_FAIL_CREATE_STARTUP_BARRIER,
+    PEER_CONNECTION_RESULT_FAIL_SIGNAL_STARTUP_BARRIER,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_INIT,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_START,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADD_REMOTE_CANDIDATE,
@@ -244,8 +248,9 @@ typedef enum PeerConnectionSessionRequestType
     PEER_CONNECTION_SESSION_REQUEST_TYPE_PROCESS_ICE_CANDIDATES_AND_PAIRS,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
-    PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSING,
-    PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSED,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSED,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSE_PEER_CONNECTION,
 } PeerConnectionSessionRequestType_t;
 
 typedef struct PeerConnectionSessionRequestMessage
@@ -358,6 +363,11 @@ typedef struct PeerConnectionSession
 
     pthread_t pTaskHandler;
     pthread_t pSocketListener;
+
+    /* Task synchronization using eventfd to block peer connection session until SetRemoteDescription completes.
+     * That ensures ICE Controller processes candidates only after remote description is set, as ICE credentials
+     * (username/password) are obtained from SDP. */
+    int startupBarrier;
 
     /* The remote user name, representing the remote peer, from SDP message. */
     char remoteUserName[ PEER_CONNECTION_USER_NAME_LENGTH + 1 ];
