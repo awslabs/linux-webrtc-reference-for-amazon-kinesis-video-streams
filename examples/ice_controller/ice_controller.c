@@ -876,7 +876,7 @@ IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerC
         /* Check timeout. */
         if( currentTimeMs > pCtx->connectivityCheckTimeoutMs )
         {
-            LogWarn( ( "Unable to find valid connection before timeout for ICE combined name%.*s, closing.",
+            LogWarn( ( "Unable to find valid connection before timeout for ICE combined name: %.*s, closing peer connection session.",
                        ( int ) pCtx->iceContext.creds.combinedUsernameLength,
                        pCtx->iceContext.creds.pCombinedUsername ) );
 
