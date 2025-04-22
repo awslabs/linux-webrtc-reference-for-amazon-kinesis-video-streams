@@ -48,13 +48,13 @@
 #define MBEDTLS_ERROR_STRING_BUFFER_SIZE    512
 
 #define MBEDTLS_ERROR_DESCRIPTION( err )                                                \
-        do {                                                                                \
-            char _error_string[ MBEDTLS_ERROR_STRING_BUFFER_SIZE ];                         \
-            mbedtls_strerror( err,                                                          \
-                              _error_string,                                                \
-                              sizeof( _error_string ) );                                    \
-            LogError( ( "Error 0x%04x: %s\n", ( unsigned int ) -( err ), _error_string ) ); \
-        } while( 0 )
+    do {                                                                                \
+        char _error_string[ MBEDTLS_ERROR_STRING_BUFFER_SIZE ];                         \
+        mbedtls_strerror( err,                                                          \
+                          _error_string,                                                \
+                          sizeof( _error_string ) );                                    \
+        LogError( ( "Error 0x%04x: %s\n", ( unsigned int ) -( err ), _error_string ) ); \
+    } while( 0 )
 
 /* Include header that defines log levels. */
 #include "logging.h"
@@ -188,7 +188,7 @@ typedef struct
     uint8_t key_length;
 
     KVS_SRTP_PROFILE srtpProfile;
-} DtlsKeyingMaterial, *pDtlsKeyingMaterial_t;
+} DtlsKeyingMaterial, * pDtlsKeyingMaterial_t;
 
 
 /**

@@ -933,14 +933,14 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     else if( xNetworkStatus == DTLS_SUCCESS )
     {
         #if ENABLE_SCTP_DATA_CHANNEL
+        {
+            if( pSession->state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
             {
-                if( pSession->state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
-                {
-                    PeerConnectionSCTP_ProcessSCTPData( pSession,
-                                                        dtlsDecryptBuffer,
-                                                        dtlsDecryptBufferLength );
-                }
+                PeerConnectionSCTP_ProcessSCTPData( pSession,
+                                                    dtlsDecryptBuffer,
+                                                    dtlsDecryptBufferLength );
             }
+        }
         #endif /* ENABLE_SCTP_DATA_CHANNEL */
     }
     else if( xNetworkStatus != DTLS_SUCCESS )

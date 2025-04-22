@@ -1513,8 +1513,8 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
 #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
 
     #define SWAP_BYTES_16( value )    \
-            ( ( ( ( value ) >> 8 ) & 0xFF ) | \
-              ( ( ( value ) & 0xFF ) << 8 ) )
+    ( ( ( ( value ) >> 8 ) & 0xFF ) | \
+      ( ( ( value ) & 0xFF ) << 8 ) )
 
     static uint16_t ReadUint16Swap( const uint8_t * pSrc )
     {

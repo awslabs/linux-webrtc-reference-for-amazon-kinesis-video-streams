@@ -86,8 +86,8 @@
 #define PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_VALUE_FMTP_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION    "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
 #define PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS                                                         "minptime=10;useinbandfec=1"
 #define PEER_CONNECTION_SDP_MEDIA_ATTRIBUTE_VALUE_FMTP_H265                                                   \
-        "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
-        "AIAAAAMAAAMAAAMAAAMAALUCQA==;sprop-sps=QgEBAIAAAAMAAAMAAAMAAAMAAKACgIAtH+W1kkbQzkkktySqSfKSyA==;sprop-pps=RAHBpVgeSA=="
+    "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
+    "AIAAAAMAAAMAAAMAAAMAALUCQA==;sprop-sps=QgEBAIAAAAMAAAMAAAMAAAMAAKACgIAtH+W1kkbQzkkktySqSfKSyA==;sprop-pps=RAHBpVgeSA=="
 
 #define PEER_CONNECTION_SDP_H264_PACKETIZATION_MODE                                                                 "packetization-mode=1"
 #define PEER_CONNECTION_SDP_H264_PACKETIZATION_MODE_LENGTH                                                          ( 20 )
