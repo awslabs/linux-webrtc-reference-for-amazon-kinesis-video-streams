@@ -127,6 +127,31 @@ static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession )
     }
 }
 
+static void EmptyMessageQueue( MessageQueueHandler_t * pMessageQueue )
+{
+    MessageQueueResult_t result;
+    PeerConnectionSessionRequestMessage_t requestMsg;
+    size_t requestMsgLength;
+
+    if( pMessageQueue == NULL )
+    {
+        LogError( ( "Failed to clear message queue: queue pointer is NULL" ) );
+    }
+    else
+    {
+        do
+        {
+            result = MessageQueue_IsEmpty( pMessageQueue );
+            if( result == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
+            {
+                ( void ) MessageQueue_Recv( pMessageQueue,
+                                            &requestMsg,
+                                            &requestMsgLength );
+            }
+        } while( result == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE );
+    }
+}
+
 static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t * pSession,
                                                        PeerConnectionSessionRequestType_t requestType,
                                                        void * pRequestContent )
@@ -141,6 +166,18 @@ static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t *
     {
         LogError( ( "Invalid input, pSession: %p", pSession ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        retMessageQueue = MessageQueue_IsFull( &pSession->requestQueue );
+        if( retMessageQueue == MESSAGE_QUEUE_RESULT_MQ_IS_FULL )
+        {
+            LogWarn( ( "The message queue in peer connection session: %p is full, dropping request type: %d",
+                       pSession,
+                       requestType ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_MQ_SEND;
+        }
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -209,7 +246,33 @@ static void OnRtcpSenderReportVideoTimerExpire( void * pParameter )
             break;
         }
     }
+}
 
+static void OnCloseSessionTimerExpire( void * pParameter )
+{
+    PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pParameter;
+    ssize_t retWrite;
+    uint64_t signalStartUpBarrier = 1;
+
+    if( ( pSession != NULL ) &&
+        ( pSession->state == PEER_CONNECTION_SESSION_STATE_START ) )
+    {
+        LogInfo( ( "Detect long time no SDP message scenario, closing peer connection session, pSession: %p", pSession ) );
+        EmptyMessageQueue( &pSession->requestQueue );
+
+        ( void ) SendPeerConnectionEvent( pSession,
+                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
+                                          NULL );
+
+        /* Wake peer connection session to free resources. */
+        retWrite = write( pSession->startupBarrier,
+                          &signalStartUpBarrier,
+                          sizeof( signalStartUpBarrier ) );
+        if( retWrite != sizeof( uint64_t ) )
+        {
+            LogError( ( "Fail to signal start up barrier, errno(%d): %s.", errno, strerror( errno ) ) );
+        }
+    }
 }
 
 static void OnClosePeerConnection( PeerConnectionSession_t * pSession )
@@ -282,6 +345,9 @@ static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
                 ( void ) PeerConnection_OnRtcpSenderReportCallback( pSession,
                                                                     &requestMsg );
                 break;
+            case PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE:
+                PeerConnection_CloseSession( pSession );
+                break;
             default:
                 /* Unknown request, drop it. */
                 LogDebug( ( "Dropping unknown request %d", requestMsg.requestType ) );
@@ -302,17 +368,20 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        remoteCandidateInfo.candidateType = pRemoteCandidate->candidateType;
-        remoteCandidateInfo.pEndpoint = &( pRemoteCandidate->iceEndpoint );
-        remoteCandidateInfo.priority = pRemoteCandidate->priority;
-        remoteCandidateInfo.remoteProtocol = pRemoteCandidate->protocol;
-
-        iceControllerResult = IceController_AddRemoteCandidate( &pSession->iceControllerContext,
-                                                                &remoteCandidateInfo );
-        if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
+        if( pSession->state == PEER_CONNECTION_SESSION_STATE_FIND_CONNECTION )
         {
-            LogError( ( "Fail to add remote candidate." ) );
-            ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADD_REMOTE_CANDIDATE;
+            remoteCandidateInfo.candidateType = pRemoteCandidate->candidateType;
+            remoteCandidateInfo.pEndpoint = &( pRemoteCandidate->iceEndpoint );
+            remoteCandidateInfo.priority = pRemoteCandidate->priority;
+            remoteCandidateInfo.remoteProtocol = pRemoteCandidate->protocol;
+
+            iceControllerResult = IceController_AddRemoteCandidate( &pSession->iceControllerContext,
+                                                                    &remoteCandidateInfo );
+            if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
+            {
+                LogError( ( "Fail to add remote candidate." ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADD_REMOTE_CANDIDATE;
+            }
         }
     }
 
@@ -386,11 +455,27 @@ static PeerConnectionResult_t SendRemoteCandidateRequest( PeerConnectionSession_
                                                           IceControllerCandidate_t * pRemoteCandidate )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    TimerControllerResult_t retTimer;
 
     if( ( pSession == NULL ) || ( pRemoteCandidate == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pRemoteCandidate: %p", pSession, pRemoteCandidate ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    /* Record the timeout while receiving first candidate. */
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( pSession->state == PEER_CONNECTION_SESSION_STATE_START )
+        {
+            retTimer = TimerController_IsTimerSet( &pSession->closeSessionTimer );
+            if( retTimer == TIMER_CONTROLLER_RESULT_NOT_SET )
+            {
+                TimerController_SetTimer( &pSession->closeSessionTimer,
+                                          PEER_CONNECTION_WAIT_SDP_MESSAGE_TIMEOUT_MS,
+                                          0U );
+            }
+        }
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -1325,31 +1410,6 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
     return ret;
 }
 
-static void EmptyMessageQueue( MessageQueueHandler_t * pMessageQueue )
-{
-    MessageQueueResult_t result;
-    PeerConnectionSessionRequestMessage_t requestMsg;
-    size_t requestMsgLength;
-
-    if( pMessageQueue == NULL )
-    {
-        LogError( ( "Failed to clear message queue: queue pointer is NULL" ) );
-    }
-    else
-    {
-        do
-        {
-            result = MessageQueue_IsEmpty( pMessageQueue );
-            if( result == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
-            {
-                ( void ) MessageQueue_Recv( pMessageQueue,
-                                            &requestMsg,
-                                            &requestMsgLength );
-            }
-        } while( result == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE );
-    }
-}
-
 PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
                                             PeerConnectionSessionConfiguration_t * pSessionConfig )
 {
@@ -1524,6 +1584,7 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
             ret = PEER_CONNECTION_RESULT_FAIL_TIMER_INIT;
         }
     }
+
     /* Initialize timer for video Sender Reports. */
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
@@ -1534,6 +1595,23 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
         {
             LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
             ret = PEER_CONNECTION_RESULT_FAIL_TIMER_INIT;
+        }
+    }
+
+    /* Initialize timer for close peer connection session. */
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        retTimer = TimerController_Create( &pSession->closeSessionTimer,
+                                           OnCloseSessionTimerExpire,
+                                           pSession );
+        if( retTimer != TIMER_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TIMER_INIT;
+        }
+        else
+        {
+            LogInfo( ( "Created close session timer with pSession: %p", pSession ) );
         }
     }
 
@@ -1735,6 +1813,8 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        pSession->state = PEER_CONNECTION_SESSION_STATE_FIND_CONNECTION;
+
         retWrite = write( pSession->startupBarrier,
                           &signalStartUpBarrier,
                           sizeof( signalStartUpBarrier ) );
@@ -1742,10 +1822,6 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
         {
             LogError( ( "Fail to signal start up barrier, errno(%d): %s.", errno, strerror( errno ) ) );
             ret = PEER_CONNECTION_RESULT_FAIL_SIGNAL_STARTUP_BARRIER;
-        }
-        else
-        {
-            LogInfo( ( "Signaled start up barrier." ) );
         }
     }
 
@@ -1757,7 +1833,6 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
         {
             for( i = 0; i < pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount; i++ )
             {
-
                 ret = PeerConnection_AddRemoteCandidate( pSession,
                                                          pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ],
                                                          pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ] );
@@ -1930,6 +2005,7 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     int i;
+    uint8_t notifyTransceiver = 0U;
 
     if( pSession == NULL )
     {
@@ -1940,15 +2016,23 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
     /* Update session state and notify transceivers. */
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        if( pSession->state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
+        {
+            /* We only notify traceiver when start is triggered. */
+            notifyTransceiver = 1U;
+        }
         pSession->state = PEER_CONNECTION_SESSION_STATE_CLOSING;
 
-        for( i = 0; i < pSession->transceiverCount; i++ )
+        if( notifyTransceiver != 0U )
         {
-            if( pSession->pTransceivers[i]->onPcEventCallbackFunc )
+            for( i = 0; i < pSession->transceiverCount; i++ )
             {
-                pSession->pTransceivers[i]->onPcEventCallbackFunc( pSession->pTransceivers[i]->pOnPcEventCustomContext,
-                                                                   TRANSCEIVER_CB_EVENT_REMOTE_PEER_CLOSED,
-                                                                   NULL );
+                if( pSession->pTransceivers[i]->onPcEventCallbackFunc )
+                {
+                    pSession->pTransceivers[i]->onPcEventCallbackFunc( pSession->pTransceivers[i]->pOnPcEventCustomContext,
+                                                                       TRANSCEIVER_CB_EVENT_REMOTE_PEER_CLOSED,
+                                                                       NULL );
+                }
             }
         }
     }

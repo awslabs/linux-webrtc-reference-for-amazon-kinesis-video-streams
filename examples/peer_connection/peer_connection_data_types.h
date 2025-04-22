@@ -56,6 +56,7 @@ extern "C" {
 #define PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS                      4000    // Unit bits/sec. Value could change based on codec.
 #define PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS                      650000  // Unit bits/sec. Value could change based on codec.
 
+#define PEER_CONNECTION_WAIT_SDP_MESSAGE_TIMEOUT_MS    ( 12000 )
 #define PEER_CONNECTION_INACTIVE_CONNECTION_TIMEOUT_MS ( 30000 )
 #define PEER_CONNECTION_DTLS_HANDSHAKING_TIMEOUT_MS    ( 12000 )
 
@@ -261,6 +262,7 @@ typedef enum PeerConnectionSessionRequestType
     PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSED,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
 } PeerConnectionSessionRequestType_t;
 
 typedef struct PeerConnectionSessionRequestMessage
@@ -284,6 +286,7 @@ typedef enum PeerConnectionSessionState
     PEER_CONNECTION_SESSION_STATE_CLOSING,
     PEER_CONNECTION_SESSION_STATE_INITED,
     PEER_CONNECTION_SESSION_STATE_START,
+    PEER_CONNECTION_SESSION_STATE_FIND_CONNECTION,
     PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND,
     PEER_CONNECTION_SESSION_STATE_CONNECTION_READY,
 } PeerConnectionSessionState_t;
@@ -434,6 +437,7 @@ typedef struct PeerConnectionSession
 
     TimerHandler_t rtcpAudioSenderReportTimer;
     TimerHandler_t rtcpVideoSenderReportTimer;
+    TimerHandler_t closeSessionTimer;
 
     uint64_t dtlsHandshakingTimeoutMs;
     uint64_t inactiveConnectionTimeoutMs;
