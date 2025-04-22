@@ -40,8 +40,8 @@
 #define DEMO_ICE_CANDIDATE_JSON_MAX_LENGTH       ( 1024 )
 #define DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE    "candidate:%lu 1 udp %u %d.%d.%d.%d %d typ %s raddr 0.0.0.0 rport 0 generation 0 network-cost 999"
 #define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE                                                         \
-        "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X " \
-        "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
+    "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X " \
+    "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
 
 #define ICE_SERVER_TYPE_STUN                     "stun:"
 #define ICE_SERVER_TYPE_STUN_LENGTH              ( 5 )
