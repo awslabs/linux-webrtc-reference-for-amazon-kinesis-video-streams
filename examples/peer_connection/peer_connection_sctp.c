@@ -272,15 +272,11 @@ PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t 
             else
             {
                 #if DATACHANNEL_CUSTOM_CALLBACK_HOOK
-                {
                     pxIterator->onDataChannelMessage = PeerConnectionSCTP_SetChannelOnMessageCallbackHook(        \
                         pSession, pxIterator->dataChannel.channelId, ( uint8_t * ) pxIterator->ucDataChannelName, \
                         ( uint32_t ) strlen( pxIterator->ucDataChannelName ) );
-                }
                 #else
-                {
                     pxIterator->onDataChannelMessage = OnDataChannelMessage;
-                }
                 #endif /* DATACHANNEL_CUSTOM_CALLBACK_HOOK */
             }
 
@@ -437,13 +433,9 @@ static void OnSCTPSessionDataChannelOpen( void * customData,
         pChannel->dataChannel.channelId = channelId;
 
         #if DATACHANNEL_CUSTOM_CALLBACK_HOOK
-        {
             pChannel->onDataChannelMessage = PeerConnectionSCTP_SetChannelOnMessageCallbackHook( pPeerConnectionSession, channelId, pName, nameLen );
-        }
         #else
-        {
             pChannel->onDataChannelMessage = OnDataChannelMessage;
-        }
         #endif /* DATACHANNEL_CUSTOM_CALLBACK_HOOK */
 
         pChannel->ucChannelOpen = 1U;

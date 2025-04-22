@@ -22,4 +22,4 @@
  */
 #define SDP_PRINT_FMT_UINT16    "hu"
 
-#endif //SDP_CONFIG_H
+#endif /*SDP_CONFIG_H */

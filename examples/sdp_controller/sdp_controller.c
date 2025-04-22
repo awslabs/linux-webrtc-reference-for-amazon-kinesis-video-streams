@@ -90,8 +90,8 @@
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION    "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS                                                         "minptime=10;useinbandfec=1"
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265                                                        \
-    "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
-    "AIAAAAMAAAMAAAMAAAMAALUCQA==;sprop-sps=QgEBAIAAAAMAAAMAAAMAAAMAAKACgIAtH+W1kkbQzkkktySqSfKSyA==;sprop-pps=RAHBpVgeSA=="
+        "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
+        "AIAAAAMAAAMAAAMAAAMAALUCQA==;sprop-sps=QgEBAIAAAAMAAAMAAAMAAAMAAKACgIAtH+W1kkbQzkkktySqSfKSyA==;sprop-pps=RAHBpVgeSA=="
 
 #define SDP_CONTROLLER_H264_PACKETIZATION_MODE                                                                 "packetization-mode=1"
 #define SDP_CONTROLLER_H264_PACKETIZATION_MODE_LENGTH                                                          ( 20 )
@@ -2713,38 +2713,34 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         switch( trackKind )
         {
             case TRANSCEIVER_TRACK_KIND_VIDEO:
-               {
-                   if( populateConfiguration.rtxPayloadType == 0 )
-                   {
-                       written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
-                   }
-                   else
-                   {
-                       written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
-                   }
 
-                   break;
-               }
+                if( populateConfiguration.rtxPayloadType == 0 )
+                {
+                    written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                }
+                else
+                {
+                    written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+                }
+
+                break;
 
             case TRANSCEIVER_TRACK_KIND_AUDIO:
-               {
-                   if( populateConfiguration.rtxPayloadType == 0 )
-                   {
-                       written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
-                   }
-                   else
-                   {
-                       written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
-                   }
 
-                   break;
-               }
+                if( populateConfiguration.rtxPayloadType == 0 )
+                {
+                    written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                }
+                else
+                {
+                    written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+                }
+
+                break;
 
             case TRANSCEIVER_TRACK_KIND_DATA_CHANNEL:
-               {
-                   written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
-                   break;
-               }
+                written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
+                break;
 
             /* Since the range of trackKind is checked above the
              * TRANSCEIVER_TRACK_KIND_UNKNOWN and default case is not required to be handled.

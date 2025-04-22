@@ -82,24 +82,22 @@ static int OnWssMessageReceived( char * pMessage,
         switch( wssRecvMessage.messageType )
         {
             case SIGNALING_TYPE_MESSAGE_GO_AWAY:
-               {
-                   LogInfo( ( "Received GOAWAY message from server. Closing connection." ) );
-                   ret = 1;
-               }
-               break;
+                LogInfo( ( "Received GOAWAY message from server. Closing connection." ) );
+                ret = 1;
+                break;
 
             case SIGNALING_TYPE_MESSAGE_STATUS_RESPONSE:
-               {
-                   if( strcmp( wssRecvMessage.statusResponse.pStatusCode, "200" ) != 0 )
-                   {
-                       LogWarn( ( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s!",
-                                  wssRecvMessage.statusResponse.pCorrelationId,
-                                  wssRecvMessage.statusResponse.pErrorType,
-                                  wssRecvMessage.statusResponse.pStatusCode,
-                                  wssRecvMessage.statusResponse.pDescription ) );
-                   }
-               }
-               break;
+
+                if( strcmp( wssRecvMessage.statusResponse.pStatusCode, "200" ) != 0 )
+                {
+                    LogWarn( ( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s!",
+                               wssRecvMessage.statusResponse.pCorrelationId,
+                               wssRecvMessage.statusResponse.pErrorType,
+                               wssRecvMessage.statusResponse.pStatusCode,
+                               wssRecvMessage.statusResponse.pDescription ) );
+                }
+
+                break;
 
             default:
                 break;

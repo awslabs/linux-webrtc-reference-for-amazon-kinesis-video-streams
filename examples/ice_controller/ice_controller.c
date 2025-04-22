@@ -733,17 +733,13 @@ void IceController_HandleEvent( IceControllerContext_t * pCtx,
         switch( event )
         {
             case ICE_CONTROLLER_EVENT_DTLS_HANDSHAKE_DONE:
-               {
-                   ReleaseOtherSockets( pCtx, pCtx->pNominatedSocketContext );
-                   LogDebug( ( "Released all other socket contexts" ) );
-                   break;
-               }
+                ReleaseOtherSockets( pCtx, pCtx->pNominatedSocketContext );
+                LogDebug( ( "Released all other socket contexts" ) );
+                break;
 
             default:
-               {
-                   LogError( ( "Unknown ICE event: %d", event ) );
-                   break;
-               }
+                LogError( ( "Unknown ICE event: %d", event ) );
+                break;
         }
     }
 }
@@ -799,40 +795,35 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
         switch( pRemoteCandidate->candidateType )
         {
             case ICE_CANDIDATE_TYPE_HOST:
-               {
-                   if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_HOST ) )
-                   {
-                       acceptCandidate = 1U;
-                   }
 
-                   break;
-               }
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_HOST ) )
+                {
+                    acceptCandidate = 1U;
+                }
+
+                break;
 
             case ICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
-               {
-                   acceptCandidate = 1U;
-                   break;
-               }
+                acceptCandidate = 1U;
+                break;
 
             case ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-               {
-                   if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_SRFLX ) )
-                   {
-                       acceptCandidate = 1U;
-                   }
 
-                   break;
-               }
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_SRFLX ) )
+                {
+                    acceptCandidate = 1U;
+                }
+
+                break;
 
             case ICE_CANDIDATE_TYPE_RELAY:
-               {
-                   if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_RELAY ) )
-                   {
-                       acceptCandidate = 1U;
-                   }
 
-                   break;
-               }
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_RELAY ) )
+                {
+                    acceptCandidate = 1U;
+                }
+
+                break;
 
             default:
                 LogWarn( ( "Unknown candidate type: %d", pRemoteCandidate->candidateType ) );

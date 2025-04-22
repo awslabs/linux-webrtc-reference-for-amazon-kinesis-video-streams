@@ -888,17 +888,13 @@ int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
                     pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_80;
                     break;
 
-                    #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 )
-                        case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
-                    #else /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
-                        case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
-                            #endif /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
-                            pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_32;
-                            break;
+                case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
+                    pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_32;
+                    break;
 
-                        default:
-                            LogError( ( "DTLS_SSL_UNKNOWN_SRTP_PROFILE" ) );
-                            retStatus = DTLS_SSL_UNKNOWN_SRTP_PROFILE;
+                default:
+                    LogError( ( "DTLS_SSL_UNKNOWN_SRTP_PROFILE" ) );
+                    retStatus = DTLS_SSL_UNKNOWN_SRTP_PROFILE;
             }
     }
 

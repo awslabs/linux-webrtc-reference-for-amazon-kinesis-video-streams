@@ -223,52 +223,49 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
         switch( dcepMessageType )
         {
             case DCEP_MESSAGE_DATA_CHANNEL_ACK:
-               {
-                   if( pSctpSession->sctpSessionCallbacks.dataChannelOpenAckCallback( pSctpSession->sctpSessionCallbacks.pUserData,
-                                                                                      channelId ) == SCTP_UTILS_RESULT_OK )
-                   {
-                       LogInfo( ( "Successfully opened data channel ID: %u", ( unsigned int ) channelId ) );
-                   }
-                   else
-                   {
-                       LogWarn( ( " Failed to open data channel for which DCEP_MESSAGE_DATA_CHANNEL_ACK was received " ) );
-                   }
-               }
-               break;
+
+                if( pSctpSession->sctpSessionCallbacks.dataChannelOpenAckCallback( pSctpSession->sctpSessionCallbacks.pUserData,
+                                                                                   channelId ) == SCTP_UTILS_RESULT_OK )
+                {
+                    LogInfo( ( "Successfully opened data channel ID: %u", ( unsigned int ) channelId ) );
+                }
+                else
+                {
+                    LogWarn( ( " Failed to open data channel for which DCEP_MESSAGE_DATA_CHANNEL_ACK was received " ) );
+                }
+
+                break;
 
             case DCEP_MESSAGE_DATA_CHANNEL_OPEN:
-               {
-                   dcepResult = Dcep_DeserializeChannelOpenMessage( &( dcepCtx ),
-                                                                    pData,
-                                                                    length,
-                                                                    &( channelOpenMessage ) );
+                dcepResult = Dcep_DeserializeChannelOpenMessage( &( dcepCtx ),
+                                                                 pData,
+                                                                 length,
+                                                                 &( channelOpenMessage ) );
 
-                   if( dcepResult == DCEP_RESULT_OK )
-                   {
-                       pSctpSession->sctpSessionCallbacks.dataChannelOpenCallback( pSctpSession->sctpSessionCallbacks.pUserData,
-                                                                                   channelId,
-                                                                                   channelOpenMessage.pChannelName,
-                                                                                   channelOpenMessage.channelNameLength );
+                if( dcepResult == DCEP_RESULT_OK )
+                {
+                    pSctpSession->sctpSessionCallbacks.dataChannelOpenCallback( pSctpSession->sctpSessionCallbacks.pUserData,
+                                                                                channelId,
+                                                                                channelOpenMessage.pChannelName,
+                                                                                channelOpenMessage.channelNameLength );
 
-                       /* Send DATA_CHANNEL_ACK Message. */
-                       if( SendOpenDataChannelAck( pSctpSession, channelId ) != SCTP_UTILS_RESULT_OK )
-                       {
-                           LogWarn( ( "Failed to sending DCEP_MESSAGE_DATA_CHANNEL_ACK!" ) );
-                       }
-                   }
-                   else
-                   {
-                       retStatus = SCTP_UTILS_RESULT_FAIL;
-                   }
-               }
-               break;
+                    /* Send DATA_CHANNEL_ACK Message. */
+                    if( SendOpenDataChannelAck( pSctpSession, channelId ) != SCTP_UTILS_RESULT_OK )
+                    {
+                        LogWarn( ( "Failed to sending DCEP_MESSAGE_DATA_CHANNEL_ACK!" ) );
+                    }
+                }
+                else
+                {
+                    retStatus = SCTP_UTILS_RESULT_FAIL;
+                }
+
+                break;
 
             default:
-               {
-                   LogWarn( ( "Unknown SCTP DCEP message type: %d", ( int ) dcepMessageType ) );
-                   retStatus = SCTP_UTILS_RESULT_FAIL;
-               }
-               break;
+                LogWarn( ( "Unknown SCTP DCEP message type: %d", ( int ) dcepMessageType ) );
+                retStatus = SCTP_UTILS_RESULT_FAIL;
+                break;
         }
     }
 
@@ -300,16 +297,16 @@ static int OnSctpInboundPacket( struct socket * pSocket,
     {
         /* Process incoming DCEP messages. */
         case SCTP_PPID_DCEP:
-           {
-               if( HandleDcepMessage( pSctpSession,
-                                      rcv.rcv_sid,
-                                      pData,
-                                      length ) != SCTP_UTILS_RESULT_OK )
-               {
-                   retStatus = 1;
-               }
-           }
-           break;
+
+            if( HandleDcepMessage( pSctpSession,
+                                   rcv.rcv_sid,
+                                   pData,
+                                   length ) != SCTP_UTILS_RESULT_OK )
+            {
+                retStatus = 1;
+            }
+
+            break;
 
         /* Process incoming application data. */
         case SCTP_PPID_BINARY:
@@ -319,20 +316,16 @@ static int OnSctpInboundPacket( struct socket * pSocket,
         /* Intentional fallthrough. */
         case SCTP_PPID_STRING:
         case SCTP_PPID_STRING_EMPTY:
-           {
-               pSctpSession->sctpSessionCallbacks.dataChannelMessageCallback( pSctpSession->sctpSessionCallbacks.pUserData,
-                                                                              rcv.rcv_sid,
-                                                                              isBinary,
-                                                                              pData,
-                                                                              length );
-           }
-           break;
+            pSctpSession->sctpSessionCallbacks.dataChannelMessageCallback( pSctpSession->sctpSessionCallbacks.pUserData,
+                                                                           rcv.rcv_sid,
+                                                                           isBinary,
+                                                                           pData,
+                                                                           length );
+            break;
 
         default:
-           {
-               LogWarn( ( "Unhandled PPID on incoming SCTP message %ld", ( unsigned long ) rcv.rcv_ppid ) );
-           }
-           break;
+            LogWarn( ( "Unhandled PPID on incoming SCTP message %ld", ( unsigned long ) rcv.rcv_ppid ) );
+            break;
     }
 
     /*
