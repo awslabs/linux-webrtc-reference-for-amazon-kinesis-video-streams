@@ -1,0 +1,258 @@
+[DEBUG][DTLS_CreateCertificateAndKey: 946] mbedtls_ctr_drbg_seed successful
+[INFO][Metric_PrintMetrics: 172] ================================ Print Metrics Start ================================
+[INFO][Metric_PrintMetrics: 189] ================================ Print Metrics End ================================
+[DEBUG][DTLS_CreateCertificateAndKey: 987] mbedtls_pk_setup && mbedtls_ecp_gen_key successful
+[DEBUG][DTLS_CreateCertificateAndKey: 1003] mbedtls_mpi_read_binary successful
+[DEBUG][DTLS_CreateCertificateAndKey: 1014] notBefore: 20250422072406
+[DEBUG][DTLS_CreateCertificateAndKey: 1022] notAfter: 20260422072406
+[DEBUG][DTLS_CreateCertificateAndKey: 1070] mbedtls_x509write_crt_der, len: 379
+[INFO][PeerConnection_Init: 1614] Created close session timer with pSession: 0x5fd8ef6e7f18
+[INFO][PeerConnection_SessionTask: 71] Waiting start up barrier.
+[INFO][PeerConnection_Init: 1614] Created close session timer with pSession: 0x5fd8ef7881a8
+[INFO][PeerConnection_SessionTask: 71] Waiting start up barrier.
+[DEBUG][LwsHttpCallback: 1012] LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER callback.
+[DEBUG][LwsHttpCallback: 1065] LWS_CALLBACK_CLIENT_HTTP_WRITEABLE callback.
+[DEBUG][LwsHttpCallback: 955] Connected with HTTP server. Response: 200.
+[DEBUG][LwsHttpCallback: 989] LWS_CALLBACK_RECEIVE_CLIENT_HTTP callback.
+[DEBUG][LwsHttpCallback: 964] Received HTTP 357 bytes.
+[VERBOSE][LwsHttpCallback: 965] Received HTTP data: {"ChannelInfo":{"ChannelARN":"arn:aws:kinesisvideo:ap-northeast-1:767859759493:channel/testSignalChannel/1692759950759","ChannelName":"testSignalChannel","ChannelStatus":"ACTIVE","ChannelType":"SINGLE_MASTER","CreationTime":1.692759950759E9,"FullMeshConfiguration":null,"SingleMasterConfiguration":{"MessageTtlSeconds":60},"Version":"0URxOivKWmcqrBzgsi6m"}}
+[DEBUG][LwsHttpCallback: 1003] LWS_CALLBACK_COMPLETED_CLIENT_HTTP callback.
+[DEBUG][LwsHttpCallback: 946] HTTP connection closed.
+[DEBUG][LwsHttpCallback: 1100] LWS_CALLBACK_WSI_DESTROY callback.
+[DEBUG][LwsHttpCallback: 1012] LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER callback.
+[DEBUG][LwsHttpCallback: 1065] LWS_CALLBACK_CLIENT_HTTP_WRITEABLE callback.
+[DEBUG][LwsHttpCallback: 955] Connected with HTTP server. Response: 200.
+[DEBUG][LwsHttpCallback: 989] LWS_CALLBACK_RECEIVE_CLIENT_HTTP callback.
+[DEBUG][LwsHttpCallback: 964] Received HTTP 228 bytes.
+[VERBOSE][LwsHttpCallback: 965] Received HTTP data: {"ResourceEndpointList":[{"Protocol":"HTTPS","ResourceEndpoint":"https://r-2c136a55.kinesisvideo.ap-northeast-1.amazonaws.com"},{"Protocol":"WSS","ResourceEndpoint":"wss://m-26d02974.kinesisvideo.ap-northeast-1.amazonaws.com"}]}
+[DEBUG][LwsHttpCallback: 1003] LWS_CALLBACK_COMPLETED_CLIENT_HTTP callback.
+[DEBUG][LwsHttpCallback: 946] HTTP connection closed.
+[DEBUG][LwsHttpCallback: 1100] LWS_CALLBACK_WSI_DESTROY callback.
+[DEBUG][LwsHttpCallback: 1012] LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER callback.
+[DEBUG][LwsHttpCallback: 1065] LWS_CALLBACK_CLIENT_HTTP_WRITEABLE callback.
+[DEBUG][LwsHttpCallback: 955] Connected with HTTP server. Response: 200.
+[DEBUG][LwsHttpCallback: 989] LWS_CALLBACK_RECEIVE_CLIENT_HTTP callback.
+[DEBUG][LwsHttpCallback: 964] Received HTTP 1031 bytes.
+[VERBOSE][LwsHttpCallback: 965] Received HTTP data: {"IceServerList":[{"Password":"YNyvf5SM6Rjl9N2XCW73Jj5ntdDFqkQuE6IlYWQcLiA=","Ttl":300,"Uris":["turn:43-207-36-132.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=udp","turns:43-207-36-132.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=udp","turns:43-207-36-132.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=tcp"],"Username":"1745306946:djE6YXJuOmF3czpraW5lc2lzdmlkZW86YXAtbm9ydGhlYXN0LTE6NzY3ODU5NzU5NDkzOmNoYW5uZWwvdGVzdFNpZ25hbENoYW5uZWwvMTY5Mjc1OTk1MDc1OQ=="},{"Password":"019zTESTvSL8K9adwMeQUiu0hPOuVco9ip5mNBb9Xh8=","Ttl":300,"Uris":["turn:18-183-11-174.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=udp","turns:18-183-11-174.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=udp","turns:18-183-11-174.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=tcp"],"Username":"1745306946:djE6YXJuOmF3czpraW5lc2lzdmlkZW86YXAtbm9ydGhlYXN0LTE6NzY3ODU5NzU5NDkzOmNoYW5uZWwvdGVzdFNpZ25hbENoYW5uZWwvMTY5Mjc1OTk1MDc1OQ=="}]}
+[DEBUG][LwsHttpCallback: 1003] LWS_CALLBACK_COMPLETED_CLIENT_HTTP callback.
+[DEBUG][LwsHttpCallback: 946] HTTP connection closed.
+[DEBUG][LwsHttpCallback: 1100] LWS_CALLBACK_WSI_DESTROY callback.
+[DEBUG][LwsWebsocketCallback: 1284] LWS_CALLBACK_EVENT_WAIT_CANCELLED callback.
+[DEBUG][LwsWebsocketCallback: 1149] WSS connection established.
+[INFO][LogSignalingInfo: 907] ======================================== Channel Info ========================================
+[INFO][LogSignalingInfo: 908] Signaling Channel ARN: arn:aws:kinesisvideo:ap-northeast-1:767859759493:channel/testSignalChannel/1692759950759
+[INFO][LogSignalingInfo: 910] ======================================== Endpoints Info ========================================
+[INFO][LogSignalingInfo: 911] HTTPS Endpoint: https://r-2c136a55.kinesisvideo.ap-northeast-1.amazonaws.com
+[INFO][LogSignalingInfo: 912] WSS Endpoint: wss://m-26d02974.kinesisvideo.ap-northeast-1.amazonaws.com
+[INFO][LogSignalingInfo: 913] WebRTC Endpoint: N/A
+[INFO][LogSignalingInfo: 916] ======================================== Ice Server List ========================================
+[INFO][LogSignalingInfo: 917] Ice Server Count: 2
+[INFO][LogSignalingInfo: 920] ======================================== Ice Server[0] ========================================
+[INFO][LogSignalingInfo: 921]     TTL (seconds): 300
+[INFO][LogSignalingInfo: 922]     User Name: 1745306946:djE6YXJuOmF3czpraW5lc2lzdmlkZW86YXAtbm9ydGhlYXN0LTE6NzY3ODU5NzU5NDkzOmNoYW5uZWwvdGVzdFNpZ25hbENoYW5uZWwvMTY5Mjc1OTk1MDc1OQ==
+[INFO][LogSignalingInfo: 923]     Password: YNyvf5SM6Rjl9N2XCW73Jj5ntdDFqkQuE6IlYWQcLiA=
+[INFO][LogSignalingInfo: 924]     URI Count: 3
+[INFO][LogSignalingInfo: 928]         URI: turn:43-207-36-132.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=udp
+[INFO][LogSignalingInfo: 928]         URI: turns:43-207-36-132.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=udp
+[INFO][LogSignalingInfo: 928]         URI: turns:43-207-36-132.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=tcp
+[INFO][LogSignalingInfo: 920] ======================================== Ice Server[1] ========================================
+[INFO][LogSignalingInfo: 921]     TTL (seconds): 300
+[INFO][LogSignalingInfo: 922]     User Name: 1745306946:djE6YXJuOmF3czpraW5lc2lzdmlkZW86YXAtbm9ydGhlYXN0LTE6NzY3ODU5NzU5NDkzOmNoYW5uZWwvdGVzdFNpZ25hbENoYW5uZWwvMTY5Mjc1OTk1MDc1OQ==
+[INFO][LogSignalingInfo: 923]     Password: 019zTESTvSL8K9adwMeQUiu0hPOuVco9ip5mNBb9Xh8=
+[INFO][LogSignalingInfo: 924]     URI Count: 3
+[INFO][LogSignalingInfo: 928]         URI: turn:18-183-11-174.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=udp
+[INFO][LogSignalingInfo: 928]         URI: turns:18-183-11-174.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=udp
+[INFO][LogSignalingInfo: 928]         URI: turns:18-183-11-174.t-6618366e.kinesisvideo.ap-northeast-1.amazonaws.com:443?transport=tcp
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 342 bytes of WSS message. Total 342 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 194, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:3904909830 1 udp 2122260223 192.168.118.238 51054 typ host generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[DEBUG][GetCreatePeerConnectionSession: 789] Start peer connection on idx: 2 for client ID(11): BHH5BAAR0UE
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 338 bytes of WSS message. Total 338 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 192, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:2130679515 1 udp 2122194687 11.160.134.51 59478 typ host generation 0 ufrag RHPD network-id 2 network-cost 50","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 342 bytes of WSS message. Total 342 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 194, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:3904909830 1 udp 2122260223 192.168.118.238 64469 typ host generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 338 bytes of WSS message. Total 338 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 192, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:2130679515 1 udp 2122194687 11.160.134.51 53989 typ host generation 0 ufrag RHPD network-id 2 network-cost 50","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 386 bytes of WSS message. Total 386 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 228, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:2114475231 1 udp 1686052607 60.250.185.150 52190 typ srflx raddr 192.168.118.238 rport 51054 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 386 bytes of WSS message. Total 386 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 228, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:2114475231 1 udp 1686052607 60.250.185.150 64469 typ srflx raddr 192.168.118.238 rport 64469 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 224, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:1357706479 1 udp 41886207 43.207.36.132 61298 typ relay raddr 60.250.185.150 rport 51054 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 224, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:1357706479 1 udp 41886207 43.207.36.132 55294 typ relay raddr 60.250.185.150 rport 46452 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 225, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:3136991926 1 udp 41886975 43.206.140.146 57337 typ relay raddr 60.250.185.150 rport 28806 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 225, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:3136991926 1 udp 41886975 43.206.140.146 58323 typ relay raddr 60.250.185.150 rport 64469 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 223, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:3449803923 1 udp 8331519 43.207.36.132 64262 typ relay raddr 60.250.185.150 rport 34140 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[WARN][SendPeerConnectionEvent: 176] The message queue in peer connection session: 0x5fd8ef6e7f18 is full, dropping request type: 1
+[WARN][HandleRemoteCandidate: 1073] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate.
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 223, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:3449803923 1 udp 8331263 43.207.36.132 59472 typ relay raddr 60.250.185.150 rport 54722 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[WARN][SendPeerConnectionEvent: 176] The message queue in peer connection session: 0x5fd8ef6e7f18 is full, dropping request type: 1
+[WARN][HandleRemoteCandidate: 1073] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate.
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 223, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:3449803923 1 udp 8331263 43.207.36.132 49273 typ relay raddr 60.250.185.150 rport 19066 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[WARN][SendPeerConnectionEvent: 176] The message queue in peer connection session: 0x5fd8ef6e7f18 is full, dropping request type: 1
+[WARN][HandleRemoteCandidate: 1073] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate.
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 223, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:3449803923 1 udp 8331519 43.207.36.132 54868 typ relay raddr 60.250.185.150 rport 54725 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[WARN][SendPeerConnectionEvent: 176] The message queue in peer connection session: 0x5fd8ef6e7f18 is full, dropping request type: 1
+[WARN][HandleRemoteCandidate: 1073] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate.
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 223, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:663327434 1 udp 8332287 43.206.140.146 49247 typ relay raddr 60.250.185.150 rport 54733 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[WARN][SendPeerConnectionEvent: 176] The message queue in peer connection session: 0x5fd8ef6e7f18 is full, dropping request type: 1
+[WARN][HandleRemoteCandidate: 1073] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate.
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 223, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:663327434 1 udp 8332287 43.206.140.146 58903 typ relay raddr 60.250.185.150 rport 28745 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[WARN][SendPeerConnectionEvent: 176] The message queue in peer connection session: 0x5fd8ef6e7f18 is full, dropping request type: 1
+[WARN][HandleRemoteCandidate: 1073] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate.
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 223, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:663327434 1 udp 8332031 43.206.140.146 57097 typ relay raddr 60.250.185.150 rport 54730 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"RHPD"}
+[WARN][SendPeerConnectionEvent: 176] The message queue in peer connection session: 0x5fd8ef6e7f18 is full, dropping request type: 1
+[WARN][HandleRemoteCandidate: 1073] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate.
+[DEBUG][LwsWebsocketCallback: 1180] LWS_CALLBACK_CLIENT_RECEIVE callback.
+[DEBUG][LwsWebsocketCallback: 1197] Received 382 bytes of WSS message. Total 382 bytes received so far.
+[DEBUG][OnSignalingMessageReceived: 1229] Received Message from websocket server!
+[DEBUG][OnSignalingMessageReceived: 1230] Message Type: 3
+[DEBUG][OnSignalingMessageReceived: 1231] Sender ID: BHH5BAAR0UE
+[DEBUG][OnSignalingMessageReceived: 1232] Correlation ID: 
+[DEBUG][OnSignalingMessageReceived: 1233] Message Length: 223, Message:
+[DEBUG][OnSignalingMessageReceived: 1234] {"candidate":"candidate:663327434 1 udp 8332031 43.206.140.146 55832 typ relay raddr 60.250.185.150 rport 35372 generation 0 ufrag RHPD network-id 1 network-cost 10","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"RHPD"}
+[WARN][SendPeerConnectionEvent: 176] The message queue in peer connection session: 0x5fd8ef6e7f18 is full, dropping request type: 1
+[WARN][HandleRemoteCandidate: 1073] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate.
+[INFO][Metric_PrintMetrics: 172] ================================ Print Metrics Start ================================
+[INFO][Metric_PrintMetrics: 179] Duration of Describe Signaling Channel: 43 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Get Signaling Endpoints: 51 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Get Ice Server List: 64 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Connect Websocket Server: 135 ms
+[INFO][Metric_PrintMetrics: 189] ================================ Print Metrics End ================================
+[DEBUG][LwsWebsocketCallback: 1236] LWS_CALLBACK_CLIENT_WRITEABLE callback.
+[INFO][OnCloseSessionTimerExpire: 260] Detect long time no SDP message scenario, closing peer connection session, pSession: 0x5fd8ef6e7f18
+[DEBUG][PeerConnection_SessionTask: 81] Start peer connection session task.
+[DEBUG][HandleRequest: 314] Peer connection receives request with type: 7
+[INFO][IceController_Destroy: 1101] Stopping polling for Ice controller.
+[DEBUG][IceControllerSocketListener_StopPolling: 551] Socket Listener: stop polling
+[DEBUG][PeerConnection_CloseSession: 2059] Closed SCTP session. 
+
+[ERROR][ParseFramesInJitterBuffer: 63] Invalid input, onFrameReadyCallbackFunc: (nil), onFrameDropCallbackFunc: (nil)
+[ERROR][ParseFramesInJitterBuffer: 63] Invalid input, onFrameReadyCallbackFunc: (nil), onFrameDropCallbackFunc: (nil)
+[DEBUG][HandleRequest: 314] Peer connection receives request with type: 6
+[DEBUG][PeerConnection_SessionTask: 83] Closing peer connection task.
+[INFO][PeerConnection_SessionTask: 71] Waiting start up barrier.
+[INFO][Metric_PrintMetrics: 172] ================================ Print Metrics Start ================================
+[INFO][Metric_PrintMetrics: 179] Duration of Describe Signaling Channel: 43 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Get Signaling Endpoints: 51 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Get Ice Server List: 64 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Connect Websocket Server: 135 ms
+[INFO][Metric_PrintMetrics: 189] ================================ Print Metrics End ================================
+[DEBUG][LwsWebsocketCallback: 1236] LWS_CALLBACK_CLIENT_WRITEABLE callback.
+[INFO][Metric_PrintMetrics: 172] ================================ Print Metrics Start ================================
+[INFO][Metric_PrintMetrics: 179] Duration of Describe Signaling Channel: 43 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Get Signaling Endpoints: 51 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Get Ice Server List: 64 ms
+[INFO][Metric_PrintMetrics: 179] Duration of Connect Websocket Server: 135 ms
+[INFO][Metric_PrintMetrics: 189] ================================ Print Metrics End ================================
