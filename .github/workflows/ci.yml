@@ -14,5 +14,6 @@ jobs:
       - name: Check formatting
         uses: FreeRTOS/CI-CD-Github-Actions/formatting@main
         with:
-          path: examples, configs
-          exclude-dirs: examples/app_media_source/samples
+          path: ./
+          exclude-dirs: examples/app_media_source/samples, CMake, libraries, tools, .github
+          exclude-files: CMakeLists.txt, README.md
