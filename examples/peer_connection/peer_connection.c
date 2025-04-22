@@ -1004,14 +1004,10 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
             }
         #endif /* ENABLE_SCTP_DATA_CHANNEL */
     }
-    else if( xNetworkStatus != DTLS_SUCCESS )
+    else
     {
         LogInfo( ( "Error happens when process the DTLS packet, return %d", xNetworkStatus ) );
         ret = HandleDtlsTermination( pSession );
-    }
-    else
-    {
-        /* Empty else marker. */
     }
 
     return ret;
@@ -1043,9 +1039,7 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
         {
             if( ( pBuffer[1] >= 192 ) && ( pBuffer[1] <= 223 ) )
             {
-                /* Refresh inactivity timeout while receiving RTCP packet. */
-                pSession->inactiveConnectionTimeoutMs = ( NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 ) + PEER_CONNECTION_INACTIVE_CONNECTION_TIMEOUT_MS;
-
+                /* RTCP packet. */
                 resultPeerConnection = PeerConnectionSrtp_HandleSrtcpPacket( pSession,
                                                                              pBuffer,
                                                                              bufferLength );
@@ -1053,6 +1047,10 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
                 {
                     LogWarn( ( "Failed to handle SRTCP packets, result: %d", resultPeerConnection ) );
                     ret = -2;
+                }
+                else
+                {
+                    pSession->inactiveConnectionTimeoutMs = ( NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 ) + PEER_CONNECTION_INACTIVE_CONNECTION_TIMEOUT_MS;
                 }
             }
             else
@@ -1065,6 +1063,10 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
                 {
                     LogWarn( ( "Failed to handle SRTP packets, result: %d", resultPeerConnection ) );
                     ret = -2;
+                }
+                else
+                {
+                    pSession->inactiveConnectionTimeoutMs = ( NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 ) + PEER_CONNECTION_INACTIVE_CONNECTION_TIMEOUT_MS;
                 }
             }
         }
