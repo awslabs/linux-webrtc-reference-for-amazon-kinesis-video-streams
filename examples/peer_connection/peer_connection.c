@@ -68,7 +68,7 @@ static void * PeerConnection_SessionTask( void * pParameter )
 
     for( ;; )
     {
-        LogInfo( ( "Waiting start up barrier." ) );
+        LogDebug( ( "Waiting start up barrier." ) );
         retRead = read( pSession->startupBarrier,
                         &barrierResult,
                         sizeof( barrierResult ) );
@@ -78,9 +78,8 @@ static void * PeerConnection_SessionTask( void * pParameter )
             continue;
         }
 
-        LogDebug( ( "Start peer connection session task." ) );
+        LogDebug( ( "Entering peer connection session endless loop." ) );
         SessionProcessEndlessLoop( pSession );
-        LogDebug( ( "Closing peer connection task." ) );
     }
 
     return 0;
@@ -144,6 +143,7 @@ static void EmptyMessageQueue( MessageQueueHandler_t * pMessageQueue )
             result = MessageQueue_IsEmpty( pMessageQueue );
             if( result == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
             {
+                requestMsgLength = sizeof( PeerConnectionSessionRequestMessage_t );
                 ( void ) MessageQueue_Recv( pMessageQueue,
                                             &requestMsg,
                                             &requestMsgLength );
@@ -383,6 +383,12 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
                 ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADD_REMOTE_CANDIDATE;
             }
         }
+        else
+        {
+            LogDebug( ( "Cannot process candidate | Type=%d | Connection State=%d | Reason=Invalid connection state",
+                        pRemoteCandidate->candidateType,
+                        pSession->state ) );
+        }
     }
 
     return ret;
@@ -601,7 +607,6 @@ static int32_t HandleDtlsTermination( PeerConnectionSession_t * pSession )
     if( ret == 0 )
     {
         DTLS_Disconnect( &pSession->dtlsSession.xNetworkContext );
-        LogInfo( ( "DTLS_Disconnect called successfully" ) );
 
         /* Close the socket context to avoid any input packets triggering unexpected RTP/RTCP handling. */
         PeerConnection_CloseSession( pSession );
@@ -772,6 +777,7 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
     if( ret == 0 )
     {
         pSession->dtlsHandshakingTimeoutMs = ( NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 ) + PEER_CONNECTION_DTLS_HANDSHAKING_TIMEOUT_MS;
+
         /* Start the DTLS handshaking. */
         ret = ExecuteDtlsHandshake( pSession );
     }
@@ -1242,6 +1248,26 @@ static PeerConnectionResult_t PeerConnection_ResetTimer( PeerConnectionSession_t
         else
         {
             LogError( ( "Fail to reset RTCP Video sender report timer." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TIMER_RESET;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        timerControllerResult = TimerController_IsTimerSet( &pSession->closeSessionTimer );
+
+        if( timerControllerResult == TIMER_CONTROLLER_RESULT_SET )
+        {
+            TimerController_Reset( &pSession->closeSessionTimer );
+            LogDebug( ( "Reset close session timer." ) );
+        }
+        else if( timerControllerResult == TIMER_CONTROLLER_RESULT_NOT_SET )
+        {
+            /* Do Nothing */
+        }
+        else
+        {
+            LogError( ( "Fail to reset close session timer." ) );
             ret = PEER_CONNECTION_RESULT_FAIL_TIMER_RESET;
         }
     }
@@ -2023,6 +2049,7 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
             /* We only notify traceiver when start is triggered. */
             notifyTransceiver = 1U;
         }
+
         pSession->state = PEER_CONNECTION_SESSION_STATE_CLOSING;
 
         if( notifyTransceiver != 0U )
@@ -2058,7 +2085,7 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
             xSCTPRet = PeerConnectionSCTP_DeallocateSCTP( pSession );
             if( xSCTPRet == PEER_CONNECTION_RESULT_OK )
             {
-                LogDebug( ( "Closed SCTP session. \r\n" ) );
+                LogDebug( ( "Closed SCTP session." ) );
             }
             else
             {

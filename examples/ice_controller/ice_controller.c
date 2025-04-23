@@ -908,7 +908,7 @@ IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerC
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        if( currentTimeMs >= pCtx->metrics.printCandidatePairsStatusMs )
+        if( currentTimeMs > pCtx->metrics.printCandidatePairsStatusMs )
         {
             LogInfo( ( "========== Print Candidates / Pairs States ==========" ) );
             PrintCandidatesStatus( pCtx );

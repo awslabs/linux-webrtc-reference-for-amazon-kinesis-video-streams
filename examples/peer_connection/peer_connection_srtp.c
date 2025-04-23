@@ -393,7 +393,6 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
     {
         PeerConnectionRollingBuffer_Free( &pSession->videoSrtpSender.txRollingBuffer );
         pthread_mutex_unlock( &( pSession->videoSrtpSender.senderMutex ) );
-        pthread_mutex_destroy( &( pSession->videoSrtpSender.senderMutex ) );
     }
 
     /* Clean up Audio SRTP Sender */
