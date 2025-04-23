@@ -205,6 +205,7 @@ typedef PeerConnectionResult_t (* FillFrameFunc_t)( PeerConnectionJitterBuffer_t
 typedef struct PeerConnectionRollingBufferPacket
 {
     RtpPacket_t rtpPacket;
+    uint32_t twccExtensionPayload;
     uint8_t * pPacketBuffer;
     size_t packetBufferLength;
 } PeerConnectionRollingBufferPacket_t;
