@@ -11,6 +11,11 @@ endif()
 
 # Option to control linking with usrsctp
 option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" ON)
+option(ENABLE_ADDRESS_SANITIZER "Enable address sanitizer" OFF)
+
+if( ENABLE_ADDRESS_SANITIZER )
+  set( CMAKE_C_FLAGS "-fsanitize=address" )
+endif()
 
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtp/rtpFilePaths.cmake)
