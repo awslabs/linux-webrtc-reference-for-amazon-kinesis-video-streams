@@ -13,6 +13,7 @@ endif()
 option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" ON)
 option(ENABLE_ADDRESS_SANITIZER "Enable address sanitizer" OFF)
 option(ENABLE_UNDEFINED_SANITIZER "Enable undefined sanitizer" OFF)
+option(ENABLE_MEMORY_SANITIZER "Enable memory sanitizer" OFF)
 
 if( ENABLE_ADDRESS_SANITIZER )
   set( CMAKE_C_FLAGS "-fsanitize=address" )
@@ -20,6 +21,10 @@ endif()
 
 if( ENABLE_UNDEFINED_SANITIZER )
   set( CMAKE_C_FLAGS "-fsanitize=undefined" )
+endif()
+
+if( ENABLE_MEMORY_SANITIZER )
+  set( CMAKE_C_FLAGS "-fsanitize=memory" )
 endif()
 
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
