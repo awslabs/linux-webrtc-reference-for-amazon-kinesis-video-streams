@@ -41,7 +41,8 @@ static void * PeerConnection_SessionTask( void * pParameter );
 static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession );
 static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t * pSession,
                                                        PeerConnectionSessionRequestType_t requestType,
-                                                       void * pRequestContent );
+                                                       void * pRequestContent,
+                                                       size_t contentLength );
 static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
                                              MessageQueueHandler_t * pRequestQueue );
 static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSession_t * pSession,
@@ -154,7 +155,8 @@ static void EmptyMessageQueue( MessageQueueHandler_t * pMessageQueue )
 
 static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t * pSession,
                                                        PeerConnectionSessionRequestType_t requestType,
-                                                       void * pRequestContent )
+                                                       void * pRequestContent,
+                                                       size_t contentLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     MessageQueueResult_t retMessageQueue;
@@ -186,7 +188,7 @@ static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t *
         {
             memcpy( &requestMessage.peerConnectionSessionRequestContent,
                     pRequestContent,
-                    sizeof( requestMessage.peerConnectionSessionRequestContent ) );
+                    contentLength );
         }
 
         retMessageQueue = MessageQueue_Send( &pSession->requestQueue,
@@ -218,7 +220,8 @@ static void OnRtcpSenderReportAudioTimerExpire( void * pParameter )
 
             ( void ) SendPeerConnectionEvent( pSession,
                                               PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
-                                              &requestMessage.peerConnectionSessionRequestContent.rtcpContent );
+                                              &requestMessage.peerConnectionSessionRequestContent.rtcpContent,
+                                              sizeof( requestMessage.peerConnectionSessionRequestContent.rtcpContent ) );
             break;
         }
     }
@@ -242,7 +245,8 @@ static void OnRtcpSenderReportVideoTimerExpire( void * pParameter )
 
             ( void ) SendPeerConnectionEvent( pSession,
                                               PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
-                                              &requestMessage.peerConnectionSessionRequestContent.rtcpContent );
+                                              &requestMessage.peerConnectionSessionRequestContent.rtcpContent,
+                                              sizeof( requestMessage.peerConnectionSessionRequestContent.rtcpContent ) );
             break;
         }
     }
@@ -262,7 +266,8 @@ static void OnCloseSessionTimerExpire( void * pParameter )
 
         ( void ) SendPeerConnectionEvent( pSession,
                                           PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
-                                          NULL );
+                                          NULL,
+                                          0U );
 
         /* Wake peer connection session to free resources. */
         retWrite = write( pSession->startupBarrier,
@@ -488,7 +493,8 @@ static PeerConnectionResult_t SendRemoteCandidateRequest( PeerConnectionSession_
     {
         ret = SendPeerConnectionEvent( pSession,
                                        PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE,
-                                       pRemoteCandidate );
+                                       pRemoteCandidate,
+                                       sizeof( IceControllerCandidate_t ) );
     }
 
     return ret;
@@ -509,7 +515,8 @@ static int32_t OnIceEventProcessIceCandidatesAndPairs( PeerConnectionSession_t *
     {
         result = SendPeerConnectionEvent( pSession,
                                           PEER_CONNECTION_SESSION_REQUEST_TYPE_PROCESS_ICE_CANDIDATES_AND_PAIRS,
-                                          NULL );
+                                          NULL,
+                                          0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
             ret = -11;
@@ -534,7 +541,8 @@ static int32_t OnIceEventPeriodicConnectionCheck( PeerConnectionSession_t * pSes
     {
         result = SendPeerConnectionEvent( pSession,
                                           PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK,
-                                          NULL );
+                                          NULL,
+                                          0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
             ret = -11;
@@ -559,7 +567,8 @@ static int32_t OnIceEventClosing( PeerConnectionSession_t * pSession )
     {
         result = SendPeerConnectionEvent( pSession,
                                           PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING,
-                                          NULL );
+                                          NULL ,
+                                          0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
             ret = -11;
@@ -584,7 +593,8 @@ static int32_t OnIceEventClosed( PeerConnectionSession_t * pSession )
     {
         result = SendPeerConnectionEvent( pSession,
                                           PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSED,
-                                          NULL );
+                                          NULL,
+                                          0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
             ret = -11;
