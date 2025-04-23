@@ -235,7 +235,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
     uint8_t skipProcess = 0;
     int32_t readBytes;
     IceEndpoint_t remoteIceEndpoint;
-    IceControllerResult_t ret;
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     int32_t retPeerToPeerConnectionFound;
     IceResult_t iceResult;
     IceCandidatePair_t * pCandidatePair = NULL;

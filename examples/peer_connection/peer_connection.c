@@ -211,7 +211,7 @@ static void OnRtcpSenderReportAudioTimerExpire( void * pParameter )
     uint8_t i;
     uint64_t currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
 
-    for( i = 0; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT; i++ )
+    for( i = 0; i < pSession->transceiverCount; i++ )
     {
         if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
         {
@@ -236,7 +236,7 @@ static void OnRtcpSenderReportVideoTimerExpire( void * pParameter )
     uint8_t i;
     uint64_t currentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
 
-    for( i = 0; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT; i++ )
+    for( i = 0; i < pSession->transceiverCount; i++ )
     {
         if( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
         {
@@ -289,11 +289,11 @@ static void OnClosePeerConnection( PeerConnectionSession_t * pSession )
     else
     {
         // Free each transceiver in the array
+        pSession->transceiverCount = 0;
+        pSession->mLinesTransceiverCount = 0;
         memset( pSession->pTransceivers,
                 0,
                 sizeof( pSession->pTransceivers ) );
-        pSession->transceiverCount = 0;
-        pSession->mLinesTransceiverCount = 0;
 
         /* Reset the state to inited for user to re-use. */
         pSession->state = PEER_CONNECTION_SESSION_STATE_INITED;
