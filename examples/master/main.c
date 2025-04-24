@@ -812,7 +812,7 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 
         if( pFrame != NULL )
         {
-            LogDebug( ( "Received video frame with length: %u", pFrame->dataLength ) );
+            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
 
             frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
             frame.pData = pFrame->pData;
@@ -842,7 +842,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
 
         if( pFrame != NULL )
         {
-            LogDebug( ( "Received audio frame with length: %u", pFrame->dataLength ) );
+            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
 
             frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
             frame.pData = pFrame->pData;

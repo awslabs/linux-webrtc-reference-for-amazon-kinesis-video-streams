@@ -42,11 +42,13 @@ static void * VideoTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pVideoContext = ( AppMediaSourceContext_t * )pParameter;
     webrtc_frame_t frame;
-    char filePath[ MAX_PATH_LEN + 1 ];
-    FILE * fp = NULL;
-    int32_t fileIndex = 0;
-    size_t frameLength;
-    size_t allocatedBufferLength = 0;
+    #ifndef ENABLE_STREAMING_LOOPBACK
+        char filePath[ MAX_PATH_LEN + 1 ];
+        FILE * fp = NULL;
+        int32_t fileIndex = 0;
+        size_t frameLength;
+        size_t allocatedBufferLength = 0;
+    #endif /* ENABLE_STREAMING_LOOPBACK */
 
     if( pVideoContext == NULL )
     {
@@ -55,6 +57,7 @@ static void * VideoTx_Task( void * pParameter )
     else
     {
         frame.timestampUs = 0;
+        ( void ) frame;
 
         while( 1 )
         {
@@ -117,11 +120,13 @@ static void * AudioTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pAudioContext = ( AppMediaSourceContext_t * )pParameter;
     webrtc_frame_t frame;
-    char filePath[ MAX_PATH_LEN + 1 ];
-    FILE * fp = NULL;
-    int32_t fileIndex = 0;
-    size_t frameLength;
-    size_t allocatedBufferLength = 0;
+    #ifndef ENABLE_STREAMING_LOOPBACK
+        char filePath[ MAX_PATH_LEN + 1 ];
+        FILE * fp = NULL;
+        int32_t fileIndex = 0;
+        size_t frameLength;
+        size_t allocatedBufferLength = 0;
+    #endif /* ENABLE_STREAMING_LOOPBACK */
 
     if( pAudioContext == NULL )
     {
@@ -130,6 +135,7 @@ static void * AudioTx_Task( void * pParameter )
     else
     {
         frame.timestampUs = 0;
+        ( void ) frame;
 
         while( 1 )
         {
