@@ -687,7 +687,15 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
                                                          receiverReport.pReceptionReports[ 0 ].sourceSsrc,
                                                          &pTransceiver );
 
-            LogDebug( ( "RTCP_PACKET_TYPE_RECEIVER_REPORT %u %u  loss: %u  %u seq:  %u jit: %u  lsr: %u  dlsr: %u", receiverReport.senderSsrc, receiverReport.pReceptionReports[ 0 ].sourceSsrc, receiverReport.pReceptionReports[ 0 ].fractionLost, receiverReport.pReceptionReports[ 0 ].cumulativePacketsLost, receiverReport.pReceptionReports[ 0 ].extendedHighestSeqNumReceived, receiverReport.pReceptionReports[ 0 ].interArrivalJitter, receiverReport.pReceptionReports[ 0 ].lastSR, receiverReport.pReceptionReports[ 0 ].delaySinceLastSR ) );
+            LogDebug( ( "RTCP_PACKET_TYPE_RECEIVER_REPORT, sender SSRC: %u, source SSRC: %u, fraction loss: %u, cumulative loss: %u, highest seq: %u, jit: %u, lsr: %u, dlsr: %u",
+                        receiverReport.senderSsrc,
+                        receiverReport.pReceptionReports[ 0 ].sourceSsrc,
+                        receiverReport.pReceptionReports[ 0 ].fractionLost,
+                        receiverReport.pReceptionReports[ 0 ].cumulativePacketsLost,
+                        receiverReport.pReceptionReports[ 0 ].extendedHighestSeqNumReceived,
+                        receiverReport.pReceptionReports[ 0 ].interArrivalJitter,
+                        receiverReport.pReceptionReports[ 0 ].lastSR,
+                        receiverReport.pReceptionReports[ 0 ].delaySinceLastSR ) );
 
             if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
             {
