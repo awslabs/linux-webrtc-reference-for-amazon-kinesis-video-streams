@@ -657,7 +657,7 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
     PeerConnectionIceLocalCandidate_t * pLocalCandidateReadyMsg = NULL;
 
-    if( ( pCustomContext == NULL ) )
+    if( pCustomContext == NULL )
     {
         LogError( ( "Invalid input, pCustomContext: %p, pEventMsg: %p",
                     pCustomContext, pEventMsg ) );
@@ -1765,13 +1765,13 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
             ( pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength + PEER_CONNECTION_USER_NAME_LENGTH > ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) ) )
         {
             LogWarn( ( "Remote user name is too long to store, length: %lu", pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength ) );
-            ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_USERNAME;
+            ret = PEER_CONNECTION_RESULT_INVALID_REMOTE_USERNAME;
         }
         else if( ( pTargetRemoteSdp->sdpDescription.quickAccess.pIceUfrag == NULL ) ||
                  ( pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength > PEER_CONNECTION_PASSWORD_LENGTH ) )
         {
             LogWarn( ( "Remote user password is too long to store, length: %lu", pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength ) );
-            ret = ICE_CONTROLLER_RESULT_INVALID_REMOTE_PASSWORD;
+            ret = PEER_CONNECTION_RESULT_INVALID_REMOTE_PASSWORD;
         }
         else
         {

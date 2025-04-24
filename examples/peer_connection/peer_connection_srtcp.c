@@ -35,7 +35,7 @@ static PeerConnectionResult_t PeerConnectionSrtcp_MatchRemoteBySsrc( PeerConnect
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
-    if( ( pSession == NULL ) )
+    if( pSession == NULL )
     {
         LogError( ( "Invalid input, pSession: %p", pSession ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
@@ -740,7 +740,7 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
                                                                         size_t * pOutputSrtcpPacketLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-    RtpResult_t resultRtcp;
+    RtcpResult_t resultRtcp;
     size_t rtcpBufferLength;
     srtp_err_status_t errorStatus;
 
@@ -770,7 +770,7 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
                                                  pSenderReport,
                                                  pOutputSrtcpPacket,
                                                  &rtcpBufferLength );
-        if( resultRtcp != RTP_RESULT_OK )
+        if( resultRtcp != RTCP_RESULT_OK )
         {
             LogError( ( "Fail to serialize RTCP Sender Report, result: %d", resultRtcp ) );
             ret = PEER_CONNECTION_RESULT_FAIL_RTCP_SERIALIZE_SENDER_REPORT;
