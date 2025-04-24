@@ -610,7 +610,12 @@ static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t *
         ret = PeerConnectionSrtcp_MatchRemoteBySsrc( pSession,
                                                      senderReport.senderSsrc );
 
-        LogVerbose( ( "RTCP_PACKET_SENDER_REPORT %u %lu  rtpTs: %u  %u pkts  %u bytes", senderReport.senderSsrc, senderReport.senderInfo.ntpTime, senderReport.senderInfo.rtpTime, senderReport.senderInfo.packetCount, senderReport.senderInfo.octetCount ) );
+        LogVerbose( ( "RTCP_PACKET_SENDER_REPORT, SSRC: %u, NTP Time %lu  RTP Time: %u, PacketCount: %u, OctetCount: %u",
+                      senderReport.senderSsrc,
+                      senderReport.senderInfo.ntpTime,
+                      senderReport.senderInfo.rtpTime,
+                      senderReport.senderInfo.packetCount,
+                      senderReport.senderInfo.octetCount ) );
 
         if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
         {
