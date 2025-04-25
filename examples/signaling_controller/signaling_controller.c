@@ -867,15 +867,6 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
         Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ENDPOINTS );
     }
 
-    /* Join the storage session, if enabled. */
-    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) &&
-        ( pConnectInfo->enableStorageSession != 0 ) )
-    {
-        Metric_StartEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
-        ret = JoinStorageSession( pCtx );
-        Metric_EndEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
-    }
-
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
@@ -888,6 +879,15 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
         Metric_StartEvent( METRIC_EVENT_SIGNALING_CONNECT_WSS_SERVER );
         ret = ConnectToWssEndpoint( pCtx );
         Metric_EndEvent( METRIC_EVENT_SIGNALING_CONNECT_WSS_SERVER );
+    }
+
+    /* Join the storage session, if enabled. */
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) &&
+        ( pConnectInfo->enableStorageSession != 0 ) )
+    {
+        Metric_StartEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
+        ret = JoinStorageSession( pCtx );
+        Metric_EndEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
