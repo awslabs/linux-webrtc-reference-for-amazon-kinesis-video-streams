@@ -948,7 +948,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                                     &bufferSessionDescription );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
-            LogWarn( ( "PeerConnection_AddRemoteCandidate fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
+            LogWarn( ( "PeerConnection_SetRemoteDescription fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
         }
     }
 
