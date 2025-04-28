@@ -1,1 +1,19 @@
+name: CI Checks
 
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check formatting
+        uses: FreeRTOS/CI-CD-Github-Actions/formatting@main
+        with:
+          path: ./
+          exclude-dirs: examples/app_media_source/samples, CMake, libraries, tools, .github, test/sanitizer_suppression
+          exclude-files: CMakeLists.txt, README.md

@@ -37,7 +37,7 @@
 #include <stdint.h>
 
 /* FreeRTOS Kernel includes. */
-//#include "FreeRTOS.h"
+/*#include "FreeRTOS.h" */
 
 /* Error codes. */
 #define TCP_SOCKETS_ERRNO_NONE                ( 0 )   /*!< No error. */

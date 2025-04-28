@@ -11,6 +11,7 @@ static Base64Result_t Base64_InterpretReturnValue( int errorCode )
         case MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL:
             ret = BASE64_RESULT_BUFFER_TOO_SMALL;
             break;
+
         case MBEDTLS_ERR_BASE64_INVALID_CHARACTER:
         default:
             ret = BASE64_RESULT_INVALID_INPUT;
@@ -30,6 +31,7 @@ Base64Result_t Base64_Encode( const char * pInputData,
     int retBase64;
 
     retBase64 = mbedtls_base64_encode( ( unsigned char * ) pOutputData, *pOutputDataLength, &olen, ( const unsigned char * ) pInputData, inputDataLength );
+
     if( retBase64 == 0 )
     {
         /* Update output length for user. */
@@ -53,6 +55,7 @@ Base64Result_t Base64_Decode( const char * pInputData,
     int retBase64;
 
     retBase64 = mbedtls_base64_decode( ( unsigned char * ) pOutputData, *pOutputDataLength, &olen, ( const unsigned char * ) pInputData, inputDataLength );
+
     if( retBase64 == 0 )
     {
         /* Update output length for user. */

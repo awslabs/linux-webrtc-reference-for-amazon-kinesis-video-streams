@@ -1,14 +1,6 @@
 #ifndef ICE_CONTROLLER_H
 #define ICE_CONTROLLER_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include "ice_controller_data_types.h"
 
@@ -41,11 +33,5 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
 IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_t * pCtx );
 void IceController_HandleEvent( IceControllerContext_t * pCtx,
                                 IceControllerEvent_t event );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* ICE_CONTROLLER_H */

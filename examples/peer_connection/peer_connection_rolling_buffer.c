@@ -3,11 +3,11 @@
 #include "peer_connection.h"
 #include "peer_connection_rolling_buffer.h"
 
-//#include "FreeRTOS.h"
+/*#include "FreeRTOS.h" */
 
 PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRollingBuffer_t * pRollingBuffer,
-                                                           uint32_t rollingbufferBitRate,  // bps
-                                                           uint32_t rollingbufferDurationSec,  // duration in seconds
+                                                           uint32_t rollingbufferBitRate,     /* bps */
+                                                           uint32_t rollingbufferDurationSec, /* duration in seconds */
                                                            size_t maxSizePerPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
@@ -31,7 +31,8 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
     {
         pRollingBuffer->maxSizePerPacket = maxSizePerPacket;
         pRollingBuffer->capacity = rollingbufferDurationSec * rollingbufferBitRate / 8U / maxSizePerPacket;
-        pRtpPacketInfoArray = ( RtpPacketInfo_t * )malloc( pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ) );
+        pRtpPacketInfoArray = ( RtpPacketInfo_t * ) malloc( pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ) );
+
         if( pRtpPacketInfoArray == NULL )
         {
             LogError( ( "No memory available for allocating RTP packet info array with total size %lu, capacity: %lu, sizeof( RtpPacketInfo_t ): %lu",
@@ -54,6 +55,7 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
         resultRtpPacketQueue = RtpPacketQueue_Init( &pRollingBuffer->packetQueue,
                                                     pRtpPacketInfoArray,
                                                     pRollingBuffer->capacity );
+
         if( resultRtpPacketQueue != RTP_PACKET_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to init RTP packet queue with result: %d", resultRtpPacketQueue ) );
@@ -83,6 +85,7 @@ void PeerConnectionRollingBuffer_Free( PeerConnectionRollingBuffer_t * pRollingB
         {
             resultRtpPacketQueue = RtpPacketQueue_Dequeue( &pRollingBuffer->packetQueue,
                                                            &rtpPacketInfo );
+
             if( ( resultRtpPacketQueue == RTP_PACKET_QUEUE_RESULT_OK ) && ( rtpPacketInfo.pSerializedRtpPacket != NULL ) )
             {
                 free( rtpPacketInfo.pSerializedRtpPacket );
@@ -116,8 +119,8 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_GetRtpSequenceBuffer( PeerCon
     }
     else
     {
-        *ppPacket = ( PeerConnectionRollingBufferPacket_t * )malloc( sizeof( PeerConnectionRollingBufferPacket_t ) + pRollingBuffer->maxSizePerPacket );
-        ( *ppPacket )->pPacketBuffer = ( uint8_t * )( ( *ppPacket ) + 1 );
+        *ppPacket = ( PeerConnectionRollingBufferPacket_t * ) malloc( sizeof( PeerConnectionRollingBufferPacket_t ) + pRollingBuffer->maxSizePerPacket );
+        ( *ppPacket )->pPacketBuffer = ( uint8_t * ) ( ( *ppPacket ) + 1 );
         ( *ppPacket )->packetBufferLength = pRollingBuffer->maxSizePerPacket;
     }
 
@@ -128,6 +131,7 @@ void PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( PeerConnectionRolling
                                                            PeerConnectionRollingBufferPacket_t * pPacket )
 {
     ( void ) pRollingBuffer;
+
     if( pPacket )
     {
         free( pPacket );
@@ -164,6 +168,7 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SearchRtpSequenceBuffer( Peer
         resultRtpPacketQueue = RtpPacketQueue_Retrieve( &pRollingBuffer->packetQueue,
                                                         rtpSeq,
                                                         &rtpPacketInfo );
+
         if( resultRtpPacketQueue != RTP_PACKET_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to retrieve RTP packet sequence number: %u with result: %d",
@@ -175,7 +180,7 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SearchRtpSequenceBuffer( Peer
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        *ppPacket = ( PeerConnectionRollingBufferPacket_t * )rtpPacketInfo.pSerializedRtpPacket;
+        *ppPacket = ( PeerConnectionRollingBufferPacket_t * ) rtpPacketInfo.pSerializedRtpPacket;
         ( *ppPacket )->packetBufferLength = rtpPacketInfo.serializedPacketLength;
     }
 
@@ -210,12 +215,13 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SetPacket( PeerConnectionRoll
     {
         memset( &rtpPacket, 0, sizeof( RtpPacketInfo_t ) );
         memset( &deletedRtpPacket, 0, sizeof( RtpPacketInfo_t ) );
-        rtpPacket.pSerializedRtpPacket = ( uint8_t * )pPacket;
+        rtpPacket.pSerializedRtpPacket = ( uint8_t * ) pPacket;
         rtpPacket.seqNum = rtpSeq;
         rtpPacket.serializedPacketLength = pPacket->packetBufferLength;
         resultRtpPacketQueue = RtpPacketQueue_ForceEnqueue( &pRollingBuffer->packetQueue,
                                                             &rtpPacket,
                                                             &deletedRtpPacket );
+
         if( ( resultRtpPacketQueue != RTP_PACKET_QUEUE_RESULT_OK ) && ( resultRtpPacketQueue != RTP_PACKET_QUEUE_RESULT_PACKET_DELETED ) )
         {
             LogError( ( "Fail to enqueue RTP packet sequence number: %u with result: %d",

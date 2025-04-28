@@ -1,19 +1,11 @@
 #ifndef PEER_CONNECTION_JITTER_BUFFER_H
 #define PEER_CONNECTION_JITTER_BUFFER_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 /* Standard includes. */
 #include <stdint.h>
 
 /* FreeRTOS includes. */
-//#include "FreeRTOS.h"
+/*#include "FreeRTOS.h" */
 
 #include "peer_connection_data_types.h"
 
@@ -22,7 +14,7 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
                                                           void * pOnFrameReadyCallbackContext,
                                                           OnJitterBufferFrameDropCallback_t onFrameDropCallbackFunc,
                                                           void * pOnFrameDropCallbackContext,
-                                                          uint32_t tolerenceBufferSec,  // buffer time in seconds
+                                                          uint32_t tolerenceBufferSec, /* buffer time in seconds */
                                                           uint32_t codec,
                                                           uint32_t clockRate );
 
@@ -46,11 +38,5 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_FillFrame( PeerConnectionJitte
                                                              uint8_t * pOutBuffer,
                                                              size_t * pOutBufferLength,
                                                              uint32_t * pRtpTimestamp );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* PEER_CONNECTION_JITTER_BUFFER_H */

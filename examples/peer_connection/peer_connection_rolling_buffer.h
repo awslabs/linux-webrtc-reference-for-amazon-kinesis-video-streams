@@ -1,27 +1,19 @@
 #ifndef PEER_CONNECTION_ROLLING_BUFFER_H
 #define PEER_CONNECTION_ROLLING_BUFFER_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 /* Standard includes. */
 #include <stdint.h>
 
 /* FreeRTOS includes. */
-//#include "FreeRTOS.h"
+/*#include "FreeRTOS.h" */
 
 #include "peer_connection_data_types.h"
 
-#define PEER_CONNECTION_ROLLING_BUFFER_DURATION_IN_SECONDS ( 3 )
+#define PEER_CONNECTION_ROLLING_BUFFER_DURATION_IN_SECONDS    ( 3 )
 
 PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRollingBuffer_t * pRollingBuffer,
-                                                           uint32_t rollingbufferBitRate,  // bps
-                                                           uint32_t rollingbufferDurationSec,  // duration in seconds
+                                                           uint32_t rollingbufferBitRate,     /* bps */
+                                                           uint32_t rollingbufferDurationSec, /* duration in seconds */
                                                            size_t maxSizePerPacket );
 
 void PeerConnectionRollingBuffer_Free( PeerConnectionRollingBuffer_t * pRollingBuffer );
@@ -40,11 +32,5 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SearchRtpSequenceBuffer( Peer
 PeerConnectionResult_t PeerConnectionRollingBuffer_SetPacket( PeerConnectionRollingBuffer_t * pRollingBuffer,
                                                               uint16_t rtpSeq,
                                                               PeerConnectionRollingBufferPacket_t * pPacket );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* PEER_CONNECTION_ROLLING_BUFFER_H */

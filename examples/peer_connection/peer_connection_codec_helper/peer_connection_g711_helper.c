@@ -21,6 +21,7 @@ PeerConnectionResult_t GetG711PacketProperty( PeerConnectionJitterBufferPacket_t
         resultG711 = G711Depacketizer_GetPacketProperties( pPacket->pPacketBuffer,
                                                            pPacket->packetBufferLength,
                                                            &properties );
+
         if( resultG711 != G711_RESULT_OK )
         {
             LogError( ( "Fail to get G711 packet properties, result: %d", resultG711 ) );
@@ -31,6 +32,7 @@ PeerConnectionResult_t GetG711PacketProperty( PeerConnectionJitterBufferPacket_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         *pIsStartPacket = 0U;
+
         if( ( properties & G711_PACKET_PROPERTY_START_PACKET ) != 0 )
         {
             *pIsStartPacket = 1U;
@@ -71,6 +73,7 @@ PeerConnectionResult_t FillFrameG711( PeerConnectionJitterBuffer_t * pJitterBuff
         resultG711 = G711Depacketizer_Init( &g711DepacketizerContext,
                                             g711Packets,
                                             PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+
         if( resultG711 != G711_RESULT_OK )
         {
             LogError( ( "Fail to initialize G711 depacketizer, result: %d", resultG711 ) );
@@ -91,6 +94,7 @@ PeerConnectionResult_t FillFrameG711( PeerConnectionJitterBuffer_t * pJitterBuff
 
             resultG711 = G711Depacketizer_AddPacket( &g711DepacketizerContext,
                                                      &g711Packet );
+
             if( resultG711 != G711_RESULT_OK )
             {
                 LogError( ( "Fail to add G711 depacketizer packet, result: %d", resultG711 ) );
@@ -106,12 +110,12 @@ PeerConnectionResult_t FillFrameG711( PeerConnectionJitterBuffer_t * pJitterBuff
         frame.frameDataLength = *pOutBufferLength;
         resultG711 = G711Depacketizer_GetFrame( &g711DepacketizerContext,
                                                 &frame );
+
         if( resultG711 != G711_RESULT_OK )
         {
             LogError( ( "Fail to get G711 depacketizer frame, result: %d", resultG711 ) );
             ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
         }
-
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -145,7 +149,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
     uint32_t * pSsrc = NULL;
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
-    uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+    uint32_t randomRtpTimeoffset = 0; /* TODO : Spec required random rtp time offset ( current implementation of KVS SDK ) */
 
     if( ( pSession == NULL ) ||
         ( pTransceiver == NULL ) ||
@@ -168,6 +172,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
         g711Frame.frameDataLength = pFrame->dataLength;
         resultG711 = G711Packetizer_Init( &g711PacketizerContext,
                                           &g711Frame );
+
         if( resultG711 != G711_RESULT_OK )
         {
             LogError( ( "Fail to init G711 packetizer, result: %d", resultG711 ) );
@@ -181,6 +186,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
         pSrtpSender = &pSession->audioSrtpSender;
         pRtpSeq = &pSession->rtpConfig.audioSequenceNumber;
         payloadType = pSession->rtpConfig.audioCodecPayload;
+
         if( ( pSession->rtpConfig.audioCodecRtxPayload != 0 ) &&
             ( pSession->rtpConfig.audioCodecRtxPayload != pSession->rtpConfig.audioCodecPayload ) )
         {
@@ -208,6 +214,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
         ret = PeerConnectionRollingBuffer_GetRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
                                                                 *pRtpSeq,
                                                                 &pRollingBufferPacket );
+
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "Fail to get RTP buffer for seq: %u", *pRtpSeq ) );
@@ -236,6 +243,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
 
         resultG711 = G711Packetizer_GetPacket( &g711PacketizerContext,
                                                &packetG711 );
+
         if( resultG711 == G711_RESULT_NO_MORE_PACKETS )
         {
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
@@ -314,6 +322,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
             resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
                                                                   pSrtpPacket,
                                                                   srtpPacketLength );
+
             if( resultIceController != ICE_CONTROLLER_RESULT_OK )
             {
                 LogWarn( ( "Fail to send RTP packet, ret: %d", resultIceController ) );

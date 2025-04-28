@@ -31,7 +31,7 @@
 
 #include <assert.h>
 
-//#include "threading_alt.h"
+/*#include "threading_alt.h" */
 #include "mbedtls/entropy.h"
 #include "mbedtls/ssl.h"
 
@@ -67,6 +67,7 @@ int xMbedTLSBioTCPSocketsWrapperSend( void * ctx,
         case TCP_SOCKETS_ERRNO_EWOULDBLOCK:
             xReturnStatus = MBEDTLS_ERR_SSL_WANT_WRITE;
             break;
+
         /* Socket was closed or just got closed. */
         case TCP_SOCKETS_ERRNO_ENOTCONN:
         /* Not enough memory for the socket to create either an Rx or Tx stream. */

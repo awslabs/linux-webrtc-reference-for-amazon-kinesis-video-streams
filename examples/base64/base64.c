@@ -4,12 +4,12 @@
 /**
  * Padding values for mod3 indicating how many '=' to append
  */
-uint8_t base64EncodePadding[3] = {0, 2, 1};
+uint8_t base64EncodePadding[ 3 ] = { 0, 2, 1 };
 
 /**
  * Padding values for mod4 indicating how many '=' has been padded. NOTE: value for 1 is invalid = 0xff
  */
-uint8_t base64DecodePadding[4] = {0, 0xff, 2, 1};
+uint8_t base64DecodePadding[ 4 ] = { 0, 0xff, 2, 1 };
 
 /**
  * Base64 encoding alphabet
@@ -20,33 +20,33 @@ uint8_t base64EecodeAlpha[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
  * Base64 decoding alphabet - an array of 256 values corresponding to the encoded base64 indexes
  * maps A -> 0, B -> 1, etc..
  */
-uint8_t base64DecodeAlpha[256] =
+uint8_t base64DecodeAlpha[ 256 ] =
 {
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 10
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 20
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 30
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 40
-    0,  0,  0,  62, 0,  0,  0,  63, 52, 53, // 50
-    54, 55, 56, 57, 58, 59, 60, 61, 0,  0,  // 60
-    0,  0,  0,  0,  0,  0,  1,  2,  3,  4,  // 70
-    5,  6,  7,  8,  9,  10, 11, 12, 13, 14, // 80
-    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, // 90
-    25, 0,  0,  0,  0,  0,  0,  26, 27, 28, // 100
-    29, 30, 31, 32, 33, 34, 35, 36, 37, 38, // 110
-    39, 40, 41, 42, 43, 44, 45, 46, 47, 48, // 120
-    49, 50, 51, 0,  0,  0,  0,  0,  0,  0,  // 130
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 140
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 150
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 160
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 170
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 180
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 190
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 200
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 210
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 220
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 230
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 240
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 250
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 10 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 20 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 30 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 40 */
+    0,  0,  0,  62, 0,  0,  0,  63, 52, 53, /* 50 */
+    54, 55, 56, 57, 58, 59, 60, 61, 0, 0,   /* 60 */
+    0,  0,  0,  0,  0,  0,  1,  2,  3, 4,   /* 70 */
+    5,  6,  7,  8,  9,  10, 11, 12, 13, 14, /* 80 */
+    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, /* 90 */
+    25, 0,  0,  0,  0,  0,  0,  26, 27, 28, /* 100 */
+    29, 30, 31, 32, 33, 34, 35, 36, 37, 38, /* 110 */
+    39, 40, 41, 42, 43, 44, 45, 46, 47, 48, /* 120 */
+    49, 50, 51, 0,  0,  0,  0,  0,  0, 0,   /* 130 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 140 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 150 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 160 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 170 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 180 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 190 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 200 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 210 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 220 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 230 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 240 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0, 0,   /* 250 */
     0,  0,  0,  0,  0,  0,
 };
 
@@ -71,7 +71,7 @@ Base64Result_t base64Encode( const char * pInputData,
     if( ret == BASE64_RESULT_OK )
     {
         mod3 = inputDataLength % 3;
-        padding = base64EncodePadding[mod3];
+        padding = base64EncodePadding[ mod3 ];
         outputLength = 4 * ( inputDataLength + padding ) / 3;
 
         if( outputLength > *pOutputDataLength )
@@ -82,7 +82,7 @@ Base64Result_t base64Encode( const char * pInputData,
 
     if( ret == BASE64_RESULT_OK )
     {
-        // Need to have at least a triade to process in the loop
+        /* Need to have at least a triade to process in the loop */
         if( inputDataLength >= 3 )
         {
             for( i = 0; i <= inputDataLength - 3; i += 3 )
@@ -101,7 +101,7 @@ Base64Result_t base64Encode( const char * pInputData,
 
     if( ret == BASE64_RESULT_OK )
     {
-        // Process the padding
+        /* Process the padding */
         if( padding == 1 )
         {
             *pOutput++ = base64EecodeAlpha[ *pInput >> 2 ];
@@ -117,7 +117,7 @@ Base64Result_t base64Encode( const char * pInputData,
             *pOutput++ = '=';
         }
 
-        // Set the correct size
+        /* Set the correct size */
         *pOutputDataLength = outputLength;
     }
 
@@ -143,7 +143,7 @@ Base64Result_t base64Decode( const char * pInputData,
 
     if( ret == BASE64_RESULT_OK )
     {
-        // Check the size - should have more than 2 chars
+        /* Check the size - should have more than 2 chars */
         if( inputDataLength < 2U )
         {
             ret = BASE64_RESULT_INVALID_INPUT;
@@ -152,7 +152,7 @@ Base64Result_t base64Decode( const char * pInputData,
 
     if( ret == BASE64_RESULT_OK )
     {
-        // Check the padding twice
+        /* Check the padding twice */
         if( pInputData[ inputDataLength - 1 ] == '=' )
         {
             inputDataLength--;
@@ -163,10 +163,10 @@ Base64Result_t base64Decode( const char * pInputData,
             inputDataLength--;
         }
 
-        // Calculate the padding
+        /* Calculate the padding */
         padding = base64DecodePadding[ inputDataLength % 4 ];
 
-        // Mod4 can't be 1 which means the padding can never be 0xff
+        /* Mod4 can't be 1 which means the padding can never be 0xff */
         if( padding == 0xff )
         {
             ret = BASE64_RESULT_INVALID_INPUT;
@@ -175,10 +175,10 @@ Base64Result_t base64Decode( const char * pInputData,
 
     if( ret == BASE64_RESULT_OK )
     {
-        // Calculate the output length
+        /* Calculate the output length */
         outputLength = 3 * inputDataLength / 4;
 
-        // Check against the buffer size that's been supplied
+        /* Check against the buffer size that's been supplied */
         if( *pOutputDataLength < outputLength )
         {
             ret = BASE64_RESULT_BUFFER_TOO_SMALL;
@@ -202,7 +202,7 @@ Base64Result_t base64Decode( const char * pInputData,
             }
         }
 
-        // Process the padding
+        /* Process the padding */
         if( padding == 1 )
         {
             b0 = base64DecodeAlpha[ *pInput++ ];
@@ -214,8 +214,8 @@ Base64Result_t base64Decode( const char * pInputData,
         }
         else if( padding == 2 )
         {
-            b0 = base64DecodeAlpha[*pInput++];
-            b1 = base64DecodeAlpha[*pInput++];
+            b0 = base64DecodeAlpha[ *pInput++ ];
+            b1 = base64DecodeAlpha[ *pInput++ ];
 
             *pOutput++ = ( b0 << 2 ) | ( b1 >> 4 );
         }
@@ -224,7 +224,7 @@ Base64Result_t base64Decode( const char * pInputData,
             /* Do nothing, coverity happy. */
         }
 
-        // Set the correct size
+        /* Set the correct size */
         *pOutputDataLength = outputLength;
     }
 

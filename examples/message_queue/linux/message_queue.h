@@ -1,14 +1,6 @@
 #ifndef MESSAGE_QUEUE_H
 #define MESSAGE_QUEUE_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include <stdint.h>
 #include <mqueue.h>
@@ -51,11 +43,5 @@ MessageQueueResult_t MessageQueue_IsFull( MessageQueueHandler_t * pMessageQueueH
 MessageQueueResult_t MessageQueue_AttachPoll( MessageQueueHandler_t * pMessageQueueHandler,
                                               struct pollfd * pPollFd,
                                               uint32_t PollEvents );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* MESSAGE_QUEUE_H */

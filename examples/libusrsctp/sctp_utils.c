@@ -10,20 +10,20 @@
 #include "peer_connection_sctp.h"
 
 
-#define SCTP_MTU                        1188
-#define SCTP_ASSOCIATION_DEFAULT_PORT   5000
+#define SCTP_MTU                           1188
+#define SCTP_ASSOCIATION_DEFAULT_PORT      5000
 
-#define SCTP_SESSION_ACTIVE             0
-#define SCTP_SESSION_SHUTDOWN_INITIATED 1
-#define SCTP_SESSION_SHUTDOWN_COMPLETED 2
+#define SCTP_SESSION_ACTIVE                0
+#define SCTP_SESSION_SHUTDOWN_INITIATED    1
+#define SCTP_SESSION_SHUTDOWN_COMPLETED    2
 
-#define SECONDS_TO_USEC( x )            ( ( x ) * 1000000 )
+#define SECONDS_TO_USEC( x )    ( ( x ) * 1000000 )
 
-#define SCTP_PPID_DCEP                  50
-#define SCTP_PPID_STRING                51
-#define SCTP_PPID_BINARY                53
-#define SCTP_PPID_STRING_EMPTY          56
-#define SCTP_PPID_BINARY_EMPTY          57
+#define SCTP_PPID_DCEP            50
+#define SCTP_PPID_STRING          51
+#define SCTP_PPID_BINARY          53
+#define SCTP_PPID_STRING_EMPTY    56
+#define SCTP_PPID_BINARY_EMPTY    57
 /*-----------------------------------------------------------*/
 
 static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket );
@@ -60,12 +60,15 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
     struct sctp_initmsg initmsg;
     uint32_t i;
     uint32_t valueOn = 1;
-    uint16_t eventTypes[] = { SCTP_ASSOC_CHANGE,
-                              SCTP_PEER_ADDR_CHANGE,
-                              SCTP_REMOTE_ERROR,
-                              SCTP_SHUTDOWN_EVENT,
-                              SCTP_ADAPTATION_INDICATION,
-                              SCTP_PARTIAL_DELIVERY_EVENT };
+    uint16_t eventTypes[] =
+    {
+        SCTP_ASSOC_CHANGE,
+        SCTP_PEER_ADDR_CHANGE,
+        SCTP_REMOTE_ERROR,
+        SCTP_SHUTDOWN_EVENT,
+        SCTP_ADAPTATION_INDICATION,
+        SCTP_PARTIAL_DELIVERY_EVENT
+    };
 
     if( usrsctp_set_non_blocking( pSocket, 1 ) != 0 )
     {
@@ -78,6 +81,7 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
         /* OnSctpOutboundPacket must not be called after close. */
         lingerOpts.l_onoff = 1;
         lingerOpts.l_linger = 0;
+
         if( usrsctp_setsockopt( pSocket,
                                 SOL_SOCKET,
                                 SO_LINGER,
@@ -109,9 +113,11 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
         memset( &( event ), 0, sizeof( event ) );
         event.se_assoc_id = SCTP_FUTURE_ASSOC;
         event.se_on = 1;
+
         for( i = 0; i < ( uint32_t ) ( sizeof( eventTypes ) / sizeof( eventTypes[ 0 ] ) ); i++ )
         {
             event.se_type = eventTypes[ i ];
+
             if( usrsctp_setsockopt( pSocket,
                                     IPPROTO_SCTP,
                                     SCTP_EVENT,
@@ -167,6 +173,7 @@ static int OnSctpOutboundPacket( void * pAddr,
         {
             pSctpSession->shutdownStatus = SCTP_SESSION_SHUTDOWN_COMPLETED;
         }
+
         return -1;
     }
 
@@ -188,7 +195,6 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
                                             uint8_t * pData,
                                             size_t length )
 {
-
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
     DcepContext_t dcepCtx;
     DcepResult_t dcepResult = DCEP_RESULT_OK;
@@ -217,7 +223,7 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
         switch( dcepMessageType )
         {
             case DCEP_MESSAGE_DATA_CHANNEL_ACK:
-            {
+
                 if( pSctpSession->sctpSessionCallbacks.dataChannelOpenAckCallback( pSctpSession->sctpSessionCallbacks.pUserData,
                                                                                    channelId ) == SCTP_UTILS_RESULT_OK )
                 {
@@ -227,11 +233,10 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
                 {
                     LogWarn( ( " Failed to open data channel for which DCEP_MESSAGE_DATA_CHANNEL_ACK was received " ) );
                 }
-            }
-            break;
+
+                break;
 
             case DCEP_MESSAGE_DATA_CHANNEL_OPEN:
-            {
                 dcepResult = Dcep_DeserializeChannelOpenMessage( &( dcepCtx ),
                                                                  pData,
                                                                  length,
@@ -254,15 +259,13 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
                 {
                     retStatus = SCTP_UTILS_RESULT_FAIL;
                 }
-            }
-            break;
+
+                break;
 
             default:
-            {
                 LogWarn( ( "Unknown SCTP DCEP message type: %d", ( int ) dcepMessageType ) );
                 retStatus = SCTP_UTILS_RESULT_FAIL;
-            }
-            break;
+                break;
         }
     }
 
@@ -284,9 +287,9 @@ static int OnSctpInboundPacket( struct socket * pSocket,
     SctpSession_t * pSctpSession = ( SctpSession_t * ) pUlpInfo;
     uint8_t isBinary = 0U;
 
-    ( void )( pSocket );
-    ( void )( addr );
-    ( void )( flags );
+    ( void ) ( pSocket );
+    ( void ) ( addr );
+    ( void ) ( flags );
 
     rcv.rcv_ppid = ntohl( rcv.rcv_ppid );
 
@@ -294,7 +297,7 @@ static int OnSctpInboundPacket( struct socket * pSocket,
     {
         /* Process incoming DCEP messages. */
         case SCTP_PPID_DCEP:
-        {
+
             if( HandleDcepMessage( pSctpSession,
                                    rcv.rcv_sid,
                                    pData,
@@ -302,31 +305,27 @@ static int OnSctpInboundPacket( struct socket * pSocket,
             {
                 retStatus = 1;
             }
-        }
-        break;
+
+            break;
 
         /* Process incoming application data. */
         case SCTP_PPID_BINARY:
         case SCTP_PPID_BINARY_EMPTY:
             isBinary = true;
+
         /* Intentional fallthrough. */
         case SCTP_PPID_STRING:
         case SCTP_PPID_STRING_EMPTY:
-        {
-
             pSctpSession->sctpSessionCallbacks.dataChannelMessageCallback( pSctpSession->sctpSessionCallbacks.pUserData,
                                                                            rcv.rcv_sid,
                                                                            isBinary,
                                                                            pData,
                                                                            length );
-        }
-        break;
+            break;
 
         default:
-        {
             LogWarn( ( "Unhandled PPID on incoming SCTP message %ld", ( unsigned long ) rcv.rcv_ppid ) );
-        }
-        break;
+            break;
     }
 
     /*
@@ -459,6 +458,7 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
                                                NULL,
                                                0,
                                                pSctpSession );
+
         if( pSctpSession->socket == NULL )
         {
             LogError( ( "usrsctp_socket failed to create socket!" ) );
@@ -469,6 +469,7 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
         usrsctp_register_address( pSctpSession );
+
         if( ConfigureSctpSocket( pSctpSession->socket ) != SCTP_UTILS_RESULT_OK )
         {
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -491,6 +492,7 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
         connectStatus = usrsctp_connect( pSctpSession->socket,
                                          ( struct sockaddr * ) &( remoteConn ),
                                          sizeof( remoteConn ) );
+
         if( !( ( connectStatus >= 0 ) || ( errno == EINPROGRESS ) ) )
         {
             LogError( ( "usrsctp_connect failed!" ) );
@@ -503,6 +505,7 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
         memcpy( &( params.spp_address ), &( remoteConn ), sizeof( remoteConn ) );
         params.spp_flags = SPP_PMTUD_DISABLE;
         params.spp_pathmtu = SCTP_MTU;
+
         if( usrsctp_setsockopt( pSctpSession->socket,
                                 IPPROTO_SCTP,
                                 SCTP_PEER_ADDR_PARAMS,
@@ -563,6 +566,7 @@ SctpUtilsResult_t Sctp_FreeSession( SctpSession_t * pSctpSession )
 
         shutdownTimeout = NetworkingUtils_GetCurrentTimeUs( NULL ) +
                           SECONDS_TO_USEC( SCTP_SHUTDOWN_TIMEOUT_SEC );
+
         while( ( pSctpSession->shutdownStatus != SCTP_SESSION_SHUTDOWN_COMPLETED ) &&
                ( NetworkingUtils_GetCurrentTimeUs( NULL ) < shutdownTimeout ) )
         {
@@ -706,7 +710,6 @@ SctpUtilsResult_t Sctp_SendMessage( SctpSession_t * pSctpSession,
     {
         retStatus = SCTP_UTILS_RESULT_BAD_PARAM;
     }
-
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {

@@ -36,19 +36,19 @@
 #include <string.h>
 #include <assert.h>
 /* FreeRTOS includes. */
-//#include "FreeRTOS.h"
+/*#include "FreeRTOS.h" */
 
 #include "mbedtls/config.h"
 #include "mbedtls/version.h"
 
 #ifdef MBEDTLS_PSA_CRYPTO_C
 /* MbedTLS PSA Includes */
-#include "psa/crypto.h"
-#include "psa/crypto_values.h"
+    #include "psa/crypto.h"
+    #include "psa/crypto_values.h"
 #endif /* MBEDTLS_PSA_CRYPTO_C */
 
 #ifdef MBEDTLS_DEBUG_C
-#include "mbedtls/debug.h"
+    #include "mbedtls/debug.h"
 #endif /* MBEDTLS_DEBUG_C */
 
 /* MBedTLS Bio TCP sockets wrapper include. */
@@ -63,15 +63,15 @@
  * @brief Utility for converting the high-level code in an mbedTLS error to string,
  * if the code-contains a high-level code; otherwise, using a default string.
  */
-#define mbedtlsHighLevelCodeOrDefault( mbedTlsCode )       "mbedTLS high level Error"
+#define mbedtlsHighLevelCodeOrDefault( mbedTlsCode )    "mbedTLS high level Error"
 
 /**
  * @brief Utility for converting the level-level code in an mbedTLS error to string,
  * if the code-contains a level-level code; otherwise, using a default string.
  */
-#define mbedtlsLowLevelCodeOrDefault( mbedTlsCode )       "mbedTLS low level Error"
+#define mbedtlsLowLevelCodeOrDefault( mbedTlsCode )     "mbedTLS low level Error"
 
-#define TRANSPORT_MBEDTLS_MAX_FILE_PATH_LENGTH ( 1024 )
+#define TRANSPORT_MBEDTLS_MAX_FILE_PATH_LENGTH    ( 1024 )
 
 /*-----------------------------------------------------------*/
 

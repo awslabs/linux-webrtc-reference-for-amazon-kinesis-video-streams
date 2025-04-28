@@ -1,14 +1,6 @@
 #ifndef BASE64_H
 #define BASE64_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include <stdint.h>
 
@@ -28,11 +20,5 @@ Base64Result_t Base64_Encode( const char * pInputData,
                               size_t inputDataLength,
                               char * pOutputData,
                               size_t * pOutputDataLength );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* BASE64_H */
