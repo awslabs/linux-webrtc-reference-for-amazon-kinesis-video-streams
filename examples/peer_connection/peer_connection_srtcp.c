@@ -882,51 +882,43 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
             switch( rtcpPacket.header.packetType )
             {
                 case RTCP_PACKET_FIR:
-                    LogInfo( ( "Entering OnRtcpFirEvent " ) );
                     ret = OnRtcpFirEvent( pSession,
                                           &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_TRANSPORT_FEEDBACK_NACK:
-                    LogInfo( ( "Entering OnRtcpNackEvent " ) );
                     ret = OnRtcpNackEvent( pSession,
                                            &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_TRANSPORT_FEEDBACK_TWCC:
                     #if ENABLE_TWCC_SUPPORT
-                        LogInfo( ( "Entering OnRtcpTwccEvent " ) );
                         ret = OnRtcpTwccEvent( pSession,
                                                &rtcpPacket );
                     #endif
                     break;
 
                 case RTCP_PACKET_PAYLOAD_FEEDBACK_PLI:
-                    LogInfo( ( "Entering OnRtcpPliEvent " ) );
                     ret = OnRtcpPliEvent( pSession,
                                           &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_PAYLOAD_FEEDBACK_SLI:
-                    LogInfo( ( "Entering OnRtcpSliEvent " ) );
                     ret = OnRtcpSliEvent( pSession,
                                           &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_PAYLOAD_FEEDBACK_REMB:
-                    LogInfo( ( "Entering OnRtcpRembEvent " ) );
                     ret = OnRtcpRembEvent( pSession,
                                            &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_SENDER_REPORT:
-                    LogInfo( ( "Entering OnRtcpSenderReportEvent " ) );
                     ret = OnRtcpSenderReportEvent( pSession,
                                                    &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_RECEIVER_REPORT:
-                    LogInfo( ( "Entering OnRtcpReceiverReportEvent " ) );
                     ret = OnRtcpReceiverReportEvent( pSession,
                                                      &rtcpPacket );
                     break;
