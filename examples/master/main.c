@@ -828,7 +828,7 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 
         if( pFrame != NULL )
         {
-            LogDebug( ( "Received video frame with length: %u", pFrame->dataLength ) );
+            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
 
             frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
             frame.pData = pFrame->pData;
@@ -858,7 +858,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
 
         if( pFrame != NULL )
         {
-            LogDebug( ( "Received audio frame with length: %u", pFrame->dataLength ) );
+            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
 
             frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
             frame.pData = pFrame->pData;
@@ -968,7 +968,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
 
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
-            LogWarn( ( "PeerConnection_AddRemoteCandidate fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
+            LogWarn( ( "PeerConnection_SetRemoteDescription fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
         }
     }
 

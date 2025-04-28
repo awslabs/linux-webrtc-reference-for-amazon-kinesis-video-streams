@@ -35,7 +35,7 @@ static PeerConnectionResult_t PeerConnectionSrtcp_MatchRemoteBySsrc( PeerConnect
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
-    if( ( pSession == NULL ) )
+    if( pSession == NULL )
     {
         LogError( ( "Invalid input, pSession: %p", pSession ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
@@ -164,6 +164,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
 
             pSrtpPacket = srtpBuffer;
             srtpPacketLength = PEER_CONNECTION_SRTP_RTP_PACKET_MAX_LENGTH;
+
             /* ConstructSrtpPacket() serializes RTP packet and encrypt it. */
             ret = PeerConnectionSrtp_ConstructSrtpPacket( pSession,
                                                           &pRollingBufferPacket->rtpPacket,
@@ -621,7 +622,12 @@ static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t *
         ret = PeerConnectionSrtcp_MatchRemoteBySsrc( pSession,
                                                      senderReport.senderSsrc );
 
-        LogVerbose( ( "RTCP_PACKET_SENDER_REPORT %u %lu  rtpTs: %u  %u pkts  %u bytes", senderReport.senderSsrc, senderReport.senderInfo.ntpTime, senderReport.senderInfo.rtpTime, senderReport.senderInfo.packetCount, senderReport.senderInfo.octetCount ) );
+        LogVerbose( ( "RTCP_PACKET_SENDER_REPORT, SSRC: %u, NTP Time %lu  RTP Time: %u, PacketCount: %u, OctetCount: %u",
+                      senderReport.senderSsrc,
+                      senderReport.senderInfo.ntpTime,
+                      senderReport.senderInfo.rtpTime,
+                      senderReport.senderInfo.packetCount,
+                      senderReport.senderInfo.octetCount ) );
 
         if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
         {
@@ -693,7 +699,15 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
                                                          receiverReport.pReceptionReports[ 0 ].sourceSsrc,
                                                          &pTransceiver );
 
-            LogDebug( ( "RTCP_PACKET_TYPE_RECEIVER_REPORT %u %u  loss: %u  %u seq:  %u jit: %u  lsr: %u  dlsr: %u", receiverReport.senderSsrc, receiverReport.pReceptionReports[ 0 ].sourceSsrc, receiverReport.pReceptionReports[ 0 ].fractionLost, receiverReport.pReceptionReports[ 0 ].cumulativePacketsLost, receiverReport.pReceptionReports[ 0 ].extendedHighestSeqNumReceived, receiverReport.pReceptionReports[ 0 ].interArrivalJitter, receiverReport.pReceptionReports[ 0 ].lastSR, receiverReport.pReceptionReports[ 0 ].delaySinceLastSR ) );
+            LogDebug( ( "RTCP_PACKET_TYPE_RECEIVER_REPORT, sender SSRC: %u, source SSRC: %u, fraction loss: %u, cumulative loss: %u, highest seq: %u, jit: %u, lsr: %u, dlsr: %u",
+                        receiverReport.senderSsrc,
+                        receiverReport.pReceptionReports[ 0 ].sourceSsrc,
+                        receiverReport.pReceptionReports[ 0 ].fractionLost,
+                        receiverReport.pReceptionReports[ 0 ].cumulativePacketsLost,
+                        receiverReport.pReceptionReports[ 0 ].extendedHighestSeqNumReceived,
+                        receiverReport.pReceptionReports[ 0 ].interArrivalJitter,
+                        receiverReport.pReceptionReports[ 0 ].lastSR,
+                        receiverReport.pReceptionReports[ 0 ].delaySinceLastSR ) );
 
             if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
             {
@@ -738,7 +752,7 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
                                                                         size_t * pOutputSrtcpPacketLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-    RtpResult_t resultRtcp;
+    RtcpResult_t resultRtcp;
     size_t rtcpBufferLength;
     srtp_err_status_t errorStatus;
 
@@ -769,7 +783,7 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
                                                  pOutputSrtcpPacket,
                                                  &rtcpBufferLength );
 
-        if( resultRtcp != RTP_RESULT_OK )
+        if( resultRtcp != RTCP_RESULT_OK )
         {
             LogError( ( "Fail to serialize RTCP Sender Report, result: %d", resultRtcp ) );
             ret = PEER_CONNECTION_RESULT_FAIL_RTCP_SERIALIZE_SENDER_REPORT;

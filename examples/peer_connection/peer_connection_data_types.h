@@ -48,6 +48,10 @@
 #define PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS                  4000         /* Unit bits/sec. Value could change based on codec. */
 #define PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS                  650000       /* Unit bits/sec. Value could change based on codec. */
 
+#define PEER_CONNECTION_WAIT_SDP_MESSAGE_TIMEOUT_MS            ( 12000 )
+#define PEER_CONNECTION_INACTIVE_CONNECTION_TIMEOUT_MS         ( 30000 )
+#define PEER_CONNECTION_DTLS_HANDSHAKING_TIMEOUT_MS            ( 12000 )
+
 typedef enum PeerConnectionResult
 {
     PEER_CONNECTION_RESULT_OK = 0,
@@ -119,6 +123,8 @@ typedef enum PeerConnectionResult
     PEER_CONNECTION_RESULT_FAIL_SDP_SET_PAYLOAD_TYPE,
     PEER_CONNECTION_RESULT_FAIL_SDP_POPULATE_SINGLE_MEDIA_DESCRIPTION,
     PEER_CONNECTION_RESULT_FAIL_SDP_POPULATE_SESSION_DESCRIPTION,
+    PEER_CONNECTION_RESULT_INVALID_REMOTE_USERNAME,
+    PEER_CONNECTION_RESULT_INVALID_REMOTE_PASSWORD,
     PEER_CONNECTION_RESULT_UNKNOWN_SRTP_PROFILE,
     PEER_CONNECTION_RESULT_UNKNOWN_TX_CODEC,
     PEER_CONNECTION_RESULT_UNKNOWN_SSRC,
@@ -193,6 +199,7 @@ typedef PeerConnectionResult_t (* FillFrameFunc_t)( PeerConnectionJitterBuffer_t
 typedef struct PeerConnectionRollingBufferPacket
 {
     RtpPacket_t rtpPacket;
+    uint32_t twccExtensionPayload;
     uint8_t * pPacketBuffer;
     size_t packetBufferLength;
 } PeerConnectionRollingBufferPacket_t;
@@ -250,7 +257,7 @@ typedef enum PeerConnectionSessionRequestType
     PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSED,
-    PEER_CONNECTION_SESSION_REQUEST_TYPE_CLOSE_PEER_CONNECTION,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
 } PeerConnectionSessionRequestType_t;
 
 typedef struct PeerConnectionSessionRequestMessage
@@ -275,6 +282,7 @@ typedef enum PeerConnectionSessionState
     PEER_CONNECTION_SESSION_STATE_CLOSING,
     PEER_CONNECTION_SESSION_STATE_INITED,
     PEER_CONNECTION_SESSION_STATE_START,
+    PEER_CONNECTION_SESSION_STATE_FIND_CONNECTION,
     PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND,
     PEER_CONNECTION_SESSION_STATE_CONNECTION_READY,
 } PeerConnectionSessionState_t;
@@ -426,10 +434,15 @@ typedef struct PeerConnectionSession
 
     TimerHandler_t rtcpAudioSenderReportTimer;
     TimerHandler_t rtcpVideoSenderReportTimer;
+    TimerHandler_t closeSessionTimer;
+
+    uint64_t dtlsHandshakingTimeoutMs;
+    uint64_t inactiveConnectionTimeoutMs;
 
     #if ENABLE_TWCC_SUPPORT
         PeerConnectionTwccMetaData_t twccMetaData;
     #endif
+
     /* Pointer that points to peer connection context. */
     PeerConnectionContext_t * pCtx;
 } PeerConnectionSession_t;

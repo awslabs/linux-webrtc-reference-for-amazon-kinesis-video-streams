@@ -653,7 +653,7 @@ int32_t DTLS_CreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
     /* be const */
     const mbedtls_md_info_t * pMdInfo;
 
-    if( ( pBuff == NULL ) )
+    if( pBuff == NULL )
     {
         LogError( ( "invalid input, pBuff == NULL " ) );
         retStatus = -1;
@@ -665,7 +665,7 @@ int32_t DTLS_CreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
 
     pMdInfo = mbedtls_md_info_from_type( MBEDTLS_MD_SHA256 );
 
-    if( ( pMdInfo == NULL ) )
+    if( pMdInfo == NULL )
     {
         LogError( ( "invalid input, pMdInfo == NULL " ) );
         retStatus = -1;
@@ -764,7 +764,7 @@ int32_t DTLS_VerifyRemoteCertificateFingerprint( DtlsSSLContext_t * pSslContext,
 
     pRemoteCertificate = ( mbedtls_x509_crt * ) mbedtls_ssl_get_peer_cert( &pSslContext->context );
 
-    if( ( pRemoteCertificate == NULL ) )
+    if( pRemoteCertificate == NULL )
     {
         LogError( ( "pRemoteCertificate == NULL " ) );
         retStatus = -1;
