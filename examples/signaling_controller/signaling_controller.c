@@ -91,10 +91,14 @@ static int OnWssMessageReceived( char * pMessage,
             {
                 if( strcmp( wssRecvMessage.statusResponse.pStatusCode,"200" ) != 0 )
                 {
-                    LogWarn( ( "Failed to deliver message. Correlation ID: %s, Error Type: %s, Error Code: %s, Description: %s!",
+                    LogWarn( ( "Failed to deliver message. Correlation ID: %.*s, Error Type: %.*s, Error Code: %.*s, Description: %.*s!",
+                               ( int ) wssRecvMessage.statusResponse.correlationIdLength,
                                wssRecvMessage.statusResponse.pCorrelationId,
+                               ( int ) wssRecvMessage.statusResponse.errorTypeLength,
                                wssRecvMessage.statusResponse.pErrorType,
+                               ( int ) wssRecvMessage.statusResponse.statusCodeLength,
                                wssRecvMessage.statusResponse.pStatusCode,
+                               ( int ) wssRecvMessage.statusResponse.descriptionLength,
                                wssRecvMessage.statusResponse.pDescription ) );
                 }
             }
