@@ -30,6 +30,7 @@ typedef struct AppMediaSourceContext
     MessageQueueHandler_t dataQueue;
     uint8_t numReadyPeer;
     TransceiverTrackKind_t trackKind;
+    int32_t fileIndex;
 
     AppMediaSourcesContext_t * pSourcesContext;
 } AppMediaSourceContext_t;
