@@ -868,13 +868,6 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
         /* Calculate the total length of current RTCP packet (including header) */
         currentPacketLength = rtcpPacket.payloadLength + RTCP_HEADER_LENGTH;
 
-        if( currentPacketLength > remainingLength )
-        {
-            LogError( ( "RTCP packet length exceeds buffer boundary" ) );
-            ret = PEER_CONNECTION_RESULT_FAIL_RTCP_DESERIALIZE;
-            break;
-        }
-
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             LogDebug( ( "Receiving RTCP type: %d", rtcpPacket.header.packetType ) );
