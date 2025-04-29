@@ -11,7 +11,6 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
                                                            size_t maxSizePerPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-    RtpPacketInfo_t * pRtpPacketInfoArray;
     RtpPacketQueueResult_t resultRtpPacketQueue;
 
     if( ( pRollingBuffer == NULL ) ||
@@ -31,8 +30,8 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
     {
         pRollingBuffer->maxSizePerPacket = maxSizePerPacket;
         pRollingBuffer->capacity = rollingbufferDurationSec * rollingbufferBitRate / 8U / maxSizePerPacket;
-        pRtpPacketInfoArray = ( RtpPacketInfo_t * )malloc( pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ) );
-        if( pRtpPacketInfoArray == NULL )
+        pRollingBuffer->packetQueue.pRtpPacketInfoArray = ( RtpPacketInfo_t * )malloc( pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ) );
+        if( pRollingBuffer->packetQueue.pRtpPacketInfoArray == NULL )
         {
             LogError( ( "No memory available for allocating RTP packet info array with total size %lu, capacity: %lu, sizeof( RtpPacketInfo_t ): %lu",
                         pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ),
@@ -52,7 +51,7 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultRtpPacketQueue = RtpPacketQueue_Init( &pRollingBuffer->packetQueue,
-                                                    pRtpPacketInfoArray,
+                                                    pRollingBuffer->packetQueue.pRtpPacketInfoArray,
                                                     pRollingBuffer->capacity );
         if( resultRtpPacketQueue != RTP_PACKET_QUEUE_RESULT_OK )
         {
@@ -92,6 +91,7 @@ void PeerConnectionRollingBuffer_Free( PeerConnectionRollingBuffer_t * pRollingB
         if( pRollingBuffer->packetQueue.pRtpPacketInfoArray != NULL )
         {
             free( pRollingBuffer->packetQueue.pRtpPacketInfoArray );
+            pRollingBuffer->packetQueue.pRtpPacketInfoArray = NULL;
         }
     }
 }
