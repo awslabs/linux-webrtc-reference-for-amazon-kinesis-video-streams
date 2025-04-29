@@ -852,7 +852,8 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
         }
     }
 
-    while( remainingLength >= RTCP_HEADER_LENGTH && ret == PEER_CONNECTION_RESULT_OK )
+    while( ( remainingLength >= RTCP_HEADER_LENGTH ) &&
+           ( ret == PEER_CONNECTION_RESULT_OK ) )
     {
         resultRtcp = Rtcp_DeserializePacket( &pSession->pCtx->rtcpContext,
                                              currentPacket,
