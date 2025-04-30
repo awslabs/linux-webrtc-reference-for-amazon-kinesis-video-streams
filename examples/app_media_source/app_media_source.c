@@ -45,7 +45,6 @@ static void * VideoTx_Task( void * pParameter )
     #ifndef ENABLE_STREAMING_LOOPBACK
         char filePath[ MAX_PATH_LEN + 1 ];
         FILE * fp = NULL;
-        int32_t fileIndex = 0;
         size_t frameLength;
         size_t allocatedBufferLength = 0;
     #endif /* ENABLE_STREAMING_LOOPBACK */
@@ -64,8 +63,8 @@ static void * VideoTx_Task( void * pParameter )
             #ifndef ENABLE_STREAMING_LOOPBACK
                 if( pVideoContext->numReadyPeer != 0 )
                 {
-                    fileIndex = fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", fileIndex );
+                    pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", pVideoContext->fileIndex );
 
                     fp = fopen( filePath, "rb" );
 
@@ -123,7 +122,6 @@ static void * AudioTx_Task( void * pParameter )
     #ifndef ENABLE_STREAMING_LOOPBACK
         char filePath[ MAX_PATH_LEN + 1 ];
         FILE * fp = NULL;
-        int32_t fileIndex = 0;
         size_t frameLength;
         size_t allocatedBufferLength = 0;
     #endif /* ENABLE_STREAMING_LOOPBACK */
@@ -142,8 +140,8 @@ static void * AudioTx_Task( void * pParameter )
             #ifndef ENABLE_STREAMING_LOOPBACK
                 if( pAudioContext->numReadyPeer != 0 )
                 {
-                    fileIndex = fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", fileIndex );
+                    pAudioContext->fileIndex = pAudioContext->fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", pAudioContext->fileIndex );
 
                     fp = fopen( filePath, "rb" );
 
@@ -244,6 +242,10 @@ static int32_t OnPcEventRemotePeerClosed( AppMediaSourceContext_t * pMediaSource
             if( pMediaSource->numReadyPeer > 0U )
             {
                 pMediaSource->numReadyPeer--;
+                if( pMediaSource->numReadyPeer == 0 )
+                {
+                    pMediaSource->fileIndex = 0;
+                }
             }
 
             /* We have finished accessing the shared resource.  Release the mutex. */

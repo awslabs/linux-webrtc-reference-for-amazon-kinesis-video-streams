@@ -114,6 +114,8 @@ typedef enum PeerConnectionResult
     PEER_CONNECTION_RESULT_FAIL_RTCP_HANDLE_TWCC,
     PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX,
     PEER_CONNECTION_RESULT_FAIL_TAKE_SENDER_MUTEX,
+    PEER_CONNECTION_RESULT_FAIL_CREATE_SRTP_MUTEX,
+    PEER_CONNECTION_RESULT_FAIL_TAKE_SRTP_MUTEX,
     PEER_CONNECTION_RESULT_FAIL_PACKET_INFO_NO_ENOUGH_MEMORY,
     PEER_CONNECTION_RESULT_FAIL_RTP_PACKET_QUEUE_INIT,
     PEER_CONNECTION_RESULT_FAIL_RTP_PACKET_QUEUE_RETRIEVE,
@@ -405,6 +407,7 @@ typedef struct PeerConnectionSession
     /* DTLS session. */
     DtlsSession_t dtlsSession;
     /* SRTP sessions. */
+    pthread_mutex_t srtpSessionMutex;
     srtp_t srtpTransmitSession;
     srtp_t srtpReceiveSession;
     /* RTP config. */

@@ -13,8 +13,8 @@
 #define SCTP_MTU                        1188
 #define SCTP_ASSOCIATION_DEFAULT_PORT   5000
 
-#define SCTP_SESSION_ACTIVE             0
-#define SCTP_SESSION_SHUTDOWN_INITIATED 1
+#define SCTP_SESSION_SHUTDOWN_INITIATED 0
+#define SCTP_SESSION_ACTIVE             1
 #define SCTP_SESSION_SHUTDOWN_COMPLETED 2
 
 #define SECONDS_TO_USEC( x )            ( ( x ) * 1000000 )
@@ -442,8 +442,6 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
         memset( &( localConn ), 0x00, sizeof( struct sockaddr_conn ) );
         memset( &( remoteConn ), 0x00, sizeof( struct sockaddr_conn ) );
 
-        pSctpSession->shutdownStatus = SCTP_SESSION_ACTIVE;
-
         localConn.sconn_family = AF_CONN;
         localConn.sconn_port = ntohs( SCTP_ASSOCIATION_DEFAULT_PORT );
         localConn.sconn_addr = pSctpSession;
@@ -524,6 +522,8 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
         {
             pSctpSession->currentChannelId = 1;
         }
+
+        pSctpSession->shutdownStatus = SCTP_SESSION_ACTIVE;
     }
 
     if( retStatus != SCTP_UTILS_RESULT_OK )
@@ -547,26 +547,29 @@ SctpUtilsResult_t Sctp_FreeSession( SctpSession_t * pSctpSession )
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
-        usrsctp_deregister_address( pSctpSession );
-
-        /* handle issue mentioned here: https://github.com/sctplab/usrsctp/issues/147
-         * the change in shutdownStatus will trigger OnSctpOutboundPacket to
-         * return -1. */
-        pSctpSession->shutdownStatus = SCTP_SESSION_SHUTDOWN_INITIATED;
-
-        if( pSctpSession->socket != NULL )
+        if( pSctpSession->shutdownStatus == SCTP_SESSION_ACTIVE )
         {
-            usrsctp_set_ulpinfo( pSctpSession->socket, NULL );
-            usrsctp_shutdown( pSctpSession->socket, SHUT_RDWR );
-            usrsctp_close( pSctpSession->socket );
-        }
-
-        shutdownTimeout = NetworkingUtils_GetCurrentTimeUs( NULL ) +
-                          SECONDS_TO_USEC( SCTP_SHUTDOWN_TIMEOUT_SEC );
-        while( ( pSctpSession->shutdownStatus != SCTP_SESSION_SHUTDOWN_COMPLETED ) &&
-               ( NetworkingUtils_GetCurrentTimeUs( NULL ) < shutdownTimeout ) )
-        {
-            usleep( SCTP_TEARDOWN_POLLING_INTERVAL_USEC );
+            usrsctp_deregister_address( pSctpSession );
+    
+            /* handle issue mentioned here: https://github.com/sctplab/usrsctp/issues/147
+             * the change in shutdownStatus will trigger OnSctpOutboundPacket to
+             * return -1. */
+            pSctpSession->shutdownStatus = SCTP_SESSION_SHUTDOWN_INITIATED;
+    
+            if( pSctpSession->socket != NULL )
+            {
+                usrsctp_set_ulpinfo( pSctpSession->socket, NULL );
+                usrsctp_shutdown( pSctpSession->socket, SHUT_RDWR );
+                usrsctp_close( pSctpSession->socket );
+            }
+    
+            shutdownTimeout = NetworkingUtils_GetCurrentTimeUs( NULL ) +
+                              SECONDS_TO_USEC( SCTP_SHUTDOWN_TIMEOUT_SEC );
+            while( ( pSctpSession->shutdownStatus != SCTP_SESSION_SHUTDOWN_COMPLETED ) &&
+                   ( NetworkingUtils_GetCurrentTimeUs( NULL ) < shutdownTimeout ) )
+            {
+                usleep( SCTP_TEARDOWN_POLLING_INTERVAL_USEC );
+            }
         }
     }
 
