@@ -28,8 +28,6 @@
 /*   bits of the integer part and the high 16 bits of the fractional part. */
 #define PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP )    ( uint32_t ) ( ( currentTimeNTP >> 16U ) & 0xffffffffULL )
 
-#define RTCP_HEADER_LENGTH    4
-
 /*-----------------------------------------------------------*/
 
 static PeerConnectionResult_t PeerConnectionSrtcp_MatchRemoteBySsrc( PeerConnectionSession_t * pSession,
