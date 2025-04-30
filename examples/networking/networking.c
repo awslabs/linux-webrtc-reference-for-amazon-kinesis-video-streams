@@ -1393,6 +1393,8 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
         pWebsocketCtx->protocols[ 0 ].callback = LwsWebsocketCallback;
         pWebsocketCtx->protocols[ 0 ].user = pWebsocketCtx;
         pWebsocketCtx->protocols[ 1 ].callback = NULL; /* End marker. */
+        pWebsocketCtx->connectionEstablished = 0; 
+        pWebsocketCtx->connectionClosed = 1; 
 
         memset( &( creationInfo ), 0, sizeof( struct lws_context_creation_info ) );
         creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
@@ -1628,89 +1630,99 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
 
     if( ret == NETWORKING_RESULT_OK )
     {
-        if( GetHostFromUrl( pConnectInfo->pUrl,
-                            pConnectInfo->urlLength,
-                            &( pHost ),
-                            &( hostLength ) ) == 0 )
+        do
         {
-            if( hostLength <= WEBSOCKET_URI_HOST_BUFFER_LENGTH )
+            /* Connection check before starting. Will skip following process if connection is already there.
+             * This might happen when fail happening at join storage session request for any reason. */
+            if( pWebsocketCtx->connectionEstablished != 0 )
             {
-                memcpy( &( pWebsocketCtx->uriHost[ 0 ] ),
-                        pHost,
-                        hostLength );
-                pWebsocketCtx->uriHost[ hostLength ] = '\0';
-                pWebsocketCtx->uriHostLength = hostLength;
+                LogDebug( ( "Websocket connection is already there, skip the connect process." ) );
+                break;
+            }
+
+            /* Get host name from URL. */
+            if( GetHostFromUrl( pConnectInfo->pUrl,
+                                pConnectInfo->urlLength,
+                                &( pHost ),
+                                &( hostLength ) ) == 0 )
+            {
+                if( hostLength <= WEBSOCKET_URI_HOST_BUFFER_LENGTH )
+                {
+                    memcpy( &( pWebsocketCtx->uriHost[ 0 ] ),
+                            pHost,
+                            hostLength );
+                    pWebsocketCtx->uriHost[ hostLength ] = '\0';
+                    pWebsocketCtx->uriHostLength = hostLength;
+                }
+                else
+                {
+                    LogError( ( "uriHost buffer is not large enough to fit the host, hostLength = %lu!", hostLength ) );
+                    ret = NETWORKING_RESULT_FAIL;
+                    break;
+                }
             }
             else
             {
-                LogError( ( "uriHost buffer is not large enough to fit the host, hostLength = %lu!", hostLength ) );
+                LogError( ( "Failed to extract host from the URL!" ) );
                 ret = NETWORKING_RESULT_FAIL;
+                break;
             }
-        }
-        else
-        {
-            LogError( ( "Failed to extract host from the URL!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
-    }
 
-    if( ret == NETWORKING_RESULT_OK )
-    {
-        pWebsocketCtx->iso8601TimeLength = ISO8601_TIME_LENGTH;
+            /* Get current time in ISO8601 format. */
+            pWebsocketCtx->iso8601TimeLength = ISO8601_TIME_LENGTH;
+            if( GetCurrentTimeInIso8601Format( &( pWebsocketCtx->iso8601Time[ 0 ] ),
+                                               &( pWebsocketCtx->iso8601TimeLength ) ) != 0 )
+            {
+                LogError( ( "Failed to get ISO8601 time!" ) );
+                ret = NETWORKING_RESULT_FAIL;
+                break;
+            }
 
-        if( GetCurrentTimeInIso8601Format( &( pWebsocketCtx->iso8601Time[ 0 ] ),
-                                           &( pWebsocketCtx->iso8601TimeLength ) ) != 0 )
-        {
-            LogError( ( "Failed to get ISO8601 time!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
-    }
+            if( SignWebsocketRequest( pWebsocketCtx,
+                                      pConnectInfo,
+                                      pAwsCredentials,
+                                      pAwsConfig ) != 0 )
+            {
+                LogError( ( "Failed to sign Websocket request!" ) );
+                ret = NETWORKING_RESULT_FAIL;
+                break;
+            }
 
-    if( ret == NETWORKING_RESULT_OK )
-    {
-        if( SignWebsocketRequest( pWebsocketCtx,
-                                  pConnectInfo,
-                                  pAwsCredentials,
-                                  pAwsConfig ) != 0 )
-        {
-            LogError( ( "Failed to sign Websocket request!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
-    }
-
-    /* Send the request and wait for the response. */
-    if( ret == NETWORKING_RESULT_OK )
-    {
-        pWebsocketCtx->rxCallback = pConnectInfo->rxCallback;
-        pWebsocketCtx->pRxCallbackData = pConnectInfo->pRxCallbackData;
-
-        memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
-
-        connectInfo.context = pWebsocketCtx->pLwsContext;
-        connectInfo.ssl_connection = LCCSCF_USE_SSL;
-        connectInfo.port = 443;
-        connectInfo.address = &( pWebsocketCtx->uriHost[ 0 ] );
-        connectInfo.path = &( pWebsocketCtx->uriPath[ 0 ] );
-        connectInfo.host = connectInfo.address;
-        connectInfo.pwsi = &( clientLws );
-        connectInfo.opaque_user_data = NULL;
-        connectInfo.method = NULL;
-        connectInfo.protocol = "wss";
-
-        pWebsocketCtx->pWsi = lws_client_connect_via_info( &( connectInfo ) );
-
-        pWebsocketCtx->connectionEstablished = 0U;
-        pWebsocketCtx->connectionClosed = 0U;
-        while( ( pWebsocketCtx->connectionEstablished == 0U ) &&
-               ( pWebsocketCtx->connectionClosed == 0U ) )
-        {
-            ( void ) lws_service( pWebsocketCtx->pLwsContext, 0 );
-        }
-
-        if( pWebsocketCtx->connectionClosed == 1U )
-        {
-            ret = NETWORKING_RESULT_FAIL;
-        }
+            /* Try connect with websocket server. */
+            {
+                pWebsocketCtx->rxCallback = pConnectInfo->rxCallback;
+                pWebsocketCtx->pRxCallbackData = pConnectInfo->pRxCallbackData;
+        
+                memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
+        
+                connectInfo.context = pWebsocketCtx->pLwsContext;
+                connectInfo.ssl_connection = LCCSCF_USE_SSL;
+                connectInfo.port = 443;
+                connectInfo.address = &( pWebsocketCtx->uriHost[ 0 ] );
+                connectInfo.path = &( pWebsocketCtx->uriPath[ 0 ] );
+                connectInfo.host = connectInfo.address;
+                connectInfo.pwsi = &( clientLws );
+                connectInfo.opaque_user_data = NULL;
+                connectInfo.method = NULL;
+                connectInfo.protocol = "wss";
+        
+                pWebsocketCtx->pWsi = lws_client_connect_via_info( &( connectInfo ) );
+        
+                pWebsocketCtx->connectionEstablished = 0U;
+                pWebsocketCtx->connectionClosed = 0U;
+                while( ( pWebsocketCtx->connectionEstablished == 0U ) &&
+                       ( pWebsocketCtx->connectionClosed == 0U ) )
+                {
+                    ( void ) lws_service( pWebsocketCtx->pLwsContext, 0 );
+                }
+        
+                if( pWebsocketCtx->connectionClosed == 1U )
+                {
+                    ret = NETWORKING_RESULT_FAIL;
+                    break;
+                }
+            }
+        } while( 0 );
     }
 
     return ret;
