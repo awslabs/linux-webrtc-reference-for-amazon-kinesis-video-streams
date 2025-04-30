@@ -60,7 +60,8 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     PeerConnectionSrtpSender_t * pSrtpSender = NULL;
-    uint8_t isLocked = 0;
+    uint8_t isSenderLocked = 0U;
+    uint8_t isSessionLocked = 0U;
     PeerConnectionRollingBufferPacket_t * pRollingBufferPacket = NULL;
     IceControllerResult_t resultIceController;
     uint8_t bufferAfterEncrypt = 1;
@@ -112,12 +113,25 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         /* Lock sender. */
         if( pthread_mutex_lock( &( pSrtpSender->senderMutex ) ) == 0 )
         {
-            isLocked = 1;
+            isSenderLocked = 1;
         }
         else
         {
             LogError( ( "Fail to take sender mutex" ) );
             ret = PEER_CONNECTION_RESULT_FAIL_TAKE_SENDER_MUTEX;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( pthread_mutex_lock( &( pSession->srtpSessionMutex ) ) == 0 )
+        {
+            isSessionLocked = 1U;
+        }
+        else
+        {
+            LogError( ( "Fail to take SRTP session mutex" ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TAKE_SRTP_MUTEX;
         }
     }
 
@@ -190,7 +204,12 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         }
     }
 
-    if( isLocked )
+    if( isSessionLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pSession->srtpSessionMutex ) );
+    }
+
+    if( isSenderLocked )
     {
         pthread_mutex_unlock( &( pSrtpSender->senderMutex ) );
     }
@@ -743,6 +762,7 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
     RtcpResult_t resultRtcp;
     size_t rtcpBufferLength;
     srtp_err_status_t errorStatus;
+    uint8_t isLocked = 0U;
 
     if( ( pSession == NULL ) ||
         ( pSenderReport == NULL ) ||
@@ -777,20 +797,46 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
         }
     }
 
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( pthread_mutex_lock( &( pSession->srtpSessionMutex ) ) == 0 )
+        {
+            isLocked = 1U;
+        }
+        else
+        {
+            LogError( ( "Fail to take SRTP session mutex to construct SRTCP packet." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TAKE_SRTP_MUTEX;
+        }
+    }
+
     /* Encrypt it by SRTP. */
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        errorStatus = srtp_protect_rtcp( pSession->srtpTransmitSession,
-                                         pOutputSrtcpPacket,
-                                         rtcpBufferLength,
-                                         pOutputSrtcpPacket,
-                                         pOutputSrtcpPacketLength,
-                                         0 );
-        if( errorStatus != srtp_err_status_ok )
+        if( pSession->srtpTransmitSession != NULL )
         {
-            LogError( ( "Fail to encrypt Tx SRTCP packet, errorStatus: %d", errorStatus ) );
+            errorStatus = srtp_protect_rtcp( pSession->srtpTransmitSession,
+                                             pOutputSrtcpPacket,
+                                             rtcpBufferLength,
+                                             pOutputSrtcpPacket,
+                                             pOutputSrtcpPacketLength,
+                                             0 );
+            if( errorStatus != srtp_err_status_ok )
+            {
+                LogError( ( "Fail to encrypt Tx SRTCP packet, errorStatus: %d", errorStatus ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_ENCRYPT_SRTP_RTCP_PACKET;
+            }
+        }
+        else
+        {
+            LogError( ( "SRTP session has been freed before encrypting." ) );
             ret = PEER_CONNECTION_RESULT_FAIL_ENCRYPT_SRTP_RTCP_PACKET;
         }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pSession->srtpSessionMutex ) );
     }
 
     return ret;
@@ -806,6 +852,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
     size_t rtcpBufferLength = PEER_CONNECTION_SRTP_RTP_PACKET_MAX_LENGTH;
     RtcpResult_t resultRtcp;
     RtcpPacket_t rtcpPacket;
+    uint8_t isLocked = 0U;
 
     if( ( pSession == NULL ) || ( pBuffer == NULL ) )
     {
@@ -815,20 +862,46 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        errorStatus = srtp_unprotect_rtcp( pSession->srtpReceiveSession,
-                                           pBuffer,
-                                           bufferLength,
-                                           rtcpBuffer,
-                                           &rtcpBufferLength );
-        if( errorStatus != srtp_err_status_ok )
+        if( pthread_mutex_lock( &( pSession->srtpSessionMutex ) ) == 0 )
         {
-            LogError( ( "Fail to decrypt Rx SRTCP packet, errorStatus: %d", errorStatus ) );
-            ret = PEER_CONNECTION_RESULT_FAIL_DECRYPT_SRTP_RTP_PACKET;
+            isLocked = 1U;
         }
         else
         {
-            LogVerbose( ( "Decrypt SRTCP packet successfully, decrypted length: %lu", rtcpBufferLength ) );
+            LogError( ( "Fail to take SRTP session mutex to decrypt SRTCP packet." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TAKE_SRTP_MUTEX;
         }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( pSession->srtpReceiveSession != NULL )
+        {
+            errorStatus = srtp_unprotect_rtcp( pSession->srtpReceiveSession,
+                                               pBuffer,
+                                               bufferLength,
+                                               rtcpBuffer,
+                                               &rtcpBufferLength );
+            if( errorStatus != srtp_err_status_ok )
+            {
+                LogError( ( "Fail to decrypt Rx SRTCP packet, errorStatus: %d", errorStatus ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_DECRYPT_SRTP_RTP_PACKET;
+            }
+            else
+            {
+                LogVerbose( ( "Decrypt SRTCP packet successfully, decrypted length: %lu", rtcpBufferLength ) );
+            }
+        }
+        else
+        {
+            LogError( ( "SRTP session has been freed before decrypting." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_DECRYPT_SRTP_RTP_PACKET;
+        }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pSession->srtpSessionMutex ) );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )

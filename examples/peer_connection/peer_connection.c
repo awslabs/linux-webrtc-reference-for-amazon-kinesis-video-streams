@@ -1526,6 +1526,15 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        if( pthread_mutex_init( &( pSession->srtpSessionMutex ), NULL ) != 0 )
+        {
+            LogError( ( "Fail to create mutex of SRTP session." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_CREATE_SRTP_MUTEX;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
         pSession->startupBarrier = eventfd( 0,
                                             0 );
         if( pSession->startupBarrier < 0 )
