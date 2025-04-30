@@ -42,8 +42,7 @@ typedef int32_t (* GstMediaSourceOnMediaSinkHook)( void * pCustom,
 
 typedef struct GstMediaSourceContext
 {
-    MessageQueueHandler_t dataQueue;
-    uint8_t numReadyPeer;
+    uint32_t numReadyPeer;
     TransceiverTrackKind_t trackKind;
     GstMediaSourcesContext_t * pSourcesContext;
 
@@ -51,10 +50,8 @@ typedef struct GstMediaSourceContext
     GstElement *pipeline;
     GstElement *appsink;
     GstElement *encoder;    // Reference to encoder for bitrate control
-    GstSample *sample;
 
     /* GStreamer pipeline configuration */
-    gchar *pipeline_description;
     guint width;           // Video width (for video only)
     guint height;          // Video height (for video only)
     guint framerate;       // Frames per second (for video only)
@@ -64,44 +61,25 @@ typedef struct GstMediaSourceContext
     gboolean is_running;   // Pipeline state flag
 } GstMediaSourceContext_t;
 
-typedef struct GstMediaSourcesContext
-{
-    pthread_mutex_t mediaMutex;
+struct GstMediaSourcesContext {
     GstMediaSourceContext_t videoContext;
     GstMediaSourceContext_t audioContext;
+    pthread_mutex_t mediaMutex;
     GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc;
-    void * pOnMediaSinkHookCustom;
-    gboolean enableVideo;
-    gboolean enableAudio;
-} GstMediaSourcesContext_t;
+    void* pOnMediaSinkHookCustom;
+};
 
 /**
  * @brief Initialize media source context
  */
 int32_t GstMediaSource_Init(GstMediaSourcesContext_t *pCtx,
                            GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
-                           void *pOnMediaSinkHookCustom,
-                           gboolean enableVideo,
-                           gboolean enableAudio);
+                           void *pOnMediaSinkHookCustom);
 
 /**
- * @brief Initialize video pipeline
+ * @brief Initialize GStreamer pipeline
  */
-int32_t GstMediaSource_InitVideoGstreamer(GstMediaSourceContext_t *pCtx,
-                                         guint width,
-                                         guint height,
-                                         guint framerate,
-                                         guint bitrate,
-                                         const gchar *pipeline_desc);
-
-/**
- * @brief Initialize audio pipeline
- */
-int32_t GstMediaSource_InitAudioGstreamer(GstMediaSourceContext_t *pCtx,
-                                         guint sample_rate,
-                                         guint channels,
-                                         guint bitrate,
-                                         const gchar *pipeline_desc);
+int32_t GstMediaSource_InitPipeline(GstMediaSourcesContext_t* pCtx);
 
 /**
  * @brief Initialize video transceiver
@@ -128,7 +106,7 @@ int32_t GstMediaSource_SetAudioBitrate(GstMediaSourceContext_t *pCtx, guint bitr
 /**
  * @brief Cleanup GStreamer resources
  */
-void GstMediaSource_Cleanup(GstMediaSourceContext_t *pCtx);
+void GstMediaSource_Cleanup(GstMediaSourcesContext_t* pCtx);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

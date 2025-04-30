@@ -171,6 +171,7 @@ static int32_t OnMediaSinkHook( void * pCustom,
 
 static int32_t InitializeGstMediaSource(DemoContext_t* pDemoContext)
 {
+    LogDebug(("InitializeGstMediaSource"));
     int32_t ret = 0;
 
     if (pDemoContext == NULL)
@@ -183,39 +184,11 @@ static int32_t InitializeGstMediaSource(DemoContext_t* pDemoContext)
     {
         ret = GstMediaSource_Init(&pDemoContext->mediaSourceContext,
             OnMediaSinkHook,
-            pDemoContext,
-            TRUE,  // enable video
-            TRUE); // enable audio
-    }
-
-    // Initialize video pipeline
-    if (ret == 0)
-    {
-        ret = GstMediaSource_InitVideoGstreamer(
-            &pDemoContext->mediaSourceContext.videoContext,
-            1280,                // width
-            720,                 // height
-            30,                  // framerate
-            2000,               // bitrate (kbps)
-            NULL                // use default pipeline
-        );
-    }
-
-    // Initialize audio pipeline
-    if (ret == 0)
-    {
-        ret = GstMediaSource_InitAudioGstreamer(
-            &pDemoContext->mediaSourceContext.audioContext,
-            48000,              // sample rate
-            2,                  // channels
-            128,                // bitrate (kbps)
-            NULL                // use default pipeline
-        );
+            pDemoContext);
     }
 
     return ret;
 }
-
 
 
 static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
@@ -1421,7 +1394,7 @@ int main()
         signal( SIGINT, terminateHandler );
 
         /* Initialize metrics. */
-        Metric_Init();
+        // Metric_Init();
     }
 
     if( ret == 0 )
