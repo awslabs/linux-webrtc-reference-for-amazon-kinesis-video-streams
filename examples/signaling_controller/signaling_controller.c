@@ -554,6 +554,9 @@ static SignalingControllerResult_t JoinStorageSession( SignalingControllerContex
         httpRequest.verb = HTTP_POST;
 
         memset( &( httpResponse ), 0, sizeof( HttpResponse_t ) );
+        httpResponse.pContent = &( pCtx->httpResponserBuffer[ 0 ] );
+        httpResponse.contentMaxCapacity = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
+
         ret = HttpSend( pCtx, &( httpRequest ), &( httpResponse ) );
         if( ret != SIGNALING_CONTROLLER_RESULT_OK )
         {
