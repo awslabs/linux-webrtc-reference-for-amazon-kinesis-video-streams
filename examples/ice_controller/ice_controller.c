@@ -741,7 +741,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
     IceResult_t iceResult;
     uint8_t acceptCandidate = 0U;
     #if LIBRARY_LOG_LEVEL >= LOG_INFO
-        char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET6_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( ( pCtx == NULL ) || ( pRemoteCandidate == NULL ) )
