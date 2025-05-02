@@ -31,12 +31,24 @@ cmake -S . -B build
 make -C build
 ```
 
+**Note**: Install the following packages to auto build GStreamer application:
+    - libgstreamer1.0-dev
+    - libgstreamer-plugins-base1.0-dev
+    - libgstreamer-plugins-bad1.0-dev
+
+    On Ubuntu/Debian:
+    sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev
+
+    On Fedora:
+    sudo dnf install gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-bad-free-devel
+
 **Note**: `BUILD_USRSCTP_LIBRARY` flag can be used to disable data channel and the build of `usrsctp` library. It can be used like: `cmake -S . -B build -DBUILD_USRSCTP_LIBRARY=OFF`
 
 ## Execute
 
 ```
 ./build/WebRTCLinuxApplicationMaster
+./build/WebRTCLinuxApplicationGstMaster
 ```
 
 ## Output Sample
@@ -74,7 +86,7 @@ ret = PeerConnection_SetSenderBandwidthEstimationCallback(  pSession,
 
 ## JoinStorageSession support
 
-JoinStorageSession enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities. 
+JoinStorageSession enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities.
 
 In our implementation (Master participant only):
 1. First connect to Kinesis Video Streams with WebRTC Signaling.

@@ -309,14 +309,13 @@ target_compile_options(WebRTCLinuxApplicationMaster PRIVATE -Wall -Werror)
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GST REQUIRED
+pkg_check_modules(GST
     gstreamer-1.0
     gstreamer-app-1.0
     gstreamer-video-1.0
     gstreamer-audio-1.0)
 
 if(GST_FOUND)
-
 
 file(
   GLOB
@@ -443,4 +442,6 @@ endif()
 
 target_compile_options(WebRTCLinuxApplicationGstMaster PRIVATE -Wall -Werror)
 
+else()
+    message(WARNING "GStreamer packages not found - GStreamer applications will not be built")
 endif()
