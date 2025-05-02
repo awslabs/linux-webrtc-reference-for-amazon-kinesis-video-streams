@@ -1461,9 +1461,36 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
     {
         const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
 
-        if( ( pIceEndpoint != NULL ) && ( pIpBuffer != NULL ) && ( ipBufferLength >= INET_ADDRSTRLEN ) )
+        if( ( pIceEndpoint != NULL ) && ( pIpBuffer != NULL ) )
         {
-            ret = inet_ntop( AF_INET, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
+            switch( pIceEndpoint->transportAddress.family )
+            {
+                case STUN_ADDRESS_IPv4:
+                    ret = inet_ntop( AF_INET, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
+                    if( ret == NULL )
+                    {
+                        /*
+                         * IP address to string conversion failed due to insufficient buffer size.
+                         * Required: IPv4 (16 bytes), IPv6 (46 bytes)
+                         */
+                        ret = "Masked IPv4 Address";
+                    }
+                    break;
+                case STUN_ADDRESS_IPv6:
+                    ret = inet_ntop( AF_INET6, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
+                    if( ret == NULL )
+                    {
+                        /*
+                         * IP address to string conversion failed due to insufficient buffer size.
+                         * Required: IPv4 (16 bytes), IPv6 (46 bytes)
+                         */
+                        ret = "Masked IPv6 Address";
+                    }
+                    break;
+                default:
+                    ret = "Unsupported IP Family";
+                    break;
+            }
         }
 
         return ret;
