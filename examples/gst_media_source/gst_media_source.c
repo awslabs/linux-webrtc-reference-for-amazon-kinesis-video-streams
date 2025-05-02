@@ -114,60 +114,6 @@ static gboolean ensure_pipeline_playing( GstMediaSourceContext_t * pCtx )
     return TRUE;
 }
 
-#define DEBUG_H264_PACKETS 0
-#if DEBUG_H264_PACKETS
-    static void debug_h264_packet( const uint8_t * data,
-                                   size_t size )
-    {
-        if( size < 5 )
-            return;
-
-        uint32_t i;
-        for( i = 0; i < size - 4; i++ ) {
-            if( ( data[i] == 0x00 ) && ( data[i + 1] == 0x00 ) &&
-                ( ( data[i + 2] == 0x01 ) || ( ( data[i + 2] == 0x00 ) && ( data[i + 3] == 0x01 ) ) ) )
-            {
-
-                i += ( data[i + 2] == 0x01 ) ? 3 : 4;
-                uint8_t nal_type = data[i] & 0x1F;
-                const char * nal_type_str;
-
-                switch( nal_type ) {
-                    case 1:  nal_type_str = "SLICE"; break;
-                    case 5:  nal_type_str = "IDR"; break;
-                    case 6:  nal_type_str = "SEI"; break;
-                    case 7:  nal_type_str = "SPS"; break;
-                    case 8:  nal_type_str = "PPS"; break;
-                    case 9:  nal_type_str = "AUD"; break;
-                    default: nal_type_str = "OTHER"; break;
-                }
-
-                LogDebug( ( "H264 packet: size=%zu, NAL type=%d (%s)",
-                            size, nal_type, nal_type_str ) );
-                return;
-            }
-        }
-    }
-#endif
-
-#define DEBUG_OPUS_PACKETS 0
-#if DEBUG_OPUS_PACKETS
-    static void debug_opus_packet( const uint8_t * data,
-                                   size_t size )
-    {
-        if( size < 1 )
-            return;
-
-        uint8_t toc = data[0];
-        uint8_t config = ( toc >> 3 ) & 0x1F;
-        uint8_t s = ( toc >> 2 ) & 0x1;
-        uint8_t c = toc & 0x3;
-
-        LogDebug( ( "Opus packet: size=%zu, config=%u, s=%u, c=%u",
-                    size, config, s, c ) );
-    }
-#endif
-
 static void on_new_video_sample(GstElement *sink, gpointer user_data) {
     GstMediaSourceContext_t * pVideoContext = (GstMediaSourceContext_t *)user_data;
     webrtc_frame_t frame;
@@ -221,8 +167,6 @@ static void on_new_video_sample(GstElement *sink, gpointer user_data) {
     }
     gst_sample_unref(sample);
 }
-
-
 
 static void * VideoTx_Task(void * pParameter) {
     LogDebug(("VideoTx_Task started"));
