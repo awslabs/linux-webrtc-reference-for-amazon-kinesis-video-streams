@@ -168,98 +168,93 @@ static gboolean ensure_pipeline_playing( GstMediaSourceContext_t * pCtx )
     }
 #endif
 
-static void * VideoTx_Task( void * pParameter )
-{
-    LogDebug( ( "VideoTx_Task started" ) );
-    GstMediaSourceContext_t * pVideoContext = ( GstMediaSourceContext_t * )pParameter;
+static void on_new_video_sample(GstElement *sink, gpointer user_data) {
+    GstMediaSourceContext_t * pVideoContext = (GstMediaSourceContext_t *)user_data;
     webrtc_frame_t frame;
-    GstBuffer * buffer;
+    GstBuffer *buffer;
     GstMapInfo map;
-    GstSample * sample;
-    #if LIBRARY_LOG_LEVEL >= LOG_DEBUG
-        int frame_count = 0;
-    #endif
-    gboolean waiting_for_keyframe = TRUE;
+    GstSample *sample;
 
-    if( !pVideoContext )
-    {
-        LogError( ( "Invalid video context" ) );
+    #if LIBRARY_LOG_LEVEL >= LOG_DEBUG
+    int frame_count = 0;
+    #endif
+
+    if (!pVideoContext || !pVideoContext->numReadyPeer) {
+        return;
+    }
+
+    sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
+    if (!sample) {
+        return;
+    }
+
+    buffer = gst_sample_get_buffer(sample);
+
+    if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
+        frame.pData = map.data;
+        frame.size = map.size;
+        frame.flags = FRAME_FLAG_NONE;
+        frame.freeData = 0;
+        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+
+        if (GST_BUFFER_PTS_IS_VALID(buffer)) {
+            frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
+        } else {
+            static uint64_t running_time = 0;
+            frame.timestampUs = running_time;
+            running_time += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
+        }
+
+        #if DEBUG_H264_PACKETS
+            debug_h264_packet(frame.pData, frame.size);
+        #endif
+
+        if (pVideoContext->pSourcesContext->onMediaSinkHookFunc) {
+            LogVerbose(("Sending video frame: size=%zu, ts=%lu",
+                        frame.size, frame.timestampUs));
+            (void)pVideoContext->pSourcesContext->onMediaSinkHookFunc(
+                pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
+                &frame);
+        }
+
+        gst_buffer_unmap(buffer, &map);
+    }
+    gst_sample_unref(sample);
+}
+
+
+
+static void * VideoTx_Task(void * pParameter) {
+    LogDebug(("VideoTx_Task started"));
+    GstMediaSourceContext_t * pVideoContext = ( GstMediaSourceContext_t * )pParameter;
+
+    if (!pVideoContext) {
+        LogError(("Invalid audio context"));
         return NULL;
     }
 
-    frame.timestampUs = 0;
-    frame.freeData = 0;
-    frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+    // Set up appsink properties
+    g_object_set(G_OBJECT(pVideoContext->appsink),
+                "emit-signals", TRUE,
+                "sync", TRUE,
+                NULL);
 
-    while( pVideoContext->is_running )
-    {
-        if( pVideoContext->numReadyPeer != 0 )
-        {
-            sample = gst_app_sink_pull_sample( GST_APP_SINK( pVideoContext->appsink ) );
-            if( sample )
-            {
-                buffer = gst_sample_get_buffer( sample );
+    // Connect to new-sample signal
+    g_signal_connect(pVideoContext->appsink, "new-sample",
+                    G_CALLBACK(on_new_video_sample), pVideoContext);
 
-                if( gst_buffer_map( buffer,
-                                    &map,
-                                    GST_MAP_READ ) )
-                {
-                    gboolean is_keyframe = !GST_BUFFER_FLAG_IS_SET( buffer,
-                                                                    GST_BUFFER_FLAG_DELTA_UNIT );
+    // Create main loop
+    GMainLoop *loop = g_main_loop_new(NULL, FALSE);
+    pVideoContext->main_loop = loop;
 
-                    if( !waiting_for_keyframe || is_keyframe )
-                    {
-                        frame.pData = map.data;
-                        frame.size = map.size;
-                        frame.flags = is_keyframe ? FRAME_FLAG_KEY_FRAME : FRAME_FLAG_NONE;
+    // Run the main loop
+    g_main_loop_run(loop);
 
-                        if( GST_BUFFER_PTS_IS_VALID( buffer ) )
-                        {
-                            frame.timestampUs = GST_BUFFER_PTS( buffer ) / 1000;
-                        }
-                        else {
-                            frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
-                        }
-
-                        if( is_keyframe )
-                        {
-                            waiting_for_keyframe = FALSE;
-                            LogInfo( ( "Sending keyframe, size=%u", ( unsigned int )frame.size ) );
-                        }
-
-                        #if DEBUG_H264_PACKETS
-                            debug_h264_packet( frame.pData,
-                                               frame.size );
-                        #endif
-
-                        if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
-                        {
-                            LogDebug( ( "Sending video frame %d: size=%u, ts=%lu, keyframe=%d",
-                                        frame_count++, ( unsigned int )frame.size,
-                                        frame.timestampUs,
-                                        is_keyframe ? 1 : 0 ) );
-                            ( void )pVideoContext->pSourcesContext->onMediaSinkHookFunc(
-                                pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
-                                &frame );
-                        }
-                    }
-                    else
-                    {
-                        LogDebug( ( "Waiting for keyframe..." ) );
-                    }
-
-                    gst_buffer_unmap( buffer,
-                                      &map );
-                }
-                gst_sample_unref( sample );
-            }
-        }
-        usleep( SAMPLE_VIDEO_FRAME_DURATION_IN_US );
-    }
-
-    LogDebug( ( "VideoTx_Task ending" ) );
+    g_main_loop_unref(loop);
+    LogDebug(("VideoTx_Task ending"));
     return NULL;
 }
+
 
 static void on_new_audio_sample(GstElement *sink, gpointer user_data) {
     GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)user_data;
