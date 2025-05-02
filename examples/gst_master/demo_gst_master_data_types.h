@@ -13,7 +13,7 @@ extern "C" {
 #include "sdp_controller.h"
 #include "signaling_controller.h"
 #include "peer_connection.h"
-#include "app_media_source.h"
+#include "../gst_media_source/gst_media_source.h"
 
 #define DEMO_SDP_BUFFER_MAX_LENGTH ( 10000 )
 #define DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ( 0 )
@@ -47,7 +47,8 @@ typedef struct DemoContext
 
     /* Peer Connection. */
     DemoPeerConnectionSession_t peerConnectionSessions[ AWS_MAX_VIEWER_NUM ];
-    AppMediaSourcesContext_t appMediaSourcesContext;
+    GstMediaSourcesContext_t mediaSourceContext;
+
 } DemoContext_t;
 
 /* *INDENT-OFF* */
