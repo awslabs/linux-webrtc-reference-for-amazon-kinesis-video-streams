@@ -150,7 +150,9 @@ static void* VideoTx_Task(void* pParameter)
     GstBuffer* buffer;
     GstMapInfo map;
     GstSample* sample;
+    #if LIBRARY_LOG_LEVEL >= LOG_DEBUG
     int frame_count = 0;
+    #endif
     gboolean waiting_for_keyframe = TRUE;
 
     if (!pVideoContext) {
