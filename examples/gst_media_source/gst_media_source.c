@@ -10,10 +10,6 @@
 #include "logging.h"
 
 #define DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND ( 3 )
-#define DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE ( 4 * 1024 * 1024 )
-#define DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE ( 1000 * 1024 )
-#define SAMPLE_AUDIO_FRAME_DURATION_IN_US ( 20 * 1000 )
-#define SAMPLE_VIDEO_FRAME_DURATION_IN_US ( ( 1000 * 1000 ) / 25 ) // 25 FPS
 
 #define DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID "myKvsVideoStream"
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
@@ -121,10 +117,6 @@ static void on_new_video_sample(GstElement *sink, gpointer user_data) {
     GstMapInfo map;
     GstSample *sample;
 
-    #if LIBRARY_LOG_LEVEL >= LOG_DEBUG
-    int frame_count = 0;
-    #endif
-
     if (!pVideoContext || !pVideoContext->numReadyPeer) {
         return;
     }
@@ -142,18 +134,7 @@ static void on_new_video_sample(GstElement *sink, gpointer user_data) {
         frame.flags = FRAME_FLAG_NONE;
         frame.freeData = 0;
         frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-
-        if (GST_BUFFER_PTS_IS_VALID(buffer)) {
-            frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
-        } else {
-            static uint64_t running_time = 0;
-            frame.timestampUs = running_time;
-            running_time += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
-        }
-
-        #if DEBUG_H264_PACKETS
-            debug_h264_packet(frame.pData, frame.size);
-        #endif
+        frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
 
         if (pVideoContext->pSourcesContext->onMediaSinkHookFunc) {
             LogVerbose(("Sending video frame: size=%zu, ts=%lu",
@@ -176,12 +157,6 @@ static void * VideoTx_Task(void * pParameter) {
         LogError(("Invalid audio context"));
         return NULL;
     }
-
-    // Set up appsink properties
-    g_object_set(G_OBJECT(pVideoContext->appsink),
-                "emit-signals", TRUE,
-                "sync", TRUE,
-                NULL);
 
     // Connect to new-sample signal
     g_signal_connect(pVideoContext->appsink, "new-sample",
@@ -224,18 +199,7 @@ static void on_new_audio_sample(GstElement *sink, gpointer user_data) {
         frame.flags = FRAME_FLAG_NONE;
         frame.freeData = 0;
         frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-
-        if (GST_BUFFER_PTS_IS_VALID(buffer)) {
-            frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
-        } else {
-            static uint64_t running_time = 0;
-            frame.timestampUs = running_time;
-            running_time += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
-        }
-
-        #if DEBUG_OPUS_PACKETS
-            debug_opus_packet(frame.pData, frame.size);
-        #endif
+        frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
 
         if (pAudioContext->pSourcesContext->onMediaSinkHookFunc) {
             LogVerbose(("Sending audio frame: size=%zu, ts=%lu",
@@ -258,12 +222,6 @@ static void * AudioTx_Task(void * pParameter) {
         LogError(("Invalid audio context"));
         return NULL;
     }
-
-    // Set up appsink properties
-    g_object_set(G_OBJECT(pAudioContext->appsink),
-                "emit-signals", TRUE,
-                "sync", TRUE,
-                NULL);
 
     // Connect to new-sample signal
     g_signal_connect(pAudioContext->appsink, "new-sample",
@@ -338,7 +296,7 @@ int32_t GstMediaSource_InitPipeline( GstMediaSourcesContext_t * pCtx )
     gchar * pipeline_desc = g_strdup_printf(
         "autovideosrc ! videoconvert ! "
         "x264enc name=videoEncoder "
-        "tune=zerolatency speed-preset=ultrafast "
+        "tune=zerolatency speed-preset=veryfast "
         "key-int-max=30 bitrate=2000 bframes=0 ref=1 "
         "byte-stream=true aud=false insert-vui=true ! "
         "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
@@ -448,8 +406,6 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
 
     // Create threads for video and audio tasks
     pthread_t videoTid, audioTid;
-    pCtx->videoContext.is_running = TRUE;
-    pCtx->audioContext.is_running = TRUE;
 
     if( pthread_create( &videoTid,
                         NULL,
@@ -467,7 +423,6 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                         &pCtx->audioContext ) != 0 )
     {
         LogError( ( "Failed to create audio task" ) );
-        pCtx->videoContext.is_running = FALSE;
         pthread_join( videoTid,
                       NULL );
         GstMediaSource_Cleanup( pCtx );
@@ -501,7 +456,18 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
                               TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
 
     pVideoTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
-    pVideoTransceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE;
+
+    // Get video encoder properties
+    if (pCtx->videoContext.encoder) {
+        guint bitrate;
+        g_object_get(G_OBJECT(pCtx->videoContext.encoder), "bitrate", &bitrate, NULL);
+        // Convert from kbps to bps
+        pVideoTransceiver->rollingbufferBitRate = bitrate * 1000;
+    } else {
+        // Fallback to default if encoder not available
+        LogError( ( "Failed to get video encoder element" ) );
+        return -1;
+    }
 
     strncpy( pVideoTransceiver->streamId,
              DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
@@ -539,7 +505,17 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
                               TRANSCEIVER_RTC_CODEC_OPUS_BIT );
 
     pAudioTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
-    pAudioTransceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE;
+
+    GstElement* audioEncoder = gst_bin_get_by_name(GST_BIN(pCtx->audioContext.pipeline), "sampleAudioEncoder");
+    if (audioEncoder) {
+        guint bitrate;
+        g_object_get(G_OBJECT(audioEncoder), "bitrate", &bitrate, NULL);
+        pAudioTransceiver->rollingbufferBitRate = bitrate;
+        gst_object_unref(audioEncoder);
+    } else {
+        LogError( ( "Failed to get audio encoder element" ) );
+        return -1;
+    }
 
     strncpy( pAudioTransceiver->streamId,
              DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
@@ -557,15 +533,10 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
     return 0;
 }
 
-
 void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
 {
     if( !pCtx )
         return;
-
-    // Stop threads
-    pCtx->videoContext.is_running = FALSE;
-    pCtx->audioContext.is_running = FALSE;
 
     // Stop main loops if they exist
     if (pCtx->videoContext.main_loop) {

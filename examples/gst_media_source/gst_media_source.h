@@ -41,10 +41,7 @@ typedef struct GstMediaSourceContext
     /* GStreamer pipeline elements */
     GstElement *pipeline;
     GstElement *appsink;
-    GstElement *encoder;    // Reference to encoder for bitrate control
-
-    gboolean is_running;   // Pipeline state flag
-
+    GstElement *encoder;
     GMainLoop *main_loop;
 } GstMediaSourceContext_t;
 
