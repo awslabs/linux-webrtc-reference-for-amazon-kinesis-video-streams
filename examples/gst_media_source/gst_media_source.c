@@ -331,6 +331,7 @@ int32_t GstMediaSource_InitPipeline(GstMediaSourcesContext_t* pCtx)
 {
     if (!pCtx) return -1;
 
+    // from kvs lib
     // "autovideosrc ! queue ! videoconvert ! video/x-raw,width=1280,height=720,framerate=25/1 ! "
     // "x264enc name=sampleVideoEncoder bframes=0 speed-preset=veryfast bitrate=512 byte-stream=TRUE tune=zerolatency ! "
     // "video/x-h264,stream-format=byte-stream,alignment=au,profile=baseline ! appsink sync=TRUE emit-signals=TRUE "
@@ -338,28 +339,19 @@ int32_t GstMediaSource_InitPipeline(GstMediaSourcesContext_t* pCtx)
     // "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=sampleAudioEncoder ! "
     // "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE name=appsink-audio",
 
-
-
     gchar* pipeline_desc = g_strdup_printf(
-        "videotestsrc pattern=ball is-live=TRUE ! "
-        "video/x-raw,width=1280,height=720,framerate=25/1,format=I420 ! "
-        "videoconvert ! "
-        "x264enc name=videoEncoder "
-        "tune=zerolatency speed-preset=ultrafast "
-        "key-int-max=30 bitrate=2000 bframes=0 ref=1 "
-        "byte-stream=true aud=false insert-vui=true "
-        "annexb=true repeat-headers=true ! "
-        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
-        "h264parse config-interval=1 ! "
-        "queue max-size-buffers=2 ! "
-        "appsink name=vsink sync=true emit-signals=true max-buffers=1 drop=true "
-        "audiotestsrc wave=ticks is-live=TRUE ! "
-        "audio/x-raw,rate=48000,channels=2 ! "
-        "audioconvert ! audioresample ! "
-        "opusenc bitrate=128000 ! "
-        "audio/x-opus,rate=48000,channels=2 ! "
-        "queue max-size-buffers=2 ! "
-        "appsink name=asink sync=true emit-signals=true max-buffers=1 drop=true");
+    "autovideosrc ! videoconvert ! "
+    "x264enc name=videoEncoder "
+    "tune=zerolatency speed-preset=ultrafast "
+    "key-int-max=30 bitrate=2000 bframes=0 ref=1 "
+    "byte-stream=true aud=false insert-vui=true ! "
+    "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
+    "h264parse config-interval=1 ! "
+    "queue max-size-buffers=2 ! "
+    "appsink name=vsink sync=true emit-signals=true max-buffers=1 drop=true "
+        "autoaudiosrc ! "
+        "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=sampleAudioEncoder ! "
+        "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE name=asink");
 
     GError* error = NULL;
     pCtx->videoContext.pipeline = gst_parse_launch(pipeline_desc, &error);
