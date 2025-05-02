@@ -44,6 +44,8 @@ typedef struct GstMediaSourceContext
     GstElement *encoder;    // Reference to encoder for bitrate control
 
     gboolean is_running;   // Pipeline state flag
+
+    GMainLoop *main_loop;
 } GstMediaSourceContext_t;
 
 struct GstMediaSourcesContext {

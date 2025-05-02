@@ -261,76 +261,84 @@ static void * VideoTx_Task( void * pParameter )
     return NULL;
 }
 
-static void * AudioTx_Task( void * pParameter )
-{
-    LogDebug( ( "AudioTx_Task started" ) );
-    GstMediaSourceContext_t * pAudioContext = ( GstMediaSourceContext_t * )pParameter;
+static void on_new_sample(GstElement *sink, gpointer user_data) {
+    GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)user_data;
     webrtc_frame_t frame;
-    GstBuffer * buffer;
+    GstBuffer *buffer;
     GstMapInfo map;
-    GstSample * sample;
+    GstSample *sample;
 
-    if( !pAudioContext )
-    {
-        LogError( ( "Invalid audio context" ) );
+    if (!pAudioContext || !pAudioContext->numReadyPeer) {
+        return;
+    }
+
+    sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
+    if (!sample) {
+        return;
+    }
+
+    buffer = gst_sample_get_buffer(sample);
+
+    if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
+        frame.pData = map.data;
+        frame.size = map.size;
+        frame.flags = FRAME_FLAG_NONE;
+        frame.freeData = 0;
+        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+
+        if (GST_BUFFER_PTS_IS_VALID(buffer)) {
+            frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
+        } else {
+            static uint64_t running_time = 0;
+            frame.timestampUs = running_time;
+            running_time += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
+        }
+
+        #if DEBUG_OPUS_PACKETS
+            debug_opus_packet(frame.pData, frame.size);
+        #endif
+
+        if (pAudioContext->pSourcesContext->onMediaSinkHookFunc) {
+            LogVerbose(("Sending audio frame: size=%zu, ts=%lu",
+                        frame.size, frame.timestampUs));
+            (void)pAudioContext->pSourcesContext->onMediaSinkHookFunc(
+                pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
+                &frame);
+        }
+
+        gst_buffer_unmap(buffer, &map);
+    }
+    gst_sample_unref(sample);
+}
+
+static void * AudioTx_Task(void * pParameter) {
+    LogDebug(("AudioTx_Task started"));
+    GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)pParameter;
+    GMainLoop *loop;
+
+    if (!pAudioContext) {
+        LogError(("Invalid audio context"));
         return NULL;
     }
 
-    frame.timestampUs = 0;
-    frame.freeData = 0;
-    frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+    // Connect to new-sample signal
+    g_signal_connect(pAudioContext->appsink, "new-sample",
+                    G_CALLBACK(on_new_sample), pAudioContext);
 
-    while( pAudioContext->is_running )
-    {
-        if( pAudioContext->numReadyPeer != 0 )
-        {
-            sample = gst_app_sink_pull_sample( GST_APP_SINK( pAudioContext->appsink ) );
-            if( sample )
-            {
-                buffer = gst_sample_get_buffer( sample );
+    // Create and run main loop
+    loop = g_main_loop_new(NULL, FALSE);
+    pAudioContext->main_loop = loop;
 
-                if( gst_buffer_map( buffer,
-                                    &map,
-                                    GST_MAP_READ ) )
-                {
-                    frame.pData = map.data;
-                    frame.size = map.size;
-                    frame.flags = FRAME_FLAG_NONE;
-
-                    if( GST_BUFFER_PTS_IS_VALID( buffer ) )
-                    {
-                        frame.timestampUs = GST_BUFFER_PTS( buffer ) / 1000;
-                    }
-                    else {
-                        frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
-                    }
-
-                    #if DEBUG_OPUS_PACKETS
-                        debug_opus_packet( frame.pData,
-                                           frame.size );
-                    #endif
-
-                    if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
-                    {
-                        LogVerbose( ( "Sending audio frame: size=%zu, ts=%lu",
-                                      frame.size, frame.timestampUs ) );
-                        ( void )pAudioContext->pSourcesContext->onMediaSinkHookFunc(
-                            pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
-                            &frame );
-                    }
-
-                    gst_buffer_unmap( buffer,
-                                      &map );
-                }
-                gst_sample_unref( sample );
-            }
-        }
-        usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
+    while (pAudioContext->is_running) {
+        g_main_context_iteration(NULL, FALSE);
+        g_usleep(1000); // Small sleep to prevent CPU spinning
     }
 
-    LogDebug( ( "AudioTx_Task ending" ) );
+    g_main_loop_unref(loop);
+    LogDebug(("AudioTx_Task ending"));
     return NULL;
 }
+
 
 static int32_t HandlePcEventCallback( void * pCustomContext,
                                       TransceiverCallbackEvent_t event,
@@ -530,6 +538,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
     LogInfo( ( "GstMediaSource initialized successfully" ) );
     return 0;
 }
+
 int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pVideoTransceiver )
 {
@@ -615,6 +624,14 @@ void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
     // Stop threads
     pCtx->videoContext.is_running = FALSE;
     pCtx->audioContext.is_running = FALSE;
+
+    // Stop main loops if they exist
+    if (pCtx->videoContext.main_loop) {
+        g_main_loop_quit(pCtx->videoContext.main_loop);
+    }
+    if (pCtx->audioContext.main_loop) {
+        g_main_loop_quit(pCtx->audioContext.main_loop);
+    }
 
     // Give threads time to exit
     g_usleep( 100000 );  // 100ms
