@@ -24,14 +24,6 @@ typedef struct {
     uint8_t freeData;  /* indicate user need to free pData after using it */
 } webrtc_frame_t;
 
-#define DEFAULT_VIDEO_WIDTH 1280
-#define DEFAULT_VIDEO_HEIGHT 720
-#define DEFAULT_VIDEO_FRAMERATE 25
-#define DEFAULT_AUDIO_SAMPLE_RATE 48000
-#define DEFAULT_AUDIO_CHANNELS 2
-#define DEFAULT_VIDEO_BITRATE 512
-#define DEFAULT_AUDIO_BITRATE 64
-
 // Frame flags
 #define FRAME_FLAG_NONE 0
 #define FRAME_FLAG_KEY_FRAME 1
@@ -51,13 +43,6 @@ typedef struct GstMediaSourceContext
     GstElement *appsink;
     GstElement *encoder;    // Reference to encoder for bitrate control
 
-    /* GStreamer pipeline configuration */
-    guint width;           // Video width (for video only)
-    guint height;          // Video height (for video only)
-    guint framerate;       // Frames per second (for video only)
-    guint sample_rate;     // Audio sample rate (for audio only)
-    guint channels;        // Number of audio channels (for audio only)
-    guint bitrate;         // Encoding bitrate
     gboolean is_running;   // Pipeline state flag
 } GstMediaSourceContext_t;
 
