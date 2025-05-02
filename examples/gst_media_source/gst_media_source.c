@@ -261,7 +261,7 @@ static void * VideoTx_Task( void * pParameter )
     return NULL;
 }
 
-static void on_new_sample(GstElement *sink, gpointer user_data) {
+static void on_new_audio_sample(GstElement *sink, gpointer user_data) {
     GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)user_data;
     webrtc_frame_t frame;
     GstBuffer *buffer;
@@ -314,25 +314,28 @@ static void on_new_sample(GstElement *sink, gpointer user_data) {
 static void * AudioTx_Task(void * pParameter) {
     LogDebug(("AudioTx_Task started"));
     GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)pParameter;
-    GMainLoop *loop;
 
     if (!pAudioContext) {
         LogError(("Invalid audio context"));
         return NULL;
     }
 
+    // Set up appsink properties
+    g_object_set(G_OBJECT(pAudioContext->appsink),
+                "emit-signals", TRUE,
+                "sync", TRUE,
+                NULL);
+
     // Connect to new-sample signal
     g_signal_connect(pAudioContext->appsink, "new-sample",
-                    G_CALLBACK(on_new_sample), pAudioContext);
+                    G_CALLBACK(on_new_audio_sample), pAudioContext);
 
-    // Create and run main loop
-    loop = g_main_loop_new(NULL, FALSE);
+    // Create main loop
+    GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     pAudioContext->main_loop = loop;
 
-    while (pAudioContext->is_running) {
-        g_main_context_iteration(NULL, FALSE);
-        g_usleep(1000); // Small sleep to prevent CPU spinning
-    }
+    // Run the main loop
+    g_main_loop_run(loop);
 
     g_main_loop_unref(loop);
     LogDebug(("AudioTx_Task ending"));
