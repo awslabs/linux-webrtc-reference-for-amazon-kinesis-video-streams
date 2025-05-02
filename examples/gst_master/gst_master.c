@@ -813,7 +813,7 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 
         if( pFrame != NULL )
         {
-            LogDebug( ( "Received video frame with length: %u", pFrame->dataLength ) );
+            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
 
             frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
             frame.pData = pFrame->pData;
@@ -843,7 +843,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
 
         if( pFrame != NULL )
         {
-            LogDebug( ( "Received audio frame with length: %u", pFrame->dataLength ) );
+            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
 
             frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
             frame.pData = pFrame->pData;
@@ -949,7 +949,7 @@ static void HandleSdpOffer( DemoContext_t * pDemoContext,
                                                                     &bufferSessionDescription );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
-            LogWarn( ( "PeerConnection_AddRemoteCandidate fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
+            LogWarn( ( "PeerConnection_SetRemoteDescription fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
         }
     }
 
@@ -1344,7 +1344,9 @@ int main()
         sslCreds.pDeviceCertPath = NULL;
         sslCreds.pDeviceKeyPath = NULL;
     #endif
-
+    #if ( JOIN_STORAGE_SESSION != 0 )
+        connectInfo.enableStorageSession = 1U;
+    #endif
     connectInfo.awsConfig.pRegion = AWS_REGION;
     connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
     connectInfo.awsConfig.pService = "kinesisvideo";
@@ -1394,7 +1396,7 @@ int main()
         signal( SIGINT, terminateHandler );
 
         /* Initialize metrics. */
-        // Metric_Init();
+        Metric_Init();
     }
 
     if( ret == 0 )

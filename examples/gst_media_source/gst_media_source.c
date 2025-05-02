@@ -351,7 +351,7 @@ int32_t GstMediaSource_InitPipeline(GstMediaSourcesContext_t* pCtx)
     "appsink name=vsink sync=true emit-signals=true max-buffers=1 drop=true "
         "autoaudiosrc ! "
         "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=sampleAudioEncoder ! "
-        "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE name=asink");
+        "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE max-buffers=1 drop=true name=asink ");
 
     GError* error = NULL;
     pCtx->videoContext.pipeline = gst_parse_launch(pipeline_desc, &error);
@@ -375,21 +375,6 @@ int32_t GstMediaSource_InitPipeline(GstMediaSourcesContext_t* pCtx)
         LogError(("Failed to get audio appsink"));
         return -1;
     }
-
-    // Configure sinks
-    g_object_set(G_OBJECT(pCtx->videoContext.appsink),
-                "emit-signals", TRUE,
-                "sync", TRUE,
-                "max-buffers", 1,
-                "drop", TRUE,
-                NULL);
-
-    g_object_set(G_OBJECT(pCtx->audioContext.appsink),
-                "emit-signals", TRUE,
-                "sync", TRUE,
-                "max-buffers", 1,
-                "drop", TRUE,
-                NULL);
 
     // Share the pipeline between video and audio contexts
     pCtx->audioContext.pipeline = pCtx->videoContext.pipeline;

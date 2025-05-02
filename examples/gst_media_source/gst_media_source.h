@@ -94,16 +94,6 @@ int32_t GstMediaSource_InitAudioTransceiver(GstMediaSourcesContext_t *pCtx,
                                            Transceiver_t *pAudioTranceiver);
 
 /**
- * @brief Set video encoder bitrate
- */
-int32_t GstMediaSource_SetVideoBitrate(GstMediaSourceContext_t *pCtx, guint bitrate);
-
-/**
- * @brief Set audio encoder bitrate
- */
-int32_t GstMediaSource_SetAudioBitrate(GstMediaSourceContext_t *pCtx, guint bitrate);
-
-/**
  * @brief Cleanup GStreamer resources
  */
 void GstMediaSource_Cleanup(GstMediaSourcesContext_t* pCtx);
