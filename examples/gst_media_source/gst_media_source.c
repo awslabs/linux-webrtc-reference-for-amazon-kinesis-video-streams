@@ -15,101 +15,6 @@
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
 #define DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID "myAudioTrack"
 
-static gboolean bus_callback( GstBus * bus,
-                              GstMessage * msg,
-                              gpointer data )
-{
-    GstMediaSourceContext_t * ctx = ( GstMediaSourceContext_t * )data;
-
-    switch( GST_MESSAGE_TYPE( msg ) ) {
-        case GST_MESSAGE_ERROR: {
-            GError * err;
-            gchar * debug;
-            gst_message_parse_error( msg,
-                                     &err,
-                                     &debug );
-            LogError( ( "GStreamer error: %s", err->message ) );
-            LogError( ( "Debug info: %s", debug ) );
-            g_error_free( err );
-            g_free( debug );
-            break;
-        }
-        case GST_MESSAGE_WARNING: {
-            GError * err;
-            gchar * debug;
-            gst_message_parse_warning( msg,
-                                       &err,
-                                       &debug );
-            LogWarn( ( "GStreamer warning: %s", err->message ) );
-            LogWarn( ( "Debug info: %s", debug ) );
-            g_error_free( err );
-            g_free( debug );
-            break;
-        }
-        case GST_MESSAGE_STATE_CHANGED: {
-            if( GST_MESSAGE_SRC( msg ) == GST_OBJECT( ctx->pipeline ) )
-            {
-                GstState old_state, new_state, pending;
-                gst_message_parse_state_changed( msg,
-                                                 &old_state,
-                                                 &new_state,
-                                                 &pending );
-                LogInfo( ( "Pipeline state changed from %s to %s",
-                           gst_element_state_get_name( old_state ),
-                           gst_element_state_get_name( new_state ) ) );
-            }
-            break;
-        }
-        default:
-            break;
-    }
-    return TRUE;
-}
-
-static gboolean ensure_pipeline_playing( GstMediaSourceContext_t * pCtx )
-{
-    GstStateChangeReturn ret;
-    GstState state;
-    GstState pending;
-
-    if( !pCtx || !pCtx->pipeline )
-        return FALSE;
-
-    ret = gst_element_get_state( pCtx->pipeline,
-                                 &state,
-                                 &pending,
-                                 GST_SECOND * 5 );
-
-    if( ret == GST_STATE_CHANGE_FAILURE )
-    {
-        LogError( ( "Failed to get pipeline state" ) );
-        return FALSE;
-    }
-
-    if( state != GST_STATE_PLAYING )
-    {
-        ret = gst_element_set_state( pCtx->pipeline,
-                                     GST_STATE_PLAYING );
-        if( ret == GST_STATE_CHANGE_FAILURE )
-        {
-            LogError( ( "Failed to set pipeline to PLAYING state" ) );
-            return FALSE;
-        }
-
-        ret = gst_element_get_state( pCtx->pipeline,
-                                     NULL,
-                                     NULL,
-                                     GST_SECOND * 5 );
-        if( ret == GST_STATE_CHANGE_FAILURE )
-        {
-            LogError( ( "Pipeline failed to reach PLAYING state" ) );
-            return FALSE;
-        }
-    }
-
-    return TRUE;
-}
-
 static void on_new_video_sample(GstElement *sink, gpointer user_data) {
     GstMediaSourceContext_t * pVideoContext = (GstMediaSourceContext_t *)user_data;
     webrtc_frame_t frame;
@@ -173,7 +78,6 @@ static void * VideoTx_Task(void * pParameter) {
     LogDebug(("VideoTx_Task ending"));
     return NULL;
 }
-
 
 static void on_new_audio_sample(GstElement *sink, gpointer user_data) {
     GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)user_data;
@@ -239,7 +143,6 @@ static void * AudioTx_Task(void * pParameter) {
     return NULL;
 }
 
-
 static int32_t HandlePcEventCallback( void * pCustomContext,
                                       TransceiverCallbackEvent_t event,
                                       TransceiverCallbackContent_t * pEventMsg )
@@ -284,15 +187,6 @@ int32_t GstMediaSource_InitPipeline( GstMediaSourcesContext_t * pCtx )
 {
     if( !pCtx )
         return -1;
-
-    // from kvs lib
-    // "autovideosrc ! queue ! videoconvert ! video/x-raw,width=1280,height=720,framerate=25/1 ! "
-    // "x264enc name=sampleVideoEncoder bframes=0 speed-preset=veryfast bitrate=512 byte-stream=TRUE tune=zerolatency ! "
-    // "video/x-h264,stream-format=byte-stream,alignment=au,profile=baseline ! appsink sync=TRUE emit-signals=TRUE "
-    // "name=appsink-video autoaudiosrc ! "
-    // "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=sampleAudioEncoder ! "
-    // "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE name=appsink-audio",
-
     gchar * pipeline_desc = g_strdup_printf(
         "autovideosrc ! videoconvert ! "
         "x264enc name=videoEncoder "
@@ -348,13 +242,6 @@ int32_t GstMediaSource_InitPipeline( GstMediaSourcesContext_t * pCtx )
         // Non-fatal error, continue without encoder reference
     }
 
-    // Add bus watch
-    GstBus * bus = gst_pipeline_get_bus( GST_PIPELINE( pCtx->videoContext.pipeline ) );
-    gst_bus_add_watch( bus,
-                       ( GstBusFunc )bus_callback,
-                       pCtx );
-    gst_object_unref( bus );
-
     return 0;
 }
 
@@ -396,12 +283,14 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
         return -1;
     }
 
-    // Ensure pipeline is in PLAYING state
-    if( !ensure_pipeline_playing( &pCtx->videoContext ) )
+    GstStateChangeReturn ret;
+    ret = gst_element_set_state( pCtx->videoContext.pipeline,
+                                 GST_STATE_PLAYING );
+    if( ret == GST_STATE_CHANGE_FAILURE )
     {
-        LogError( ( "Failed to start pipeline" ) );
-        GstMediaSource_Cleanup( pCtx );
-        return -1;
+    LogError( ( "Failed to set pipeline to PLAYING state" ) );
+    GstMediaSource_Cleanup( pCtx );
+    return -1;
     }
 
     // Create threads for video and audio tasks
@@ -499,7 +388,7 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
             sizeof( Transceiver_t ) );
 
     pAudioTransceiver->trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-    pAudioTransceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
+    pAudioTransceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDONLY;
 
     TRANSCEIVER_ENABLE_CODEC( pAudioTransceiver->codecBitMap,
                               TRANSCEIVER_RTC_CODEC_OPUS_BIT );

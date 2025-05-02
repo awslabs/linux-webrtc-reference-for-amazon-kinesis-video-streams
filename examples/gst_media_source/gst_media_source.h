@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct GstMediaSourcesContext GstMediaSourcesContext_t;
 typedef int32_t (* GstMediaSourceOnMediaSinkHook)( void * pCustom,
-                                                  webrtc_frame_t * pFrame );
+                                                   webrtc_frame_t * pFrame );
 
 typedef struct GstMediaSourceContext
 {
@@ -39,10 +39,10 @@ typedef struct GstMediaSourceContext
     GstMediaSourcesContext_t * pSourcesContext;
 
     /* GStreamer pipeline elements */
-    GstElement *pipeline;
-    GstElement *appsink;
-    GstElement *encoder;
-    GMainLoop *main_loop;
+    GstElement * pipeline;
+    GstElement * appsink;
+    GstElement * encoder;
+    GMainLoop * main_loop;
 } GstMediaSourceContext_t;
 
 struct GstMediaSourcesContext {
@@ -50,37 +50,37 @@ struct GstMediaSourcesContext {
     GstMediaSourceContext_t audioContext;
     pthread_mutex_t mediaMutex;
     GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc;
-    void* pOnMediaSinkHookCustom;
+    void * pOnMediaSinkHookCustom;
 };
 
 /**
  * @brief Initialize media source context
  */
-int32_t GstMediaSource_Init(GstMediaSourcesContext_t *pCtx,
-                           GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
-                           void *pOnMediaSinkHookCustom);
+int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
+                             GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
+                             void * pOnMediaSinkHookCustom );
 
 /**
  * @brief Initialize GStreamer pipeline
  */
-int32_t GstMediaSource_InitPipeline(GstMediaSourcesContext_t* pCtx);
+int32_t GstMediaSource_InitPipeline( GstMediaSourcesContext_t * pCtx );
 
 /**
  * @brief Initialize video transceiver
  */
-int32_t GstMediaSource_InitVideoTransceiver(GstMediaSourcesContext_t *pCtx,
-                                           Transceiver_t *pVideoTranceiver);
+int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
+                                             Transceiver_t * pVideoTranceiver );
 
 /**
  * @brief Initialize audio transceiver
  */
-int32_t GstMediaSource_InitAudioTransceiver(GstMediaSourcesContext_t *pCtx,
-                                           Transceiver_t *pAudioTranceiver);
+int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
+                                             Transceiver_t * pAudioTranceiver );
 
 /**
  * @brief Cleanup GStreamer resources
  */
-void GstMediaSource_Cleanup(GstMediaSourcesContext_t* pCtx);
+void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
