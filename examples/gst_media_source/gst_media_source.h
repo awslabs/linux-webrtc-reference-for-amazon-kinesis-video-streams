@@ -16,10 +16,6 @@ typedef struct {
     uint8_t freeData;  /* indicate user need to free pData after using it */
 } WebrtcFrame_t;
 
-// Frame flags
-#define FRAME_FLAG_NONE 0
-#define FRAME_FLAG_KEY_FRAME 1
-
 typedef struct GstMediaSourcesContext GstMediaSourcesContext_t;
 typedef int32_t (* GstMediaSourceOnMediaSinkHook)( void * pCustom,
                                                    WebrtcFrame_t * pFrame );
@@ -67,7 +63,7 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
 /**
  * @brief Cleanup media source context
  */
-void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx);
+int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx);
 
 
 #endif /* GST_MEDIA_SOURCE_H */

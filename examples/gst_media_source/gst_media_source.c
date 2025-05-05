@@ -16,15 +16,6 @@
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
 #define DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID "myAudioTrack"
 
-static void on_new_video_sample(GstElement *sink, gpointer user_data);
-static void * VideoTx_Task(void * pParameter);
-static void on_new_audio_sample(GstElement *sink, gpointer user_data);
-static void * AudioTx_Task(void * pParameter);
-static int32_t HandlePcEventCallback( void * pCustomContext,
-                                      TransceiverCallbackEvent_t event,
-                                      TransceiverCallbackContent_t * pEventMsg );
-static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx );
-
 static void on_new_video_sample(GstElement *sink, gpointer user_data)
 {
     GstMediaSourceContext_t * pVideoContext = (GstMediaSourceContext_t *)user_data;
@@ -53,7 +44,6 @@ static void on_new_video_sample(GstElement *sink, gpointer user_data)
     if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
         frame.pData = map.data;
         frame.size = map.size;
-        frame.flags = FRAME_FLAG_NONE;
         frame.freeData = 0;
         frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
         frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
@@ -125,7 +115,6 @@ static void on_new_audio_sample(GstElement *sink, gpointer user_data)
     if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
         frame.pData = map.data;
         frame.size = map.size;
-        frame.flags = FRAME_FLAG_NONE;
         frame.freeData = 0;
         frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
         frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
@@ -259,7 +248,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
             "queue max-size-buffers=2 ! "
             "appsink name=vsink sync=true emit-signals=true max-buffers=1 drop=true "
             "autoaudiosrc ! "
-            "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=sampleAudioEncoder ! "
+            "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=audioEncoder ! "
             "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE max-buffers=1 drop=true name=asink " );
 
         GError * error = NULL;
@@ -295,183 +284,208 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
         pCtx->audioContext.pipeline = pCtx->videoContext.pipeline;
 
         // Get encoder elements for bitrate control
+        pCtx->audioContext.encoder = gst_bin_get_by_name( GST_BIN( pCtx->audioContext.pipeline ),
+                                                          "audioEncoder" );
+        if( !pCtx->audioContext.encoder )
+        {
+            LogError( ( "Failed to get audio encoder element" ) );
+            ret = -1;
+        }
+
+        // Get encoder elements for bitrate control
         pCtx->videoContext.encoder = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
                                                           "videoEncoder" );
         if( !pCtx->videoContext.encoder )
         {
             LogError( ( "Failed to get video encoder element" ) );
-            // Non-fatal error, continue without encoder reference
+            ret = -1;
         }
     }
     return ret;
 }
 
-void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
+int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
 {
-    if( pCtx == NULL )
-        return;
-
-    // Stop main loops if they exist
-    if (pCtx->videoContext.main_loop) {
-        g_main_loop_quit(pCtx->videoContext.main_loop);
-    }
-    if (pCtx->audioContext.main_loop) {
-        g_main_loop_quit(pCtx->audioContext.main_loop);
-    }
-
-    // Give threads time to exit
-    g_usleep( 100000 );  // 100ms
-
-    // Stop pipeline
-    if( pCtx->videoContext.pipeline )
+    int32_t ret = 0;
+    if( ( NULL == pCtx ) )
     {
-        gst_element_set_state( pCtx->videoContext.pipeline,
-                               GST_STATE_NULL );
-        gst_object_unref( pCtx->videoContext.pipeline );
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+        ret = -1;
     }
 
-    // Clean up sinks
-    if( pCtx->videoContext.appsink )
+    if  (0 == ret)
     {
-        gst_object_unref( pCtx->videoContext.appsink );
-    }
-    if( pCtx->audioContext.appsink )
-    {
-        gst_object_unref( pCtx->audioContext.appsink );
+        // Stop main loops if they exist
+        if (pCtx->videoContext.main_loop) {
+            g_main_loop_quit(pCtx->videoContext.main_loop);
+        }
+        if (pCtx->audioContext.main_loop) {
+            g_main_loop_quit(pCtx->audioContext.main_loop);
+        }
+
+        // Stop pipelines (audioContext and videoContext share the same pipeline)
+        if( pCtx->videoContext.pipeline )
+        {
+            gst_element_set_state( pCtx->videoContext.pipeline,
+                                   GST_STATE_NULL );
+            gst_object_unref( pCtx->videoContext.pipeline );
+        }
+
+        // Clean up sinks
+        if( pCtx->videoContext.appsink )
+        {
+            gst_object_unref( pCtx->videoContext.appsink );
+        }
+        if( pCtx->audioContext.appsink )
+        {
+            gst_object_unref( pCtx->audioContext.appsink );
+        }
+
+        // Clean up encoders
+        if( pCtx->videoContext.encoder )
+        {
+            gst_object_unref( pCtx->videoContext.encoder );
+        }
+        if( pCtx->audioContext.encoder )
+        {
+            gst_object_unref( pCtx->audioContext.encoder );
+        }
+
+        // Clean up mutex
+        pthread_mutex_destroy( &pCtx->mediaMutex );
     }
 
-    // Clean up encoders
-    if( pCtx->videoContext.encoder )
-    {
-        gst_object_unref( pCtx->videoContext.encoder );
-    }
-
-    // Clean up mutex
-    pthread_mutex_destroy( &pCtx->mediaMutex );
-
-    LogInfo( ( "GstMediaSource cleaned up" ) );
+    return ret;
 }
 
 int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                              GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
                              void * pOnMediaSinkHookCustom )
 {
+    int32_t ret = 0;
+
     if( !pCtx )
     {
         LogError( ( "Invalid context" ) );
-        return -1;
+        ret = -1;
     }
 
-    gst_init( NULL,
-              NULL );
-    memset( pCtx,
-            0,
-            sizeof( GstMediaSourcesContext_t ) );
-
-    if( pthread_mutex_init( &pCtx->mediaMutex,
-                            NULL ) != 0 )
+    if  (0 == ret)
     {
-        LogError( ( "Failed to create media mutex" ) );
-        return -1;
+        gst_init( NULL,
+                  NULL );
+        memset( pCtx,
+                0,
+                sizeof( GstMediaSourcesContext_t ) );
+
+        if( pthread_mutex_init( &pCtx->mediaMutex,
+                                NULL ) != 0 )
+        {
+            LogError( ( "Failed to create media mutex" ) );
+            ret = -1;
+        }
     }
 
-    pCtx->onMediaSinkHookFunc = onMediaSinkHookFunc;
-    pCtx->pOnMediaSinkHookCustom = pOnMediaSinkHookCustom;
-
-    // Initialize contexts
-    pCtx->videoContext.pSourcesContext = pCtx;
-    pCtx->audioContext.pSourcesContext = pCtx;
-
-    // Initialize single pipeline
-    if( InitPipeline( pCtx ) != 0 )
+    if (0 == ret)
     {
-        LogError( ( "Failed to initialize pipeline" ) );
-        pthread_mutex_destroy( &pCtx->mediaMutex );
-        return -1;
-    }
+        pCtx->onMediaSinkHookFunc = onMediaSinkHookFunc;
+        pCtx->pOnMediaSinkHookCustom = pOnMediaSinkHookCustom;
 
-    // Create threads for video and audio tasks
+        // Initialize contexts
+        pCtx->videoContext.pSourcesContext = pCtx;
+        pCtx->audioContext.pSourcesContext = pCtx;
+
+        // Initialize single pipeline
+        if( InitPipeline( pCtx ) != 0 )
+        {
+            LogError( ( "Failed to initialize pipeline" ) );
+            pthread_mutex_destroy( &pCtx->mediaMutex );
+            ret = -1;
+        }
+    }
     pthread_t videoTid, audioTid;
-
-    if( pthread_create( &videoTid,
-                        NULL,
-                        VideoTx_Task,
-                        &pCtx->videoContext ) != 0 )
+    if (0 == ret)
     {
-        LogError( ( "Failed to create video task" ) );
-        GstMediaSource_Cleanup( pCtx );
-        return -1;
+        if( pthread_create( &videoTid,
+                            NULL,
+                            VideoTx_Task,
+                            &pCtx->videoContext ) != 0 )
+        {
+            LogError( ( "Failed to create video task" ) );
+            GstMediaSource_Cleanup( pCtx );
+            ret = -1;
+        }
     }
 
-    if( pthread_create( &audioTid,
-                        NULL,
-                        AudioTx_Task,
-                        &pCtx->audioContext ) != 0 )
+    if (0 == ret)
     {
-        LogError( ( "Failed to create audio task" ) );
-        pthread_join( videoTid,
-                      NULL );
-        GstMediaSource_Cleanup( pCtx );
-        return -1;
-    }
+        if( pthread_create( &audioTid,
+                            NULL,
+                            AudioTx_Task,
+                            &pCtx->audioContext ) != 0 )
+        {
+            LogError( ( "Failed to create audio task" ) );
+            pthread_join( videoTid,
+                          NULL );
+            GstMediaSource_Cleanup( pCtx );
+            ret = -1;
+        }
 
-    LogInfo( ( "GstMediaSource initialized successfully" ) );
-    return 0;
+        LogInfo( ( "GstMediaSource initialized successfully" ) );
+    }
+    return ret;
 }
 
 int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pVideoTransceiver )
 {
+    int32_t ret = 0;
+
     if( !pCtx || !pVideoTransceiver )
     {
         LogError( ( "Invalid input parameters" ) );
-        return -1;
+        ret = -1;
     }
 
-    memset( pVideoTransceiver,
-            0,
-            sizeof( Transceiver_t ) );
+    if (0 == ret)
+    {
 
-    pVideoTransceiver->trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-    pVideoTransceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
+        memset( pVideoTransceiver,
+                0,
+                sizeof( Transceiver_t ) );
 
-    TRANSCEIVER_ENABLE_CODEC( pVideoTransceiver->codecBitMap,
-                              TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
+        pVideoTransceiver->trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+        pVideoTransceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDONLY;
 
-    pVideoTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
+        TRANSCEIVER_ENABLE_CODEC( pVideoTransceiver->codecBitMap,
+                                  TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
 
-    // Get video encoder properties
-    if (pCtx->videoContext.encoder) {
-        guint bitrate;
+        pVideoTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
+
+        u_int32_t bitrate;
         g_object_get(G_OBJECT(pCtx->videoContext.encoder), "bitrate", &bitrate, NULL);
         // Convert from kbps to bps
         pVideoTransceiver->rollingbufferBitRate = bitrate * 1000;
-    } else {
-        // Fallback to default if encoder not available
-        LogError( ( "Failed to get video encoder element" ) );
-        return -1;
+
+        strncpy( pVideoTransceiver->streamId,
+                 DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
+                 sizeof( pVideoTransceiver->streamId ) - 1 );
+        pVideoTransceiver->streamIdLength = strlen( pVideoTransceiver->streamId );
+
+        strncpy( pVideoTransceiver->trackId,
+                 DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID,
+                 sizeof( pVideoTransceiver->trackId ) - 1 );
+        pVideoTransceiver->trackIdLength = strlen( pVideoTransceiver->trackId );
+
+        pVideoTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
+        pVideoTransceiver->pOnPcEventCustomContext = &pCtx->videoContext;
     }
-
-    strncpy( pVideoTransceiver->streamId,
-             DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
-             sizeof( pVideoTransceiver->streamId ) - 1 );
-    pVideoTransceiver->streamIdLength = strlen( pVideoTransceiver->streamId );
-
-    strncpy( pVideoTransceiver->trackId,
-             DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID,
-             sizeof( pVideoTransceiver->trackId ) - 1 );
-    pVideoTransceiver->trackIdLength = strlen( pVideoTransceiver->trackId );
-
-    pVideoTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
-    pVideoTransceiver->pOnPcEventCustomContext = &pCtx->videoContext;
-
-    return 0;
+    return ret;
 }
 
 int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTransceiver )
 {
-
     int32_t ret = 0;
 
     if( ( pCtx == NULL ) || ( pAudioTransceiver == NULL ) )
@@ -495,32 +509,21 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
 
         pAudioTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
 
-        GstElement* audioEncoder = gst_bin_get_by_name(GST_BIN(pCtx->audioContext.pipeline), "sampleAudioEncoder");
-        if (audioEncoder) {
-            guint bitrate;
-            g_object_get(G_OBJECT(audioEncoder), "bitrate", &bitrate, NULL);
-            pAudioTransceiver->rollingbufferBitRate = bitrate;
-            gst_object_unref(audioEncoder);
-        } else {
-            LogError( ( "Failed to get audio encoder element" ) );
-            ret = -1;
-        }
 
-        if( ret == 0 )
-        {
-            strncpy( pAudioTransceiver->streamId,
-                    DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
-                    sizeof( pAudioTransceiver->streamId ) - 1 );
-            pAudioTransceiver->streamIdLength = strlen( pAudioTransceiver->streamId );
+        uint32_t bitrate;
+        g_object_get(G_OBJECT(pCtx->audioContext.encoder), "bitrate", &bitrate, NULL);
+        pAudioTransceiver->rollingbufferBitRate = bitrate;
 
-            strncpy( pAudioTransceiver->trackId,
-                    DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID,
-                    sizeof( pAudioTransceiver->trackId ) - 1 );
-            pAudioTransceiver->trackIdLength = strlen( pAudioTransceiver->trackId );
-
-            pAudioTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
-            pAudioTransceiver->pOnPcEventCustomContext = &pCtx->audioContext;
-        }
+        strncpy( pAudioTransceiver->streamId,
+                DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
+                sizeof( pAudioTransceiver->streamId ) - 1 );
+        pAudioTransceiver->streamIdLength = strlen( pAudioTransceiver->streamId );
+        strncpy( pAudioTransceiver->trackId,
+                DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID,
+                sizeof( pAudioTransceiver->trackId ) - 1 );
+        pAudioTransceiver->trackIdLength = strlen( pAudioTransceiver->trackId );
+        pAudioTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
+        pAudioTransceiver->pOnPcEventCustomContext = &pCtx->audioContext;
     }
 
     return ret;

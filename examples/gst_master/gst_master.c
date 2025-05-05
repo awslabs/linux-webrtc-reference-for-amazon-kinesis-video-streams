@@ -1,6 +1,7 @@
 #include "demo_config.h"
 #include "app_common.h"
 #include "gst_media_source.h"
+#include <signal.h>
 
 AppContext_t appContext;
 GstMediaSourcesContext_t gstMediaSourceContext;
@@ -10,6 +11,26 @@ static int32_t OnMediaSinkHook( void * pCustom,
                                 WebrtcFrame_t * pFrame );
 static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
                                          GstMediaSourcesContext_t * pGstMediaSourceContext );
+
+
+static void SignalHandler(int signum) {
+    int32_t ret = 0;
+
+    if (signum == SIGINT)
+    {
+        LogInfo(("Received SIGINT, initiating cleanup..."));
+        ret = GstMediaSource_Cleanup( &gstMediaSourceContext );
+    }
+    if (ret != 0)
+    {
+        LogError(("Failed to clean up resources"));
+    }
+    else
+    {
+        LogInfo(("Cleanup completed successfully"));
+    }
+    exit(ret);
+}
 
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver )
 {
@@ -139,7 +160,20 @@ int main( void )
 {
     int ret = 0;
 
-    ret = AppCommon_Init( &appContext, InitTransceiver, &gstMediaSourceContext );
+    // Set up signal handling
+    struct sigaction sa;
+    sa.sa_handler = SignalHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+            LogError(("Failed to set up signal handler"));
+            ret = -1;
+    }
+    if( ret == 0 )
+    {
+        ret = AppCommon_Init( &appContext, InitTransceiver, &gstMediaSourceContext );
+    }
 
     if( ret == 0 )
     {
@@ -154,7 +188,7 @@ int main( void )
 
     if( ret == 0 )
     {
-        GstMediaSource_Cleanup( &gstMediaSourceContext );
+        ret = GstMediaSource_Cleanup( &gstMediaSourceContext );
     }
-    return 0;
+    return ret;
 }
