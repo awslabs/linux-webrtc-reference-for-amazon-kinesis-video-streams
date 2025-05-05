@@ -16,49 +16,66 @@
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
 #define DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID "myAudioTrack"
 
-static void on_new_video_sample(GstElement *sink, gpointer user_data)
+static int32_t on_new_video_sample( GstElement * sink,
+                                 gpointer user_data )
 {
-    GstMediaSourceContext_t * pVideoContext = (GstMediaSourceContext_t *)user_data;
+    int32_t ret = 0;
+
+    GstMediaSourceContext_t * pVideoContext = ( GstMediaSourceContext_t * )user_data;
     WebrtcFrame_t frame;
-    GstBuffer *buffer;
+    GstBuffer * buffer;
     GstMapInfo map;
-    GstSample *sample;
+    GstSample * sample;
 
-    if ( NULL == pVideoContext ) {
-        LogError(("Invalid video context"));
-        return;
+    if (0 == ret)
+    {
+        if( NULL == pVideoContext )
+            {
+                LogError( ( "Invalid video context" ) );
+                ret = -1;
+            }
     }
 
-    if ( 0 == pVideoContext->numReadyPeer ) {
-        LogError(("No ready peer for video"));
-        return;
-    }
-
-    sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
-    if (!sample) {
-        return;
-    }
-
-    buffer = gst_sample_get_buffer(sample);
-
-    if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
-        frame.pData = map.data;
-        frame.size = map.size;
-        frame.freeData = 0;
-        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-        frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
-
-        if (pVideoContext->pSourcesContext->onMediaSinkHookFunc) {
-            LogVerbose(("Sending video frame: size=%zu, ts=%lu",
-                        frame.size, frame.timestampUs));
-            (void)pVideoContext->pSourcesContext->onMediaSinkHookFunc(
-                pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
-                &frame);
+    if (0 == ret)
+    {
+        if ( 0 == pVideoContext->numReadyPeer ) {
+            LogError(("No ready peer for video"));
+            ret = -1;;
         }
-
-        gst_buffer_unmap(buffer, &map);
     }
-    gst_sample_unref(sample);
+
+    if (0 == ret)
+    {
+        sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
+        if (NULL == sample) {
+            ret = -1;;
+        }
+    }
+
+    if (0 == ret)
+    {
+        buffer = gst_sample_get_buffer(sample);
+
+        if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
+            frame.pData = map.data;
+            frame.size = map.size;
+            frame.freeData = 0;
+            frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+            frame.timestampUs = GST_BUFFER_PTS(buffer) / 1000;
+
+            if (pVideoContext->pSourcesContext->onMediaSinkHookFunc) {
+                LogVerbose(("Sending video frame: size=%zu, ts=%lu",
+                            frame.size, frame.timestampUs));
+                (void)pVideoContext->pSourcesContext->onMediaSinkHookFunc(
+                    pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
+                    &frame);
+            }
+
+            gst_buffer_unmap(buffer, &map);
+        }
+        gst_sample_unref(sample);
+    }
+    return ret;
 }
 
 static void * VideoTx_Task(void * pParameter)
