@@ -76,36 +76,35 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${ICE_INCLUDE_PUBLIC_DIRS} )
 
-if(BUILD_USRSCTP_LIBRARY)
-  ## Include usrsctp
-  target_compile_definitions(WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1)
+if( BUILD_USRSCTP_LIBRARY )
+    ## Include usrsctp
+    target_compile_definitions( WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1 )
 
-  ## Set DCEP include directories
-  target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-                              ${DCEP_INCLUDE_PUBLIC_DIRS} )
+    ## Set DCEP include directories
+    target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                                ${DCEP_INCLUDE_PUBLIC_DIRS} )
+
+    target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
+                                ${SCTP_INCLUDE_PUBLIC_DIRS} )
 endif()
 
-target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-    ${SCTP_INCLUDE_PUBLIC_DIRS} )
-    # link application with dependencies, note that rt is librt providing message queue's APIs
-    message(STATUS "linking websockets to WebRTCLinuxApplication")
-    target_link_libraries( WebRTCLinuxApplicationMaster
-                           websockets
-                           sigv4
-                           signaling
-                           corejson
-                           sdp
-                           ice
-                           rt
-                           pthread
-    )
+# link application with dependencies, note that rt is librt providing message queue's APIs
+message(STATUS "linking websockets to WebRTCLinuxApplication")
+target_link_libraries( WebRTCLinuxApplicationMaster
+                        websockets
+                        sigv4
+                        signaling
+                        corejson
+                        sdp
+                        ice
+                        rt
+                        pthread
+)
 
-if(BUILD_USRSCTP_LIBRARY)
+if( BUILD_USRSCTP_LIBRARY )
     target_link_libraries( WebRTCLinuxApplicationMaster
                            usrsctp
-                           dcep
-    )
-    target_compile_definitions( WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1 )
+                           dcep )
 endif()
 
 target_compile_options( WebRTCLinuxApplicationMaster PRIVATE -Wall -Werror )

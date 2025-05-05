@@ -86,6 +86,18 @@ if(GST_FOUND)
     target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
                                 ${STUN_INCLUDE_PUBLIC_DIRS} )
 
+    if( BUILD_USRSCTP_LIBRARY )
+        ## Include usrsctp
+        target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1 )
+    
+        ## Set DCEP include directories
+        target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
+                                    ${DCEP_INCLUDE_PUBLIC_DIRS} )
+    
+        target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
+                                    ${SCTP_INCLUDE_PUBLIC_DIRS} )
+    endif()
+
     target_link_libraries( WebRTCLinuxApplicationGstMaster
                            websockets
                            sigv4
@@ -97,12 +109,13 @@ if(GST_FOUND)
                            pthread
                            ${GST_LIBRARIES} )
 
-        if(BUILD_USRSCTP_LIBRARY)
-            target_link_libraries( WebRTCLinuxApplicationGstMaster
-                                   usrsctp
-                                   dcep)
-        endif()
-        target_compile_options( WebRTCLinuxApplicationGstMaster PRIVATE -Wall -Werror )
+    if( BUILD_USRSCTP_LIBRARY )
+        target_link_libraries( WebRTCLinuxApplicationGstMaster
+                               usrsctp
+                               dcep)
+    endif()
+
+    target_compile_options( WebRTCLinuxApplicationGstMaster PRIVATE -Wall -Werror )
 
 else() # GST_FOUND
     message(WARNING "GStreamer packages not found - GStreamer applications will not be built")

@@ -200,11 +200,11 @@ if(BUILD_USRSCTP_LIBRARY)
 
   ## Include DCEP
   include( ${CMAKE_ROOT_DIRECTORY}/CMake/dcep.cmake )
-endif()
 
-# usrsctp library public include directories.
-set( SCTP_INCLUDE_PUBLIC_DIRS
-     "${CMAKE_ROOT_DIRECTORY}/libraries/protocols/usrsctp/usrsctplib" )
+  # usrsctp library public include directories.
+  set( SCTP_INCLUDE_PUBLIC_DIRS
+       "${CMAKE_ROOT_DIRECTORY}/libraries/protocols/usrsctp/usrsctplib" )
+endif()
 
 ### Master Application
 include( MasterExample.cmake )
