@@ -1,270 +1,157 @@
 
-#include "../demo_config/demo_config.h"
-#include "demo_main_data_types.h"
+#include "demo_config.h"
+#include "app_common.h"
+#include "app_media_source.h"
 
-#include <../common/common.c>
+AppContext_t appContext;
+AppMediaSourcesContext_t appMediaSourceContext;
 
-static int32_t InitializeAppMediaSource( DemoContext_t * pDemoContext )
+static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
+static int32_t OnMediaSinkHook( void * pCustom,
+                                WebrtcFrame_t * pFrame );
+static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
+                                         AppMediaSourcesContext_t * pAppMediaSourceContext );
+
+static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver )
 {
     int32_t ret = 0;
+    AppMediaSourcesContext_t * pMediaSourceContext = ( AppMediaSourcesContext_t * )pMediaCtx;
 
-    if( pDemoContext == NULL )
+    if( ( pMediaCtx == NULL ) || ( pTranceiver == NULL ) )
     {
-        LogError( ( "Invalid input, pDemoContext: %p", pDemoContext ) );
+        LogError( ( "Invalid input, pMediaCtx: %p, pTranceiver: %p", pMediaCtx, pTranceiver ) );
         ret = -1;
     }
+    else if( ( trackKind != TRANSCEIVER_TRACK_KIND_VIDEO ) &&
+             ( trackKind != TRANSCEIVER_TRACK_KIND_AUDIO ) )
+    {
+        LogError( ( "Invalid track kind: %d", trackKind ) );
+        ret = -2;
+    }
+    else
+    {
+        /* Empty else marker. */
+    } 
 
     if( ret == 0 )
     {
-        ret = AppMediaSource_Init( &pDemoContext->appMediaSourcesContext,
-                                   OnMediaSinkHook,
-                                   pDemoContext );
+        switch( trackKind )
+        {
+            case TRANSCEIVER_TRACK_KIND_VIDEO:
+                ret = AppMediaSource_InitVideoTransceiver( pMediaSourceContext,
+                                                           pTranceiver );
+                break;
+            case TRANSCEIVER_TRACK_KIND_AUDIO:
+                ret = AppMediaSource_InitAudioTransceiver( pMediaSourceContext,
+                                                           pTranceiver );
+                break;
+            default:
+                LogError( ( "Invalid track kind: %d", trackKind ) );
+                ret = -3;
+                break;
+        } 
     }
 
     return ret;
 }
 
-
-static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
-                                           DemoPeerConnectionSession_t * pDemoSession,
-                                           const char * pRemoteClientId,
-                                           size_t remoteClientIdLength )
+static int32_t OnMediaSinkHook( void * pCustom,
+                                WebrtcFrame_t * pFrame )
 {
     int32_t ret = 0;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustom;
     PeerConnectionResult_t peerConnectionResult;
-    PeerConnectionSessionConfiguration_t pcConfig;
     Transceiver_t * pTransceiver = NULL;
-
-    if( remoteClientIdLength > REMOTE_ID_MAX_LENGTH )
-    {
-        LogWarn( ( "The remote client ID length(%lu) is too long to store.", remoteClientIdLength ) );
-        ret = -1;
-    }
-
-    if( ret == 0 )
-    {
-        memset( &pcConfig, 0, sizeof( PeerConnectionSessionConfiguration_t ) );
-        pcConfig.iceServersCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
-        #if defined( AWS_CA_CERT_PATH )
-            pcConfig.pRootCaPath = AWS_CA_CERT_PATH;
-            pcConfig.rootCaPathLength = strlen( AWS_CA_CERT_PATH );
-        #endif /* #if defined( AWS_CA_CERT_PATH ) */
-
-        #if defined( AWS_CA_CERT_PEM )
-            pcConfig.rootCaPem = AWS_CA_CERT_PEM;
-            pcConfig.rootCaPemLength = sizeof( AWS_CA_CERT_PEM );
-        #endif /* #if defined( AWS_CA_CERT_PEM ) */
-
-        pcConfig.canTrickleIce = 1U;
-        pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
-
-        ret = GetIceServerList( pDemoContext,
-                                pcConfig.iceServers,
-                                &pcConfig.iceServersCount );
-    }
-
-    if( ret == 0 )
-    {
-        peerConnectionResult = PeerConnection_AddIceServerConfig( &pDemoSession->peerConnectionSession,
-                                                                  &pcConfig );
-        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-        {
-            LogWarn( ( "PeerConnection_AddIceServerConfig fail, result: %d", peerConnectionResult ) );
-            ret = -1;
-        }
-    }
-
-    if( ret == 0 )
-    {
-        peerConnectionResult = PeerConnection_SetOnLocalCandidateReady( &pDemoSession->peerConnectionSession,
-                                                                        HandleLocalCandidateReady,
-                                                                        pDemoSession );
-        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-        {
-            LogWarn( ( "PeerConnection_SetOnLocalCandidateReady fail, result: %d", peerConnectionResult ) );
-            ret = -1;
-        }
-    }
-
-    /* Add video transceiver */
-    if( ret == 0 )
-    {
-        pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
-        ret = AppMediaSource_InitVideoTransceiver( &pDemoContext->appMediaSourcesContext,
-                                                   pTransceiver );
-        if( ret != 0 )
-        {
-            LogError( ( "Fail to get video transceiver." ) );
-        }
-        else
-        {
-            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession,
-                                                                  pTransceiver );
-            if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-            {
-                LogError( ( "Fail to add video transceiver, result = %d.", peerConnectionResult ) );
-                ret = -1;
-            }
-        }
-    }
-
-    /* Add audio transceiver */
-    if( ret == 0 )
-    {
-        pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
-        ret = AppMediaSource_InitAudioTransceiver( &pDemoContext->appMediaSourcesContext,
-                                                   pTransceiver );
-        if( ret != 0 )
-        {
-            LogError( ( "Fail to get audio transceiver." ) );
-        }
-        else
-        {
-            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession,
-                                                                  pTransceiver );
-            if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-            {
-                LogError( ( "Fail to add audio transceiver, result = %d.", peerConnectionResult ) );
-                ret = -1;
-            }
-        }
-    }
-
-    if( ret == 0 )
-    {
-        pDemoSession->remoteClientIdLength = remoteClientIdLength;
-        memcpy( pDemoSession->remoteClientId, pRemoteClientId, remoteClientIdLength );
-        peerConnectionResult = PeerConnection_Start( &pDemoSession->peerConnectionSession );
-        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-        {
-            LogError( ( "Fail to start peer connection, result = %d.", peerConnectionResult ) );
-            ret = -1;
-        }
-    }
-
-    return ret;
-}
-
-int main()
-{
-    int ret = 0;
-    SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerConnectInfo_t connectInfo;
-    SSLCredentials_t sslCreds;
+    PeerConnectionFrame_t peerConnectionFrame;
     int i;
 
-    srand( time( NULL ) );
-
-    srtp_init();
-
-    #if ENABLE_SCTP_DATA_CHANNEL
-        Sctp_Init();
-    #endif /* ENABLE_SCTP_DATA_CHANNEL */
-
-    memset( &demoContext, 0, sizeof( DemoContext_t ) );
-    memset( &sslCreds, 0, sizeof( SSLCredentials_t ) );
-    memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
-
-    sslCreds.pCaCertPath = AWS_CA_CERT_PATH;
-    #if defined( AWS_IOT_THING_ROLE_ALIAS )
-        sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
-        sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
-    #else
-        sslCreds.pDeviceCertPath = NULL;
-        sslCreds.pDeviceKeyPath = NULL;
-    #endif
-
-    #if ( JOIN_STORAGE_SESSION != 0 )
-        connectInfo.enableStorageSession = 1U;
-    #endif
-
-    connectInfo.awsConfig.pRegion = AWS_REGION;
-    connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
-    connectInfo.awsConfig.pService = "kinesisvideo";
-    connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
-
-    connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
-    connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
-
-    connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
-    connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
-
-    connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
-    connectInfo.pMessageReceivedCallbackData = NULL;
-
-    #if defined( AWS_ACCESS_KEY_ID )
-        connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
-        connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
-        connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-        connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
-        #if defined( AWS_SESSION_TOKEN )
-            connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
-            connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
-        #endif /* #if defined( AWS_SESSION_TOKEN ) */
-    #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
-
-    #if defined( AWS_IOT_THING_ROLE_ALIAS )
-        connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
-        connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
-        connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
-        connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
-        connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
-        connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
-    #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
-
-    signalingControllerReturn = SignalingController_Init( &demoContext.signalingControllerContext,
-                                                          &sslCreds );
-
-    if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+    if( ( pAppContext == NULL ) || ( pFrame == NULL ) )
     {
-        LogError( ( "Fail to initialize signaling controller." ) );
+        LogError( ( "Invalid input, pCustom: %p, pFrame: %p", pCustom, pFrame ) );
         ret = -1;
     }
 
     if( ret == 0 )
     {
-        /* Set the signal handler to release resource correctly. */
-        signal( SIGINT, terminateHandler );
+        peerConnectionFrame.version = PEER_CONNECTION_FRAME_CURRENT_VERSION;
+        peerConnectionFrame.presentationUs = pFrame->timestampUs;
+        peerConnectionFrame.pData = pFrame->pData;
+        peerConnectionFrame.dataLength = pFrame->size;
 
-        /* Initialize metrics. */
-        Metric_Init();
-    }
-
-    if( ret == 0 )
-    {
-        ret = InitializeAppMediaSource( &demoContext );
-    }
-
-    if( ret == 0 )
-    {
         for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
         {
-            ret = InitializePeerConnectionSession( &demoContext,
-                                                   &demoContext.peerConnectionSessions[i] );
-            if( ret != 0 )
+            if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
             {
-                LogError( ( "Fail to initialize peer connection sessions." ) );
+                pTransceiver = &pAppContext->appSessions[ i ].transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
+            }
+            else if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
+            {
+                pTransceiver = &pAppContext->appSessions[ i ].transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
+            }
+            else
+            {
+                /* Unknown kind, skip that. */
+                LogWarn( ( "Unknown track kind: %d", pFrame->trackKind ) );
                 break;
+            }
+
+            if( pAppContext->appSessions[ i ].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
+            {
+                peerConnectionResult = PeerConnection_WriteFrame( &pAppContext->appSessions[ i ].peerConnectionSession,
+                                                                  pTransceiver,
+                                                                  &peerConnectionFrame );
+
+                if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+                {
+                    LogError( ( "Fail to write %s frame, result: %d", ( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) ? "video" : "audio",
+                                peerConnectionResult ) );
+                    ret = -3;
+                }
             }
         }
     }
 
-    if( ret == 0 )
+    return ret;
+}
+
+static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
+                                         AppMediaSourcesContext_t * pAppMediaSourceContext )
+{
+    int32_t ret = 0;
+
+    if( ( pAppContext == NULL ) ||
+        ( pAppMediaSourceContext == NULL ) )
     {
-        /* This should never return unless exception happens. */
-        signalingControllerReturn = SignalingController_StartListening( &demoContext.signalingControllerContext,
-                                                                        &connectInfo );
-        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
-        {
-            LogError( ( "Fail to keep processing signaling controller." ) );
-            ret = -1;
-        }
+        LogError( ( "Invalid input, pAppContext: %p, pAppMediaSourceContext: %p", pAppContext, pAppMediaSourceContext ) );
+        ret = -1;
     }
 
-    #if ENABLE_SCTP_DATA_CHANNEL
-        /* TODO_SCTP: Move to a common shutdown function? */
-        Sctp_DeInit();
-    #endif /* ENABLE_SCTP_DATA_CHANNEL */
+    if( ret == 0 )
+    {
+        ret = AppMediaSource_Init( pAppMediaSourceContext,
+                                   OnMediaSinkHook,
+                                   pAppContext );
+    }
+
+    return ret;
+}
+
+int main( void )
+{
+    int ret = 0;
+
+    ret = AppCommon_Init( &appContext, InitTransceiver, &appMediaSourceContext );
+
+    if( ret == 0 )
+    {
+        ret = InitializeAppMediaSource( &appContext, &appMediaSourceContext );
+    }
+
+    if( ret == 0 )
+    {
+        /* Launch application with current thread serving as Signaling Controller. */
+        ret = AppCommon_Start( &appContext );
+    }
 
     return 0;
 }

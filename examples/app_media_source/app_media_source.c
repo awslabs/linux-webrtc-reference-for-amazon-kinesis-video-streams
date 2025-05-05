@@ -4,8 +4,6 @@
 #include <time.h>
 #include <unistd.h>
 
-//#include "FreeRTOS.h"
-//#include "task.h"
 #include "app_media_source.h"
 
 #define DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND ( 3 )
@@ -34,14 +32,13 @@
 #define SAMPLE_FPS_VALUE                                25
 #define SAMPLE_VIDEO_FRAME_DURATION_IN_US               ( ( 1000 * 1000 ) / SAMPLE_FPS_VALUE )
 
-
 static void * VideoTx_Task( void * pParameter );
 static void * AudioTx_Task( void * pParameter );
 
 static void * VideoTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pVideoContext = ( AppMediaSourceContext_t * )pParameter;
-    webrtc_frame_t frame;
+    WebrtcFrame_t frame;
     #ifndef ENABLE_STREAMING_LOOPBACK
         char filePath[ MAX_PATH_LEN + 1 ];
         FILE * fp = NULL;
@@ -118,7 +115,7 @@ static void * VideoTx_Task( void * pParameter )
 static void * AudioTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pAudioContext = ( AppMediaSourceContext_t * )pParameter;
-    webrtc_frame_t frame;
+    WebrtcFrame_t frame;
     #ifndef ENABLE_STREAMING_LOOPBACK
         char filePath[ MAX_PATH_LEN + 1 ];
         FILE * fp = NULL;
@@ -306,7 +303,7 @@ static int32_t InitializeVideoSource( AppMediaSourceContext_t * pVideoSource )
     {
         retMessageQueue = MessageQueue_Create( &pVideoSource->dataQueue,
                                                DEMO_TRANSCEIVER_VIDEO_DATA_QUEUE_NAME,
-                                               sizeof( webrtc_frame_t ),
+                                               sizeof( WebrtcFrame_t ),
                                                DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
@@ -353,7 +350,7 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
     {
         retMessageQueue = MessageQueue_Create( &pAudioSource->dataQueue,
                                                DEMO_TRANSCEIVER_AUDIO_DATA_QUEUE_NAME,
-                                               sizeof( webrtc_frame_t ),
+                                               sizeof( WebrtcFrame_t ),
                                                DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {

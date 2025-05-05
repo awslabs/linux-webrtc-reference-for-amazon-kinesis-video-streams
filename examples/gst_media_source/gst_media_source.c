@@ -17,7 +17,7 @@
 
 static void on_new_video_sample(GstElement *sink, gpointer user_data) {
     GstMediaSourceContext_t * pVideoContext = (GstMediaSourceContext_t *)user_data;
-    webrtc_frame_t frame;
+    WebrtcFrame_t frame;
     GstBuffer *buffer;
     GstMapInfo map;
     GstSample *sample;
@@ -81,7 +81,7 @@ static void * VideoTx_Task(void * pParameter) {
 
 static void on_new_audio_sample(GstElement *sink, gpointer user_data) {
     GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)user_data;
-    webrtc_frame_t frame;
+    WebrtcFrame_t frame;
     GstBuffer *buffer;
     GstMapInfo map;
     GstSample *sample;

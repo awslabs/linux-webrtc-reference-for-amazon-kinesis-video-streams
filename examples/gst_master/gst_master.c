@@ -1,143 +1,82 @@
+#include "demo_config.h"
 #include "demo_gst_master_data_types.h"
+#include "app_common.h"
 
-#include <../common/common.c>
-
-static int32_t InitializeGstMediaSource(DemoContext_t* pDemoContext)
+static int32_t OnMediaSinkHook( void * pCustom,
+                                   WebrtcFrame_t * pFrame )
 {
-    LogDebug(("InitializeGstMediaSource"));
     int32_t ret = 0;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustom;
+    PeerConnectionResult_t peerConnectionResult;
+    Transceiver_t * pTransceiver = NULL;
+    PeerConnectionFrame_t peerConnectionFrame;
+    int i;
 
-    if (pDemoContext == NULL)
+    if( ( pAppContext == NULL ) || ( pFrame == NULL ) )
     {
-        LogError(("Invalid input, pDemoContext: %p", pDemoContext));
+        LogError( ( "Invalid input, pCustom: %p, pFrame: %p", pCustom, pFrame ) );
         ret = -1;
     }
 
-    if (ret == 0)
+    if( ret == 0 )
     {
-        ret = GstMediaSource_Init(&pDemoContext->mediaSourceContext,
-            OnMediaSinkHook,
-            pDemoContext);
+        peerConnectionFrame.version = PEER_CONNECTION_FRAME_CURRENT_VERSION;
+        peerConnectionFrame.presentationUs = pFrame->timestampUs;
+        peerConnectionFrame.pData = pFrame->pData;
+        peerConnectionFrame.dataLength = pFrame->size;
+
+        for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
+        {
+            if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
+            {
+                pTransceiver = &pAppContext->appSessions[ i ].transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
+            }
+            else if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
+            {
+                pTransceiver = &pAppContext->appSessions[ i ].transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
+            }
+            else
+            {
+                /* Unknown kind, skip that. */
+                LogWarn( ( "Unknown track kind: %d", pFrame->trackKind ) );
+                break;
+            }
+
+            if( pAppContext->appSessions[ i ].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
+            {
+                peerConnectionResult = PeerConnection_WriteFrame( &pAppContext->appSessions[ i ].peerConnectionSession,
+                                                                  pTransceiver,
+                                                                  &peerConnectionFrame );
+
+                if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+                {
+                    LogError( ( "Fail to write %s frame, result: %d", ( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) ? "video" : "audio",
+                                peerConnectionResult ) );
+                    ret = -3;
+                }
+            }
+        }
     }
 
     return ret;
 }
 
-static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
-                                           DemoPeerConnectionSession_t * pDemoSession,
-                                           const char * pRemoteClientId,
-                                           size_t remoteClientIdLength )
+static int32_t InitializeGstMediaSource(AppContext_t* pAppContext)
 {
+    LogDebug(("InitializeGstMediaSource"));
     int32_t ret = 0;
-    PeerConnectionResult_t peerConnectionResult;
-    PeerConnectionSessionConfiguration_t pcConfig;
-    Transceiver_t * pTransceiver = NULL;
 
-    if( remoteClientIdLength > REMOTE_ID_MAX_LENGTH )
+    if (pAppContext == NULL)
     {
-        LogWarn( ( "The remote client ID length(%lu) is too long to store.", remoteClientIdLength ) );
+        LogError(("Invalid input, pAppContext: %p", pAppContext));
         ret = -1;
     }
 
-    if( ret == 0 )
+    if (ret == 0)
     {
-        memset( &pcConfig, 0, sizeof( PeerConnectionSessionConfiguration_t ) );
-        pcConfig.iceServersCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
-        #if defined( AWS_CA_CERT_PATH )
-            pcConfig.pRootCaPath = AWS_CA_CERT_PATH;
-            pcConfig.rootCaPathLength = strlen( AWS_CA_CERT_PATH );
-        #endif /* #if defined( AWS_CA_CERT_PATH ) */
-
-        #if defined( AWS_CA_CERT_PEM )
-            pcConfig.rootCaPem = AWS_CA_CERT_PEM;
-            pcConfig.rootCaPemLength = sizeof( AWS_CA_CERT_PEM );
-        #endif /* #if defined( AWS_CA_CERT_PEM ) */
-
-        pcConfig.canTrickleIce = 1U;
-        pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
-
-        ret = GetIceServerList( pDemoContext,
-                                pcConfig.iceServers,
-                                &pcConfig.iceServersCount );
-    }
-
-    if( ret == 0 )
-    {
-        peerConnectionResult = PeerConnection_AddIceServerConfig( &pDemoSession->peerConnectionSession,
-                                                                  &pcConfig );
-        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-        {
-            LogWarn( ( "PeerConnection_AddIceServerConfig fail, result: %d", peerConnectionResult ) );
-            ret = -1;
-        }
-    }
-
-    if( ret == 0 )
-    {
-        peerConnectionResult = PeerConnection_SetOnLocalCandidateReady( &pDemoSession->peerConnectionSession,
-                                                                        HandleLocalCandidateReady,
-                                                                        pDemoSession );
-        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-        {
-            LogWarn( ( "PeerConnection_SetOnLocalCandidateReady fail, result: %d", peerConnectionResult ) );
-            ret = -1;
-        }
-    }
-
-    /* Add video transceiver */
-    if( ret == 0 )
-    {
-        pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ];
-        ret = GstMediaSource_InitVideoTransceiver( &pDemoContext->mediaSourceContext,
-                                                   pTransceiver );
-        if( ret != 0 )
-        {
-            LogError( ( "Fail to get video transceiver." ) );
-        }
-        else
-        {
-            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession,
-                                                                  pTransceiver );
-            if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-            {
-                LogError( ( "Fail to add video transceiver, result = %d.", peerConnectionResult ) );
-                ret = -1;
-            }
-        }
-    }
-
-    /* Add audio transceiver */
-    if( ret == 0 )
-    {
-        pTransceiver = &pDemoSession->transceivers[ DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ];
-        ret = GstMediaSource_InitAudioTransceiver( &pDemoContext->mediaSourceContext,
-                                                   pTransceiver );
-        if( ret != 0 )
-        {
-            LogError( ( "Fail to get audio transceiver." ) );
-        }
-        else
-        {
-            peerConnectionResult = PeerConnection_AddTransceiver( &pDemoSession->peerConnectionSession,
-                                                                  pTransceiver );
-            if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-            {
-                LogError( ( "Fail to add audio transceiver, result = %d.", peerConnectionResult ) );
-                ret = -1;
-            }
-        }
-    }
-
-    if( ret == 0 )
-    {
-        pDemoSession->remoteClientIdLength = remoteClientIdLength;
-        memcpy( pDemoSession->remoteClientId, pRemoteClientId, remoteClientIdLength );
-        peerConnectionResult = PeerConnection_Start( &pDemoSession->peerConnectionSession );
-        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-        {
-            LogError( ( "Fail to start peer connection, result = %d.", peerConnectionResult ) );
-            ret = -1;
-        }
+        ret = GstMediaSource_Init(&pAppContext->mediaSourceContext,
+            OnMediaSinkHook,
+            pAppContext);
     }
 
     return ret;
@@ -159,7 +98,7 @@ int main()
         Sctp_Init();
     #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
-    memset( &demoContext, 0, sizeof( DemoContext_t ) );
+    memset( &demoContext, 0, sizeof( AppContext_t ) );
     memset( &sslCreds, 0, sizeof( SSLCredentials_t ) );
     memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
 
@@ -219,9 +158,6 @@ int main()
 
     if( ret == 0 )
     {
-        /* Set the signal handler to release resource correctly. */
-        signal( SIGINT, terminateHandler );
-
         /* Initialize metrics. */
         Metric_Init();
     }

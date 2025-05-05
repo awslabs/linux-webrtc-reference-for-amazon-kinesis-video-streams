@@ -1,14 +1,6 @@
 #ifndef GST_MEDIA_SOURCE_H
 #define GST_MEDIA_SOURCE_H
 
-#pragma once
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* *INDENT-ON* */
-
 #include <stdio.h>
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
@@ -22,7 +14,7 @@ typedef struct {
     TransceiverTrackKind_t trackKind;
     uint8_t flags;
     uint8_t freeData;  /* indicate user need to free pData after using it */
-} webrtc_frame_t;
+} WebrtcFrame_t;
 
 // Frame flags
 #define FRAME_FLAG_NONE 0
@@ -30,7 +22,7 @@ typedef struct {
 
 typedef struct GstMediaSourcesContext GstMediaSourcesContext_t;
 typedef int32_t (* GstMediaSourceOnMediaSinkHook)( void * pCustom,
-                                                   webrtc_frame_t * pFrame );
+                                                   WebrtcFrame_t * pFrame );
 
 typedef struct GstMediaSourceContext
 {
@@ -61,11 +53,6 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                              void * pOnMediaSinkHookCustom );
 
 /**
- * @brief Initialize GStreamer pipeline
- */
-int32_t GstMediaSource_InitPipeline( GstMediaSourcesContext_t * pCtx );
-
-/**
  * @brief Initialize video transceiver
  */
 int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
@@ -76,16 +63,5 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
  */
 int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTranceiver );
-
-/**
- * @brief Cleanup GStreamer resources
- */
-void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx );
-
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-}
-#endif
-/* *INDENT-ON* */
 
 #endif /* GST_MEDIA_SOURCE_H */
