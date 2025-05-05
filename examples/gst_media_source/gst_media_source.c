@@ -24,7 +24,6 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
                                       TransceiverCallbackEvent_t event,
                                       TransceiverCallbackContent_t * pEventMsg );
 static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx );
-static void CleanUp( GstMediaSourcesContext_t * pCtx );
 
 static void on_new_video_sample(GstElement *sink, gpointer user_data)
 {
@@ -95,7 +94,7 @@ static void * VideoTx_Task(void * pParameter)
 
     g_main_loop_unref(loop);
     LogDebug(("VideoTx_Task ending"));
-    return NULL;
+    return 0;
 }
 
 static void on_new_audio_sample(GstElement *sink, gpointer user_data)
@@ -172,7 +171,7 @@ static void * AudioTx_Task(void * pParameter)
         g_main_loop_unref(loop);
         LogDebug(("AudioTx_Task ending"));
     }
-    return NULL;
+    return 0;
 }
 
 static int32_t HandlePcEventCallback( void * pCustomContext,
@@ -307,9 +306,9 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
     return ret;
 }
 
-static void CleanUp( GstMediaSourcesContext_t * pCtx )
+void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
 {
-    if( !pCtx )
+    if( pCtx == NULL )
         return;
 
     // Stop main loops if they exist
@@ -400,7 +399,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                         &pCtx->videoContext ) != 0 )
     {
         LogError( ( "Failed to create video task" ) );
-        CleanUp( pCtx );
+        GstMediaSource_Cleanup( pCtx );
         return -1;
     }
 
@@ -412,7 +411,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
         LogError( ( "Failed to create audio task" ) );
         pthread_join( videoTid,
                       NULL );
-        CleanUp( pCtx );
+        GstMediaSource_Cleanup( pCtx );
         return -1;
     }
 

@@ -30,7 +30,7 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
     else
     {
         /* Empty else marker. */
-    } 
+    }
 
     if( ret == 0 )
     {
@@ -48,7 +48,7 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
                 LogError( ( "Invalid track kind: %d", trackKind ) );
                 ret = -3;
                 break;
-        } 
+        }
     }
 
     return ret;
@@ -152,5 +152,9 @@ int main( void )
         ret = AppCommon_Start( &appContext );
     }
 
+    if( ret == 0 )
+    {
+        GstMediaSource_Cleanup( &gstMediaSourceContext );
+    }
     return 0;
 }

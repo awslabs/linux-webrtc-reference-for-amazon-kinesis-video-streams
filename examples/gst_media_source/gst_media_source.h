@@ -64,4 +64,10 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
 int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTranceiver );
 
+/**
+ * @brief Cleanup media source context
+ */
+void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx);
+
+
 #endif /* GST_MEDIA_SOURCE_H */
