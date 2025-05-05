@@ -37,13 +37,13 @@ typedef struct GstMediaSourceContext
     GMainLoop * main_loop;
 } GstMediaSourceContext_t;
 
-struct GstMediaSourcesContext {
+typedef struct GstMediaSourcesContext {
     GstMediaSourceContext_t videoContext;
     GstMediaSourceContext_t audioContext;
     pthread_mutex_t mediaMutex;
     GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc;
     void * pOnMediaSinkHookCustom;
-};
+} GstMediaSourcesContext_t;
 
 /**
  * @brief Initialize media source context

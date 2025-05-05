@@ -15,7 +15,18 @@
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
 #define DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID "myAudioTrack"
 
-static void on_new_video_sample(GstElement *sink, gpointer user_data) {
+static void on_new_video_sample(GstElement *sink, gpointer user_data);
+static void * VideoTx_Task(void * pParameter);
+static void on_new_audio_sample(GstElement *sink, gpointer user_data);
+static void * AudioTx_Task(void * pParameter);
+static int32_t HandlePcEventCallback( void * pCustomContext,
+                                      TransceiverCallbackEvent_t event,
+                                      TransceiverCallbackContent_t * pEventMsg );
+static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx );
+static void CleanUp( GstMediaSourcesContext_t * pCtx );
+
+static void on_new_video_sample(GstElement *sink, gpointer user_data)
+{
     GstMediaSourceContext_t * pVideoContext = (GstMediaSourceContext_t *)user_data;
     WebrtcFrame_t frame;
     GstBuffer *buffer;
@@ -54,7 +65,8 @@ static void on_new_video_sample(GstElement *sink, gpointer user_data) {
     gst_sample_unref(sample);
 }
 
-static void * VideoTx_Task(void * pParameter) {
+static void * VideoTx_Task(void * pParameter)
+{
     LogDebug(("VideoTx_Task started"));
     GstMediaSourceContext_t * pVideoContext = ( GstMediaSourceContext_t * )pParameter;
 
@@ -79,7 +91,8 @@ static void * VideoTx_Task(void * pParameter) {
     return NULL;
 }
 
-static void on_new_audio_sample(GstElement *sink, gpointer user_data) {
+static void on_new_audio_sample(GstElement *sink, gpointer user_data)
+{
     GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)user_data;
     WebrtcFrame_t frame;
     GstBuffer *buffer;
@@ -118,7 +131,8 @@ static void on_new_audio_sample(GstElement *sink, gpointer user_data) {
     gst_sample_unref(sample);
 }
 
-static void * AudioTx_Task(void * pParameter) {
+static void * AudioTx_Task(void * pParameter)
+{
     LogDebug(("AudioTx_Task started"));
     GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)pParameter;
 
@@ -183,7 +197,7 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
     return ret;
 }
 
-int32_t GstMediaSource_InitPipeline( GstMediaSourcesContext_t * pCtx )
+static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
 {
     if( !pCtx )
         return -1;
@@ -245,6 +259,52 @@ int32_t GstMediaSource_InitPipeline( GstMediaSourcesContext_t * pCtx )
     return 0;
 }
 
+static void CleanUp( GstMediaSourcesContext_t * pCtx )
+{
+    if( !pCtx )
+        return;
+
+    // Stop main loops if they exist
+    if (pCtx->videoContext.main_loop) {
+        g_main_loop_quit(pCtx->videoContext.main_loop);
+    }
+    if (pCtx->audioContext.main_loop) {
+        g_main_loop_quit(pCtx->audioContext.main_loop);
+    }
+
+    // Give threads time to exit
+    g_usleep( 100000 );  // 100ms
+
+    // Stop pipeline
+    if( pCtx->videoContext.pipeline )
+    {
+        gst_element_set_state( pCtx->videoContext.pipeline,
+                               GST_STATE_NULL );
+        gst_object_unref( pCtx->videoContext.pipeline );
+    }
+
+    // Clean up sinks
+    if( pCtx->videoContext.appsink )
+    {
+        gst_object_unref( pCtx->videoContext.appsink );
+    }
+    if( pCtx->audioContext.appsink )
+    {
+        gst_object_unref( pCtx->audioContext.appsink );
+    }
+
+    // Clean up encoders
+    if( pCtx->videoContext.encoder )
+    {
+        gst_object_unref( pCtx->videoContext.encoder );
+    }
+
+    // Clean up mutex
+    pthread_mutex_destroy( &pCtx->mediaMutex );
+
+    LogInfo( ( "GstMediaSource cleaned up" ) );
+}
+
 int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                              GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
                              void * pOnMediaSinkHookCustom )
@@ -276,7 +336,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
     pCtx->audioContext.pSourcesContext = pCtx;
 
     // Initialize single pipeline
-    if( GstMediaSource_InitPipeline( pCtx ) != 0 )
+    if( InitPipeline( pCtx ) != 0 )
     {
         LogError( ( "Failed to initialize pipeline" ) );
         pthread_mutex_destroy( &pCtx->mediaMutex );
@@ -289,7 +349,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
     if( ret == GST_STATE_CHANGE_FAILURE )
     {
     LogError( ( "Failed to set pipeline to PLAYING state" ) );
-    GstMediaSource_Cleanup( pCtx );
+    CleanUp( pCtx );
     return -1;
     }
 
@@ -302,7 +362,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                         &pCtx->videoContext ) != 0 )
     {
         LogError( ( "Failed to create video task" ) );
-        GstMediaSource_Cleanup( pCtx );
+        CleanUp( pCtx );
         return -1;
     }
 
@@ -314,7 +374,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
         LogError( ( "Failed to create audio task" ) );
         pthread_join( videoTid,
                       NULL );
-        GstMediaSource_Cleanup( pCtx );
+        CleanUp( pCtx );
         return -1;
     }
 
@@ -420,50 +480,4 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
     pAudioTransceiver->pOnPcEventCustomContext = &pCtx->audioContext;
 
     return 0;
-}
-
-void GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
-{
-    if( !pCtx )
-        return;
-
-    // Stop main loops if they exist
-    if (pCtx->videoContext.main_loop) {
-        g_main_loop_quit(pCtx->videoContext.main_loop);
-    }
-    if (pCtx->audioContext.main_loop) {
-        g_main_loop_quit(pCtx->audioContext.main_loop);
-    }
-
-    // Give threads time to exit
-    g_usleep( 100000 );  // 100ms
-
-    // Stop pipeline
-    if( pCtx->videoContext.pipeline )
-    {
-        gst_element_set_state( pCtx->videoContext.pipeline,
-                               GST_STATE_NULL );
-        gst_object_unref( pCtx->videoContext.pipeline );
-    }
-
-    // Clean up sinks
-    if( pCtx->videoContext.appsink )
-    {
-        gst_object_unref( pCtx->videoContext.appsink );
-    }
-    if( pCtx->audioContext.appsink )
-    {
-        gst_object_unref( pCtx->audioContext.appsink );
-    }
-
-    // Clean up encoders
-    if( pCtx->videoContext.encoder )
-    {
-        gst_object_unref( pCtx->videoContext.encoder );
-    }
-
-    // Clean up mutex
-    pthread_mutex_destroy( &pCtx->mediaMutex );
-
-    LogInfo( ( "GstMediaSource cleaned up" ) );
 }
