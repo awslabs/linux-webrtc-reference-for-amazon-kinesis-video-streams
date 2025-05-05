@@ -4,6 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "demo_config.h"
 #include "app_media_source.h"
 
 #define DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND ( 3 )

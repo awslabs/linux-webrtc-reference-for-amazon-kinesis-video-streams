@@ -8,6 +8,7 @@
 #include <gst/app/gstappsink.h>
 #include "gst_media_source.h"
 #include "logging.h"
+#include "demo_config.h"
 
 #define DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND ( 3 )
 

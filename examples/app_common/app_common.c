@@ -14,6 +14,7 @@
 #include "string_utils.h"
 #include "metric.h"
 #include "networking_utils.h"
+#include "peer_connection.h"
 
 #if ENABLE_SCTP_DATA_CHANNEL
 #include "peer_connection_sctp.h"
