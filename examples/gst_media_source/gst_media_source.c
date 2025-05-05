@@ -33,7 +33,13 @@ static void on_new_video_sample(GstElement *sink, gpointer user_data)
     GstMapInfo map;
     GstSample *sample;
 
-    if (!pVideoContext || !pVideoContext->numReadyPeer) {
+    if ( NULL == pVideoContext ) {
+        LogError(("Invalid video context"));
+        return;
+    }
+
+    if ( 0 == pVideoContext->numReadyPeer ) {
+        LogError(("No ready peer for video"));
         return;
     }
 
@@ -99,7 +105,13 @@ static void on_new_audio_sample(GstElement *sink, gpointer user_data)
     GstMapInfo map;
     GstSample *sample;
 
-    if (!pAudioContext || !pAudioContext->numReadyPeer) {
+    if ( NULL == pAudioContext ) {
+        LogError(("Invalid audio context"));
+        return;
+    }
+
+    if ( 0 == pAudioContext->numReadyPeer ) {
+        LogError(("No ready peer for audio"));
         return;
     }
 
@@ -136,24 +148,29 @@ static void * AudioTx_Task(void * pParameter)
     LogDebug(("AudioTx_Task started"));
     GstMediaSourceContext_t * pAudioContext = (GstMediaSourceContext_t *)pParameter;
 
+    int32_t ret = 0;
+
     if (!pAudioContext) {
         LogError(("Invalid audio context"));
-        return NULL;
+        ret = -1;
     }
 
-    // Connect to new-sample signal
-    g_signal_connect(pAudioContext->appsink, "new-sample",
-                    G_CALLBACK(on_new_audio_sample), pAudioContext);
+    if (0 == ret )
+    {
+        // Connect to new-sample signal
+        g_signal_connect(pAudioContext->appsink, "new-sample",
+                        G_CALLBACK(on_new_audio_sample), pAudioContext);
 
-    // Create main loop
-    GMainLoop *loop = g_main_loop_new(NULL, FALSE);
-    pAudioContext->main_loop = loop;
+        // Create main loop
+        GMainLoop *loop = g_main_loop_new(NULL, FALSE);
+        pAudioContext->main_loop = loop;
 
-    // Run the main loop
-    g_main_loop_run(loop);
+        // Run the main loop
+        g_main_loop_run(loop);
 
-    g_main_loop_unref(loop);
-    LogDebug(("AudioTx_Task ending"));
+        g_main_loop_unref(loop);
+        LogDebug(("AudioTx_Task ending"));
+    }
     return NULL;
 }
 
@@ -177,6 +194,16 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
             pthread_mutex_unlock( &pMediaSource->pSourcesContext->mediaMutex );
             LogInfo( ( "Remote peer ready for track kind %d, peers: %d",
                        pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
+
+
+            GstStateChangeReturn ret;
+            ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pipeline,
+                GST_STATE_PLAYING );
+            if( ret == GST_STATE_CHANGE_FAILURE )
+            {
+                LogError( ( "Failed to set pipeline to PLAYING state" ) );
+                ret = -1;
+            }
             break;
 
         case TRANSCEIVER_CB_EVENT_REMOTE_PEER_CLOSED:
@@ -186,6 +213,18 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
             pthread_mutex_unlock( &pMediaSource->pSourcesContext->mediaMutex );
             LogInfo( ( "Remote peer closed for track kind %d, peers: %d",
                        pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
+            if( 0 == pMediaSource->numReadyPeer )
+            {
+                // Stop the pipeline if no peers are connected
+                GstStateChangeReturn ret;
+                ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pipeline,
+                                             GST_STATE_NULL );
+                if( ret == GST_STATE_CHANGE_FAILURE )
+                {
+                    LogError( ( "Failed to set pipeline to NULL state" ) );
+                    ret = -1;
+                }
+            }
             break;
 
         default:
@@ -201,7 +240,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
 {
     int32_t ret = 0;
 
-    if( ( pCtx == NULL ) )
+    if( ( NULL == pCtx ) )
     {
         LogError( ( "Invalid input, pCtx: %p", pCtx ) );
         ret = -1;
@@ -351,16 +390,6 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
         return -1;
     }
 
-    GstStateChangeReturn ret;
-    ret = gst_element_set_state( pCtx->videoContext.pipeline,
-                                 GST_STATE_PLAYING );
-    if( ret == GST_STATE_CHANGE_FAILURE )
-    {
-    LogError( ( "Failed to set pipeline to PLAYING state" ) );
-    CleanUp( pCtx );
-    return -1;
-    }
-
     // Create threads for video and audio tasks
     pthread_t videoTid, audioTid;
 
@@ -379,15 +408,12 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                         AudioTx_Task,
                         &pCtx->audioContext ) != 0 )
     {
-        LogError( ( "Failed to create audio taconnectionsk" ) );
+        LogError( ( "Failed to create audio task" ) );
         pthread_join( videoTid,
                       NULL );
         CleanUp( pCtx );
         return -1;
     }
-
-    // Add a small delay to ensure the pipeline has started
-    g_usleep( 100000 );  // 100ms
 
     LogInfo( ( "GstMediaSource initialized successfully" ) );
     return 0;
