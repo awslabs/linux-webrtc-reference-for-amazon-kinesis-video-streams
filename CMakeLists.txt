@@ -59,7 +59,7 @@ set( WEBRTC_APPLICATION_NETWORKING_UTILS_INCLUDE_DIRS
 
 file(
   GLOB
-  WEBRTC_APPLICATION_UTILS_SOURCE_FILES
+  WEBRTC_APPLICATION_COMMON_UTILS_SOURCE_FILES
   "examples/base64/*.c"
   "examples/logging/*.c"
   "examples/message_queue/linux/*.c"
@@ -73,12 +73,11 @@ file(
   "examples/network_transport/*.c"
   "examples/network_transport/tcp_sockets_wrapper/ports/posix/*.c"
   "examples/network_transport/udp_sockets_wrapper/ports/posix/*.c"
-  "examples/app_media_source/*.c"
   "examples/metric/*.c"
   "examples/base64/*.c"
   "examples/base64/mbedtls/*.c" )
 
-set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
+set( WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS
      "examples/base64/"
      "examples/logging/"
      "examples/message_queue/linux/"
@@ -90,14 +89,24 @@ set( WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS
      "examples/network_transport"
      "examples/network_transport/tcp_sockets_wrapper/include"
      "examples/network_transport/udp_sockets_wrapper/include"
-     "examples/app_media_source"
      "examples/metric"
      "examples/libsrtp"
      if(BUILD_USRSCTP_LIBRARY)
        "examples/libusrsctp"
      endif()
      "examples/logging"
-     "examples/base64" )
+     "examples/base64"
+     "configs/mbedtls"
+     "configs/sigv4"
+     "examples/demo_config" )
+
+file(
+  GLOB
+  WEBRTC_APPLICATION_MASTER_MEDIA_SOURCE_FILES
+  "examples/app_media_source/*.c" )
+
+set( WEBRTC_APPLICATION_MASTER_MEDIA_INCLUDE_FILES
+     "examples/app_media_source" )
 
 file(
   GLOB
@@ -166,12 +175,12 @@ set( WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS
 file(
   GLOB
   WEBRTC_APPLICATION_MASTER_SOURCE_FILES
-  "examples/master/*.c" )
+  "examples/master/*.c"
+  "examples/app_common/*.c" )
 
 set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
-     "examples/master/"
-     "configs/mbedtls"
-     "configs/sigv4" )
+     "examples/master"
+     "examples/app_common" )
 
 add_executable(
     WebRTCLinuxApplicationMaster
@@ -179,7 +188,8 @@ add_executable(
     ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_NETWORKING_UTILS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
-    ${WEBRTC_APPLICATION_UTILS_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_COMMON_UTILS_SOURCE_FILES}
+    ${WEBRTC_APPLICATION_MASTER_MEDIA_SOURCE_FILES}
     ${WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES}
     ${WEBRTC_APPLICATION_ICE_CONTROLLER_SOURCE_FILES}
     ${WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES}
@@ -193,7 +203,8 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_NETWORKING_UTILS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS}
-                            ${WEBRTC_APPLICATION_UTILS_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS}
+                            ${WEBRTC_APPLICATION_MASTER_MEDIA_INCLUDE_FILES}
                             ${WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS}
@@ -309,139 +320,110 @@ target_compile_options(WebRTCLinuxApplicationMaster PRIVATE -Wall -Werror)
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GST
-    gstreamer-1.0
-    gstreamer-app-1.0
-    gstreamer-video-1.0
-    gstreamer-audio-1.0)
+pkg_check_modules( GST
+                   gstreamer-1.0
+                   gstreamer-app-1.0
+                   gstreamer-video-1.0
+                   gstreamer-audio-1.0)
 
 if(GST_FOUND)
+    file( GLOB
+          WEBRTC_APPLICATION_GST_MASTER_SOURCE_FILES
+          "examples/gst_master/*.c"
+          "examples/app_common/*.c" )
 
-file(
-  GLOB
-  WEBRTC_GST_APPLICATION_UTILS_SOURCE_FILES
-  "examples/base64/*.c"
-  "examples/logging/*.c"
-  "examples/message_queue/linux/*.c"
-  "examples/timer_controller/*.c"
-  "examples/string_utils/*.c"
-  if(BUILD_USRSCTP_LIBRARY)
-    "examples/libusrsctp/*.c"
-  endif()
-  "examples/peer_connection/*.c"
-  "examples/peer_connection/peer_connection_codec_helper/*.c"
-  "examples/network_transport/*.c"
-  "examples/network_transport/tcp_sockets_wrapper/ports/posix/*.c"
-  "examples/network_transport/udp_sockets_wrapper/ports/posix/*.c"
-  "examples/gst_media_source/*.c"
-  "examples/metric/*.c"
-  "examples/base64/*.c"
-  "examples/base64/mbedtls/*.c" )
+    set( WEBRTC_APPLICATION_GST_MASTER_INCLUDE_DIRS
+         "examples/gst_master"
+         "examples/app_common" )
 
-set( WEBRTC_GST_APPLICATION_UTILS_INCLUDE_DIRS
-     "examples/base64/"
-     "examples/logging/"
-     "examples/message_queue/linux/"
-     "examples/timer_controller/"
-     "examples/string_utils"
-     "examples/peer_connection/peer_connection_codec_helper"
-     "examples/peer_connection/peer_connection_codec_helper/include"
-     "examples/peer_connection"
-     "examples/network_transport"
-     "examples/network_transport/tcp_sockets_wrapper/include"
-     "examples/network_transport/udp_sockets_wrapper/include"
-     "examples/gst_media_source"
-     "examples/metric"
-     "examples/libsrtp"
-     if(BUILD_USRSCTP_LIBRARY)
-       "examples/libusrsctp"
-     endif()
-     "examples/logging"
-     "examples/base64" )
+    file( GLOB
+          WEBRTC_APPLICATION_GST_MASTER_MEDIA_SOURCE_FILES
+          "examples/gst_media_source/*.c" )
+    
+    set( WEBRTC_APPLICATION_GST_MASTER_MEDIA_INCLUDE_FILES
+         "examples/gst_media_source" )
 
     # Add the GStreamer master executable
-    add_executable(WebRTCLinuxApplicationGstMaster
-        ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES}
-        ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES}
-        ${WEBRTC_APPLICATION_NETWORKING_UTILS_SOURCE_FILES}
-        ${WEBRTC_GST_APPLICATION_UTILS_SOURCE_FILES}
-        ${WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES}
-        ${WEBRTC_APPLICATION_ICE_CONTROLLER_SOURCE_FILES}
-        ${WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES}
-        ${WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES}
-        ${WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES}
-        ${RTCP_SOURCES}
-        ${RTP_SOURCES}
-        "${CMAKE_CURRENT_SOURCE_DIR}/examples/gst_master/gst_master.c")
+    add_executable( WebRTCLinuxApplicationGstMaster
+                    ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_NETWORKING_UTILS_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_COMMON_UTILS_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_ICE_CONTROLLER_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES}
+                    ${RTCP_SOURCES}
+                    ${RTP_SOURCES}
+                    ${WEBRTC_APPLICATION_GST_MASTER_SOURCE_FILES}
+                    ${WEBRTC_APPLICATION_GST_MASTER_MEDIA_SOURCE_FILES})
 
     # Add include directories
-    target_include_directories(WebRTCLinuxApplicationGstMaster PRIVATE
-        ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
-        ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS}
-        ${WEBRTC_APPLICATION_NETWORKING_UTILS_INCLUDE_DIRS}
-        ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS}
-        ${WEBRTC_GST_APPLICATION_UTILS_INCLUDE_DIRS}
-        ${WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS}
-        ${WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS}
-        ${WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS}
-        ${WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS}
-        ${WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS}
-        ${RTCP_INCLUDE_PUBLIC_DIRS}
-        ${RTP_INCLUDE_PUBLIC_DIRS}
-        ${GST_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_SOURCE_DIR}/examples/master
-        ${CMAKE_CURRENT_SOURCE_DIR}/examples/gst_master
-        ${CMAKE_CURRENT_SOURCE_DIR}/configs)
+    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
+                                ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_NETWORKING_LIBWEBSOCKETS_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_NETWORKING_UTILS_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_SIGNALING_CONTROLLER_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_SDP_CONTROLLER_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS}
+                                ${RTCP_INCLUDE_PUBLIC_DIRS}
+                                ${RTP_INCLUDE_PUBLIC_DIRS}
+                                ${GST_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_GST_MASTER_INCLUDE_DIRS}
+                                ${WEBRTC_APPLICATION_GST_MASTER_MEDIA_INCLUDE_FILES})
 
-## Set SDP include directories
-target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                            ${SDP_INCLUDE_PUBLIC_DIRS} )
+    ## Set SDP include directories
+    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
+                                ${SDP_INCLUDE_PUBLIC_DIRS} )
 
-## Set sigv4 include directories
-message(STATUS "including sigv4 directories: ${SIGV4_INCLUDE_PUBLIC_DIRS}")
-target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                            ${SIGV4_INCLUDE_PUBLIC_DIRS} )
+    ## Set sigv4 include directories
+    message(STATUS "including sigv4 directories: ${SIGV4_INCLUDE_PUBLIC_DIRS}")
+    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
+                                ${SIGV4_INCLUDE_PUBLIC_DIRS} )
 
-## Set ICE include directories
-target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                            ${ICE_INCLUDE_PUBLIC_DIRS} )
+    ## Set ICE include directories
+    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
+                                ${ICE_INCLUDE_PUBLIC_DIRS} )
 
-## Set signaling include directories
-target_compile_definitions( WebRTCLinuxApplicationGstMaster
-                            PUBLIC
-                            SIGNALING_DO_NOT_USE_CUSTOM_CONFIG
-                            MBEDTLS_CONFIG_FILE="mbedtls_custom_config.h"
-                            HTTP_DO_NOT_USE_CUSTOM_CONFIG
-                            HAVE_CONFIG_H )
-message(STATUS "including signaling directories: ${SIGNALING_INCLUDE_PUBLIC_DIRS}")
-target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                            ${SIGNALING_INCLUDE_PUBLIC_DIRS} )
-
-
-## Set STUN include directories
-target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                            ${STUN_INCLUDE_PUBLIC_DIRS} )
-
-target_link_libraries(WebRTCLinuxApplicationGstMaster
-websockets
-sigv4
-signaling
-corejson
-sdp
-ice
-rt
-pthread
-${GST_LIBRARIES})
-
-if(BUILD_USRSCTP_LIBRARY)
-target_link_libraries(WebRTCLinuxApplicationGstMaster
-    usrsctp
-    dcep)
-endif()
+    ## Set signaling include directories
+    target_compile_definitions( WebRTCLinuxApplicationGstMaster
+                                PUBLIC
+                                SIGNALING_DO_NOT_USE_CUSTOM_CONFIG
+                                MBEDTLS_CONFIG_FILE="mbedtls_custom_config.h"
+                                HTTP_DO_NOT_USE_CUSTOM_CONFIG
+                                HAVE_CONFIG_H )
+    message(STATUS "including signaling directories: ${SIGNALING_INCLUDE_PUBLIC_DIRS}")
+    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
+                                ${SIGNALING_INCLUDE_PUBLIC_DIRS} )
 
 
-target_compile_options(WebRTCLinuxApplicationGstMaster PRIVATE -Wall -Werror)
+    ## Set STUN include directories
+    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
+                                ${STUN_INCLUDE_PUBLIC_DIRS} )
 
-else()
+    target_link_libraries( WebRTCLinuxApplicationGstMaster
+                           websockets
+                           sigv4
+                           signaling
+                           corejson
+                           sdp
+                           ice
+                           rt
+                           pthread
+                           ${GST_LIBRARIES} )
+
+        if(BUILD_USRSCTP_LIBRARY)
+            target_link_libraries( WebRTCLinuxApplicationGstMaster
+                                   usrsctp
+                                   dcep)
+        endif()
+        target_compile_options( WebRTCLinuxApplicationGstMaster PRIVATE -Wall -Werror )
+
+else() # GST_FOUND
     message(WARNING "GStreamer packages not found - GStreamer applications will not be built")
-endif()
+endif() # GST_FOUND
