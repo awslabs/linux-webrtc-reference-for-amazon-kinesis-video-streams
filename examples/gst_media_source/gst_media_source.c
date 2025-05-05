@@ -199,64 +199,72 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
 
 static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
 {
-    if( !pCtx )
-        return -1;
-    gchar * pipeline_desc = g_strdup_printf(
-        "autovideosrc ! videoconvert ! "
-        "x264enc name=videoEncoder "
-        "tune=zerolatency speed-preset=veryfast "
-        "key-int-max=30 bitrate=2000 bframes=0 ref=1 "
-        "byte-stream=true aud=false insert-vui=true ! "
-        "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
-        "h264parse config-interval=1 ! "
-        "queue max-size-buffers=2 ! "
-        "appsink name=vsink sync=true emit-signals=true max-buffers=1 drop=true "
-        "autoaudiosrc ! "
-        "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=sampleAudioEncoder ! "
-        "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE max-buffers=1 drop=true name=asink " );
+    int32_t ret = 0;
 
-    GError * error = NULL;
-    pCtx->videoContext.pipeline = gst_parse_launch( pipeline_desc,
-                                                    &error );
-    g_free( pipeline_desc );
-
-    if( !pCtx->videoContext.pipeline )
+    if( ( pCtx == NULL ) )
     {
-        LogError( ( "Failed to create pipeline: %s", error->message ) );
-        g_error_free( error );
-        return -1;
-    }
-    // Get video sink
-    pCtx->videoContext.appsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
-                                                      "vsink" );
-    if( !pCtx->videoContext.appsink )
-    {
-        LogError( ( "Failed to get video appsink" ) );
-        return -1;
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+        ret = -1;
     }
 
-    // Get audio sink
-    pCtx->audioContext.appsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
-                                                      "asink" );
-    if( !pCtx->audioContext.appsink )
+    if (0 == ret)
     {
-        LogError( ( "Failed to get audio appsink" ) );
-        return -1;
+        gchar * pipeline_desc = g_strdup_printf(
+            "autovideosrc ! videoconvert ! "
+            "x264enc name=videoEncoder "
+            "tune=zerolatency speed-preset=veryfast "
+            "key-int-max=30 bitrate=2000 bframes=0 ref=1 "
+            "byte-stream=true aud=false insert-vui=true ! "
+            "video/x-h264,profile=constrained-baseline,stream-format=byte-stream,alignment=au ! "
+            "h264parse config-interval=1 ! "
+            "queue max-size-buffers=2 ! "
+            "appsink name=vsink sync=true emit-signals=true max-buffers=1 drop=true "
+            "autoaudiosrc ! "
+            "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=sampleAudioEncoder ! "
+            "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE max-buffers=1 drop=true name=asink " );
+
+        GError * error = NULL;
+        pCtx->videoContext.pipeline = gst_parse_launch( pipeline_desc,
+                                                        &error );
+        g_free( pipeline_desc );
+
+        if( !pCtx->videoContext.pipeline )
+        {
+            LogError( ( "Failed to create pipeline: %s", error->message ) );
+            g_error_free( error );
+            ret = -1;
+        }
+        // Get video sink
+        pCtx->videoContext.appsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
+                                                        "vsink" );
+        if( !pCtx->videoContext.appsink )
+        {
+            LogError( ( "Failed to get video appsink" ) );
+            ret = -1;
+        }
+
+        // Get audio sink
+        pCtx->audioContext.appsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
+                                                        "asink" );
+        if( !pCtx->audioContext.appsink )
+        {
+            LogError( ( "Failed to get audio appsink" ) );
+            ret = -1;
+        }
+
+        // Share the pipeline between video and audio contexts
+        pCtx->audioContext.pipeline = pCtx->videoContext.pipeline;
+
+        // Get encoder elements for bitrate control
+        pCtx->videoContext.encoder = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
+                                                          "videoEncoder" );
+        if( !pCtx->videoContext.encoder )
+        {
+            LogError( ( "Failed to get video encoder element" ) );
+            // Non-fatal error, continue without encoder reference
+        }
     }
-
-    // Share the pipeline between video and audio contexts
-    pCtx->audioContext.pipeline = pCtx->videoContext.pipeline;
-
-    // Get encoder elements for bitrate control
-    pCtx->videoContext.encoder = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
-                                                      "videoEncoder" );
-    if( !pCtx->videoContext.encoder )
-    {
-        LogError( ( "Failed to get video encoder element" ) );
-        // Non-fatal error, continue without encoder reference
-    }
-
-    return 0;
+    return ret;
 }
 
 static void CleanUp( GstMediaSourcesContext_t * pCtx )
@@ -371,7 +379,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                         AudioTx_Task,
                         &pCtx->audioContext ) != 0 )
     {
-        LogError( ( "Failed to create audio task" ) );
+        LogError( ( "Failed to create audio taconnectionsk" ) );
         pthread_join( videoTid,
                       NULL );
         CleanUp( pCtx );
@@ -437,47 +445,57 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
 int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTransceiver )
 {
-    if( !pCtx || !pAudioTransceiver )
+
+    int32_t ret = 0;
+
+    if( ( pCtx == NULL ) || ( pAudioTransceiver == NULL ) )
     {
-        LogError( ( "Invalid input parameters" ) );
-        return -1;
+        LogError( ( "Invalid input, pCtx: %p, pAudioTransceiver: %p", pCtx, pAudioTransceiver ) );
+        ret = -1;
     }
 
-    memset( pAudioTransceiver,
-            0,
-            sizeof( Transceiver_t ) );
+    if ( ret == 0 )
+    {
+        LogDebug( "Initialize audio transceiver");
+        memset( pAudioTransceiver,
+                0,
+                sizeof( Transceiver_t ) );
 
-    pAudioTransceiver->trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-    pAudioTransceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDONLY;
+        pAudioTransceiver->trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+        pAudioTransceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDONLY;
 
-    TRANSCEIVER_ENABLE_CODEC( pAudioTransceiver->codecBitMap,
-                              TRANSCEIVER_RTC_CODEC_OPUS_BIT );
+        TRANSCEIVER_ENABLE_CODEC( pAudioTransceiver->codecBitMap,
+                                TRANSCEIVER_RTC_CODEC_OPUS_BIT );
 
-    pAudioTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
+        pAudioTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
 
-    GstElement* audioEncoder = gst_bin_get_by_name(GST_BIN(pCtx->audioContext.pipeline), "sampleAudioEncoder");
-    if (audioEncoder) {
-        guint bitrate;
-        g_object_get(G_OBJECT(audioEncoder), "bitrate", &bitrate, NULL);
-        pAudioTransceiver->rollingbufferBitRate = bitrate;
-        gst_object_unref(audioEncoder);
-    } else {
-        LogError( ( "Failed to get audio encoder element" ) );
-        return -1;
+        GstElement* audioEncoder = gst_bin_get_by_name(GST_BIN(pCtx->audioContext.pipeline), "sampleAudioEncoder");
+        if (audioEncoder) {
+            guint bitrate;
+            g_object_get(G_OBJECT(audioEncoder), "bitrate", &bitrate, NULL);
+            pAudioTransceiver->rollingbufferBitRate = bitrate;
+            gst_object_unref(audioEncoder);
+        } else {
+            LogError( ( "Failed to get audio encoder element" ) );
+            ret = -1;
+        }
+
+        if( ret == 0 )
+        {
+            strncpy( pAudioTransceiver->streamId,
+                    DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
+                    sizeof( pAudioTransceiver->streamId ) - 1 );
+            pAudioTransceiver->streamIdLength = strlen( pAudioTransceiver->streamId );
+
+            strncpy( pAudioTransceiver->trackId,
+                    DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID,
+                    sizeof( pAudioTransceiver->trackId ) - 1 );
+            pAudioTransceiver->trackIdLength = strlen( pAudioTransceiver->trackId );
+
+            pAudioTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
+            pAudioTransceiver->pOnPcEventCustomContext = &pCtx->audioContext;
+        }
     }
 
-    strncpy( pAudioTransceiver->streamId,
-             DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
-             sizeof( pAudioTransceiver->streamId ) - 1 );
-    pAudioTransceiver->streamIdLength = strlen( pAudioTransceiver->streamId );
-
-    strncpy( pAudioTransceiver->trackId,
-             DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID,
-             sizeof( pAudioTransceiver->trackId ) - 1 );
-    pAudioTransceiver->trackIdLength = strlen( pAudioTransceiver->trackId );
-
-    pAudioTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
-    pAudioTransceiver->pOnPcEventCustomContext = &pCtx->audioContext;
-
-    return 0;
+    return ret;
 }

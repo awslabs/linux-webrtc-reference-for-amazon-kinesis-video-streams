@@ -382,7 +382,7 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
 
             iceControllerResult = IceController_AddRemoteCandidate( &pSession->iceControllerContext,
                                                                     &remoteCandidateInfo );
-            if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
+            if( iceControllerResult != ICE_CONTROLLER_RESULT_OK && iceControllerResult != ICE_CONTROLLER_RESULT_FAIL_ADD_IPv6_REMOTE_CANDIDATE)
             {
                 LogError( ( "Fail to add remote candidate." ) );
                 ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADD_REMOTE_CANDIDATE;
