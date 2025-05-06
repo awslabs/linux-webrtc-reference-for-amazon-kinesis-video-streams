@@ -31,10 +31,7 @@ cmake -S . -B build
 make -C build
 ```
 
-**Note**: Install the following packages to auto build GStreamer application:
-    - libgstreamer1.0-dev
-    - libgstreamer-plugins-base1.0-dev
-    - libgstreamer-plugins-bad1.0-dev
+**Note**: Install the following packages to auto build GStreamer application: libgstreamer1.0-dev, libgstreamer-plugins-base1.0-dev, libgstreamer-plugins-bad1.0-dev
 
     On Ubuntu/Debian:
     sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev
