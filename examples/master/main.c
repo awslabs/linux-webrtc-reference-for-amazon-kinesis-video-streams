@@ -1236,7 +1236,9 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
     switch( pSignalingMessage->messageType )
     {
         case SIGNALING_TYPE_MESSAGE_SDP_OFFER:
+            #if ( METRIC_PRINT_ENABLED != 0 )
             Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
+            #endif
             HandleSdpOffer( &demoContext,
                             pSignalingMessage );
             break;
@@ -1397,7 +1399,9 @@ int main()
         signal( SIGINT, terminateHandler );
 
         /* Initialize metrics. */
+        #if ( METRIC_PRINT_ENABLED != 0 )
         Metric_Init();
+        #endif
     }
 
     if( ret == 0 )

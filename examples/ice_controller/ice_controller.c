@@ -526,7 +526,9 @@ static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
         if( pCtx->metrics.isFirstConnectivityRequest == 1 )
         {
             pCtx->metrics.isFirstConnectivityRequest = 0;
+            #if ( METRIC_PRINT_ENABLED != 0 )
             Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+            #endif
         }
 
         iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,

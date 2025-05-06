@@ -330,10 +330,12 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
             bytesSent += pRollingBufferPacket->rtpPacket.payloadLength;
         }
 
+        #if ( METRIC_PRINT_ENABLED != 0 )
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             Metric_EndEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
         }
+        #endif
     }
 
     if( isLocked )

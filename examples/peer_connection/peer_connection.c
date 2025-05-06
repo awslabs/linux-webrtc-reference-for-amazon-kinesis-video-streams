@@ -697,7 +697,9 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 break;
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
                 /* Start DTLS handshaking. */
+                #if ( METRIC_PRINT_ENABLED != 0 )
                 Metric_StartEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
+                #endif
                 ret = StartDtlsHandshake( pSession );
 
                 /* This must set after StartDtlsHandshake, or the other thread might execute handshake earlier than expectation. */
@@ -897,8 +899,9 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     uint32_t i;
 
     LogDebug( ( "Complete DTLS handshaking." ) );
+    #if ( METRIC_PRINT_ENABLED != 0 )
     Metric_EndEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
-
+    #endif
     /* Verify remote fingerprint (if remote cert fingerprint is the expected one) */
     xNetworkStatus = DTLS_VerifyRemoteCertificateFingerprint( &pSession->dtlsSession.xNetworkContext.pParams->dtlsSslContext,
                                                               pSession->remoteCertFingerprint,
