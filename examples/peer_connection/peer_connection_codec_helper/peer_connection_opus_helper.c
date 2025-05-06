@@ -270,7 +270,8 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
                 pRollingBufferPacket->twccExtensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId,
                                                                                                     pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &pRollingBufferPacket->twccExtensionPayload;
-
+                
+                memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
                 packetInfo.packetSize = packetOpus.packetDataLength;
                 packetInfo.localSentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
                 packetInfo.packetSeqNum = pSession->rtpConfig.twccSequence;
