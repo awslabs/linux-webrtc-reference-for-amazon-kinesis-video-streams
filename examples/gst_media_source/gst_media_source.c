@@ -101,7 +101,7 @@ static void * VideoTx_Task( void * pParameter )
     if( ret == 0 )
     {
         // Connect to new-sample signal
-        g_signal_connect( pVideoContext->appsink,
+        g_signal_connect( pVideoContext->pAppsink,
                           "new-sample",
                           G_CALLBACK( on_new_video_sample ),
                           pVideoContext );
@@ -109,7 +109,7 @@ static void * VideoTx_Task( void * pParameter )
         // Create main loop
         GMainLoop * loop = g_main_loop_new( NULL,
                                             FALSE );
-        pVideoContext->main_loop = loop;
+        pVideoContext->pMainLoop = loop;
 
         // Run the main loop
         g_main_loop_run( loop );
@@ -204,7 +204,7 @@ static void * AudioTx_Task( void * pParameter )
     if( ret == 0 )
     {
         // Connect to new-sample signal
-        g_signal_connect( pAudioContext->appsink,
+        g_signal_connect( pAudioContext->pAppsink,
                           "new-sample",
                           G_CALLBACK( on_new_audio_sample ),
                           pAudioContext );
@@ -212,7 +212,7 @@ static void * AudioTx_Task( void * pParameter )
         // Create main loop
         GMainLoop * loop = g_main_loop_new( NULL,
                                             FALSE );
-        pAudioContext->main_loop = loop;
+        pAudioContext->pMainLoop = loop;
 
         // Run the main loop
         g_main_loop_run( loop );
@@ -250,7 +250,7 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
 
 
                 GstStateChangeReturn ret;
-                ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pipeline,
+                ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pPipeline,
                                              GST_STATE_PLAYING );
                 if( ret == GST_STATE_CHANGE_FAILURE )
                 {
@@ -270,7 +270,7 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
                 {
                     // Stop the pipeline if no peers are connected
                     GstStateChangeReturn ret;
-                    ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pipeline,
+                    ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pPipeline,
                                                  GST_STATE_NULL );
                     if( ret == GST_STATE_CHANGE_FAILURE )
                     {
@@ -302,7 +302,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
 
     if( ret == 0 )
     {
-        gchar * pipeline_desc = g_strdup_printf(
+        gchar * pPipeline_desc = g_strdup_printf(
             "autovideosrc ! videoconvert ! "
             "x264enc name=videoEncoder "
             "tune=zerolatency speed-preset=veryfast "
@@ -317,51 +317,51 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
             "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE max-buffers=1 drop=true name=asink " );
 
         GError * error = NULL;
-        pCtx->videoContext.pipeline = gst_parse_launch( pipeline_desc,
+        pCtx->videoContext.pPipeline = gst_parse_launch( pPipeline_desc,
                                                         &error );
-        g_free( pipeline_desc );
+        g_free( pPipeline_desc );
 
-        if( pCtx->videoContext.pipeline == NULL )
+        if( pCtx->videoContext.pPipeline == NULL )
         {
-            LogError( ( "Failed to create pipeline: %s", error->message ) );
+            LogError( ( "Failed to create pPipeline: %s", error->message ) );
             g_error_free( error );
             ret = -1;
         }
 
         // Get video sink
-        pCtx->videoContext.appsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
+        pCtx->videoContext.pAppsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
                                                           "vsink" );
-        if( pCtx->videoContext.appsink == NULL )
+        if( pCtx->videoContext.pAppsink == NULL )
         {
             LogError( ( "Failed to get video appsink" ) );
             ret = -1;
         }
 
         // Get audio sink
-        pCtx->audioContext.appsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
+        pCtx->audioContext.pAppsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
                                                           "asink" );
-        if( pCtx->audioContext.appsink == NULL )
+        if( pCtx->audioContext.pAppsink == NULL )
         {
             LogError( ( "Failed to get audio appsink" ) );
             ret = -1;
         }
 
-        // Share the pipeline between video and audio contexts
-        pCtx->audioContext.pipeline = pCtx->videoContext.pipeline;
+        // Share the pPipeline between video and audio contexts
+        pCtx->audioContext.pPipeline = pCtx->videoContext.pPipeline;
 
         // Get encoder elements for bitrate control
-        pCtx->audioContext.encoder = gst_bin_get_by_name( GST_BIN( pCtx->audioContext.pipeline ),
+        pCtx->audioContext.pEncoder = gst_bin_get_by_name( GST_BIN( pCtx->audioContext.pPipeline ),
                                                           "audioEncoder" );
-        if( pCtx->audioContext.encoder == NULL )
+        if( pCtx->audioContext.pEncoder == NULL )
         {
             LogError( ( "Failed to get audio encoder element" ) );
             ret = -1;
         }
 
         // Get encoder elements for bitrate control
-        pCtx->videoContext.encoder = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
+        pCtx->videoContext.pEncoder = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
                                                           "videoEncoder" );
-        if( pCtx->videoContext.encoder == NULL )
+        if( pCtx->videoContext.pEncoder == NULL )
         {
             LogError( ( "Failed to get video encoder element" ) );
             ret = -1;
@@ -383,44 +383,44 @@ int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
     if( ret == 0 )
     {
         // Stop main loops if they exist
-        if( pCtx->videoContext.main_loop )
+        if( pCtx->videoContext.pMainLoop )
         {
-            g_main_loop_quit( pCtx->videoContext.main_loop );
+            g_main_loop_quit( pCtx->videoContext.pMainLoop );
         }
 
-        if( pCtx->audioContext.main_loop )
+        if( pCtx->audioContext.pMainLoop )
         {
-            g_main_loop_quit( pCtx->audioContext.main_loop );
+            g_main_loop_quit( pCtx->audioContext.pMainLoop );
         }
 
         // Stop pipelines (audioContext and videoContext share the same pipeline)
-        if( pCtx->videoContext.pipeline )
+        if( pCtx->videoContext.pPipeline )
         {
-            gst_element_set_state( pCtx->videoContext.pipeline,
+            gst_element_set_state( pCtx->videoContext.pPipeline,
                                    GST_STATE_NULL );
-            gst_object_unref( pCtx->videoContext.pipeline );
+            gst_object_unref( pCtx->videoContext.pPipeline );
         }
 
         // Clean up sinks
-        if( pCtx->videoContext.appsink )
+        if( pCtx->videoContext.pAppsink )
         {
-            gst_object_unref( pCtx->videoContext.appsink );
+            gst_object_unref( pCtx->videoContext.pAppsink );
         }
 
-        if( pCtx->audioContext.appsink )
+        if( pCtx->audioContext.pAppsink )
         {
-            gst_object_unref( pCtx->audioContext.appsink );
+            gst_object_unref( pCtx->audioContext.pAppsink );
         }
 
         // Clean up encoders
-        if( pCtx->videoContext.encoder )
+        if( pCtx->videoContext.pEncoder )
         {
-            gst_object_unref( pCtx->videoContext.encoder );
+            gst_object_unref( pCtx->videoContext.pEncoder );
         }
 
-        if( pCtx->audioContext.encoder )
+        if( pCtx->audioContext.pEncoder )
         {
-            gst_object_unref( pCtx->audioContext.encoder );
+            gst_object_unref( pCtx->audioContext.pEncoder );
         }
 
         // Clean up mutex
@@ -536,7 +536,7 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
 
         pVideoTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
 
-        g_object_get( G_OBJECT( pCtx->videoContext.encoder ),
+        g_object_get( G_OBJECT( pCtx->videoContext.pEncoder ),
                       "bitrate",
                       &bitrate,
                       NULL );
@@ -586,7 +586,7 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
 
         pAudioTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
 
-        g_object_get( G_OBJECT( pCtx->audioContext.encoder ),
+        g_object_get( G_OBJECT( pCtx->audioContext.pEncoder ),
                       "bitrate",
                       &bitrate,
                       NULL );

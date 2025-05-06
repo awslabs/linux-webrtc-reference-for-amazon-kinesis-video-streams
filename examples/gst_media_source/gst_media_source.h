@@ -27,10 +27,10 @@ typedef struct GstMediaSourceContext
     GstMediaSourcesContext_t * pSourcesContext;
 
     /* GStreamer pipeline elements */
-    GstElement * pipeline;
-    GstElement * appsink;
-    GstElement * encoder;
-    GMainLoop * main_loop;
+    GstElement * pPipeline;
+    GstElement * pAppsink;
+    GstElement * pEncoder;
+    GMainLoop * pMainLoop;
 } GstMediaSourceContext_t;
 
 typedef struct GstMediaSourcesContext {
