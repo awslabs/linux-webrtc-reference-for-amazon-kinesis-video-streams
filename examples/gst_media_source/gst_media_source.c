@@ -119,7 +119,7 @@ static void * VideoTx_Task( void * pParameter )
     return 0;
 }
 
-static int32_t on_new_audio_sample( GstElement * sink,
+static int32_t OnNewAudioSample( GstElement * sink,
                                  gpointer user_data )
 {
     int32_t ret = 0;
@@ -204,7 +204,7 @@ static void * AudioTx_Task( void * pParameter )
         // Connect to new-sample signal
         g_signal_connect( pAudioContext->pAppsink,
                           "new-sample",
-                          G_CALLBACK( on_new_audio_sample ),
+                          G_CALLBACK( OnNewAudioSample ),
                           pAudioContext );
 
         // Create main loop
@@ -325,7 +325,10 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
             g_error_free( pError );
             ret = -1;
         }
+    }
 
+    if( ret == 0 )
+    {
         // Get video sink
         pCtx->videoContext.pAppsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
                                                           "vsink" );
@@ -334,7 +337,10 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
             LogError( ( "Failed to get video appsink" ) );
             ret = -1;
         }
+    }
 
+    if( ret == 0 )
+    {
         // Get audio sink
         pCtx->audioContext.pAppsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
                                                           "asink" );
@@ -343,7 +349,10 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
             LogError( ( "Failed to get audio appsink" ) );
             ret = -1;
         }
+    }
 
+    if( ret == 0 )
+    {
         // Share the pPipeline between video and audio contexts
         pCtx->audioContext.pPipeline = pCtx->videoContext.pPipeline;
 
@@ -355,7 +364,10 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
             LogError( ( "Failed to get audio encoder element" ) );
             ret = -1;
         }
+    }
 
+    if( ret == 0 )
+    {
         // Get encoder elements for bitrate control
         pCtx->videoContext.pEncoder = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
                                                           "videoEncoder" );
