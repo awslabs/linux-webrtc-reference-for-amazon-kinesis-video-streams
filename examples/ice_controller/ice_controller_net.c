@@ -59,6 +59,7 @@ static void GetLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
 
     for( pIfAddr = pIfAddrs; pIfAddr && localIpAddressesNum < localIpAddressesSize; pIfAddr = pIfAddr->ifa_next )
     {
+        memset( &pLocalIpAddresses[ localIpAddressesNum ], 0, sizeof( IceEndpoint_t ) );
         if( pIfAddr->ifa_addr && ( pIfAddr->ifa_addr->sa_family == AF_INET ) &&
             ( ( pIfAddr->ifa_flags & IFF_LOOPBACK ) == 0 ) ) // Ignore loopback interface
         {
