@@ -59,6 +59,7 @@ static void GetLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
 
     for( pIfAddr = pIfAddrs; pIfAddr && localIpAddressesNum < localIpAddressesSize; pIfAddr = pIfAddr->ifa_next )
     {
+        memset( &pLocalIpAddresses[ localIpAddressesNum ], 0, sizeof( IceEndpoint_t ) );
         if( pIfAddr->ifa_addr && ( pIfAddr->ifa_addr->sa_family == AF_INET ) &&
             ( ( pIfAddr->ifa_flags & IFF_LOOPBACK ) == 0 ) ) // Ignore loopback interface
         {
@@ -1042,6 +1043,17 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
     if( isLocked != 0 )
     {
         pthread_mutex_unlock( &( pCtx->socketMutex ) );
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_FAIL_SOCKET_SENDTO )
+    {
+        /* 
+         * Socket read error detected.
+         * This typically indicates the remote peer closed the connection.
+         * Action required: Close the local socket to properly terminate the connection.
+         */
+        ( void ) Ice_CloseCandidate( &pCtx->iceContext, pSocketContext->pLocalCandidate );
+        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
     }
 
     return ret;
