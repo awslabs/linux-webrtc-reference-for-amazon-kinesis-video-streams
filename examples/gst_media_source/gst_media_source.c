@@ -70,7 +70,7 @@ static int32_t on_new_video_sample( GstElement * sink,
 
             if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
             {
-                LogVerbose( ( "Sending video frame: size=%zu, ts=%lu",
+                LogVerbose( ( "Sending video frame: size=%u, ts=%lu",
                               frame.size, frame.timestampUs ) );
                 ( void )pVideoContext->pSourcesContext->onMediaSinkHookFunc(
                     pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
@@ -172,8 +172,8 @@ static int32_t on_new_audio_sample( GstElement * sink,
 
             if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
             {
-                LogVerbose( ( "Sending audio frame: size=%zu, ts=%lu",
-                            frame.size, frame.timestampUs ) );
+                LogVerbose( ( "Sending audio frame: size=%u, ts=%lu",
+                              frame.size, frame.timestampUs ) );
                 ( void )pAudioContext->pSourcesContext->onMediaSinkHookFunc(
                     pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
                     &frame );
@@ -574,7 +574,6 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
 
     if( ret == 0 )
     {
-        LogDebug( "Initialize audio transceiver" );
         memset( pAudioTransceiver,
                 0,
                 sizeof( Transceiver_t ) );
