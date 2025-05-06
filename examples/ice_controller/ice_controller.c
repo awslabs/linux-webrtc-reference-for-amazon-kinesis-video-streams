@@ -317,6 +317,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
+    TlsTransportStatus_t transportResult;
     uint32_t i;
     size_t count;
     uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
@@ -399,7 +400,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
 
             result = IceControllerNet_SendPacket( pCtx,
                                                   pSocketContext,
-                                                  pSocketContext->pIceServerEndpoint,
+                                                  &( pSocketContext->pIceServer->iceEndpoint ),
                                                   stunBuffer,
                                                   stunBufferLength );
 
@@ -407,6 +408,60 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
             {
                 LogWarn( ( "Unable to send packet to remote address, result: %d", result ) );
                 continue;
+            }
+        }
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
+        {
+            pSocketContext = &( pCtx->socketsContexts[ i ] );
+
+            if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
+            {
+                transportResult = TLS_FreeRTOS_ContinueHandshake( &( pSocketContext->tlsSession.xTlsNetworkContext ) );
+
+                if( transportResult == TLS_TRANSPORT_SUCCESS )
+                {
+                    LogVerbose( ( "Connection with TURN server successful for socket fd %d", pSocketContext->socketFd ) );
+
+                    iceResult = Ice_AddRelayCandidate( &( pCtx->iceContext ),
+                                                       &( pSocketContext->pIceServer->iceEndpoint ),
+                                                       &( pSocketContext->pIceServer->userName[ 0 ] ),
+                                                       pSocketContext->pIceServer->userNameLength,
+                                                       &( pSocketContext->pIceServer->password[ 0 ] ),
+                                                       pSocketContext->pIceServer->passwordLength );
+
+                    if( iceResult != ICE_RESULT_OK )
+                    {
+                        LogError( ( "Failed to created relay candidate for socket fd %d",
+                                    pSocketContext->socketFd ) );
+                        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                    }
+                    else
+                    {
+                        LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
+                                   pSocketContext->socketFd,
+                                   pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+
+                        IceControllerNet_UpdateSocketContext( pCtx,
+                                                              pSocketContext,
+                                                              ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
+                                                              &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
+                                                              NULL,
+                                                              pSocketContext->pIceServer );
+                    }
+                }
+                else if( transportResult == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
+                {
+                    LogVerbose( ( "Connection still in-progress with TURN server for socket fd %d...", pSocketContext->socketFd ) );
+                }
+                else
+                {
+                    LogError( ( "Connection with TURN failed for socket fd %d...", pSocketContext->socketFd ) );
+                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                }
             }
         }
     }
@@ -488,7 +543,7 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
 
         if( pTargetCandidatePair->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
         {
-            pDestEndpoint = pSocketContext->pIceServerEndpoint;
+            pDestEndpoint = &( pSocketContext->pIceServer->iceEndpoint );
         }
         else
         {
@@ -717,7 +772,7 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                 else
                 {
                     /* Release all unused socket contexts. */
-                    LogDebug( ( "Closing socket for local candidate ID: 0x%04x", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
+                    LogDebug( ( "Closing socket fd %d", pCtx->socketsContexts[i].socketFd ) );
                     IceControllerNet_FreeSocketContext( pCtx,
                                                         &pCtx->socketsContexts[i] );
                 }
@@ -872,7 +927,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
                                                                  ipBuffer,
                                                                  sizeof( ipBuffer ) ),
                               pRemoteCandidate->pEndpoint->transportAddress.port ) );
-    
+
                 LogInfo( ( "Added new remote candidate with ID: 0x%04x", pCtx->iceContext.pRemoteCandidates[ pCtx->iceContext.numRemoteCandidates - 1 ].candidateId ) );
             }
         }
@@ -1644,7 +1699,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
                     else
                     {
                         /* Redirect the output to the TURN server instead of remote endpoint. */
-                        pDestEndpoint = pCtx->pNominatedSocketContext->pIceServerEndpoint;
+                        pDestEndpoint = &( pCtx->pNominatedSocketContext->pIceServer->iceEndpoint );
 
                         if( iceResult == ICE_RESULT_OK )
                         {
