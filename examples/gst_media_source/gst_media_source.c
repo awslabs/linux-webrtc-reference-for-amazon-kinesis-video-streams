@@ -38,7 +38,7 @@ static int32_t on_new_video_sample( GstElement * sink,
 
     if( ret == 0 )
     {
-        if( 0 == pVideoContext->numReadyPeer )
+        if( pVideoContext->numReadyPeer == 0 )
         {
             LogError( ( "No ready peer for video" ) );
             ret = -1;;
@@ -92,7 +92,7 @@ static void * VideoTx_Task( void * pParameter )
     LogDebug( ( "VideoTx_Task started" ) );
     GstMediaSourceContext_t * pVideoContext = ( GstMediaSourceContext_t * )pParameter;
 
-    if( !pVideoContext )
+    if( pVideoContext == NULL )
     {
         LogError( ( "Invalid audio context" ) );
         ret = -1;
@@ -140,7 +140,7 @@ static int32_t on_new_audio_sample( GstElement * sink,
 
     if( ret == 0 )
     {
-        if( 0 == pAudioContext->numReadyPeer )
+        if( pAudioContext->numReadyPeer == 0 )
         {
             LogError( ( "No ready peer for audio" ) );
             ret = -1;
@@ -150,7 +150,7 @@ static int32_t on_new_audio_sample( GstElement * sink,
     if( ret == 0 )
     {
         sample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
-        if( !sample )
+        if( sample == NULL )
         {
             ret = -1;
         }
@@ -195,7 +195,7 @@ static void * AudioTx_Task( void * pParameter )
 
     int32_t ret = 0;
 
-    if( !pAudioContext )
+    if( pAudioContext == NULL )
     {
         LogError( ( "Invalid audio context" ) );
         ret = -1;
@@ -231,7 +231,7 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
     GstMediaSourceContext_t * pMediaSource = ( GstMediaSourceContext_t * )pCustomContext;
     int32_t ret = 0;
 
-    if( !pMediaSource )
+    if( pMediaSource == NULL )
     {
         LogError( ( "Invalid media source context" ) );
         ret = -1;
@@ -266,7 +266,7 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
                 pthread_mutex_unlock( &pMediaSource->pSourcesContext->mediaMutex );
                 LogInfo( ( "Remote peer closed for track kind %d, peers: %d",
                            pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
-                if( 0 == pMediaSource->numReadyPeer )
+                if( pMediaSource->numReadyPeer == 0 )
                 {
                     // Stop the pipeline if no peers are connected
                     GstStateChangeReturn ret;
@@ -294,7 +294,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
 {
     int32_t ret = 0;
 
-    if( ( NULL == pCtx ) )
+    if( NULL == pCtx )
     {
         LogError( ( "Invalid input, pCtx: %p", pCtx ) );
         ret = -1;
@@ -321,7 +321,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
                                                         &error );
         g_free( pipeline_desc );
 
-        if( !pCtx->videoContext.pipeline )
+        if( pCtx->videoContext.pipeline == NULL )
         {
             LogError( ( "Failed to create pipeline: %s", error->message ) );
             g_error_free( error );
@@ -331,7 +331,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
         // Get video sink
         pCtx->videoContext.appsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
                                                           "vsink" );
-        if( !pCtx->videoContext.appsink )
+        if( pCtx->videoContext.appsink == NULL )
         {
             LogError( ( "Failed to get video appsink" ) );
             ret = -1;
@@ -340,7 +340,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
         // Get audio sink
         pCtx->audioContext.appsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
                                                           "asink" );
-        if( !pCtx->audioContext.appsink )
+        if( pCtx->audioContext.appsink == NULL )
         {
             LogError( ( "Failed to get audio appsink" ) );
             ret = -1;
@@ -352,7 +352,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
         // Get encoder elements for bitrate control
         pCtx->audioContext.encoder = gst_bin_get_by_name( GST_BIN( pCtx->audioContext.pipeline ),
                                                           "audioEncoder" );
-        if( !pCtx->audioContext.encoder )
+        if( pCtx->audioContext.encoder == NULL )
         {
             LogError( ( "Failed to get audio encoder element" ) );
             ret = -1;
@@ -361,19 +361,20 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
         // Get encoder elements for bitrate control
         pCtx->videoContext.encoder = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pipeline ),
                                                           "videoEncoder" );
-        if( !pCtx->videoContext.encoder )
+        if( pCtx->videoContext.encoder == NULL )
         {
             LogError( ( "Failed to get video encoder element" ) );
             ret = -1;
         }
     }
+
     return ret;
 }
 
 int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
 {
     int32_t ret = 0;
-    if( ( NULL == pCtx ) )
+    if( NULL == pCtx )
     {
         LogError( ( "Invalid input, pCtx: %p", pCtx ) );
         ret = -1;
