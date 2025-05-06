@@ -1,21 +1,45 @@
-
 #include "demo_config.h"
 #include "app_common.h"
-#include "app_media_source.h"
+#include "gst_media_source.h"
+#include <signal.h>
 
 AppContext_t appContext;
-AppMediaSourcesContext_t appMediaSourceContext;
+GstMediaSourcesContext_t gstMediaSourceContext;
 
+static void SignalHandler( int signum );
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
 static int32_t OnMediaSinkHook( void * pCustom,
                                 WebrtcFrame_t * pFrame );
-static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
-                                         AppMediaSourcesContext_t * pAppMediaSourceContext );
+static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
+                                         GstMediaSourcesContext_t * pGstMediaSourceContext );
+
+
+static void SignalHandler( int signum )
+{
+    int32_t ret = 0;
+
+    if( signum == SIGINT )
+    {
+        LogInfo( ( "Received SIGINT, initiating cleanup..." ) );
+        ret = GstMediaSource_Cleanup( &gstMediaSourceContext );
+    }
+
+    if( ret != 0 )
+    {
+        LogError( ( "Failed to clean up resources" ) );
+    }
+    else
+    {
+        LogInfo( ( "Cleanup completed successfully" ) );
+    }
+
+    exit( ret );
+}
 
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver )
 {
     int32_t ret = 0;
-    AppMediaSourcesContext_t * pMediaSourceContext = ( AppMediaSourcesContext_t * )pMediaCtx;
+    GstMediaSourcesContext_t * pMediaSourceContext = ( GstMediaSourcesContext_t * )pMediaCtx;
 
     if( ( pMediaCtx == NULL ) || ( pTranceiver == NULL ) )
     {
@@ -31,25 +55,25 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
     else
     {
         /* Empty else marker. */
-    } 
+    }
 
     if( ret == 0 )
     {
         switch( trackKind )
         {
             case TRANSCEIVER_TRACK_KIND_VIDEO:
-                ret = AppMediaSource_InitVideoTransceiver( pMediaSourceContext,
+                ret = GstMediaSource_InitVideoTransceiver( pMediaSourceContext,
                                                            pTranceiver );
                 break;
             case TRANSCEIVER_TRACK_KIND_AUDIO:
-                ret = AppMediaSource_InitAudioTransceiver( pMediaSourceContext,
+                ret = GstMediaSource_InitAudioTransceiver( pMediaSourceContext,
                                                            pTranceiver );
                 break;
             default:
                 LogError( ( "Invalid track kind: %d", trackKind ) );
                 ret = -3;
                 break;
-        } 
+        }
     }
 
     return ret;
@@ -114,21 +138,21 @@ static int32_t OnMediaSinkHook( void * pCustom,
     return ret;
 }
 
-static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
-                                         AppMediaSourcesContext_t * pAppMediaSourceContext )
+static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
+                                         GstMediaSourcesContext_t * pGstMediaSourceContext )
 {
     int32_t ret = 0;
 
     if( ( pAppContext == NULL ) ||
-        ( pAppMediaSourceContext == NULL ) )
+        ( pGstMediaSourceContext == NULL ) )
     {
-        LogError( ( "Invalid input, pAppContext: %p, pAppMediaSourceContext: %p", pAppContext, pAppMediaSourceContext ) );
+        LogError( ( "Invalid input, pAppContext: %p, pGstMediaSourceContext: %p", pAppContext, pGstMediaSourceContext ) );
         ret = -1;
     }
 
-    if( ret == 0 )
+    if (ret == 0)
     {
-        ret = AppMediaSource_Init( pAppMediaSourceContext,
+        ret = GstMediaSource_Init( pGstMediaSourceContext,
                                    OnMediaSinkHook,
                                    pAppContext );
     }
@@ -139,12 +163,26 @@ static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
 int main( void )
 {
     int ret = 0;
+    struct sigaction sa;
 
-    ret = AppCommon_Init( &appContext, InitTransceiver, &appMediaSourceContext );
+    // Set up signal handling
+    sa.sa_handler = SignalHandler;
+    sigemptyset( &sa.sa_mask );
+    sa.sa_flags = 0;
+    if ( sigaction( SIGINT, &sa, NULL ) == -1 )
+    {
+        LogError( ( "Failed to set up signal handler" ) );
+        ret = -1;
+    }
 
     if( ret == 0 )
     {
-        ret = InitializeAppMediaSource( &appContext, &appMediaSourceContext );
+        ret = AppCommon_Init( &appContext, InitTransceiver, &gstMediaSourceContext );
+    }
+
+    if( ret == 0 )
+    {
+        ret = InitializeGstMediaSource( &appContext, &gstMediaSourceContext );
     }
 
     if( ret == 0 )
@@ -153,5 +191,10 @@ int main( void )
         ret = AppCommon_Start( &appContext );
     }
 
-    return 0;
+    if( ret == 0 )
+    {
+        ret = GstMediaSource_Cleanup( &gstMediaSourceContext );
+    }
+
+    return ret;
 }
