@@ -27,7 +27,7 @@ static int32_t on_new_video_sample( GstElement * sink,
     GstMapInfo map;
     GstSample * sample;
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         if( NULL == pVideoContext )
         {
@@ -36,7 +36,7 @@ static int32_t on_new_video_sample( GstElement * sink,
         }
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         if( 0 == pVideoContext->numReadyPeer )
         {
@@ -45,7 +45,7 @@ static int32_t on_new_video_sample( GstElement * sink,
         }
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         sample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
         if( NULL == sample )
@@ -54,7 +54,7 @@ static int32_t on_new_video_sample( GstElement * sink,
         }
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         buffer = gst_sample_get_buffer( sample );
 
@@ -82,6 +82,7 @@ static int32_t on_new_video_sample( GstElement * sink,
         }
         gst_sample_unref( sample );
     }
+
     return ret;
 }
 
@@ -97,9 +98,8 @@ static void * VideoTx_Task( void * pParameter )
         ret = -1;
     }
 
-    if (ret == 0)
+    if( ret == 0 )
     {
-
         // Connect to new-sample signal
         g_signal_connect( pVideoContext->appsink,
                           "new-sample",
@@ -117,6 +117,7 @@ static void * VideoTx_Task( void * pParameter )
         g_main_loop_unref( loop );
     }
     LogDebug( ( "VideoTx_Task ending" ) );
+
     return 0;
 }
 
@@ -139,49 +140,51 @@ static int32_t on_new_audio_sample( GstElement * sink,
 
     if( ret == 0 )
     {
-    if( 0 == pAudioContext->numReadyPeer )
-    {
-        LogError( ( "No ready peer for audio" ) );
+        if( 0 == pAudioContext->numReadyPeer )
+        {
+            LogError( ( "No ready peer for audio" ) );
             ret = -1;
         }
     }
 
     if( ret == 0 )
     {
-    sample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
-    if( !sample )
-    {
+        sample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
+        if( !sample )
+        {
             ret = -1;
         }
     }
-    if (ret == 0)
-    {
-    buffer = gst_sample_get_buffer( sample );
 
-    if( gst_buffer_map( buffer,
-                        &map,
-                        GST_MAP_READ ) )
+    if( ret == 0 )
     {
-        frame.pData = map.data;
-        frame.size = map.size;
-        frame.freeData = 0;
-        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-        frame.timestampUs = GST_BUFFER_PTS( buffer ) / 1000;
+        buffer = gst_sample_get_buffer( sample );
 
-        if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
+        if( gst_buffer_map( buffer,
+                            &map,
+                            GST_MAP_READ ) )
         {
-            LogVerbose( ( "Sending audio frame: size=%zu, ts=%lu",
-                          frame.size, frame.timestampUs ) );
-            ( void )pAudioContext->pSourcesContext->onMediaSinkHookFunc(
-                pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
-                &frame );
-        }
+            frame.pData = map.data;
+            frame.size = map.size;
+            frame.freeData = 0;
+            frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+            frame.timestampUs = GST_BUFFER_PTS( buffer ) / 1000;
 
-        gst_buffer_unmap( buffer,
-                          &map );
+            if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
+            {
+                LogVerbose( ( "Sending audio frame: size=%zu, ts=%lu",
+                            frame.size, frame.timestampUs ) );
+                ( void )pAudioContext->pSourcesContext->onMediaSinkHookFunc(
+                    pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
+                    &frame );
+            }
+
+            gst_buffer_unmap( buffer,
+                              &map );
+        }
+        gst_sample_unref( sample );
     }
-    gst_sample_unref( sample );
-    }
+
     return ret;
 }
 
@@ -198,7 +201,7 @@ static void * AudioTx_Task( void * pParameter )
         ret = -1;
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         // Connect to new-sample signal
         g_signal_connect( pAudioContext->appsink,
@@ -215,8 +218,9 @@ static void * AudioTx_Task( void * pParameter )
         g_main_loop_run( loop );
 
         g_main_loop_unref( loop );
-        LogDebug( ( "AudioTx_Task ending" ) );
     }
+    LogDebug( ( "AudioTx_Task ending" ) );
+
     return 0;
 }
 
@@ -232,7 +236,8 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
         LogError( ( "Invalid media source context" ) );
         ret = -1;
     }
-    if (ret == 0)
+
+    if( ret == 0 )
     {
         switch( event )
         {
@@ -295,7 +300,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
         ret = -1;
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         gchar * pipeline_desc = g_strdup_printf(
             "autovideosrc ! videoconvert ! "
@@ -374,13 +379,14 @@ int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
         ret = -1;
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         // Stop main loops if they exist
         if( pCtx->videoContext.main_loop )
         {
             g_main_loop_quit( pCtx->videoContext.main_loop );
         }
+
         if( pCtx->audioContext.main_loop )
         {
             g_main_loop_quit( pCtx->audioContext.main_loop );
@@ -399,6 +405,7 @@ int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
         {
             gst_object_unref( pCtx->videoContext.appsink );
         }
+
         if( pCtx->audioContext.appsink )
         {
             gst_object_unref( pCtx->audioContext.appsink );
@@ -409,6 +416,7 @@ int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
         {
             gst_object_unref( pCtx->videoContext.encoder );
         }
+
         if( pCtx->audioContext.encoder )
         {
             gst_object_unref( pCtx->audioContext.encoder );
@@ -426,14 +434,15 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
                              void * pOnMediaSinkHookCustom )
 {
     int32_t ret = 0;
+    pthread_t videoTid, audioTid;
 
-    if( NULL == pCtx)
+    if( NULL == pCtx )
     {
         LogError( ( "Invalid context" ) );
         ret = -1;
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         gst_init( NULL,
                   NULL );
@@ -449,7 +458,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
         }
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         pCtx->onMediaSinkHookFunc = onMediaSinkHookFunc;
         pCtx->pOnMediaSinkHookCustom = pOnMediaSinkHookCustom;
@@ -467,8 +476,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
         }
     }
 
-    pthread_t videoTid, audioTid;
-    if( 0 == ret )
+    if( ret == 0 )
     {
         if( pthread_create( &videoTid,
                             NULL,
@@ -481,7 +489,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
         }
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
         if( pthread_create( &audioTid,
                             NULL,
@@ -497,6 +505,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
 
         LogInfo( ( "GstMediaSource initialized successfully" ) );
     }
+
     return ret;
 }
 
@@ -504,16 +513,16 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pVideoTransceiver )
 {
     int32_t ret = 0;
+    u_int32_t bitrate;
 
-    if( !pCtx || !pVideoTransceiver )
+    if( ( pCtx == NULL ) || ( pVideoTransceiver == NULL ) )
     {
         LogError( ( "Invalid input parameters" ) );
         ret = -1;
     }
 
-    if( 0 == ret )
+    if( ret == 0 )
     {
-
         memset( pVideoTransceiver,
                 0,
                 sizeof( Transceiver_t ) );
@@ -526,7 +535,6 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
 
         pVideoTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
 
-        u_int32_t bitrate;
         g_object_get( G_OBJECT( pCtx->videoContext.encoder ),
                       "bitrate",
                       &bitrate,
@@ -547,6 +555,7 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
         pVideoTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
         pVideoTransceiver->pOnPcEventCustomContext = &pCtx->videoContext;
     }
+
     return ret;
 }
 
@@ -554,6 +563,7 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTransceiver )
 {
     int32_t ret = 0;
+    uint32_t bitrate;
 
     if( ( pCtx == NULL ) || ( pAudioTransceiver == NULL ) )
     {
@@ -576,8 +586,6 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
 
         pAudioTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
 
-
-        uint32_t bitrate;
         g_object_get( G_OBJECT( pCtx->audioContext.encoder ),
                       "bitrate",
                       &bitrate,

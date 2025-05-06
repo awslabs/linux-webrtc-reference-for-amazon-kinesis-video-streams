@@ -6,6 +6,7 @@
 AppContext_t appContext;
 GstMediaSourcesContext_t gstMediaSourceContext;
 
+static void SignalHandler( int signum );
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
 static int32_t OnMediaSinkHook( void * pCustom,
                                 WebrtcFrame_t * pFrame );
@@ -13,23 +14,26 @@ static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
                                          GstMediaSourcesContext_t * pGstMediaSourceContext );
 
 
-static void SignalHandler(int signum) {
+static void SignalHandler( int signum )
+{
     int32_t ret = 0;
 
-    if (signum == SIGINT)
+    if( signum == SIGINT )
     {
-        LogInfo(("Received SIGINT, initiating cleanup..."));
+        LogInfo( ( "Received SIGINT, initiating cleanup..." ) );
         ret = GstMediaSource_Cleanup( &gstMediaSourceContext );
     }
-    if (ret != 0)
+
+    if( ret != 0 )
     {
-        LogError(("Failed to clean up resources"));
+        LogError( ( "Failed to clean up resources" ) );
     }
     else
     {
-        LogInfo(("Cleanup completed successfully"));
+        LogInfo( ( "Cleanup completed successfully" ) );
     }
-    exit(ret);
+
+    exit( ret );
 }
 
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver )
@@ -159,17 +163,18 @@ static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
 int main( void )
 {
     int ret = 0;
+    struct sigaction sa;
 
     // Set up signal handling
-    struct sigaction sa;
     sa.sa_handler = SignalHandler;
-    sigemptyset(&sa.sa_mask);
+    sigemptyset( &sa.sa_mask );
     sa.sa_flags = 0;
-
-    if (sigaction(SIGINT, &sa, NULL) == -1) {
-            LogError(("Failed to set up signal handler"));
-            ret = -1;
+    if ( sigaction( SIGINT, &sa, NULL ) == -1 )
+    {
+        LogError( ( "Failed to set up signal handler" ) );
+        ret = -1;
     }
+
     if( ret == 0 )
     {
         ret = AppCommon_Init( &appContext, InitTransceiver, &gstMediaSourceContext );
@@ -190,5 +195,6 @@ int main( void )
     {
         ret = GstMediaSource_Cleanup( &gstMediaSourceContext );
     }
+
     return ret;
 }
