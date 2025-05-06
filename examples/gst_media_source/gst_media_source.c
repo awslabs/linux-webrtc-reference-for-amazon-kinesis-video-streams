@@ -16,16 +16,16 @@
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
 #define DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID "myAudioTrack"
 
-static int32_t on_new_video_sample( GstElement * sink,
+static int32_t OnNewVideoSample( GstElement * sink,
                                     gpointer user_data )
 {
     int32_t ret = 0;
 
     GstMediaSourceContext_t * pVideoContext = ( GstMediaSourceContext_t * )user_data;
     WebrtcFrame_t frame;
-    GstBuffer * buffer;
+    GstBuffer * pBuffer;
     GstMapInfo map;
-    GstSample * sample;
+    GstSample * pSample;
 
     if( ret == 0 )
     {
@@ -47,8 +47,8 @@ static int32_t on_new_video_sample( GstElement * sink,
 
     if( ret == 0 )
     {
-        sample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
-        if( NULL == sample )
+        pSample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
+        if( NULL == pSample )
         {
             ret = -1;;
         }
@@ -56,9 +56,9 @@ static int32_t on_new_video_sample( GstElement * sink,
 
     if( ret == 0 )
     {
-        buffer = gst_sample_get_buffer( sample );
+        pBuffer = gst_sample_get_buffer( pSample );
 
-        if( gst_buffer_map( buffer,
+        if( gst_buffer_map( pBuffer,
                             &map,
                             GST_MAP_READ ) )
         {
@@ -66,7 +66,7 @@ static int32_t on_new_video_sample( GstElement * sink,
             frame.size = map.size;
             frame.freeData = 0;
             frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-            frame.timestampUs = GST_BUFFER_PTS( buffer ) / 1000;
+            frame.timestampUs = GST_BUFFER_PTS( pBuffer ) / 1000;
 
             if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
             {
@@ -77,10 +77,10 @@ static int32_t on_new_video_sample( GstElement * sink,
                     &frame );
             }
 
-            gst_buffer_unmap( buffer,
+            gst_buffer_unmap( pBuffer,
                               &map );
         }
-        gst_sample_unref( sample );
+        gst_sample_unref( pSample );
     }
 
     return ret;
@@ -91,6 +91,7 @@ static void * VideoTx_Task( void * pParameter )
     int32_t ret = 0;
     LogDebug( ( "VideoTx_Task started" ) );
     GstMediaSourceContext_t * pVideoContext = ( GstMediaSourceContext_t * )pParameter;
+    GMainLoop * pLoop = g_main_loop_new( NULL, FALSE );
 
     if( pVideoContext == NULL )
     {
@@ -103,18 +104,15 @@ static void * VideoTx_Task( void * pParameter )
         // Connect to new-sample signal
         g_signal_connect( pVideoContext->pAppsink,
                           "new-sample",
-                          G_CALLBACK( on_new_video_sample ),
+                          G_CALLBACK( OnNewVideoSample ),
                           pVideoContext );
 
-        // Create main loop
-        GMainLoop * loop = g_main_loop_new( NULL,
-                                            FALSE );
-        pVideoContext->pMainLoop = loop;
+        pVideoContext->pMainLoop = pLoop;
 
         // Run the main loop
-        g_main_loop_run( loop );
+        g_main_loop_run( pLoop );
 
-        g_main_loop_unref( loop );
+        g_main_loop_unref( pLoop );
     }
     LogDebug( ( "VideoTx_Task ending" ) );
 
@@ -128,9 +126,9 @@ static int32_t on_new_audio_sample( GstElement * sink,
 
     GstMediaSourceContext_t * pAudioContext = ( GstMediaSourceContext_t * )user_data;
     WebrtcFrame_t frame;
-    GstBuffer * buffer;
+    GstBuffer * pBuffer;
     GstMapInfo map;
-    GstSample * sample;
+    GstSample * pSample;
 
     if( NULL == pAudioContext )
     {
@@ -149,8 +147,8 @@ static int32_t on_new_audio_sample( GstElement * sink,
 
     if( ret == 0 )
     {
-        sample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
-        if( sample == NULL )
+        pSample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
+        if( pSample == NULL )
         {
             ret = -1;
         }
@@ -158,9 +156,9 @@ static int32_t on_new_audio_sample( GstElement * sink,
 
     if( ret == 0 )
     {
-        buffer = gst_sample_get_buffer( sample );
+        pBuffer = gst_sample_get_buffer( pSample );
 
-        if( gst_buffer_map( buffer,
+        if( gst_buffer_map( pBuffer,
                             &map,
                             GST_MAP_READ ) )
         {
@@ -168,7 +166,7 @@ static int32_t on_new_audio_sample( GstElement * sink,
             frame.size = map.size;
             frame.freeData = 0;
             frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-            frame.timestampUs = GST_BUFFER_PTS( buffer ) / 1000;
+            frame.timestampUs = GST_BUFFER_PTS( pBuffer ) / 1000;
 
             if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
             {
@@ -179,10 +177,10 @@ static int32_t on_new_audio_sample( GstElement * sink,
                     &frame );
             }
 
-            gst_buffer_unmap( buffer,
+            gst_buffer_unmap( pBuffer,
                               &map );
         }
-        gst_sample_unref( sample );
+        gst_sample_unref( pSample );
     }
 
     return ret;
@@ -210,14 +208,14 @@ static void * AudioTx_Task( void * pParameter )
                           pAudioContext );
 
         // Create main loop
-        GMainLoop * loop = g_main_loop_new( NULL,
+        GMainLoop * pLoop = g_main_loop_new( NULL,
                                             FALSE );
-        pAudioContext->pMainLoop = loop;
+        pAudioContext->pMainLoop = pLoop;
 
         // Run the main loop
-        g_main_loop_run( loop );
+        g_main_loop_run( pLoop );
 
-        g_main_loop_unref( loop );
+        g_main_loop_unref( pLoop );
     }
     LogDebug( ( "AudioTx_Task ending" ) );
 
@@ -230,6 +228,7 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
 {
     GstMediaSourceContext_t * pMediaSource = ( GstMediaSourceContext_t * )pCustomContext;
     int32_t ret = 0;
+    GstStateChangeReturn change_state_ret;
 
     if( pMediaSource == NULL )
     {
@@ -249,10 +248,10 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
                            pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
 
 
-                GstStateChangeReturn ret;
-                ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pPipeline,
+
+                           change_state_ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pPipeline,
                                              GST_STATE_PLAYING );
-                if( ret == GST_STATE_CHANGE_FAILURE )
+                if( change_state_ret == GST_STATE_CHANGE_FAILURE )
                 {
                     LogError( ( "Failed to set pipeline to PLAYING state" ) );
                     ret = -1;
@@ -269,10 +268,9 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
                 if( pMediaSource->numReadyPeer == 0 )
                 {
                     // Stop the pipeline if no peers are connected
-                    GstStateChangeReturn ret;
-                    ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pPipeline,
+                    change_state_ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pPipeline,
                                                  GST_STATE_NULL );
-                    if( ret == GST_STATE_CHANGE_FAILURE )
+                    if( change_state_ret == GST_STATE_CHANGE_FAILURE )
                     {
                         LogError( ( "Failed to set pipeline to NULL state" ) );
                         ret = -1;
@@ -316,15 +314,15 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
             "queue leaky=2 max-size-buffers=400 ! audioconvert ! audioresample ! opusenc name=audioEncoder ! "
             "audio/x-opus,rate=48000,channels=2 ! appsink sync=TRUE emit-signals=TRUE max-buffers=1 drop=true name=asink " );
 
-        GError * error = NULL;
+        GError * pError = NULL;
         pCtx->videoContext.pPipeline = gst_parse_launch( pPipeline_desc,
-                                                        &error );
+                                                        &pError );
         g_free( pPipeline_desc );
 
         if( pCtx->videoContext.pPipeline == NULL )
         {
-            LogError( ( "Failed to create pPipeline: %s", error->message ) );
-            g_error_free( error );
+            LogError( ( "Failed to create pPipeline: %s", pError->message ) );
+            g_error_free( pError );
             ret = -1;
         }
 
