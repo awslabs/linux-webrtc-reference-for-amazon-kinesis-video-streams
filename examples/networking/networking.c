@@ -1161,6 +1161,21 @@ static int LwsWebsocketCallback( struct lws * pWsi,
         }
         break;
 
+        case LWS_CALLBACK_WSI_DESTROY:
+        {
+            pLwsProtocol = lws_get_protocol( pWsi );
+            pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
+
+            pWebsocketContext->connectionEstablished = 0;
+            pWebsocketContext->connectionClosed = 1;
+
+            /* Ensure that lws_service returns immediately instead of waiting
+             * till next poll timeout. */
+            lws_cancel_service( pWebsocketContext->pLwsContext );
+            LogDebug( ( "WSS wsi has been destroyed." ) );
+        }
+        break;
+
         case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE:
         {
             pLwsProtocol = lws_get_protocol( pWsi );
@@ -1263,7 +1278,7 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                     }
                     else
                     {
-                        /* Check if there is any data remain in ringbuffer at next iteration. */
+                        /* Check if there is any data remain in ring buffer at next iteration. */
                         lws_callback_on_writable( pWsi );
                     }
                 }
@@ -1283,9 +1298,21 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 
             LogDebug( ( "LWS_CALLBACK_EVENT_WAIT_CANCELLED callback." ) );
 
-            if( pWebsocketContext->connectionEstablished == 1 )
+            if( pWebsocketContext->connectionCloseRequested != 0U )
+            {
+                LogDebug( ( "Received request to close websocket connection. Initiating graceful shutdown." ) );
+
+                lws_set_timeout( pWebsocketContext->pWsi,
+                                 PENDING_TIMEOUT_USER_OK,
+                                 LWS_TO_KILL_ASYNC );
+            }
+            else if( pWebsocketContext->connectionEstablished == 1 )
             {
                 lws_callback_on_writable( pWebsocketContext->pWsi );
+            }
+            else
+            {
+                /* Empty else marker. */
             }
         }
         break;
@@ -1393,8 +1420,9 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
         pWebsocketCtx->protocols[ 0 ].callback = LwsWebsocketCallback;
         pWebsocketCtx->protocols[ 0 ].user = pWebsocketCtx;
         pWebsocketCtx->protocols[ 1 ].callback = NULL; /* End marker. */
-        pWebsocketCtx->connectionEstablished = 0; 
-        pWebsocketCtx->connectionClosed = 1; 
+        pWebsocketCtx->connectionEstablished = 0U;
+        pWebsocketCtx->connectionClosed = 1U;
+        pWebsocketCtx->connectionCloseRequested = 0U;
 
         memset( &( creationInfo ), 0, sizeof( struct lws_context_creation_info ) );
         creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
@@ -1692,9 +1720,9 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             {
                 pWebsocketCtx->rxCallback = pConnectInfo->rxCallback;
                 pWebsocketCtx->pRxCallbackData = pConnectInfo->pRxCallbackData;
-        
+
                 memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
-        
+
                 connectInfo.context = pWebsocketCtx->pLwsContext;
                 connectInfo.ssl_connection = LCCSCF_USE_SSL;
                 connectInfo.port = 443;
@@ -1705,17 +1733,18 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
                 connectInfo.opaque_user_data = NULL;
                 connectInfo.method = NULL;
                 connectInfo.protocol = "wss";
-        
+
                 pWebsocketCtx->pWsi = lws_client_connect_via_info( &( connectInfo ) );
-        
+
                 pWebsocketCtx->connectionEstablished = 0U;
                 pWebsocketCtx->connectionClosed = 0U;
+                pWebsocketCtx->connectionCloseRequested = 0U;
                 while( ( pWebsocketCtx->connectionEstablished == 0U ) &&
                        ( pWebsocketCtx->connectionClosed == 0U ) )
                 {
                     ( void ) lws_service( pWebsocketCtx->pLwsContext, 0 );
                 }
-        
+
                 if( pWebsocketCtx->connectionClosed == 1U )
                 {
                     ret = NETWORKING_RESULT_FAIL;
@@ -1779,6 +1808,30 @@ NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWeb
     }
 
     return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+NetworkingResult_t Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx )
+{
+    NetworkingResult_t result = NETWORKING_RESULT_OK;
+
+    if( pWebsocketCtx == NULL )
+    {
+        LogError( ( "Invalid input. Websocket context is %p", pWebsocketCtx ) );
+        result = NETWORKING_RESULT_BAD_PARAM;
+    }
+
+    if( result == NETWORKING_RESULT_OK )
+    {
+        pWebsocketCtx->connectionCloseRequested = 1U;
+
+        /* This will cause a LWS_CALLBACK_EVENT_WAIT_CANCELLED in the lws
+         * service thread context. */
+        lws_cancel_service( pWebsocketCtx->pLwsContext );
+    }
+
+    return result;
 }
 
 /*----------------------------------------------------------------------------*/
