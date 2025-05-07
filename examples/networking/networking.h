@@ -18,7 +18,7 @@
 #define SIGV4_METADATA_BUFFER_LENGTH                4096
 #define SIGV4_AUTHORIZATION_HEADER_BUFFER_LENGTH    2048
 #define HTTP_RX_BUFFER_LENGTH                       2048
-#define WEBSOCKET_RX_BUFFER_LENGTH                  ( 10 * 1024 )
+#define WEBSOCKET_RX_BUFFER_LENGTH                  ( 12 * 1024 )
 
 /*----------------------------------------------------------------------------*/
 
@@ -175,6 +175,7 @@ typedef struct NetworkingWebsocketContext
     size_t dataLengthInRxBuffer;
     uint8_t connectionEstablished;
     uint8_t connectionClosed;
+    uint8_t connectionCloseRequested;
     RingBuffer_t ringBuffer;
     struct lws * pWsi;
 } NetworkingWebsocketContext_t;
@@ -197,6 +198,8 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
                                                 const WebsocketConnectInfo_t * pConnectInfo,
                                                 const AwsCredentials_t * pAwsCredentials,
                                                 const AwsConfig_t * pAwsConfig );
+
+NetworkingResult_t Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx );
 
 NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWebsocketCtx,
                                              const char * pMessage,

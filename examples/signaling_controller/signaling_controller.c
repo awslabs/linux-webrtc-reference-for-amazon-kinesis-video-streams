@@ -21,6 +21,9 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
                                              HttpRequest_t * pRequest,
                                              HttpResponse_t * pResponse );
 
+static uint8_t AreCredentialsExpired( SignalingControllerContext_t * pCtx,
+                                      const SignalingControllerConnectInfo_t * pConnectInfo );
+
 static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControllerContext_t * pCtx,
                                                               const AwsIotCredentials_t * pAwsIotCredentials );
 
@@ -803,61 +806,41 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
                                                               const SignalingControllerConnectInfo_t * pConnectInfo )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
-    uint64_t currentTimeSeconds;
 
-    if( ( pCtx == NULL ) || ( pConnectInfo == NULL ) )
+    pCtx->pUserAgentName = pConnectInfo->pUserAgentName;
+    pCtx->userAgentNameLength = pConnectInfo->userAgentNameLength;
+
+    pCtx->awsConfig = pConnectInfo->awsConfig;
+
+    pCtx->messageReceivedCallback = pConnectInfo->messageReceivedCallback;
+    pCtx->pMessageReceivedCallbackData = pConnectInfo->pMessageReceivedCallbackData;
+
+    if( AreCredentialsExpired( pCtx, pConnectInfo ) != 0U )
     {
-        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
+        Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
+        ret = FetchTemporaryCredentials( pCtx,
+                                            &( pConnectInfo->awsIotCreds ) );
+        Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
     }
-
-    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    else
     {
-        pCtx->pUserAgentName = pConnectInfo->pUserAgentName;
-        pCtx->userAgentNameLength = pConnectInfo->userAgentNameLength;
+        /* The application must have supplied AWS credentials. */
+        memcpy( &( pCtx->accessKeyId[ 0 ] ),
+                pConnectInfo->awsCreds.pAccessKeyId,
+                pConnectInfo->awsCreds.accessKeyIdLen );
+        pCtx->accessKeyIdLength = pConnectInfo->awsCreds.accessKeyIdLen;
 
-        pCtx->awsConfig = pConnectInfo->awsConfig;
+        memcpy( &( pCtx->secretAccessKey[ 0 ] ),
+                pConnectInfo->awsCreds.pSecretAccessKey,
+                pConnectInfo->awsCreds.secretAccessKeyLen );
+        pCtx->secretAccessKeyLength = pConnectInfo->awsCreds.secretAccessKeyLen;
 
-        pCtx->messageReceivedCallback = pConnectInfo->messageReceivedCallback;
-        pCtx->pMessageReceivedCallbackData = pConnectInfo->pMessageReceivedCallbackData;
-    }
+        memcpy( &( pCtx->sessionToken[ 0 ] ),
+                pConnectInfo->awsCreds.pSessionToken,
+                pConnectInfo->awsCreds.sessionTokenLength );
+        pCtx->sessionTokenLength = pConnectInfo->awsCreds.sessionTokenLength;
 
-    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
-    {
-        if( ( pConnectInfo->awsIotCreds.thingNameLength > 0 ) &&
-            ( pConnectInfo->awsIotCreds.roleAliasLength > 0 ) &&
-            ( pConnectInfo->awsIotCreds.iotCredentialsEndpointLength > 0 ) )
-        {
-            currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
-
-            if( ( pCtx->expirationSeconds == 0 ) ||
-                ( currentTimeSeconds >= pCtx->expirationSeconds - SIGNALING_CONTROLLER_FETCH_CREDS_GRACE_PERIOD_SEC ) )
-            {
-                Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
-                ret = FetchTemporaryCredentials( pCtx,
-                                                 &( pConnectInfo->awsIotCreds ) );
-                Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
-            }
-        }
-        else
-        {
-            /* The application must have supplied AWS credentials. */
-            memcpy( &( pCtx->accessKeyId[ 0 ] ),
-                    pConnectInfo->awsCreds.pAccessKeyId,
-                    pConnectInfo->awsCreds.accessKeyIdLen );
-            pCtx->accessKeyIdLength = pConnectInfo->awsCreds.accessKeyIdLen;
-
-            memcpy( &( pCtx->secretAccessKey[ 0 ] ),
-                    pConnectInfo->awsCreds.pSecretAccessKey,
-                    pConnectInfo->awsCreds.secretAccessKeyLen );
-            pCtx->secretAccessKeyLength = pConnectInfo->awsCreds.secretAccessKeyLen;
-
-            memcpy( &( pCtx->sessionToken[ 0 ] ),
-                    pConnectInfo->awsCreds.pSessionToken,
-                    pConnectInfo->awsCreds.sessionTokenLength );
-            pCtx->sessionTokenLength = pConnectInfo->awsCreds.sessionTokenLength;
-
-            pCtx->expirationSeconds = pConnectInfo->awsCreds.expirationSeconds;
-        }
+        pCtx->expirationSeconds = pConnectInfo->awsCreds.expirationSeconds;
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -903,6 +886,28 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     }
 
     return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static uint8_t AreCredentialsExpired( SignalingControllerContext_t * pCtx,
+                                      const SignalingControllerConnectInfo_t * pConnectInfo )
+{
+    uint8_t credentialsExpired = 0U;
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
+
+    if( ( pConnectInfo->awsIotCreds.thingNameLength > 0 ) &&
+        ( pConnectInfo->awsIotCreds.roleAliasLength > 0 ) &&
+        ( pConnectInfo->awsIotCreds.iotCredentialsEndpointLength > 0 ) )
+    {
+        if( ( pCtx->expirationSeconds == 0 ) ||
+            ( currentTimeSeconds >= pCtx->expirationSeconds - SIGNALING_CONTROLLER_FETCH_CREDS_GRACE_PERIOD_SEC ) )
+        {
+            credentialsExpired = 1U;
+        }
+    }
+
+    return credentialsExpired;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -993,26 +998,47 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
 SignalingControllerResult_t SignalingController_StartListening( SignalingControllerContext_t * pCtx,
                                                                 const SignalingControllerConnectInfo_t * pConnectInfo )
 {
-    SignalingControllerResult_t ret;
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     NetworkingResult_t networkingResult;
 
-    for( ;; )
+    if( ( pCtx == NULL ) || ( pConnectInfo == NULL ) )
     {
-        ret = SIGNALING_CONTROLLER_RESULT_OK;
-        networkingResult = NETWORKING_RESULT_OK;
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
+    }
 
-        ret = ConnectToSignalingService( pCtx, pConnectInfo );
-
-        if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        for( ;; )
         {
-            while( networkingResult == NETWORKING_RESULT_OK )
+            ret = SIGNALING_CONTROLLER_RESULT_OK;
+            networkingResult = NETWORKING_RESULT_OK;
+
+            ret = ConnectToSignalingService( pCtx, pConnectInfo );
+
+            if( ret == SIGNALING_CONTROLLER_RESULT_OK )
             {
-                networkingResult = Networking_WebsocketSignal( &( pCtx->websocketContext ) );
+                while( networkingResult == NETWORKING_RESULT_OK )
+                {
+                    networkingResult = Networking_WebsocketSignal( &( pCtx->websocketContext ) );
+
+                    if( ( networkingResult == NETWORKING_RESULT_OK ) &&
+                        ( AreCredentialsExpired( pCtx, pConnectInfo ) != 0U ) )
+                    {
+                        ret = FetchTemporaryCredentials( pCtx,
+                                                         &( pConnectInfo->awsIotCreds ) );
+                        if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+                        {
+                            LogWarn( ( "Fail to fetch temporary credentials, reconnecting." ) );
+                            break;
+                        }
+                    }
+
+                }
             }
-        }
-        else
-        {
-            LogError( ( "Failed to connect to signaling service. Result: %d!", ret ) );
+            else
+            {
+                LogError( ( "Failed to connect to signaling service. Result: %d!", ret ) );
+            }
         }
     }
 
