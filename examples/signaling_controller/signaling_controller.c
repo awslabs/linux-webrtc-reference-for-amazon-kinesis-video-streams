@@ -21,6 +21,9 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
                                              HttpRequest_t * pRequest,
                                              HttpResponse_t * pResponse );
 
+static uint8_t IsCredentialExpired( SignalingControllerContext_t * pCtx,
+                                    const SignalingControllerConnectInfo_t * pConnectInfo );
+
 static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControllerContext_t * pCtx,
                                                               const AwsIotCredentials_t * pAwsIotCredentials );
 
@@ -803,7 +806,6 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
                                                               const SignalingControllerConnectInfo_t * pConnectInfo )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
-    uint64_t currentTimeSeconds;
 
     if( ( pCtx == NULL ) || ( pConnectInfo == NULL ) )
     {
@@ -823,20 +825,12 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        if( ( pConnectInfo->awsIotCreds.thingNameLength > 0 ) &&
-            ( pConnectInfo->awsIotCreds.roleAliasLength > 0 ) &&
-            ( pConnectInfo->awsIotCreds.iotCredentialsEndpointLength > 0 ) )
+        if( IsCredentialExpired( pCtx, pConnectInfo ) != 0U )
         {
-            currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
-
-            if( ( pCtx->expirationSeconds == 0 ) ||
-                ( currentTimeSeconds >= pCtx->expirationSeconds - SIGNALING_CONTROLLER_FETCH_CREDS_GRACE_PERIOD_SEC ) )
-            {
-                Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
-                ret = FetchTemporaryCredentials( pCtx,
-                                                 &( pConnectInfo->awsIotCreds ) );
-                Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
-            }
+            Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
+            ret = FetchTemporaryCredentials( pCtx,
+                                             &( pConnectInfo->awsIotCreds ) );
+            Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
         }
         else
         {
@@ -903,6 +897,37 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     }
 
     return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static uint8_t IsCredentialExpired( SignalingControllerContext_t * pCtx,
+                                    const SignalingControllerConnectInfo_t * pConnectInfo )
+{
+    uint8_t isExpired = 0U;
+    uint8_t skipProcess = 0U;
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );;
+
+    if( ( pCtx == NULL ) || ( pConnectInfo == NULL ) )
+    {
+        skipProcess = 1U;
+    }
+
+    if( skipProcess == 0U )
+    {
+        if( ( pConnectInfo->awsIotCreds.thingNameLength > 0 ) &&
+            ( pConnectInfo->awsIotCreds.roleAliasLength > 0 ) &&
+            ( pConnectInfo->awsIotCreds.iotCredentialsEndpointLength > 0 ) )
+        {
+            if( ( pCtx->expirationSeconds == 0 ) ||
+                ( currentTimeSeconds >= pCtx->expirationSeconds - SIGNALING_CONTROLLER_FETCH_CREDS_GRACE_PERIOD_SEC ) )
+            {
+                isExpired = 1U;
+            }
+        }
+    }
+
+    return isExpired;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1008,6 +1033,19 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
             while( networkingResult == NETWORKING_RESULT_OK )
             {
                 networkingResult = Networking_WebsocketSignal( &( pCtx->websocketContext ) );
+
+                if( ( networkingResult == NETWORKING_RESULT_OK ) &&
+                    ( IsCredentialExpired( pCtx, pConnectInfo ) != 0U ) )
+                {
+                    ret = FetchTemporaryCredentials( pCtx,
+                                                     &( pConnectInfo->awsIotCreds ) );
+                    if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+                    {
+                        LogWarn( ( "Fail to fetch temporary credentials, reconnecting." ) );
+                        break;
+                    }
+                }
+
             }
         }
         else
