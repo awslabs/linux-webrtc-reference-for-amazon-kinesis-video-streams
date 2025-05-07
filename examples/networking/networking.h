@@ -198,7 +198,8 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
                                                 const WebsocketConnectInfo_t * pConnectInfo,
                                                 const AwsCredentials_t * pAwsCredentials,
                                                 const AwsConfig_t * pAwsConfig );
-void Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx );
+
+NetworkingResult_t Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx );
 
 NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWebsocketCtx,
                                              const char * pMessage,

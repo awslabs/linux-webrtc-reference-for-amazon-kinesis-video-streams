@@ -1169,7 +1169,8 @@ static int LwsWebsocketCallback( struct lws * pWsi,
             pWebsocketContext->connectionEstablished = 0;
             pWebsocketContext->connectionClosed = 1;
 
-            /* Cancel to skip the next poll inside libwebsocket. */
+            /* Ensure that lws_service returns immediately instead of waiting
+             * till next poll timeout. */
             lws_cancel_service( pWebsocketContext->pLwsContext );
             LogDebug( ( "WSS wsi has been destroyed." ) );
         }
@@ -1277,7 +1278,7 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                     }
                     else
                     {
-                        /* Check if there is any data remain in ringbuffer at next iteration. */
+                        /* Check if there is any data remain in ring buffer at next iteration. */
                         lws_callback_on_writable( pWsi );
                     }
                 }
@@ -1299,8 +1300,8 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 
             if( pWebsocketContext->connectionCloseRequested != 0U )
             {
-                pWebsocketContext->connectionCloseRequested = 0U;
-                LogInfo( ( "Received request to close websocket connection. Initiating graceful shutdown." ) );
+                LogDebug( ( "Received request to close websocket connection. Initiating graceful shutdown." ) );
+
                 lws_set_timeout( pWebsocketContext->pWsi,
                                  PENDING_TIMEOUT_USER_OK,
                                  LWS_TO_KILL_ASYNC );
@@ -1719,9 +1720,9 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             {
                 pWebsocketCtx->rxCallback = pConnectInfo->rxCallback;
                 pWebsocketCtx->pRxCallbackData = pConnectInfo->pRxCallbackData;
-        
+
                 memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
-        
+
                 connectInfo.context = pWebsocketCtx->pLwsContext;
                 connectInfo.ssl_connection = LCCSCF_USE_SSL;
                 connectInfo.port = 443;
@@ -1732,9 +1733,9 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
                 connectInfo.opaque_user_data = NULL;
                 connectInfo.method = NULL;
                 connectInfo.protocol = "wss";
-        
+
                 pWebsocketCtx->pWsi = lws_client_connect_via_info( &( connectInfo ) );
-        
+
                 pWebsocketCtx->connectionEstablished = 0U;
                 pWebsocketCtx->connectionClosed = 0U;
                 pWebsocketCtx->connectionCloseRequested = 0U;
@@ -1743,7 +1744,7 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
                 {
                     ( void ) lws_service( pWebsocketCtx->pLwsContext, 0 );
                 }
-        
+
                 if( pWebsocketCtx->connectionClosed == 1U )
                 {
                     ret = NETWORKING_RESULT_FAIL;
@@ -1811,21 +1812,26 @@ NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWeb
 
 /*----------------------------------------------------------------------------*/
 
-void Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx )
+NetworkingResult_t Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx )
 {
-    uint8_t skipProcess = 0U;
+    NetworkingResult_t result = NETWORKING_RESULT_OK;
 
     if( pWebsocketCtx == NULL )
     {
         LogError( ( "Invalid input. Websocket context is %p", pWebsocketCtx ) );
+        result = NETWORKING_RESULT_BAD_PARAM;
     }
 
-    if( skipProcess == 0U )
+    if( result == NETWORKING_RESULT_OK )
     {
         pWebsocketCtx->connectionCloseRequested = 1U;
 
+        /* This will cause a LWS_CALLBACK_EVENT_WAIT_CANCELLED in the lws
+         * service thread context. */
         lws_cancel_service( pWebsocketCtx->pLwsContext );
     }
+
+    return result;
 }
 
 /*----------------------------------------------------------------------------*/
