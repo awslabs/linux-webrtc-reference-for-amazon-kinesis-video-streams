@@ -183,7 +183,8 @@ static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_HANDSHAKE_FAILED, or #TLS_TRANSPORT_INTERNAL_ERROR.
  */
 static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
-                                          const NetworkCredentials_t * pNetworkCredentials );
+                                          const NetworkCredentials_t * pNetworkCredentials,
+                                          uint32_t flags );
 
 /**
  * @brief Initialize mbedTLS.
@@ -531,7 +532,8 @@ static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
 /*-----------------------------------------------------------*/
 
 static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
-                                          const NetworkCredentials_t * pNetworkCredentials )
+                                          const NetworkCredentials_t * pNetworkCredentials,
+                                          uint32_t flags )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
@@ -577,19 +579,25 @@ static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
     if( returnStatus == TLS_TRANSPORT_SUCCESS )
     {
         /* Perform the TLS handshake. */
-        do
+        if( ( flags & TLS_CONNECT_NON_BLOCKING_HANDSHAKE ) == 0 )
         {
-            mbedtlsError = mbedtls_ssl_handshake( &( pTlsTransportParams->sslContext.context ) );
-        } while( ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) ||
-                 ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) );
-
-        if( mbedtlsError != 0 )
+            do
+            {
+                returnStatus = TLS_FreeRTOS_ContinueHandshake( pNetworkContext );
+            } while( returnStatus == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS );
+        }
+        else
         {
-            LogError( ( "Failed to perform TLS handshake: mbedTLSError= %s : %s.",
-                        mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
-                        mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+            returnStatus = TLS_FreeRTOS_ContinueHandshake( pNetworkContext );
+        }
 
-            returnStatus = TLS_TRANSPORT_HANDSHAKE_FAILED;
+        if( returnStatus ==  TLS_TRANSPORT_HANDSHAKE_FAILED )
+        {
+            LogError( ( "Failed to perform TLS handshake." ) );
+        }
+        else if( returnStatus == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
+        {
+            LogDebug( ( "TLS handshake is in progress." ) );
         }
         else
         {
@@ -665,12 +673,45 @@ static TlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyConte
 }
 /*-----------------------------------------------------------*/
 
+TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( NetworkContext_t * pNetworkContext )
+{
+    TlsTransportParams_t * pTlsTransportParams = NULL;
+    TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
+    int32_t mbedtlsError = 0;
+
+    if( ( pNetworkContext == NULL ) ||
+        ( pNetworkContext->pParams == NULL ) )
+    {
+        returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
+    }
+
+    if( returnStatus == TLS_TRANSPORT_SUCCESS )
+    {
+        pTlsTransportParams = pNetworkContext->pParams;
+        mbedtlsError = mbedtls_ssl_handshake( &( pTlsTransportParams->sslContext.context ) );
+
+        if( ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) ||
+            ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) )
+        {
+            returnStatus = TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS;
+        }
+        else if( mbedtlsError != 0 )
+        {
+            returnStatus = TLS_TRANSPORT_HANDSHAKE_FAILED;
+        }
+    }
+
+    return returnStatus;
+}
+/*-----------------------------------------------------------*/
+
 TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
                                            const char * pHostName,
                                            uint16_t port,
                                            const NetworkCredentials_t * pNetworkCredentials,
                                            uint32_t receiveTimeoutMs,
-                                           uint32_t sendTimeoutMs )
+                                           uint32_t sendTimeoutMs,
+                                           uint32_t flags )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
@@ -743,11 +784,12 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     {
         isTlsSetup = 1;
 
-        returnStatus = tlsHandshake( pNetworkContext, pNetworkCredentials );
+        returnStatus = tlsHandshake( pNetworkContext, pNetworkCredentials, flags );
     }
 
     /* Clean up on failure. */
-    if( returnStatus != TLS_TRANSPORT_SUCCESS )
+    if( ( returnStatus != TLS_TRANSPORT_SUCCESS ) &&
+        ( returnStatus != TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS ) )
     {
         /* Free SSL context if it's setup. */
         if( isTlsSetup == 1 )
