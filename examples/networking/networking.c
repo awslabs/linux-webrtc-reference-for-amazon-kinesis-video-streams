@@ -1419,7 +1419,7 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
         pWebsocketCtx->protocols[ 0 ].callback = LwsWebsocketCallback;
         pWebsocketCtx->protocols[ 0 ].user = pWebsocketCtx;
         pWebsocketCtx->protocols[ 1 ].callback = NULL; /* End marker. */
-        pWebsocketCtx->connectionEstablished = 0U; 
+        pWebsocketCtx->connectionEstablished = 0U;
         pWebsocketCtx->connectionClosed = 1U;
         pWebsocketCtx->connectionCloseRequested = 0U;
 
