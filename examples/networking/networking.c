@@ -1171,7 +1171,7 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 
             /* Cancel to skip the next poll inside libwebsocket. */
             lws_cancel_service( pWebsocketContext->pLwsContext );
-            LogDebug( ( "WSS wsi has been destroied." ) );
+            LogDebug( ( "WSS wsi has been destroyed." ) );
         }
         break;
 
