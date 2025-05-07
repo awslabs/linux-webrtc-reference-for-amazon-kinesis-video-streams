@@ -392,7 +392,7 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
             if( ( twccBandwidthInfo.duration > 0 ) && ( pSession->pCtx->onBandwidthEstimationCallback != NULL ) )
             {
                 /* Call the bandwidth estimation callback */
-                pSession->pCtx->onBandwidthEstimationCallback( pSession->pCtx->onBandwidthEstimationCallback,
+                pSession->pCtx->onBandwidthEstimationCallback( pSession->pCtx->pOnBandwidthEstimationCallbackContext,
                                                                &twccBandwidthInfo );
             }
 
@@ -869,7 +869,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
             ret = PEER_CONNECTION_RESULT_FAIL_TAKE_SRTP_MUTEX;
         }
     }
-    
+
     /* Decrypt it by SRTP. */
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
@@ -897,12 +897,12 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
             ret = PEER_CONNECTION_RESULT_FAIL_DECRYPT_SRTP_RTP_PACKET;
         }
     }
-  
+
     if( isLocked != 0U )
     {
         pthread_mutex_unlock( &( pSession->srtpSessionMutex ) );
     }
-  
+
 
     while( ( remainingLength >= RTCP_HEADER_LENGTH ) &&
            ( ret == PEER_CONNECTION_RESULT_OK ) )
