@@ -9,6 +9,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  add_definitions(-DDEBUG)
+endif()
+
 # Option to control linking with usrsctp
 option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" ON)
 option(ENABLE_ADDRESS_SANITIZER "Enable address sanitizer" OFF)
