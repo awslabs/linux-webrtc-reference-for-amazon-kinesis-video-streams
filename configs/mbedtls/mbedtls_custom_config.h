@@ -5,8 +5,10 @@
 
 #include "mbedtls/config.h"
 
-#if !defined(DEBUG) || DEBUG == 0
+#if DEBUG != 0
+    #define MBEDTLS_DEBUG_C
+#else /* DEBUG != 0 */
     #undef MBEDTLS_DEBUG_C
-#endif /* !defined(DEBUG) || DEBUG == 0 */
+#endif /* DEBUG != 0 */
 
 #endif /* MBEDTLS_CUSTOM_CONFIG_H */
