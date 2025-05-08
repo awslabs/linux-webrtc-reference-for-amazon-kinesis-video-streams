@@ -102,6 +102,27 @@ Before using JoinStorageSession, Set up Signaling Channel with Video Stream :
 
 For detailed setup instructions, refer to: https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/webrtc-ingestion.html
 
+### Enabling metrics logging
+
+METRIC_PRINT_ENABLED flag enables detailed metrics logging for WebRTC setup. It logs the following time for each connection :
+   - Duration to describe Signaling Channel
+   - Duration to get Signaling Endpoints
+   - Duration to get Ice Server List
+   - Duration to connect Websocket Server
+   - Duration to get Authentication Temporary Credentials
+   - Duration to gather ICE Host Candidate
+   - Duration to gather ICE Srflx Candidate
+   - Duration to gather ICE Relay Candidate
+   - Duration to join Storage Session
+   - Duration to find Peer-To-Peer Connection
+   - Duration to DTLS Handshaking Completion
+   - Duration to sending First Frame
+
+Metrics logging is disabled by default in this application (via `METRIC_PRINT_ENABLED`) value set as `0` in `demo_config_template.h`. In order to enable it, set this value to `1`.
+```c
+#define METRIC_PRINT_ENABLED 0
+```
+
 # Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.

@@ -832,12 +832,12 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
             if( ( pCtx->expirationSeconds == 0 ) ||
                 ( currentTimeSeconds >= pCtx->expirationSeconds - SIGNALING_CONTROLLER_FETCH_CREDS_GRACE_PERIOD_SEC ) )
             {
-                #if ( METRIC_PRINT_ENABLED != 0 )
+                #if METRIC_PRINT_ENABLED
                 Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
                 #endif
                 ret = FetchTemporaryCredentials( pCtx,
                                                  &( pConnectInfo->awsIotCreds ) );
-                #if ( METRIC_PRINT_ENABLED != 0 )
+                #if METRIC_PRINT_ENABLED
                 Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
                 #endif
             }
@@ -866,44 +866,44 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_StartEvent( METRIC_EVENT_SIGNALING_DESCRIBE_CHANNEL );
         #endif
         ret = DescribeSignalingChannel( pCtx, &( pConnectInfo->channelName ) );
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_EndEvent( METRIC_EVENT_SIGNALING_DESCRIBE_CHANNEL );
         #endif
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_ENDPOINTS );
         #endif
         ret = GetSignalingChannelEndpoints( pCtx, pConnectInfo->enableStorageSession );
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ENDPOINTS );
         #endif
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
         #endif
         ret = GetIceServerConfigs( pCtx );
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
         #endif
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_StartEvent( METRIC_EVENT_SIGNALING_CONNECT_WSS_SERVER );
         #endif
         ret = ConnectToWssEndpoint( pCtx );
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_EndEvent( METRIC_EVENT_SIGNALING_CONNECT_WSS_SERVER );
         #endif
     }
@@ -912,11 +912,11 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) &&
         ( pConnectInfo->enableStorageSession != 0 ) )
     {
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_StartEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
         #endif
         ret = JoinStorageSession( pCtx );
-        #if ( METRIC_PRINT_ENABLED != 0 )
+        #if METRIC_PRINT_ENABLED
         Metric_EndEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
         #endif
     }
@@ -1155,11 +1155,11 @@ SignalingControllerResult_t SignalingController_QueryIceServerConfigs( Signaling
             ( pCtx->iceServerConfigExpirationSec < currentTimeSec ) )
         {
             LogInfo( ( "Ice server configs expired. Refresing Configs." ) );
-            #if ( METRIC_PRINT_ENABLED != 0 )
+            #if METRIC_PRINT_ENABLED
             Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
             #endif
             ret = GetIceServerConfigs( pCtx );
-            #if ( METRIC_PRINT_ENABLED != 0 )
+            #if METRIC_PRINT_ENABLED
             Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST );
             #endif
         }

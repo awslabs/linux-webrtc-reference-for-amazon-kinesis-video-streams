@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 /* Exclude the entire file if METRIC print flag is not enabled. */
-#if ( METRIC_PRINT_ENABLED != 0 )
+#if METRIC_PRINT_ENABLED
 
     #define METRIC_PRINT_INTERVAL_MS ( 10000 )
 
@@ -17,9 +17,6 @@
     /* Calculate the duration in miliseconds from start & end time. */
     static uint64_t CalculateEventDurationMs( uint64_t startTimeUs,
                                           uint64_t endTimeUs );
-
-    /* The task to print metric regularly. */
-    static void * Metric_Task( void * pParameter );
 
     static const char * ConvertEventToString( MetricEvent_t event )
     {
@@ -86,25 +83,9 @@
         return ( uint64_t ) nowTime.tv_sec * 1000 * 1000 * 1000 + ( uint64_t ) nowTime.tv_nsec;
     }
 
-    static void * Metric_Task( void * pParameter )
-    {
-        ( void ) pParameter;
-
-        for( ;; )
-        {
-            Metric_PrintMetrics();
-
-            //vTaskDelay( pdMS_TO_TICKS( METRIC_PRINT_INTERVAL_MS ) );
-            usleep( METRIC_PRINT_INTERVAL_MS * 1000 );
-        }
-
-        return 0;
-    }
-
     void Metric_Init( void )
     {
         int retval;
-        pthread_t thread;
 
         memset( &context, 0, sizeof( MetricContext_t ) );
 
@@ -116,16 +97,6 @@
         else
         {
             context.isInit = 1U;
-        }
-
-        /* Create task for video Tx. */
-        retval = pthread_create( &( thread ),
-                                NULL,
-                                Metric_Task,
-                                NULL );
-        if( retval != 0 )
-        {
-            LogError( ( "xTaskCreate(MetricTask) failed" ) );
         }
     }
 
@@ -167,7 +138,6 @@
     {
         int i;
         MetricEventRecord_t * pEventRecord;
-        //static char runTimeStatsBuffer[ 4096 ];
 
         if( ( context.isInit == 1U ) &&
             ( pthread_mutex_lock( &( context.mutex ) ) == 0 ) )
@@ -185,10 +155,6 @@
                 }
             }
 
-            //LogInfo( ( "Remaining free heap size: %u", xPortGetFreeHeapSize() ) );
-
-            // vTaskGetRunTimeStats( runTimeStatsBuffer );
-            // LogInfo( ( " == Run Time Stat Start ==\n%s\n == Run Time Stat End ==", runTimeStatsBuffer ) );
             LogInfo( ( "================================ Print Metrics End ================================" ) );
 
             pthread_mutex_unlock( &( context.mutex ) );

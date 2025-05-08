@@ -697,7 +697,7 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 break;
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
                 /* Start DTLS handshaking. */
-                #if ( METRIC_PRINT_ENABLED != 0 )
+                #if METRIC_PRINT_ENABLED
                 Metric_StartEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
                 #endif
                 ret = StartDtlsHandshake( pSession );
@@ -899,7 +899,7 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     uint32_t i;
 
     LogDebug( ( "Complete DTLS handshaking." ) );
-    #if ( METRIC_PRINT_ENABLED != 0 )
+    #if METRIC_PRINT_ENABLED
     Metric_EndEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
     #endif
     /* Verify remote fingerprint (if remote cert fingerprint is the expected one) */
@@ -2128,6 +2128,8 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        /* Reset metrics. */
+        pSession->iceControllerContext.metrics.isFirstConnectivityRequest = 1;
         ret = PeerConnection_ResetTimer( pSession );
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
@@ -2135,6 +2137,10 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
         }
     }
 
+    #if METRIC_PRINT_ENABLED
+    Metric_PrintMetrics();
+    Metric_ResetEvent();
+    #endif
     return ret;
 }
 

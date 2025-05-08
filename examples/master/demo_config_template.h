@@ -51,4 +51,8 @@
 #define JOIN_STORAGE_SESSION 0
 #endif
 
+#ifndef METRIC_PRINT_ENABLED
+#define METRIC_PRINT_ENABLED 0
+#endif
+
 #endif /* DEMO_CONFIG_H */
