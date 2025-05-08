@@ -149,7 +149,10 @@ typedef struct NetworkingHttpContext
 typedef struct NetworkingWebsocketContext
 {
     struct lws_context * pLwsContext;
+    struct lws * pWsi;
     struct lws_protocols protocols[ 2 ];
+    struct lws_context_creation_info creationInfo;
+    lws_retry_bo_t retryPolicy;
 
     /* Current time in ISO8601 format. */
     char iso8601Time[ ISO8601_TIME_LENGTH ];
@@ -177,7 +180,6 @@ typedef struct NetworkingWebsocketContext
     uint8_t connectionClosed;
     uint8_t connectionCloseRequested;
     RingBuffer_t ringBuffer;
-    struct lws * pWsi;
 } NetworkingWebsocketContext_t;
 
 /*----------------------------------------------------------------------------*/
