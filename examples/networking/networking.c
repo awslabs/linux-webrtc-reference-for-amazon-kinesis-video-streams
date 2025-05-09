@@ -1184,6 +1184,7 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 
             pWebsocketContext->connectionEstablished = 0;
             pWebsocketContext->connectionClosed = 1;
+            pWebsocketContext->connectionCloseRequested = 0U;
 
             /* Ensure that lws_service returns immediately instead of waiting
              * till next poll timeout. */
@@ -1407,12 +1408,6 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
                                              const SSLCredentials_t * pCreds )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
-    struct lws_context_creation_info creationInfo;
-    const lws_retry_bo_t retryPolicy =
-    {
-        .secs_since_valid_ping = 10,
-        .secs_since_valid_hangup = 7200,
-    };
 
     if( ( pWebsocketCtx == NULL ) || ( pCreds == NULL ) )
     {
@@ -1440,35 +1435,10 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
         pWebsocketCtx->connectionClosed = 1U;
         pWebsocketCtx->connectionCloseRequested = 0U;
 
-        memset( &( creationInfo ), 0, sizeof( struct lws_context_creation_info ) );
-        creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-        creationInfo.port = CONTEXT_PORT_NO_LISTEN;
-        creationInfo.protocols = &( pWebsocketCtx->protocols[ 0 ] );
-        creationInfo.timeout_secs = 10;
-        creationInfo.gid = -1;
-        creationInfo.uid = -1;
-        creationInfo.client_ssl_ca_filepath = pCreds->pCaCertPath;
-        creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
-        creationInfo.ka_time = 1;
-        creationInfo.ka_probes = 1;
-        creationInfo.ka_interval = 1;
-        creationInfo.retry_and_idle_policy = &( retryPolicy );
-        creationInfo.fd_limit_per_thread = 3;
-
-        if( ( pCreds->pDeviceCertPath != NULL ) && ( pCreds->pDeviceKeyPath != NULL ) )
-        {
-            creationInfo.client_ssl_cert_filepath = pCreds->pDeviceCertPath;
-            creationInfo.client_ssl_private_key_filepath = pCreds->pDeviceKeyPath;
-        }
-
-        lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
-        pWebsocketCtx->pLwsContext = lws_create_context( &( creationInfo ) );
-
-        if( pWebsocketCtx->pLwsContext == NULL )
-        {
-            LogError( ( "lws_create_context failed!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
+        memset( &( pWebsocketCtx->sslCreds ), 0, sizeof( SSLCredentials_t ) );
+        pWebsocketCtx->sslCreds.pCaCertPath = pCreds->pCaCertPath;
+        pWebsocketCtx->sslCreds.pDeviceCertPath = pCreds->pDeviceCertPath;
+        pWebsocketCtx->sslCreds.pDeviceKeyPath = pCreds->pDeviceKeyPath;
     }
 
     return ret;
@@ -1664,6 +1634,8 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
     struct lws * clientLws;
     const char * pHost = NULL;
     size_t hostLength = 0;
+    struct lws_context_creation_info creationInfo;
+    lws_retry_bo_t retryPolicy;
 
     if( ( pWebsocketCtx == NULL ) ||
         ( pConnectInfo == NULL ) ||
@@ -1681,6 +1653,40 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             if( pWebsocketCtx->connectionEstablished != 0 )
             {
                 LogDebug( ( "Websocket connection is already there, skip the connect process." ) );
+                break;
+            }
+
+            memset( &retryPolicy, 0, sizeof( lws_retry_bo_t ) );
+            retryPolicy.secs_since_valid_ping = 10;
+            retryPolicy.secs_since_valid_hangup = 7200;
+        
+            memset( &creationInfo, 0, sizeof( struct lws_context_creation_info ) );
+            creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+            creationInfo.port = CONTEXT_PORT_NO_LISTEN;
+            creationInfo.protocols = &( pWebsocketCtx->protocols[ 0 ] );
+            creationInfo.timeout_secs = 10;
+            creationInfo.gid = -1;
+            creationInfo.uid = -1;
+            creationInfo.client_ssl_ca_filepath = pWebsocketCtx->sslCreds.pCaCertPath;
+            creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
+            creationInfo.ka_time = 1;
+            creationInfo.ka_probes = 1;
+            creationInfo.ka_interval = 1;
+            creationInfo.retry_and_idle_policy = &retryPolicy;
+            creationInfo.fd_limit_per_thread = 3;
+        
+            if( ( pWebsocketCtx->sslCreds.pDeviceCertPath != NULL ) && ( pWebsocketCtx->sslCreds.pDeviceKeyPath != NULL ) )
+            {
+                creationInfo.client_ssl_cert_filepath = pWebsocketCtx->sslCreds.pDeviceCertPath;
+                creationInfo.client_ssl_private_key_filepath = pWebsocketCtx->sslCreds.pDeviceKeyPath;
+            }
+
+            lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
+            pWebsocketCtx->pLwsContext = lws_create_context( &creationInfo );
+            if( pWebsocketCtx->pLwsContext == NULL )
+            {
+                LogError( ( "lws_create_context failed!" ) );
+                ret = NETWORKING_RESULT_FAIL;
                 break;
             }
 
@@ -1867,6 +1873,10 @@ NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pW
 
         if( pWebsocketCtx->connectionClosed == 1 )
         {
+            /* Clean lws context. */
+            lws_context_destroy( pWebsocketCtx->pLwsContext );
+            pWebsocketCtx->pLwsContext = NULL;
+
             LogWarn( ( "Websocket connection is closed!" ) );
             ret = NETWORKING_RESULT_FAIL;
         }
