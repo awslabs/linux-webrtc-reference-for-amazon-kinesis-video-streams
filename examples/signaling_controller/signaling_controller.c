@@ -835,7 +835,7 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     {
         Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
         ret = FetchTemporaryCredentials( pCtx,
-                                            &( pConnectInfo->awsIotCreds ) );
+                                         &( pConnectInfo->awsIotCreds ) );
         Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
     }
     else
