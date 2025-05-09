@@ -1143,7 +1143,6 @@ static int LwsWebsocketCallback( struct lws * pWsi,
     const struct lws_protocols * pLwsProtocol = NULL;
     NetworkingWebsocketContext_t * pWebsocketContext = NULL;
 
-    LogInfo( ( "Websocket Callback reason: %d", reason ) );
     switch( reason )
     {
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
