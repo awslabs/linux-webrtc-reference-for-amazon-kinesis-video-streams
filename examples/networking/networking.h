@@ -167,8 +167,7 @@ typedef struct NetworkingWebsocketContext
     struct lws_context * pLwsContext;
     struct lws * pWsi;
     struct lws_protocols protocols[ 2 ];
-    struct lws_context_creation_info creationInfo;
-    lws_retry_bo_t retryPolicy;
+    SSLCredentials_t sslCreds;
 
     /* Current time in ISO8601 format. */
     char iso8601Time[ ISO8601_TIME_LENGTH ];
