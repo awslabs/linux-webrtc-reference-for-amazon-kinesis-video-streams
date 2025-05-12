@@ -1332,11 +1332,13 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
         }
     }
 
+    #if METRIC_PRINT_ENABLED
     if( ret == 0 )
     {
         /* Initialize metrics. */
         Metric_Init();
     }
+    #endif
 
     if( ret == 0 )
     {
