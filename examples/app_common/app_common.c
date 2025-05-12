@@ -28,7 +28,9 @@
 #include "signaling_controller.h"
 #include "sdp_controller.h"
 #include "string_utils.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
 #include "networking_utils.h"
 #include "peer_connection.h"
 
@@ -1197,7 +1199,9 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
     switch( pSignalingMessage->messageType )
     {
         case SIGNALING_TYPE_MESSAGE_SDP_OFFER:
+            #if METRIC_PRINT_ENABLED
             Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
+            #endif
             HandleSdpOffer( pAppContext,
                             pSignalingMessage );
             break;
@@ -1328,11 +1332,13 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
         }
     }
 
+    #if METRIC_PRINT_ENABLED
     if( ret == 0 )
     {
         /* Initialize metrics. */
         Metric_Init();
     }
+    #endif
 
     if( ret == 0 )
     {
