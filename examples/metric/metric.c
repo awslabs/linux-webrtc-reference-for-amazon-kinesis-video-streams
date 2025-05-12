@@ -15,7 +15,9 @@
  */
 
 #include "logging.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
 
 #include <time.h>
 #include <unistd.h>
@@ -30,9 +32,6 @@ static const char * ConvertEventToString( MetricEvent_t event );
 /* Calculate the duration in miliseconds from start & end time. */
 static uint64_t CalculateEventDurationMs( uint64_t startTimeUs,
                                           uint64_t endTimeUs );
-
-/* The task to print metric regularly. */
-static void * Metric_Task( void * pParameter );
 
 static const char * ConvertEventToString( MetricEvent_t event )
 {
@@ -99,25 +98,9 @@ static uint64_t GetTimestampInNs( void )
     return ( uint64_t ) nowTime.tv_sec * 1000 * 1000 * 1000 + ( uint64_t ) nowTime.tv_nsec;
 }
 
-static void * Metric_Task( void * pParameter )
-{
-    ( void ) pParameter;
-
-    for( ;; )
-    {
-        Metric_PrintMetrics();
-
-        //vTaskDelay( pdMS_TO_TICKS( METRIC_PRINT_INTERVAL_MS ) );
-        usleep( METRIC_PRINT_INTERVAL_MS * 1000 );
-    }
-
-    return 0;
-}
-
 void Metric_Init( void )
 {
     int retval;
-    pthread_t thread;
 
     memset( &context, 0, sizeof( MetricContext_t ) );
 
@@ -129,16 +112,6 @@ void Metric_Init( void )
     else
     {
         context.isInit = 1U;
-    }
-
-    /* Create task for video Tx. */
-    retval = pthread_create( &( thread ),
-                             NULL,
-                             Metric_Task,
-                             NULL );
-    if( retval != 0 )
-    {
-        LogError( ( "xTaskCreate(MetricTask) failed" ) );
     }
 }
 
@@ -206,5 +179,20 @@ void Metric_PrintMetrics( void )
 
         pthread_mutex_unlock( &( context.mutex ) );
         fflush( stdout );
+    }
+}
+
+void Metric_ResetEvent( void )
+{
+    if( ( context.isInit == 1U ) &&
+        ( pthread_mutex_lock( &( context.mutex ) ) == 0 ) )
+    {
+        for( int i = 0; i < METRIC_EVENT_MAX; i++ )
+        {
+            context.eventRecords[i].state = METRIC_EVENT_STATE_NONE;
+            context.eventRecords[i].endTimeUs = 0;
+            context.eventRecords[i].startTimeUs = 0;
+        }
+        pthread_mutex_unlock( &( context.mutex ) );
     }
 }

@@ -96,6 +96,15 @@ if(GST_FOUND)
     
         target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
                                     ${SCTP_INCLUDE_PUBLIC_DIRS} )
+    else()
+        target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=0 )
+    endif()
+
+    if( METRIC_PRINT_ENABLED )
+        ## Include metrics logging
+        target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE METRIC_PRINT_ENABLED=1 )
+    else()
+        target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE METRIC_PRINT_ENABLED=0 )
     endif()
 
     target_link_libraries( WebRTCLinuxApplicationGstMaster
