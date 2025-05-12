@@ -27,6 +27,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <pthread.h>
 
 typedef enum MetricEvent
 {
