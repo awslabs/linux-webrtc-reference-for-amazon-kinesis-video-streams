@@ -86,6 +86,15 @@ if( BUILD_USRSCTP_LIBRARY )
 
     target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                                 ${SCTP_INCLUDE_PUBLIC_DIRS} )
+else()
+    target_compile_definitions( WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=0 )
+endif()
+
+if( METRIC_PRINT_ENABLED )
+    ## Include metrics logging
+    target_compile_definitions( WebRTCLinuxApplicationMaster PRIVATE METRIC_PRINT_ENABLED=1 )
+else()
+    target_compile_definitions( WebRTCLinuxApplicationMaster PRIVATE METRIC_PRINT_ENABLED=0 )
 endif()
 
 # link application with dependencies, note that rt is librt providing message queue's APIs

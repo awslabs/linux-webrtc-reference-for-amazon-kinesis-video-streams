@@ -28,7 +28,9 @@
 #include "string_utils.h"
 #include "mbedtls/md.h"
 #include "mbedtls/md5.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
 #include "networking_utils.h"
 
 #define ICE_CONTROLLER_MESSAGE_QUEUE_NAME "/WebrtcApplicationIceController"
@@ -589,7 +591,9 @@ static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
         if( pCtx->metrics.isFirstConnectivityRequest == 1 )
         {
             pCtx->metrics.isFirstConnectivityRequest = 0;
+            #if METRIC_PRINT_ENABLED
             Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+            #endif
         }
 
         iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,

@@ -22,6 +22,9 @@ option(ENABLE_UNDEFINED_SANITIZER "Enable undefined sanitizer" OFF)
 option(ENABLE_MEMORY_SANITIZER "Enable memory sanitizer" OFF)
 option(ENABLE_THREAD_SANITIZER "Enable thread sanitizer" OFF)
 
+# Option to enable metric logging
+option(METRIC_PRINT_ENABLED "Enable Metric print logging" OFF)
+
 if( ENABLE_ADDRESS_SANITIZER )
   set( CMAKE_C_FLAGS "-O0 -g -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls" )
 elseif( ENABLE_UNDEFINED_SANITIZER )
@@ -71,15 +74,11 @@ file(
   "examples/message_queue/linux/*.c"
   "examples/timer_controller/*.c"
   "examples/string_utils/*.c"
-  if(BUILD_USRSCTP_LIBRARY)
-    "examples/libusrsctp/*.c"
-  endif()
   "examples/peer_connection/*.c"
   "examples/peer_connection/peer_connection_codec_helper/*.c"
   "examples/network_transport/*.c"
   "examples/network_transport/tcp_sockets_wrapper/ports/posix/*.c"
   "examples/network_transport/udp_sockets_wrapper/ports/posix/*.c"
-  "examples/metric/*.c"
   "examples/base64/*.c"
   "examples/base64/mbedtls/*.c" )
 
@@ -95,16 +94,24 @@ set( WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS
      "examples/network_transport"
      "examples/network_transport/tcp_sockets_wrapper/include"
      "examples/network_transport/udp_sockets_wrapper/include"
-     "examples/metric"
      "examples/libsrtp"
-     if(BUILD_USRSCTP_LIBRARY)
-       "examples/libusrsctp"
-     endif()
      "examples/logging"
      "examples/base64"
      "configs/mbedtls"
      "configs/sigv4"
      "examples/demo_config" )
+
+if( BUILD_USRSCTP_LIBRARY )
+    file( GLOB USRSCTP_SRC_FILES "examples/libusrsctp/*.c" )
+    list( APPEND WEBRTC_APPLICATION_COMMON_UTILS_SOURCE_FILES ${USRSCTP_SRC_FILES} )
+    list( APPEND WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS "examples/libusrsctp" )
+endif()
+
+if( METRIC_PRINT_ENABLED )
+    file(GLOB METRIC_SRC_FILES "examples/metric/*.c")
+    list(APPEND WEBRTC_APPLICATION_COMMON_UTILS_SOURCE_FILES ${METRIC_SRC_FILES})
+    list( APPEND WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS "examples/metric" )
+endif()
 
 file(
   GLOB
