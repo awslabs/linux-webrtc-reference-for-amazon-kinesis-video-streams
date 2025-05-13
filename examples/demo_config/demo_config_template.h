@@ -51,16 +51,8 @@
 
 #define AWS_MAX_VIEWER_NUM ( 2 )
 
-/* Audio format setting. */
-#define AUDIO_G711_MULAW    0
-#define AUDIO_G711_ALAW     0
-#define AUDIO_OPUS          1
-#if ( AUDIO_G711_MULAW + AUDIO_G711_ALAW + AUDIO_OPUS ) != 1
-#error only one of audio format should be set.
-#endif
-
-/* Video format setting. */
-#define USE_H265 0
+/* Audio format setting - currently only opus codec is supported in Linux environments */
+#define AUDIO_OPUS         1
 
 /* Join Storage Session setting. */
 #ifndef JOIN_STORAGE_SESSION
