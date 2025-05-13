@@ -34,6 +34,10 @@
 #include "networking_utils.h"
 #include "peer_connection.h"
 
+#ifdef ENABLE_STREAMING_LOOPBACK
+#include "app_media_source.h"
+#endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+
 #if ENABLE_SCTP_DATA_CHANNEL
 #include "peer_connection_sctp.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
@@ -772,6 +776,7 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 {
     #ifdef ENABLE_STREAMING_LOOPBACK
         WebrtcFrame_t frame;
+        AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
 
         if( pFrame != NULL )
         {
@@ -782,8 +787,10 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
             frame.size = pFrame->dataLength;
             frame.freeData = 0U;
             frame.timestampUs = pFrame->presentationUs;
-            ( void ) AppCommon_OnMediaSinkHook( pCustomContext,
-                                      &frame );
+            if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
+            {
+                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom, &frame );
+            }
         }
 
     #else /* ifdef ENABLE_STREAMING_LOOPBACK */
@@ -802,6 +809,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
 {
     #ifdef ENABLE_STREAMING_LOOPBACK
         WebrtcFrame_t frame;
+        AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
 
         if( pFrame != NULL )
         {
@@ -812,8 +820,10 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
             frame.size = pFrame->dataLength;
             frame.freeData = 0U;
             frame.timestampUs = pFrame->presentationUs;
-            ( void ) AppCommon_OnMediaSinkHook( pCustomContext,
-                                      &frame );
+            if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
+            {
+                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom, &frame );
+            }
         }
 
     #else /* ifdef ENABLE_STREAMING_LOOPBACK */

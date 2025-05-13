@@ -61,7 +61,7 @@ static void * VideoTx_Task( void * pParameter )
         FILE * fp = NULL;
         size_t frameLength;
         size_t allocatedBufferLength = 0;
-    #endif /* ENABLE_STREAMING_LOOPBACK */
+    #endif /* ifndef ENABLE_STREAMING_LOOPBACK */
 
     if( pVideoContext == NULL )
     {
@@ -121,7 +121,7 @@ static void * VideoTx_Task( void * pParameter )
                         fclose( fp );
                     }
                 }
-            #endif
+            #endif /* ifndef ENABLE_STREAMING_LOOPBACK */
             usleep( SAMPLE_VIDEO_FRAME_DURATION_IN_US );
         }
     }
@@ -138,7 +138,7 @@ static void * AudioTx_Task( void * pParameter )
         FILE * fp = NULL;
         size_t frameLength;
         size_t allocatedBufferLength = 0;
-    #endif /* ENABLE_STREAMING_LOOPBACK */
+    #endif /* ifndef ENABLE_STREAMING_LOOPBACK */
 
     if( pAudioContext == NULL )
     {
@@ -198,7 +198,7 @@ static void * AudioTx_Task( void * pParameter )
                         fclose( fp );
                     }
                 }
-            #endif
+            #endif /* ifndef ENABLE_STREAMING_LOOPBACK == 0 */
             usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
     }
