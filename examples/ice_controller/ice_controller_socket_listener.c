@@ -547,7 +547,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
 
                 if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
                 {
-                    if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
+                    if(( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 ) && ( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 ))
                     {
                         transportResult = TLS_FreeRTOS_ContinueHandshake( &( pSocketContext->tlsSession.xTlsNetworkContext ) );
             
@@ -594,6 +594,12 @@ static void pollingSockets( IceControllerContext_t * pCtx )
                             }
 
                         }
+
+                        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+                    }
+                    else
+                    {
+                        LogError( ( "Failed to lock socket/ice mutex." ) );
                     }
                 }
                 else
