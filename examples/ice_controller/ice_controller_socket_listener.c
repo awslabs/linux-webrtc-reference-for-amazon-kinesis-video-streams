@@ -476,6 +476,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     void * pOnRecvNonStunPacketCallbackContext = NULL;
     OnIceEventCallback_t onIceEventCallbackFunc;
     void * pOnIceEventCallbackCustomContext = NULL;
+    IceControllerSocketContext_t * pSocketContext;
 
     FD_ZERO( &rfds );
 
@@ -540,12 +541,21 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         {
             if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
             {
-                HandleRxPacket( pCtx,
-                                &pCtx->socketsContexts[i],
-                                onRecvNonStunPacketFunc,
-                                pOnRecvNonStunPacketCallbackContext,
-                                onIceEventCallbackFunc,
-                                pOnIceEventCallbackCustomContext );
+                pSocketContext = &( pCtx->socketsContexts[ i ] );
+
+                if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
+                {
+                    ( void ) IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 0U );
+                }
+                else
+                {
+                    HandleRxPacket( pCtx,
+                                    pSocketContext,
+                                    onRecvNonStunPacketFunc,
+                                    pOnRecvNonStunPacketCallbackContext,
+                                    onIceEventCallbackFunc,
+                                    pOnIceEventCallbackCustomContext );
+                }
             }
         }
     }
