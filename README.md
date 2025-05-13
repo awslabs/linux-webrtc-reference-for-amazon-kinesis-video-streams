@@ -1,5 +1,8 @@
 # linux-webrtc-reference-for-amazon-kinesis-video-streams
 
+> [!IMPORTANT]
+> This repository is currently in development and not recommended for production use.
+
 ## Submodule Update
 ```
 git submodule update --init --recursive
