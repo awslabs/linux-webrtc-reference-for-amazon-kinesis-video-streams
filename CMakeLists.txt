@@ -25,6 +25,9 @@ option(ENABLE_THREAD_SANITIZER "Enable thread sanitizer" OFF)
 # Option to enable metric logging
 option(METRIC_PRINT_ENABLED "Enable Metric print logging" OFF)
 
+# Option to enable media loopback
+option(ENABLE_MEDIA_LOOPBACK "Enable media loopback" OFF)
+
 if( ENABLE_ADDRESS_SANITIZER )
   set( CMAKE_C_FLAGS "-O0 -g -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls" )
 elseif( ENABLE_UNDEFINED_SANITIZER )
