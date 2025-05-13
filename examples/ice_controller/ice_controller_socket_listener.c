@@ -477,6 +477,8 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     OnIceEventCallback_t onIceEventCallbackFunc;
     void * pOnIceEventCallbackCustomContext = NULL;
     TlsTransportStatus_t transportResult;
+    IceResult_t iceResult;
+    IceControllerSocketContext_t * pSocketContext;
 
     FD_ZERO( &rfds );
 
@@ -541,11 +543,13 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         {
             if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
             {
-                if(( pCtx->socketsContexts[i].state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS ))
+                pSocketContext = &( pCtx->socketsContexts[ i ] );
+
+                if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
                 {
                     if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
                     {
-                        transportResult = TLS_FreeRTOS_ContinueHandshake( &( pCtx->socketsContexts[i].tlsSession.xTlsNetworkContext ) );
+                        transportResult = TLS_FreeRTOS_ContinueHandshake( &( pSocketContext->tlsSession.xTlsNetworkContext ) );
             
                         pthread_mutex_unlock( &( pCtx->socketMutex ) );
 
@@ -560,14 +564,42 @@ static void pollingSockets( IceControllerContext_t * pCtx )
                         else
                         {
                             LogInfo( ( "(Network connection %p) TLS handshake successful.",
-                                &( pCtx->socketsContexts[i].tlsSession.xTlsNetworkContext ) ) );
+                                &( pSocketContext->tlsSession.xTlsNetworkContext ) ) );
+
+                            iceResult = Ice_AddRelayCandidate( &( pCtx->iceContext ),
+                                                            &( pSocketContext->pIceServer->iceEndpoint ),
+                                                            &( pSocketContext->pIceServer->userName[ 0 ] ),
+                                                            pSocketContext->pIceServer->userNameLength,
+                                                            &( pSocketContext->pIceServer->password[ 0 ] ),
+                                                            pSocketContext->pIceServer->passwordLength );
+
+                            if( iceResult != ICE_RESULT_OK )
+                            {
+                                LogError( ( "Failed to created relay candidate for socket fd %d",
+                                            pSocketContext->socketFd ) );
+                                IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                            }
+                            else
+                            {
+                                LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
+                                        pSocketContext->socketFd,
+                                        pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+
+                                IceControllerNet_UpdateSocketContext( pCtx,
+                                                                    pSocketContext,
+                                                                    ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
+                                                                    &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
+                                                                    NULL,
+                                                                    pSocketContext->pIceServer );
+                            }
+
                         }
                     }
                 }
                 else
                 {
                     HandleRxPacket( pCtx,
-                                    &pCtx->socketsContexts[i],
+                                    pSocketContext,
                                     onRecvNonStunPacketFunc,
                                     pOnRecvNonStunPacketCallbackContext,
                                     onIceEventCallbackFunc,

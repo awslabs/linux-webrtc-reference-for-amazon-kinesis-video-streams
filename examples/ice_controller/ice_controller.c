@@ -357,6 +357,8 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
                 {
                     transportResult = TLS_FreeRTOS_ContinueHandshake( &( pSocketContext->tlsSession.xTlsNetworkContext ) );
 
+                    pthread_mutex_unlock( &( pCtx->socketMutex ) );
+
                     if( transportResult == TLS_TRANSPORT_SUCCESS )
                     {
                         LogVerbose( ( "Connection with TURN server successful for socket fd %d", pSocketContext->socketFd ) );
@@ -367,8 +369,6 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
                                                         pSocketContext->pIceServer->userNameLength,
                                                         &( pSocketContext->pIceServer->password[ 0 ] ),
                                                         pSocketContext->pIceServer->passwordLength );
-
-                        pthread_mutex_unlock( &( pCtx->socketMutex ) );
 
                         if( iceResult != ICE_RESULT_OK )
                         {
@@ -390,20 +390,20 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
                                                                 pSocketContext->pIceServer );
                         }
                     }
+                    else if( transportResult == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
+                    {
+                        LogVerbose( ( "Connection still in-progress with TURN server for socket fd %d...", pSocketContext->socketFd ) );
+                    }
                     else
                     {
-                        pthread_mutex_unlock( &( pCtx->socketMutex ) );
-                        
-                        if( transportResult == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
-                        {
-                            LogVerbose( ( "Connection still in-progress with TURN server for socket fd %d...", pSocketContext->socketFd ) );
-                        }
-                        else
-                        {
-                            LogError( ( "Connection with TURN server failed for socket fd %d", pSocketContext->socketFd ) );
-                            IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                        }
+                        LogError( ( "Connection with TURN server failed for socket fd %d", pSocketContext->socketFd ) );
+                        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
                     }
+                }
+                else
+                {
+                    LogError( ( "Failed to lock socket mutex." ) );
+                    result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
             }
             else if( pSocketContext->pLocalCandidate != NULL )
