@@ -1144,6 +1144,108 @@ void IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx )
     }
 }
 
+IceControllerResult_t IceControllerNet_ExecuteTlsHandshake( IceControllerContext_t * pCtx,
+                                                            IceControllerSocketContext_t * pSocketContext,
+                                                            uint8_t isIceLockTakenBeforeCall )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    TlsTransportStatus_t transportResult = TLS_TRANSPORT_SUCCESS;
+    IceResult_t iceResult = ICE_RESULT_OK;
+
+    if( ( pCtx == NULL ) || ( pSocketContext == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: %p, pSocketContext: %p",
+                    pCtx, pSocketContext ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( pSocketContext->socketType != ICE_CONTROLLER_SOCKET_TYPE_TLS )
+    {
+        LogError( ( "Invalid socket type: %d", pSocketContext->socketType ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
+        {
+            transportResult = TLS_FreeRTOS_ContinueHandshake( &( pSocketContext->tlsSession.xTlsNetworkContext ) );
+
+            pthread_mutex_unlock( &( pCtx->socketMutex ) );
+        }
+        else
+        {
+            LogError( ( "Failed to lock socket mutex." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( transportResult == TLS_TRANSPORT_SUCCESS )
+        {
+            LogVerbose( ( "Connection with TURN server successful for socket fd %d", pSocketContext->socketFd ) );
+
+            if( ( isIceLockTakenBeforeCall != 0U ) ||
+                ( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 ) )
+            {
+                iceResult = Ice_AddRelayCandidate( &( pCtx->iceContext ),
+                                                   &( pSocketContext->pIceServer->iceEndpoint ),
+                                                   &( pSocketContext->pIceServer->userName[ 0 ] ),
+                                                   pSocketContext->pIceServer->userNameLength,
+                                                   &( pSocketContext->pIceServer->password[ 0 ] ),
+                                                   pSocketContext->pIceServer->passwordLength );
+                if( isIceLockTakenBeforeCall == 0U )
+                {
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
+                }
+            }
+            else
+            {
+                LogError( ( "Failed to lock ice mutex." ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+            }
+
+            if( ret == ICE_CONTROLLER_RESULT_OK )
+            {
+                if( iceResult != ICE_RESULT_OK )
+                {
+                    LogError( ( "Failed to created relay candidate for socket fd %d",
+                                pSocketContext->socketFd ) );
+                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                }
+                else
+                {
+                    LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
+                               pSocketContext->socketFd,
+                               pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+    
+                    IceControllerNet_UpdateSocketContext( pCtx,
+                                                          pSocketContext,
+                                                          ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
+                                                          &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
+                                                          NULL,
+                                                          pSocketContext->pIceServer );
+                }
+            }
+        }
+        else if( transportResult == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
+        {
+            LogVerbose( ( "Connection still in-progress with TURN server for socket fd %d...", pSocketContext->socketFd ) );
+        }
+        else
+        {
+            LogError( ( "Connection with TURN server failed for socket fd %d", pSocketContext->socketFd ) );
+            IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+        }
+    }
+
+    return ret;
+}
+
 IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t * pCtx,
                                                          IceControllerSocketContext_t * pSocketContext,
                                                          uint8_t * pReceiveBuffer,

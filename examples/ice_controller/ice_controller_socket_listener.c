@@ -476,8 +476,6 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     void * pOnRecvNonStunPacketCallbackContext = NULL;
     OnIceEventCallback_t onIceEventCallbackFunc;
     void * pOnIceEventCallbackCustomContext = NULL;
-    TlsTransportStatus_t transportResult;
-    IceResult_t iceResult;
     IceControllerSocketContext_t * pSocketContext;
 
     FD_ZERO( &rfds );
@@ -547,60 +545,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
 
                 if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
                 {
-                    if(( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 ) && ( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 ))
-                    {
-                        transportResult = TLS_FreeRTOS_ContinueHandshake( &( pSocketContext->tlsSession.xTlsNetworkContext ) );
-            
-                        pthread_mutex_unlock( &( pCtx->socketMutex ) );
-
-                        if( transportResult ==  TLS_TRANSPORT_HANDSHAKE_FAILED )
-                        {
-                            LogError( ( "Failed to perform TLS handshake." ) );
-                        }
-                        else if( transportResult == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
-                        {
-                            LogDebug( ( "TLS handshake is in progress." ) );
-                        }
-                        else
-                        {
-                            LogInfo( ( "(Network connection %p) TLS handshake successful.",
-                                &( pSocketContext->tlsSession.xTlsNetworkContext ) ) );
-
-                            iceResult = Ice_AddRelayCandidate( &( pCtx->iceContext ),
-                                                            &( pSocketContext->pIceServer->iceEndpoint ),
-                                                            &( pSocketContext->pIceServer->userName[ 0 ] ),
-                                                            pSocketContext->pIceServer->userNameLength,
-                                                            &( pSocketContext->pIceServer->password[ 0 ] ),
-                                                            pSocketContext->pIceServer->passwordLength );
-
-                            if( iceResult != ICE_RESULT_OK )
-                            {
-                                LogError( ( "Failed to created relay candidate for socket fd %d",
-                                            pSocketContext->socketFd ) );
-                                IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                            }
-                            else
-                            {
-                                LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
-                                        pSocketContext->socketFd,
-                                        pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
-
-                                IceControllerNet_UpdateSocketContext( pCtx,
-                                                                    pSocketContext,
-                                                                    ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
-                                                                    &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
-                                                                    NULL,
-                                                                    pSocketContext->pIceServer );
-                            }
-
-                        }
-
-                        pthread_mutex_unlock( &( pCtx->iceMutex ) );
-                    }
-                    else
-                    {
-                        LogError( ( "Failed to lock socket/ice mutex." ) );
-                    }
+                    ( void ) IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 0U );
                 }
                 else
                 {
