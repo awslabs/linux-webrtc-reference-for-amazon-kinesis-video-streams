@@ -9,6 +9,17 @@ git submodule update --init --recursive
 ```
 
 ## Setup
+### Requirements
+The following packages are required to run this demo:
+1. OpenSSL
+    ```sh
+    sudo apt install -y openssl libssl-dev
+    ```
+1. pkg-config
+    ```sh
+    sudo apt install -y pkg-config
+    ```
+
 ### Required Configuration
 Before choosing an authentication method, configure these common settings:
    * Copy `examples/demo_config/demo_config_template.h` and rename it to `examples/demo_config/demo_config.h` and set the following:
