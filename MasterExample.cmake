@@ -97,6 +97,10 @@ else()
     target_compile_definitions( WebRTCLinuxApplicationMaster PRIVATE METRIC_PRINT_ENABLED=0 )
 endif()
 
+if( ENABLE_MEDIA_LOOPBACK )
+    target_compile_definitions( WebRTCLinuxApplicationMaster PRIVATE ENABLE_STREAMING_LOOPBACK )
+endif()
+
 # link application with dependencies, note that rt is librt providing message queue's APIs
 message(STATUS "linking websockets to WebRTCLinuxApplication")
 target_link_libraries( WebRTCLinuxApplicationMaster
