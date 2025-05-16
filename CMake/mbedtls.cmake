@@ -20,10 +20,6 @@ file(GLOB MBEDCRYPTO_SOURCES "${MBEDTLS_SOURCE_DIR}/library/*.c")
 # Clean up crypto sources
 list(FILTER MBEDCRYPTO_SOURCES EXCLUDE REGEX "(ssl|x509)_.*.c$")
 
-message( STATUS "MBEDTLS_SOURCES: ${MBEDTLS_SOURCES}" )
-message( STATUS "MBEDX509_SOURCES: ${MBEDX509_SOURCES}" )
-message( STATUS "MBEDCRYPTO_SOURCES: ${MBEDCRYPTO_SOURCES}" )
-
 # Create libraries
 add_library(mbedtls ${MBEDTLS_SOURCES})
 add_library(mbedx509 ${MBEDX509_SOURCES})
@@ -34,6 +30,7 @@ set_target_properties(mbedcrypto mbedx509 mbedtls
     PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${MBEDTLS_BUILD_DIR}"
     LIBRARY_OUTPUT_DIRECTORY "${MBEDTLS_BUILD_DIR}"
+    POSITION_INDEPENDENT_CODE ON
 )
 
 # Add version to shared libraries
@@ -53,10 +50,6 @@ foreach(target IN ITEMS mbedcrypto mbedx509 mbedtls)
         PUBLIC
             MBEDTLS_CONFIG_FILE="mbedtls_custom_config.h"
     )
-
-    set_target_properties(${target} PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
-    )
 endforeach()
 
 # Set up dependencies
@@ -68,3 +61,7 @@ set_source_files_properties(
     "${MBEDTLS_SOURCE_DIR}/library/ssl_tls.c"
     PROPERTIES COMPILE_FLAGS -Wno-stringop-overflow
 )
+
+# Export variables for libwebsockets
+set(MBEDTLS_INCLUDE_DIRS ${MBEDTLS_BUILD_INCLUDE_DIR} CACHE PATH "MbedTLS include directories" FORCE)
+set(MBEDTLS_LIBRARIES mbedtls mbedx509 mbedcrypto CACHE STRING "MbedTLS libraries" FORCE)
