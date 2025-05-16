@@ -1,4 +1,4 @@
-# This cmake file is used to include libwebsockets as static library.
+# This cmake file is used to include STUN as static library.
 set(CMAKE_STUN_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-stun)
 
 # STUN library source files.

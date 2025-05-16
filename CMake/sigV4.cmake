@@ -1,4 +1,4 @@
-# This cmake file is used to include libwebsockets as static library.
+# This cmake file is used to include SigV4 as static library.
 set(CMAKE_SIGV4_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk)
 include( ${CMAKE_SIGV4_DIRECTORY}/sigv4FilePaths.cmake )
 
