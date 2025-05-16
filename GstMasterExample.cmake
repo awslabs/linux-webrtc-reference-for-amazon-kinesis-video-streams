@@ -55,42 +55,16 @@ if(GST_FOUND)
                                 ${WEBRTC_APPLICATION_GST_MASTER_INCLUDE_DIRS}
                                 ${WEBRTC_APPLICATION_GST_MASTER_MEDIA_INCLUDE_FILES})
 
-    ## Set SDP include directories
-    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                                ${SDP_INCLUDE_PUBLIC_DIRS} )
-
-    ## Set sigv4 include directories
-    message(STATUS "including sigv4 directories: ${SIGV4_INCLUDE_PUBLIC_DIRS}")
-    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                                ${SIGV4_INCLUDE_PUBLIC_DIRS} )
-
-    ## Set ICE include directories
-    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                                ${ICE_INCLUDE_PUBLIC_DIRS} )
-
     ## Set signaling include directories
     target_compile_definitions( WebRTCLinuxApplicationGstMaster
                                 PUBLIC
-                                SIGNALING_DO_NOT_USE_CUSTOM_CONFIG
                                 MBEDTLS_CONFIG_FILE="mbedtls_custom_config.h"
                                 HTTP_DO_NOT_USE_CUSTOM_CONFIG
                                 HAVE_CONFIG_H )
-    message(STATUS "including signaling directories: ${SIGNALING_INCLUDE_PUBLIC_DIRS}")
-    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                                ${SIGNALING_INCLUDE_PUBLIC_DIRS} )
-
-
-    ## Set STUN include directories
-    target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                                ${STUN_INCLUDE_PUBLIC_DIRS} )
 
     if( BUILD_USRSCTP_LIBRARY )
         ## Include usrsctp
         target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1 )
-    
-        ## Set DCEP include directories
-        target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                                    ${DCEP_INCLUDE_PUBLIC_DIRS} )
     
         target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
                                     ${SCTP_INCLUDE_PUBLIC_DIRS} )
@@ -113,6 +87,7 @@ if(GST_FOUND)
                            sdp
                            ice
                            rtcp
+                           stun
                            rt
                            pthread
                            ${GST_LIBRARIES} )

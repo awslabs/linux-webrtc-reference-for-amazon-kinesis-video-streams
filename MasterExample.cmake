@@ -37,50 +37,21 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS}
                             ${RTP_INCLUDE_PUBLIC_DIRS} )
 
-## Set sigv4 include directories
-message(STATUS "including sigv4 directories: ${SIGV4_INCLUDE_PUBLIC_DIRS}")
-target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-                            ${SIGV4_INCLUDE_PUBLIC_DIRS} )
-
 ## Set libwebsockets include directories
 message(STATUS "including libwebsockets directories: ${LIBWEBSOCKETS_INCLUDE_DIRS}")
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${LIBWEBSOCKETS_INCLUDE_DIRS} )
 
-## Set coreJSON include directories
-target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-                            ${JSON_INCLUDE_PUBLIC_DIRS} )
-
 ## Set signaling include directories
 target_compile_definitions( WebRTCLinuxApplicationMaster
                             PUBLIC
-                            SIGNALING_DO_NOT_USE_CUSTOM_CONFIG
                             MBEDTLS_CONFIG_FILE="mbedtls_custom_config.h"
                             HTTP_DO_NOT_USE_CUSTOM_CONFIG
                             HAVE_CONFIG_H )
-message(STATUS "including signaling directories: ${SIGNALING_INCLUDE_PUBLIC_DIRS}")
-target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-                            ${SIGNALING_INCLUDE_PUBLIC_DIRS} )
-
-## Set SDP include directories
-target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-                            ${SDP_INCLUDE_PUBLIC_DIRS} )
-
-## Set STUN include directories
-target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-                            ${STUN_INCLUDE_PUBLIC_DIRS} )
-
-## Set ICE include directories
-target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-                            ${ICE_INCLUDE_PUBLIC_DIRS} )
 
 if( BUILD_USRSCTP_LIBRARY )
     ## Include usrsctp
     target_compile_definitions( WebRTCLinuxApplicationMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1 )
-
-    ## Set DCEP include directories
-    target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
-                                ${DCEP_INCLUDE_PUBLIC_DIRS} )
 
     target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                                 ${SCTP_INCLUDE_PUBLIC_DIRS} )
@@ -109,6 +80,7 @@ target_link_libraries( WebRTCLinuxApplicationMaster
                        sdp
                        ice
                        rtcp
+                       stun
                        rt
                        pthread
 )

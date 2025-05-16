@@ -3,9 +3,16 @@ set(CMAKE_SDP_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kine
 set(SDP_CONFIG_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/examples/sdp_controller)
 include( ${CMAKE_SDP_DIRECTORY}/sdpFilePaths.cmake )
 
-add_library( sdp
-             ${SDP_SOURCES} )
+add_library( sdp )
 
-target_include_directories( sdp PRIVATE
+target_sources( sdp
+    PRIVATE
+        ${SDP_SOURCES}
+    PUBLIC
+        ${SDP_INCLUDE_PUBLIC_DIRS}
+        ${SDP_CONFIG_DIRECTORY}
+)
+
+target_include_directories( sdp PUBLIC
                             ${SDP_INCLUDE_PUBLIC_DIRS}
                             ${SDP_CONFIG_DIRECTORY} )

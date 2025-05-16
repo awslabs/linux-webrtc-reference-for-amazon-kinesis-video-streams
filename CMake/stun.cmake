@@ -11,10 +11,14 @@ file(
 set( STUN_INCLUDE_PUBLIC_DIRS
      "${CMAKE_STUN_DIRECTORY}/source/include" )
 
-add_library( stun
-             ${STUN_SOURCES} )
+add_library( stun )
 
-target_include_directories( stun PRIVATE
+target_sources( stun
+    PRIVATE
+        ${STUN_SOURCES}
+    PUBLIC
+        ${STUN_INCLUDE_PUBLIC_DIRS}
+)
+
+target_include_directories( stun PUBLIC
                             ${STUN_INCLUDE_PUBLIC_DIRS} )
-
-target_link_libraries( stun PRIVATE )

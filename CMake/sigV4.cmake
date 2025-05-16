@@ -5,6 +5,14 @@ include( ${CMAKE_SIGV4_DIRECTORY}/sigv4FilePaths.cmake )
 add_library( sigv4
              ${SIGV4_SOURCES} )
 
-target_include_directories( sigv4 PRIVATE
+target_sources( sigv4
+    PRIVATE
+        ${SIGV4_SOURCES}
+    PUBLIC
+        ${CMAKE_ROOT_DIRECTORY}/configs/sigv4
+        ${SIGV4_INCLUDE_PUBLIC_DIRS}
+)
+
+target_include_directories( sigv4 PUBLIC
                             ${CMAKE_ROOT_DIRECTORY}/configs/sigv4
                             ${SIGV4_INCLUDE_PUBLIC_DIRS} )

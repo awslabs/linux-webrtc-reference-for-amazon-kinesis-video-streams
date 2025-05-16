@@ -14,7 +14,7 @@ set( ICE_INCLUDE_PUBLIC_DIRS
 add_library( ice
              ${ICE_SOURCES} )
 
-target_include_directories( ice PRIVATE
+target_include_directories( ice PUBLIC
                             ${ICE_INCLUDE_PUBLIC_DIRS}
                             ${STUN_INCLUDE_PUBLIC_DIRS} )
 
