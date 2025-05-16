@@ -34,7 +34,6 @@ if(GST_FOUND)
                     ${WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES}
                     ${WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES}
                     ${WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES}
-                    ${RTCP_SOURCES}
                     ${RTP_SOURCES}
                     ${WEBRTC_APPLICATION_GST_MASTER_SOURCE_FILES}
                     ${WEBRTC_APPLICATION_GST_MASTER_MEDIA_SOURCE_FILES})
@@ -51,7 +50,6 @@ if(GST_FOUND)
                                 ${WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS}
                                 ${WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS}
                                 ${WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS}
-                                ${RTCP_INCLUDE_PUBLIC_DIRS}
                                 ${RTP_INCLUDE_PUBLIC_DIRS}
                                 ${GST_INCLUDE_DIRS}
                                 ${WEBRTC_APPLICATION_GST_MASTER_INCLUDE_DIRS}
@@ -114,6 +112,7 @@ if(GST_FOUND)
                            corejson
                            sdp
                            ice
+                           rtcp
                            rt
                            pthread
                            ${GST_LIBRARIES} )

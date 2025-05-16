@@ -21,7 +21,6 @@ add_executable(
     ${WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES}
     ${WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES}
-    ${RTCP_SOURCES}
     ${RTP_SOURCES} )
 
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
@@ -36,7 +35,6 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS}
-                            ${RTCP_INCLUDE_PUBLIC_DIRS}
                             ${RTP_INCLUDE_PUBLIC_DIRS} )
 
 ## Set sigv4 include directories
@@ -110,6 +108,7 @@ target_link_libraries( WebRTCLinuxApplicationMaster
                        corejson
                        sdp
                        ice
+                       rtcp
                        rt
                        pthread
 )

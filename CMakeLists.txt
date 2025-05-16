@@ -210,6 +210,9 @@ include( ${CMAKE_ROOT_DIRECTORY}/CMake/stun.cmake )
 ## Include ICE
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/ice.cmake )
 
+## Include RTCP
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtcp.cmake )
+
 if(BUILD_USRSCTP_LIBRARY)
   ## Include usrsctp
   include( ${CMAKE_ROOT_DIRECTORY}/CMake/libusrsctp.cmake )
