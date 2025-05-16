@@ -5,7 +5,7 @@ NetworkingResult_t Networking_ConfigureLwsLogging( uint32_t logLevel )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     int lws_levels = 0;
-    LogInfo(("Log level: %d", logLevel));
+  
     /* Map application log levels to libwebsockets log levels */
     if( logLevel == LOG_NONE )
     {
