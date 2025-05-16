@@ -42,8 +42,6 @@ elseif( ENABLE_THREAD_SANITIZER )
   set( CMAKE_C_FLAGS "-O0 -g -fsanitize=thread -fno-omit-frame-pointer -fno-optimize-sibling-calls" )
 endif()
 
-include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
-include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtp/rtpFilePaths.cmake)
 file(
   GLOB
   WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES
@@ -210,8 +208,11 @@ include( ${CMAKE_ROOT_DIRECTORY}/CMake/stun.cmake )
 ## Include ICE
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/ice.cmake )
 
-## Include RTCP
+## RTCP
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtcp.cmake )
+
+## RTP
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtp.cmake )
 
 if(BUILD_USRSCTP_LIBRARY)
   ## Include usrsctp

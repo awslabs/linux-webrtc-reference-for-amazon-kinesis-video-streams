@@ -1,5 +1,4 @@
-# This cmake file is used to include libwebsockets as static library.
-set(CMAKE_RTCP_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp)
+# This cmake file is used to include rtcp as static library.
 include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
 
 add_library( rtcp )

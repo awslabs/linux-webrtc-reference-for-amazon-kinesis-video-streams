@@ -20,8 +20,7 @@ add_executable(
     ${WEBRTC_APPLICATION_ICE_CONTROLLER_SOURCE_FILES}
     ${WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES}
     ${WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES}
-    ${WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES}
-    ${RTP_SOURCES} )
+    ${WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES} )
 
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
@@ -34,8 +33,7 @@ target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS}
                             ${WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS}
-                            ${WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS}
-                            ${RTP_INCLUDE_PUBLIC_DIRS} )
+                            ${WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS} )
 
 ## Set libwebsockets include directories
 message(STATUS "including libwebsockets directories: ${LIBWEBSOCKETS_INCLUDE_DIRS}")
@@ -80,6 +78,7 @@ target_link_libraries( WebRTCLinuxApplicationMaster
                        sdp
                        ice
                        rtcp
+                       rtp
                        stun
                        rt
                        pthread
