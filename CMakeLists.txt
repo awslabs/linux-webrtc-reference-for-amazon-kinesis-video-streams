@@ -95,7 +95,6 @@ set( WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS
      "examples/network_transport"
      "examples/network_transport/tcp_sockets_wrapper/include"
      "examples/network_transport/udp_sockets_wrapper/include"
-     "examples/libsrtp"
      "examples/logging"
      "examples/base64"
      "configs/mbedtls"
@@ -133,31 +132,6 @@ set( WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS
 
 set_source_files_properties("libraries/crypto/mbedtls/library/ssl_tls.c" PROPERTIES COMPILE_FLAGS -Wno-stringop-overflow)
 
-file(
-  GLOB
-  WEBRTC_APPLICATION_LIBSRTP_GLOB_SOURCE_FILES
-  "libraries/protocols/libsrtp/srtp/*.c"
-  "libraries/protocols/libsrtp/crypto/kernel/*.c"
-  "libraries/protocols/libsrtp/crypto/math/*.c"
-  "libraries/protocols/libsrtp/crypto/replay/*.c" )
-
-set( WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES
-     ${WEBRTC_APPLICATION_LIBSRTP_GLOB_SOURCE_FILES}
-     "libraries/protocols/libsrtp/crypto/cipher/aes.c"
-     "libraries/protocols/libsrtp/crypto/cipher/aes_gcm_mbedtls.c"
-     "libraries/protocols/libsrtp/crypto/cipher/aes_icm_mbedtls.c"
-     "libraries/protocols/libsrtp/crypto/cipher/cipher.c"
-     "libraries/protocols/libsrtp/crypto/cipher/cipher_test_cases.c"
-     "libraries/protocols/libsrtp/crypto/cipher/null_cipher.c"
-     "libraries/protocols/libsrtp/crypto/hash/auth_test_cases.c"
-     "libraries/protocols/libsrtp/crypto/hash/auth.c"
-     "libraries/protocols/libsrtp/crypto/hash/hmac_mbedtls.c"
-     "libraries/protocols/libsrtp/crypto/hash/null_auth.c"
-     "libraries/protocols/libsrtp/crypto/hash/sha1.c" )
-
-set( WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS
-     "libraries/protocols/libsrtp/include"
-     "libraries/protocols/libsrtp/crypto/include" )
 
 file(
   GLOB
@@ -203,16 +177,15 @@ include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtcp.cmake )
 ## RTP
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtp.cmake )
 
+## LIBSRTP
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/libsrtp.cmake )
+
 if(BUILD_USRSCTP_LIBRARY)
   ## Include usrsctp
   include( ${CMAKE_ROOT_DIRECTORY}/CMake/libusrsctp.cmake )
 
   ## Include DCEP
   include( ${CMAKE_ROOT_DIRECTORY}/CMake/dcep.cmake )
-
-  # usrsctp library public include directories.
-  set( SCTP_INCLUDE_PUBLIC_DIRS
-       "${CMAKE_ROOT_DIRECTORY}/libraries/protocols/usrsctp/usrsctplib" )
 endif()
 
 ### Master Application

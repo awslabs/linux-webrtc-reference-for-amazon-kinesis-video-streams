@@ -27,4 +27,9 @@ add_library(usrsctp STATIC IMPORTED)
 set_target_properties(usrsctp PROPERTIES
     IMPORTED_LOCATION ${LIBUSRSCTP_LIB}
 )
+
+target_include_directories( usrsctp INTERFACE
+                            "${LIBUSRSCTP_SOURCE_DIR}/usrsctplib"
+)
+
 add_dependencies(usrsctp usrsctp-build)

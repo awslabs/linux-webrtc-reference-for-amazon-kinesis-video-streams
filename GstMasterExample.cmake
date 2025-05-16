@@ -56,16 +56,11 @@ if(GST_FOUND)
     ## Set signaling include directories
     target_compile_definitions( WebRTCLinuxApplicationGstMaster
                                 PUBLIC
-                                MBEDTLS_CONFIG_FILE="mbedtls_custom_config.h"
-                                HTTP_DO_NOT_USE_CUSTOM_CONFIG
-                                HAVE_CONFIG_H )
+                                MBEDTLS_CONFIG_FILE="mbedtls_custom_config.h" )
 
     if( BUILD_USRSCTP_LIBRARY )
         ## Include usrsctp
         target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=1 )
-    
-        target_include_directories( WebRTCLinuxApplicationGstMaster PRIVATE
-                                    ${SCTP_INCLUDE_PUBLIC_DIRS} )
     else()
         target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE ENABLE_SCTP_DATA_CHANNEL=0 )
     endif()
@@ -87,6 +82,7 @@ if(GST_FOUND)
                            rtcp
                            rtp
                            stun
+                           libsrtp
                            rt
                            pthread
                            ${GST_LIBRARIES} )
