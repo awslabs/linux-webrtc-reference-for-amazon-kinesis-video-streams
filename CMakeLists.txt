@@ -135,17 +135,6 @@ set_source_files_properties("libraries/crypto/mbedtls/library/ssl_tls.c" PROPERT
 
 file(
   GLOB
-  WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES
-  "libraries/protocols/coreHTTP/source/*.c"
-  "libraries/protocols/coreHTTP/source/dependency/3rdparty/llhttp/src/*.c" )
-
-set( WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS
-     "libraries/protocols/coreHTTP/source/include"
-     "libraries/protocols/coreHTTP/source/interface"
-     "libraries/protocols/coreHTTP/source/dependency/3rdparty/llhttp/include" )
-
-file(
-  GLOB
   WEBRTC_APPLICATION_LIBSRTP_GLOB_SOURCE_FILES
   "libraries/protocols/libsrtp/srtp/*.c"
   "libraries/protocols/libsrtp/crypto/kernel/*.c"
