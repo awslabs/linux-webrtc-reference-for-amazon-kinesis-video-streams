@@ -23,6 +23,8 @@ set(LWS_WITH_ZLIB OFF CACHE INTERNAL "Include zlib support (required for extensi
 set(LWS_HAVE_PTHREAD_H ON CACHE INTERNAL "Have pthread")
 set(LWS_WITH_EXPORT OFF CACHE INTERNAL "Don't export targets")
 set(LWS_WITH_EXPORT_LWSTARGETS OFF CACHE INTERNAL "Don't export targets")
+set(LWS_HAVE_mbedtls_ssl_conf_alpn_protocols 1 CACHE INTERNAL "Skip stderr \"mbedtls_ssl_conf_alpn_protocols absent\" message")
+set(LWS_HAVE_mbedtls_ssl_get_alpn_protocol 1 CACHE INTERNAL "Skip stderr \"mbedtls_ssl_conf_alpn_protocols absent\" message")
 # Uncomment the following to dump all LibWebsockets outgoing packets.
 # set(LWS_TLS_LOG_PLAINTEXT_TX ON CACHE INTERNAL "Dump tx")
 # Uncomment the following to dump all LibWebsockets incoming packets.

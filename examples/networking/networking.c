@@ -1451,6 +1451,7 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
         creationInfo.ka_interval = 1;
         creationInfo.retry_and_idle_policy = &( retryPolicy );
         creationInfo.fd_limit_per_thread = 3;
+        creationInfo.alpn = "http/1.1";
 
         if( ( pCreds->pDeviceCertPath != NULL ) && ( pCreds->pDeviceKeyPath != NULL ) )
         {
@@ -1743,6 +1744,7 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             creationInfo.ka_interval = 1;
             creationInfo.retry_and_idle_policy = &retryPolicy;
             creationInfo.fd_limit_per_thread = 3;
+            creationInfo.alpn = "http/1.1";
         
             if( ( pWebsocketCtx->sslCreds.pDeviceCertPath != NULL ) && ( pWebsocketCtx->sslCreds.pDeviceKeyPath != NULL ) )
             {
