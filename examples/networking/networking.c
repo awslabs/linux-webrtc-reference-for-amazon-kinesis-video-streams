@@ -31,6 +31,18 @@
 #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #endif
 
+#define NETWORKING_USE_OPENSSL ( 0 )
+#define NETWORKING_USE_MBEDTLS ( 1 )
+
+/*----------------------------------------------------------------------------*/
+
+#if NETWORKING_USE_MBEDTLS
+    /**
+     *  @brief mbedTLS Hash Context passed to SigV4 cryptointerface for generating the hash digest.
+     */
+    static mbedtls_sha256_context xHashContext = { 0 };
+#endif /* NETWORKING_USE_MBEDTLS */
+
 /*----------------------------------------------------------------------------*/
 
 static int LwsHttpCallback( struct lws * pWsi,
@@ -47,57 +59,102 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 
 /*----------------------------------------------------------------------------*/
 
-static int32_t Sha256Init( void * pHashContext )
-{
-    int32_t ret = 0;
-    const EVP_MD * md = EVP_sha256();
-
-    ret = EVP_DigestInit( pHashContext, md );
-
-    if( ret != 1 )
+#if NETWORKING_USE_OPENSSL
+    static int32_t Sha256Init( void * pHashContext )
     {
-        LogError( ( "Failed to initialize EVP_sha256!" ) );
-    }
+        int32_t ret = 0;
+        const EVP_MD * md = EVP_sha256();
 
-    return ret == 1 ? 0 : -1;
-}
+        ret = EVP_DigestInit( pHashContext, md );
+
+        if( ret != 1 )
+        {
+            LogError( ( "Failed to initialize EVP_sha256!" ) );
+        }
+
+        return ret == 1 ? 0 : -1;
+    }
 
 /*----------------------------------------------------------------------------*/
 
-static int32_t Sha256Update( void * pHashContext,
-                             const uint8_t * pInput,
-                             size_t inputLen )
-{
-    int32_t ret = 0;
-
-    ret = EVP_DigestUpdate( pHashContext, pInput, inputLen );
-
-    if( ret != 1 )
+    static int32_t Sha256Update( void * pHashContext,
+                                 const uint8_t * pInput,
+                                 size_t inputLen )
     {
-        LogError( ( "Failed to update EVP_sha256!" ) );
-    }
+        int32_t ret = 0;
 
-    return ret == 1 ? 0 : -1;
-}
+        ret = EVP_DigestUpdate( pHashContext, pInput, inputLen );
+
+        if( ret != 1 )
+        {
+            LogError( ( "Failed to update EVP_sha256!" ) );
+        }
+
+        return ret == 1 ? 0 : -1;
+    }
 
 /*----------------------------------------------------------------------------*/
 
-static int32_t Sha256Final( void * pHashContext,
-                            uint8_t * pOutput,
-                            size_t outputLen )
-{
-    int32_t ret = 0;
-    unsigned int outLength = outputLen;
-
-    ret = EVP_DigestFinal( pHashContext, pOutput, &( outLength ) );
-
-    if( ret != 1 )
+    static int32_t Sha256Final( void * pHashContext,
+                                uint8_t * pOutput,
+                                size_t outputLen )
     {
-        LogError( ( "Failed to finalize EVP_sha256!" ) );
+        int32_t ret = 0;
+        unsigned int outLength = outputLen;
+
+        ret = EVP_DigestFinal( pHashContext, pOutput, &( outLength ) );
+
+        if( ret != 1 )
+        {
+            LogError( ( "Failed to finalize EVP_sha256!" ) );
+        }
+
+        return ret == 1 ? 0 : -1;
     }
 
-    return ret == 1 ? 0 : -1;
-}
+/*----------------------------------------------------------------------------*/
+
+#elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL  */
+    static int32_t Sha256Init( void * hashContext )
+    {
+        mbedtls_sha256_init( ( mbedtls_sha256_context * ) hashContext );
+        mbedtls_sha256_starts( hashContext, 0 );
+
+        return 0;
+    }
+
+/*----------------------------------------------------------------------------*/
+
+    static int32_t Sha256Update( void * hashContext,
+                                 const uint8_t * pInput,
+                                 size_t inputLen )
+    {
+        mbedtls_sha256_update( hashContext, pInput, inputLen );
+
+        return 0;
+    }
+
+/*----------------------------------------------------------------------------*/
+
+    static int32_t Sha256Final( void * hashContext,
+                                uint8_t * pOutput,
+                                size_t outputLen )
+    {
+        int32_t ret = 0;
+
+        if( outputLen < 32 )
+        {
+            LogError( ( "Invalid output length (%lu) for SHA256!", outputLen ) );
+            ret = -1;
+        }
+        else
+        {
+            mbedtls_sha256_finish( hashContext, pOutput );
+        }
+
+        return ret;
+    }
+#endif /* elif NETWORKING_USE_MBEDTLS */
 
 /*----------------------------------------------------------------------------*/
 
@@ -361,7 +418,11 @@ static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
         sigv4CryptoInterface.hashInit = Sha256Init;
         sigv4CryptoInterface.hashUpdate = Sha256Update;
         sigv4CryptoInterface.hashFinal = Sha256Final;
-        sigv4CryptoInterface.pHashContext = EVP_MD_CTX_new();
+        #if NETWORKING_USE_OPENSSL
+            sigv4CryptoInterface.pHashContext = EVP_MD_CTX_new();
+        #elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL */
+            sigv4CryptoInterface.pHashContext = &xHashContext;
+        #endif /* elif NETWORKING_USE_MBEDTLS */
         sigv4CryptoInterface.hashBlockLen = 64;
         sigv4CryptoInterface.hashDigestLen = 32;
 
@@ -388,7 +449,9 @@ static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
             ret = -1;
         }
 
-        EVP_MD_CTX_free( sigv4CryptoInterface.pHashContext );
+        #if NETWORKING_USE_OPENSSL
+            EVP_MD_CTX_free( sigv4CryptoInterface.pHashContext );
+        #endif /* NETWORKING_USE_OPENSSL */
     }
 
     if( ret == 0 )
@@ -850,7 +913,11 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         sigv4CryptoInterface.hashInit = Sha256Init;
         sigv4CryptoInterface.hashUpdate = Sha256Update;
         sigv4CryptoInterface.hashFinal = Sha256Final;
-        sigv4CryptoInterface.pHashContext = EVP_MD_CTX_new();
+        #if NETWORKING_USE_OPENSSL
+            sigv4CryptoInterface.pHashContext = EVP_MD_CTX_new();
+        #elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL */
+            sigv4CryptoInterface.pHashContext = &xHashContext;
+        #endif /* elif NETWORKING_USE_MBEDTLS */
         sigv4CryptoInterface.hashBlockLen = 64;
         sigv4CryptoInterface.hashDigestLen = 32;
 
@@ -877,7 +944,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
             ret = -1;
         }
 
-        EVP_MD_CTX_free( sigv4CryptoInterface.pHashContext );
+        #if NETWORKING_USE_OPENSSL
+            EVP_MD_CTX_free( sigv4CryptoInterface.pHashContext );
+        #endif /* NETWORKING_USE_OPENSSL */
     }
 
     /* Append signature. */
