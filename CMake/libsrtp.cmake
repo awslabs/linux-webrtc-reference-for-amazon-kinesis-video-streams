@@ -1,6 +1,5 @@
 # Set the source directory explicitly
 set(LIBSRTP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/libraries/protocols/libsrtp)
-set(LIBSRTP_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/libraries/protocols/libsrtp)
 
 if(NOT EXISTS ${LIBSRTP_SOURCE_DIR})
     message(FATAL_ERROR "The source directory ${LIBSRTP_SOURCE_DIR} does not exist. Please ensure the path is correct.")
@@ -41,6 +40,8 @@ target_sources( libsrtp
     PUBLIC
         ${LIBSRTP_INCLUDE_DIRS}
 )
+
+target_compile_definitions( libsrtp PUBLIC HAVE_CONFIG_H )
 
 target_include_directories( libsrtp PUBLIC
                             ${LIBSRTP_INCLUDE_DIRS} )

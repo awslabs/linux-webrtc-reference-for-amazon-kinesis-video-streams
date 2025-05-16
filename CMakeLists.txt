@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.6.3)
 
+# Set CMake policy CMP0048 to NEW to enable VERSION variables in project() command
+# This addresses the following CMake warning:
+# - Policy CMP0048 controls how project() command manages VERSION variables
+# - Without this, PROJECT_VERSION* variables would be empty
+# - Setting to NEW ensures proper version variable handlingcmake_policy(SET CMP0048 NEW)
+cmake_policy(SET CMP0048 NEW)
+
 project(ProjectWebRTCLinuxApplication VERSION 0.0.1 LANGUAGES C)
 
 set(CMAKE_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -97,7 +104,6 @@ set( WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS
      "examples/network_transport/udp_sockets_wrapper/include"
      "examples/logging"
      "examples/base64"
-     "configs/mbedtls"
      "configs/sigv4"
      "examples/demo_config" )
 
@@ -120,18 +126,6 @@ file(
 
 set( WEBRTC_APPLICATION_MASTER_MEDIA_INCLUDE_FILES
      "examples/app_media_source" )
-
-file(
-  GLOB
-  WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES
-  "libraries/crypto/mbedtls/library/*.c" )
-
-set( WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS
-     "libraries/crypto/mbedtls/include"
-     "configs/mbedtls" )
-
-set_source_files_properties("libraries/crypto/mbedtls/library/ssl_tls.c" PROPERTIES COMPILE_FLAGS -Wno-stringop-overflow)
-
 
 file(
   GLOB
@@ -176,6 +170,9 @@ include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtcp.cmake )
 
 ## RTP
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtp.cmake )
+
+## MbedTLS
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/mbedtls.cmake )
 
 ## LIBSRTP
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/libsrtp.cmake )

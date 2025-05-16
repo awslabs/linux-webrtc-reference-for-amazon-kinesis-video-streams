@@ -82,6 +82,7 @@ if(GST_FOUND)
                            rtcp
                            rtp
                            stun
+                           mbedtls
                            libsrtp
                            rt
                            pthread

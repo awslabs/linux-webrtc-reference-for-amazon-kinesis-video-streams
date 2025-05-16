@@ -75,6 +75,7 @@ target_link_libraries( WebRTCLinuxApplicationMaster
                        rtcp
                        rtp
                        stun
+                       mbedtls
                        libsrtp
                        rt
                        pthread
