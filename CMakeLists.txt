@@ -147,6 +147,9 @@ set( WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS
 ## Include sigV4
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/sigV4.cmake )
 
+## MbedTLS
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/mbedtls.cmake )
+
 ## Include libwebsockets
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/libwebsockets.cmake )
 
@@ -170,9 +173,6 @@ include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtcp.cmake )
 
 ## RTP
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtp.cmake )
-
-## MbedTLS
-include( ${CMAKE_ROOT_DIRECTORY}/CMake/mbedtls.cmake )
 
 ## LIBSRTP
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/libsrtp.cmake )

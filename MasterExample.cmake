@@ -66,7 +66,6 @@ endif()
 # link application with dependencies, note that rt is librt providing message queue's APIs
 message(STATUS "linking websockets to WebRTCLinuxApplication")
 target_link_libraries( WebRTCLinuxApplicationMaster
-                       websockets
                        sigv4
                        signaling
                        corejson
@@ -77,6 +76,7 @@ target_link_libraries( WebRTCLinuxApplicationMaster
                        stun
                        mbedtls
                        libsrtp
+                       websockets
                        rt
                        pthread
 )

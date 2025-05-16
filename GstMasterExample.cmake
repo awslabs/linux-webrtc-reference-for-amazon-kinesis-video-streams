@@ -73,7 +73,6 @@ if(GST_FOUND)
     endif()
 
     target_link_libraries( WebRTCLinuxApplicationGstMaster
-                           websockets
                            sigv4
                            signaling
                            corejson
@@ -84,6 +83,7 @@ if(GST_FOUND)
                            stun
                            mbedtls
                            libsrtp
+                           websockets
                            rt
                            pthread
                            ${GST_LIBRARIES} )
