@@ -224,4 +224,17 @@ NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWeb
 
 NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pWebsocketCtx );
 
+/**
+ * @brief Configure libwebsockets logging based on the application's log level.
+ *
+ * This function maps the application's log levels (LOG_ERROR, LOG_WARN, etc.)
+ * to libwebsockets log levels (LLL_ERR, LLL_WARN, etc.) and configures
+ * libwebsockets to use the appropriate log level.
+ *
+ * @param[in] logLevel The application's log level.
+ *
+ * @return NetworkingResult_t Returns NETWORKING_RESULT_OK on success.
+ */
+NetworkingResult_t Networking_ConfigureLwsLogging( uint32_t logLevel );
+
 /*----------------------------------------------------------------------------*/
