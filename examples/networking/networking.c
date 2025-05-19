@@ -1412,6 +1412,61 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 
 /*----------------------------------------------------------------------------*/
 
+/**
+ * @brief Configure libwebsockets logging based on the application's log level.
+ *
+ * This function maps the application's log levels (LOG_ERROR, LOG_WARN, etc.)
+ * to libwebsockets log levels (LLL_ERR, LLL_WARN, etc.) and configures
+ * libwebsockets to use the appropriate log level.
+ *
+ * @param[in] logLevel The application's log level.
+ *
+ * @return NetworkingResult_t Returns NETWORKING_RESULT_OK on success.
+ */
+static NetworkingResult_t ConfigureLwsLogging( uint32_t logLevel )
+{
+    NetworkingResult_t ret = NETWORKING_RESULT_OK;
+    int lws_levels = 0;
+  
+    /* Map application log levels to libwebsockets log levels */
+    if( logLevel == LOG_NONE )
+    {
+        lws_levels = 0;
+    }
+
+    if( logLevel >= LOG_ERROR )
+    {
+        lws_levels |= LLL_ERR;
+    }
+
+    if( logLevel >= LOG_WARN )
+    {
+        lws_levels |= LLL_WARN;
+    }
+
+    if( logLevel >= LOG_INFO )
+    {
+        lws_levels |= LLL_NOTICE;
+    }
+
+    if( logLevel >= LOG_DEBUG )
+    {
+        lws_levels |= LLL_INFO;
+    }
+
+    if( logLevel >= LOG_VERBOSE )
+    {
+        lws_levels |= LLL_DEBUG;
+    }
+
+    /* Configure libwebsockets with the mapped log levels */
+    lws_set_log_level( lws_levels, NULL );
+
+    return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
 NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
                                         const SSLCredentials_t * pCreds )
 {
@@ -1460,7 +1515,7 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
         }
 
          /* Configure libwebsockets logging based on application log level */
-         Networking_ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+         ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
 
         pHttpCtx->pLwsContext = lws_create_context( &( creationInfo ) );
 
@@ -1755,7 +1810,7 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             }
 
             /* Configure libwebsockets logging based on application log level */
-            Networking_ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+            ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
 
             pWebsocketCtx->pLwsContext = lws_create_context( &creationInfo );
             if( pWebsocketCtx->pLwsContext == NULL )
