@@ -33,12 +33,6 @@ set_target_properties(mbedcrypto mbedx509 mbedtls
     POSITION_INDEPENDENT_CODE ON
 )
 
-# Add version to shared libraries
-set_target_properties(mbedcrypto mbedx509 mbedtls
-    PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
-)
-
 # Set up modern CMake target properties
 foreach(target IN ITEMS mbedcrypto mbedx509 mbedtls)
     target_include_directories(${target}
@@ -61,7 +55,3 @@ set_source_files_properties(
     "${MBEDTLS_SOURCE_DIR}/library/ssl_tls.c"
     PROPERTIES COMPILE_FLAGS -Wno-stringop-overflow
 )
-
-# Export variables for libwebsockets
-set(MBEDTLS_INCLUDE_DIRS ${MBEDTLS_BUILD_INCLUDE_DIR} CACHE PATH "MbedTLS include directories" FORCE)
-set(MBEDTLS_LIBRARIES mbedtls mbedx509 mbedcrypto CACHE STRING "MbedTLS libraries" FORCE)

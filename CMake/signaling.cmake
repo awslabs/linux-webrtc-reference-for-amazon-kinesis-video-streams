@@ -9,12 +9,10 @@ target_sources( signaling
         ${SIGNALING_SOURCES}
     PUBLIC
         ${SIGNALING_INCLUDE_PUBLIC_DIRS}
-        ${JSON_INCLUDE_PUBLIC_DIRS}
 )
 
 target_include_directories( signaling PUBLIC
-                            ${SIGNALING_INCLUDE_PUBLIC_DIRS}
-                            ${JSON_INCLUDE_PUBLIC_DIRS} )
+                            ${SIGNALING_INCLUDE_PUBLIC_DIRS} )
 
 target_link_libraries( signaling PRIVATE
                        corejson )
