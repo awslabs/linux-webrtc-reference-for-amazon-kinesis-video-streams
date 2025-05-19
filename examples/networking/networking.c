@@ -1459,7 +1459,9 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
             creationInfo.client_ssl_private_key_filepath = pCreds->pDeviceKeyPath;
         }
 
-        lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
+         /* Configure libwebsockets logging based on application log level */
+         Networking_ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+
         pHttpCtx->pLwsContext = lws_create_context( &( creationInfo ) );
 
         if( pHttpCtx->pLwsContext == NULL )
@@ -1752,7 +1754,9 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
                 creationInfo.client_ssl_private_key_filepath = pWebsocketCtx->sslCreds.pDeviceKeyPath;
             }
 
-            lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
+            /* Configure libwebsockets logging based on application log level */
+            Networking_ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+
             pWebsocketCtx->pLwsContext = lws_create_context( &creationInfo );
             if( pWebsocketCtx->pLwsContext == NULL )
             {
