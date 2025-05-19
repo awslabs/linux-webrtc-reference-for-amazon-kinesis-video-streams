@@ -22,9 +22,6 @@
 [submodule "libraries/crypto/mbedtls"]
 	path = libraries/crypto/mbedtls
 	url = https://github.com/Mbed-TLS/mbedtls.git
-[submodule "libraries/protocols/coreHTTP"]
-	path = libraries/protocols/coreHTTP
-	url = https://github.com/FreeRTOS/coreHTTP.git
 [submodule "libraries/protocols/libsrtp"]
 	path = libraries/protocols/libsrtp
 	url = https://github.com/cisco/libsrtp.git
