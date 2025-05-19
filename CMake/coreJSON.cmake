@@ -1,4 +1,4 @@
-# This cmake file is used to include coreHSON as static library.
+# This cmake file is used to include coreJSON as static library.
 set(CMAKE_COREJSON_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/json/coreJSON)
 include( ${CMAKE_COREJSON_DIRECTORY}/jsonFilePaths.cmake )
 
