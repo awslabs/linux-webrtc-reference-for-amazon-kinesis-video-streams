@@ -5,8 +5,8 @@ set(CMAKE_LIBWEBSOCKETS_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/networking/l
 message(STATUS "setting options for libwebsockets")
 set(LWS_WITH_MBEDTLS ON CACHE INTERNAL "Enable libwebsockets mbedTLS")
 # Export variables from mbedtls
-set(LWS_MBEDTLS_INCLUDE_DIRS ${MBEDTLS_BUILD_INCLUDE_DIR} CACHE STRING "MbedTLS include directories" FORCE)
-set(LWS_MBEDTLS_LIBRARIES mbedtls mbedx509 mbedcrypto CACHE STRING "MbedTLS libraries" FORCE)
+set(LWS_MBEDTLS_INCLUDE_DIRS ${MBEDTLS_BUILD_INCLUDE_DIR} CACHE STRING "MbedTLS include directories")
+set(LWS_MBEDTLS_LIBRARIES mbedtls mbedx509 mbedcrypto CACHE STRING "MbedTLS libraries")
 set(LWS_WITH_HTTP2 ON CACHE INTERNAL "Compile with server support for HTTP/2")
 set(LWS_HAVE_SSL_EXTRA_CHAIN_CERTS 1 CACHE INTERNAL "Have extra chain certs")
 set(LWS_HAVE_OPENSSL_ECDH_H 1 CACHE INTERNAL "Enable ECDH")
