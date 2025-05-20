@@ -19,8 +19,8 @@
 /* Standard includes. */
 #include <string.h>
 #include <assert.h>
-/* FreeRTOS includes. */
-//#include "FreeRTOS.h"
+#include <fcntl.h>
+#include <errno.h>
 
 #include "mbedtls/config.h"
 #include "mbedtls/version.h"
@@ -701,6 +701,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
     int32_t socketStatus = 0;
     int32_t isSocketConnected = 0, isTlsSetup = 0;
+    int fcntlFlags = 0;
 
     if( ( pNetworkContext == NULL ) ||
         ( pNetworkContext->pParams == NULL ) ||
@@ -745,6 +746,26 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
                         pHostName,
                         socketStatus ) );
             returnStatus = TLS_TRANSPORT_CONNECT_FAILURE;
+        }
+    }
+
+    if( ( returnStatus == TLS_TRANSPORT_SUCCESS ) &&
+        ( ( flags & TLS_CONNECT_NON_BLOCKING_HANDSHAKE ) != 0 ) )
+    {
+        fcntlFlags = fcntl( pTlsTransportParams->tcpSocket->xFd, F_GETFL, 0 );
+        if( fcntlFlags < 0 )
+        {
+            LogError( ( "fcntl() failed with errno: %d", errno ) );
+            returnStatus = TLS_TRANSPORT_CONNECT_FAILURE;
+        }
+        else
+        {
+            fcntlFlags |= O_NONBLOCK;
+            if( fcntl(pTlsTransportParams->tcpSocket->xFd, F_SETFL, fcntlFlags) < 0 )
+            {
+                LogError( ( "fcntl() failed with errno: %d", errno ) );
+                returnStatus = TLS_TRANSPORT_CONNECT_FAILURE;
+            }
         }
     }
 
