@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef PEER_CONNECTION_DATA_TYPES_H
 #define PEER_CONNECTION_DATA_TYPES_H
 
@@ -11,6 +27,7 @@ extern "C" {
 
 /* Standard includes. */
 #include <stdint.h>
+#include <sys/eventfd.h>
 
 #include "transport_dtls_mbedtls.h"
 
@@ -31,7 +48,7 @@ extern "C" {
 #include "rtcp_twcc_manager.h"
 
 #define PEER_CONNECTION_TRANSCEIVER_MAX_COUNT ( 2 )
-#define PEER_CONNECTION_USER_NAME_LENGTH ( 8 )
+#define PEER_CONNECTION_USER_NAME_LENGTH ( 32 )
 #define PEER_CONNECTION_PASSWORD_LENGTH ( 32 )
 #define PEER_CONNECTION_CNAME_LENGTH ( 16 )
 #define PEER_CONNECTION_CERTIFICATE_FINGERPRINT_LENGTH ( CERTIFICATE_FINGERPRINT_LENGTH )
@@ -49,17 +66,32 @@ extern "C" {
 #define MAX_SCTP_DATA_CHANNELS          4
 #define PEER_CONNECTION_MAX_SCTP_DATA_CHANNELS_PER_PEER 2
 
+#define PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US        1000 * 10000  //1,000,000 microseconds.
+#define PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS                     512     // Unit kilobits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS                     2048000 // Unit kilobits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS                      4000    // Unit bits/sec. Value could change based on codec.
+#define PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS                      650000  // Unit bits/sec. Value could change based on codec.
+
+#define PEER_CONNECTION_WAIT_SDP_MESSAGE_TIMEOUT_MS    ( 12000 )
+#define PEER_CONNECTION_INACTIVE_CONNECTION_TIMEOUT_MS ( 30000 )
+#define PEER_CONNECTION_DTLS_HANDSHAKING_TIMEOUT_MS    ( 12000 )
+
 typedef enum PeerConnectionResult
 {
     PEER_CONNECTION_RESULT_OK = 0,
+    PEER_CONNECTION_RESULT_CLOSING,
     PEER_CONNECTION_RESULT_BAD_PARAMETER,
     PEER_CONNECTION_RESULT_NO_FREE_TRANSCEIVER,
     PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_CONTROLLER,
     PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_SOCK_LISTENER,
+    PEER_CONNECTION_RESULT_FAIL_CREATE_STARTUP_BARRIER,
+    PEER_CONNECTION_RESULT_FAIL_SIGNAL_STARTUP_BARRIER,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_INIT,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_START,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADD_REMOTE_CANDIDATE,
-    PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_SEND_CONNECTIVITY_CHECK,
+    PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_PROCESS_CANDIDATES_AND_PAIRS,
+    PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_PERIOD_CONNECTION_CHECK,
+    PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADDRESS_CLOSING,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_DESTROY,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_DESERIALIZE_CANDIDATE,
     PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_SEND_RTP_PACKET,
@@ -98,6 +130,8 @@ typedef enum PeerConnectionResult
     PEER_CONNECTION_RESULT_FAIL_RTCP_HANDLE_TWCC,
     PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX,
     PEER_CONNECTION_RESULT_FAIL_TAKE_SENDER_MUTEX,
+    PEER_CONNECTION_RESULT_FAIL_CREATE_SRTP_MUTEX,
+    PEER_CONNECTION_RESULT_FAIL_TAKE_SRTP_MUTEX,
     PEER_CONNECTION_RESULT_FAIL_PACKET_INFO_NO_ENOUGH_MEMORY,
     PEER_CONNECTION_RESULT_FAIL_RTP_PACKET_QUEUE_INIT,
     PEER_CONNECTION_RESULT_FAIL_RTP_PACKET_QUEUE_RETRIEVE,
@@ -115,6 +149,8 @@ typedef enum PeerConnectionResult
     PEER_CONNECTION_RESULT_FAIL_SDP_SET_PAYLOAD_TYPE,
     PEER_CONNECTION_RESULT_FAIL_SDP_POPULATE_SINGLE_MEDIA_DESCRIPTION,
     PEER_CONNECTION_RESULT_FAIL_SDP_POPULATE_SESSION_DESCRIPTION,
+    PEER_CONNECTION_RESULT_INVALID_REMOTE_USERNAME,
+    PEER_CONNECTION_RESULT_INVALID_REMOTE_PASSWORD,
     PEER_CONNECTION_RESULT_UNKNOWN_SRTP_PROFILE,
     PEER_CONNECTION_RESULT_UNKNOWN_TX_CODEC,
     PEER_CONNECTION_RESULT_UNKNOWN_SSRC,
@@ -189,6 +225,7 @@ typedef PeerConnectionResult_t (* FillFrameFunc_t)( PeerConnectionJitterBuffer_t
 typedef struct PeerConnectionRollingBufferPacket
 {
     RtpPacket_t rtpPacket;
+    uint32_t twccExtensionPayload;
     uint8_t * pPacketBuffer;
     size_t packetBufferLength;
 } PeerConnectionRollingBufferPacket_t;
@@ -241,9 +278,12 @@ typedef enum PeerConnectionSessionRequestType
 {
     PEER_CONNECTION_SESSION_REQUEST_TYPE_NONE = 0,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE,
-    PEER_CONNECTION_SESSION_REQUEST_TYPE_CONNECTIVITY_CHECK,
-    PEER_CONNECTION_SESSION_REQUEST_TYPE_RESOLVE_ICE_SERVER_IP_ADDRESS,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_PROCESS_ICE_CANDIDATES_AND_PAIRS,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK,
     PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSED,
+    PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
 } PeerConnectionSessionRequestType_t;
 
 typedef struct PeerConnectionSessionRequestMessage
@@ -267,6 +307,7 @@ typedef enum PeerConnectionSessionState
     PEER_CONNECTION_SESSION_STATE_CLOSING,
     PEER_CONNECTION_SESSION_STATE_INITED,
     PEER_CONNECTION_SESSION_STATE_START,
+    PEER_CONNECTION_SESSION_STATE_FIND_CONNECTION,
     PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND,
     PEER_CONNECTION_SESSION_STATE_CONNECTION_READY,
 } PeerConnectionSessionState_t;
@@ -356,6 +397,11 @@ typedef struct PeerConnectionSession
     pthread_t pTaskHandler;
     pthread_t pSocketListener;
 
+    /* Task synchronization using eventfd to block peer connection session until SetRemoteDescription completes.
+     * That ensures ICE Controller processes candidates only after remote description is set, as ICE credentials
+     * (username/password) are obtained from SDP. */
+    int startupBarrier;
+
     /* The remote user name, representing the remote peer, from SDP message. */
     char remoteUserName[ PEER_CONNECTION_USER_NAME_LENGTH + 1 ];
     /* The remote password, representing password of the remote peer, from SDP message. */
@@ -377,6 +423,7 @@ typedef struct PeerConnectionSession
     /* DTLS session. */
     DtlsSession_t dtlsSession;
     /* SRTP sessions. */
+    pthread_mutex_t srtpSessionMutex;
     srtp_t srtpTransmitSession;
     srtp_t srtpReceiveSession;
     /* RTP config. */
@@ -403,7 +450,7 @@ typedef struct PeerConnectionSession
         /* Data channel configs */
         PeerConnectionDataChannel_t * pDataChannels;
         uint32_t uKvsDataChannelCount;
-    #endif         /* ENABLE_SCTP_DATA_CHANNEL */
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     PeerConnectionSrtpSender_t videoSrtpSender;
     PeerConnectionSrtpSender_t audioSrtpSender;
@@ -412,10 +459,15 @@ typedef struct PeerConnectionSession
 
     TimerHandler_t rtcpAudioSenderReportTimer;
     TimerHandler_t rtcpVideoSenderReportTimer;
+    TimerHandler_t closeSessionTimer;
+
+    uint64_t dtlsHandshakingTimeoutMs;
+    uint64_t inactiveConnectionTimeoutMs;
 
     #if ENABLE_TWCC_SUPPORT
         PeerConnectionTwccMetaData_t twccMetaData;
     #endif
+
     /* Pointer that points to peer connection context. */
     PeerConnectionContext_t * pCtx;
 } PeerConnectionSession_t;
@@ -423,11 +475,17 @@ typedef struct PeerConnectionSession
 typedef struct PeerConnectionSessionConfiguration
 {
     uint8_t canTrickleIce;
+    IceControllerNatTraversalConfig_t natTraversalConfigBitmap;
 
     /* Provide Ice server list for peer connection. Note that the index 0 is for default STUN server,
      * and the following 5 for maximum Ice server list from SIGNALING_CONTROLLER_ICE_SERVER_MAX_ICE_CONFIG_COUNT. */
     IceControllerIceServer_t iceServers[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ];
     size_t iceServersCount;
+
+    char * pRootCaPath;
+    size_t rootCaPathLength;
+    char * pRootCaPem;
+    size_t rootCaPemLength;
 } PeerConnectionSessionConfiguration_t;
 
 /*

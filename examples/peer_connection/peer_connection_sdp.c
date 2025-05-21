@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -581,7 +597,7 @@ static PeerConnectionResult_t SetPayloadType( PeerConnectionSession_t * pSession
                 pSession->ucEnableDataChannelRemote = 1;
                 LogDebug( ( "Appending data channel" ) );
             }
-        #endif
+        #endif /* ENABLE_SCTP_DATA_CHANNEL */
         else
         {
             /* Ignore unknown media type. */
@@ -789,24 +805,31 @@ static PeerConnectionResult_t PopulateMediaDescriptions( PeerConnectionSession_t
         }
 
         #if ENABLE_SCTP_DATA_CHANNEL
-            if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( pSession->ucEnableDataChannelLocal != 0 ) && ( i < SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ) )
+            if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( pSession->ucEnableDataChannelLocal != 0 ) )
             {
-                populateConfiguration.pTransceiver = NULL;
-                retSdpController = SdpController_PopulateSingleMedia( NULL,
-                                                                      populateConfiguration,
-                                                                      &pLocalBufferSessionDescription->sdpDescription.mediaDescriptions[ i ],
-                                                                      i,
-                                                                      ppBuffer,
-                                                                      pBufferLength,
-                                                                      TRANSCEIVER_TRACK_KIND_DATA_CHANNEL );
-                if( retSdpController != SDP_CONTROLLER_RESULT_OK )
+                if( i < SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT )
                 {
-                    LogError( ( "Fail to populate single media data channel description, result: %d", retSdpController ) );
-                    ret = PEER_CONNECTION_RESULT_FAIL_SDP_POPULATE_SINGLE_MEDIA_DESCRIPTION;
+                    populateConfiguration.pTransceiver = NULL;
+                    retSdpController = SdpController_PopulateSingleMedia( NULL,
+                                                                          populateConfiguration,
+                                                                          &pLocalBufferSessionDescription->sdpDescription.mediaDescriptions[ i ],
+                                                                          i,
+                                                                          ppBuffer,
+                                                                          pBufferLength,
+                                                                          TRANSCEIVER_TRACK_KIND_DATA_CHANNEL );
+                    if( retSdpController != SDP_CONTROLLER_RESULT_OK )
+                    {
+                        LogError( ( "Fail to populate single media data channel description, result: %d", retSdpController ) );
+                        ret = PEER_CONNECTION_RESULT_FAIL_SDP_POPULATE_SINGLE_MEDIA_DESCRIPTION;
+                    }
+                    else
+                    {
+                        pLocalBufferSessionDescription->sdpDescription.mediaCount++;
+                    }
                 }
                 else
                 {
-                    pLocalBufferSessionDescription->sdpDescription.mediaCount++;
+                    LogError( ( "Reached media description limit, failed to populate data channel description, index: %d", i ) );
                 }
             }
         #endif /* ENABLE_SCTP_DATA_CHANNEL */

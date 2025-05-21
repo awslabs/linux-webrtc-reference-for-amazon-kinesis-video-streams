@@ -1,0 +1,66 @@
+# ==================
+# WARNING: ThreadSanitizer: signal-unsafe call inside of a signal (pid=437567)
+#     #0 free ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:724 (libtsan.so.2+0x57c71) (BuildId: 38097064631f7912bd33117a9c83d08b42e15571)
+#     #1 EVP_CIPHER_CTX_reset <null> (libcrypto.so.3+0x1f86c9) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
+#     #2 <null> <null> (libcrypto.so.3+0x2226a3) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
+#     #3 CallUserSignalHandler ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:2096 (libtsan.so.2+0x517d5) (BuildId: 38097064631f7912bd33117a9c83d08b42e15571)
+#     #4 _lws_plat_service_tsi /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/plat/unix/unix-service.c:152 (WebRTCLinuxApplicationMaster+0x1dce14) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #5 lws_plat_service /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/plat/unix/unix-service.c:235 (WebRTCLinuxApplicationMaster+0x1dd15b) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #6 lws_service /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/core-net/service.c:838 (WebRTCLinuxApplicationMaster+0x19c26b) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #7 Networking_WebsocketSignal /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/networking/networking.c:1785 (WebRTCLinuxApplicationMaster+0x1d272) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #8 SignalingController_StartListening /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/signaling_controller/signaling_controller.c:1003 (WebRTCLinuxApplicationMaster+0x15bce) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #9 main /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/master/main.c:1425 (WebRTCLinuxApplicationMaster+0x22902) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+# 
+# SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x1f86c9) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b) in EVP_CIPHER_CTX_reset
+# ==================
+# ==================
+# WARNING: ThreadSanitizer: signal-unsafe call inside of a signal (pid=437567)
+#     #0 free ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:724 (libtsan.so.2+0x57c71) (BuildId: 38097064631f7912bd33117a9c83d08b42e15571)
+#     #1 <null> <null> (libcrypto.so.3+0x3d1c87) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
+#     #2 <null> <null> (libcrypto.so.3+0x2226a3) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
+#     #3 CallUserSignalHandler ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:2096 (libtsan.so.2+0x517d5) (BuildId: 38097064631f7912bd33117a9c83d08b42e15571)
+#     #4 _lws_plat_service_tsi /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/plat/unix/unix-service.c:152 (WebRTCLinuxApplicationMaster+0x1dce14) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #5 lws_plat_service /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/plat/unix/unix-service.c:235 (WebRTCLinuxApplicationMaster+0x1dd15b) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #6 lws_service /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/core-net/service.c:838 (WebRTCLinuxApplicationMaster+0x19c26b) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #7 Networking_WebsocketSignal /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/networking/networking.c:1785 (WebRTCLinuxApplicationMaster+0x1d272) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #8 SignalingController_StartListening /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/signaling_controller/signaling_controller.c:1003 (WebRTCLinuxApplicationMaster+0x15bce) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #9 main /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/master/main.c:1425 (WebRTCLinuxApplicationMaster+0x22902) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+# 
+# SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x3d1c87) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b) 
+# ==================
+# ==================
+# WARNING: ThreadSanitizer: signal-unsafe call inside of a signal (pid=437567)
+#     #0 free ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:724 (libtsan.so.2+0x57c71) (BuildId: 38097064631f7912bd33117a9c83d08b42e15571)
+#     #1 EVP_CIPHER_CTX_reset <null> (libcrypto.so.3+0x1f86c9) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
+#     #2 <null> <null> (libcrypto.so.3+0x2226a3) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
+#     #3 CallUserSignalHandler ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:2096 (libtsan.so.2+0x517d5) (BuildId: 38097064631f7912bd33117a9c83d08b42e15571)
+#     #4 _lws_plat_service_tsi /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/plat/unix/unix-service.c:152 (WebRTCLinuxApplicationMaster+0x1dce14) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #5 lws_plat_service /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/plat/unix/unix-service.c:235 (WebRTCLinuxApplicationMaster+0x1dd15b) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #6 lws_service /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/core-net/service.c:838 (WebRTCLinuxApplicationMaster+0x19c26b) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #7 Networking_WebsocketSignal /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/networking/networking.c:1785 (WebRTCLinuxApplicationMaster+0x1d272) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #8 SignalingController_StartListening /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/signaling_controller/signaling_controller.c:1003 (WebRTCLinuxApplicationMaster+0x15bce) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #9 main /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/master/main.c:1425 (WebRTCLinuxApplicationMaster+0x22902) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+# 
+# SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x1f86c9) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b) in EVP_CIPHER_CTX_reset
+# ==================
+# ==================
+# WARNING: ThreadSanitizer: signal-unsafe call inside of a signal (pid=437567)
+#     #0 free ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:724 (libtsan.so.2+0x57c71) (BuildId: 38097064631f7912bd33117a9c83d08b42e15571)
+#     #1 <null> <null> (libcrypto.so.3+0x3d1c91) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
+#     #2 <null> <null> (libcrypto.so.3+0x2226a3) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
+#     #3 CallUserSignalHandler ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:2096 (libtsan.so.2+0x517d5) (BuildId: 38097064631f7912bd33117a9c83d08b42e15571)
+#     #4 _lws_plat_service_tsi /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/plat/unix/unix-service.c:152 (WebRTCLinuxApplicationMaster+0x1dce14) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #5 lws_plat_service /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/plat/unix/unix-service.c:235 (WebRTCLinuxApplicationMaster+0x1dd15b) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #6 lws_service /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/libraries/networking/libwebsockets/lib/core-net/service.c:838 (WebRTCLinuxApplicationMaster+0x19c26b) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #7 Networking_WebsocketSignal /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/networking/networking.c:1785 (WebRTCLinuxApplicationMaster+0x1d272) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #8 SignalingController_StartListening /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/signaling_controller/signaling_controller.c:1003 (WebRTCLinuxApplicationMaster+0x15bce) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+#     #9 main /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/master/main.c:1425 (WebRTCLinuxApplicationMaster+0x22902) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
+# 
+# SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x3d1c91) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b) 
+# ==================
+
+# Suppress all signal-unsafe calls in libcrypto
+signal:libcrypto.so.3*
+
+# Specifically suppress EVP_CIPHER_CTX_reset related warnings
+signal:EVP_CIPHER_CTX_reset

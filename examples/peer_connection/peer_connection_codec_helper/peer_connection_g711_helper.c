@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "peer_connection_codec_helper.h"
 #include "g711_packetizer.h"
 #include "g711_depacketizer.h"
@@ -146,8 +162,10 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
     uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
-    /* For TWCC ID extension info. */
-    uint32_t extensionPayload;
+    #if ENABLE_TWCC_SUPPORT
+    /* Add TWCC packet tracking */
+    TwccPacketInfo_t packetInfo;
+    #endif /* ENABLE_TWCC_SUPPORT */
 
     if( ( pSession == NULL ) ||
         ( pTransceiver == NULL ) ||
@@ -265,8 +283,19 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
                 pRollingBufferPacket->rtpPacket.header.flags |= RTP_HEADER_FLAG_EXTENSION;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionProfile = PEER_CONNECTION_SRTP_TWCC_EXT_PROFILE;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionPayloadLength = 1;
-                extensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId, pSession->rtpConfig.twccSequence );
-                pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &extensionPayload;
+                pRollingBufferPacket->twccExtensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId, pSession->rtpConfig.twccSequence );
+                pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &pRollingBufferPacket->twccExtensionPayload;
+
+                #if ENABLE_TWCC_SUPPORT
+                memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
+                packetInfo.packetSize = packetG711.packetDataLength;
+                packetInfo.localSentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
+                packetInfo.packetSeqNum = pSession->rtpConfig.twccSequence;
+
+                RtcpTwccManager_AddPacketInfo( &pSession->pCtx->rtcpTwccManager,
+                                               &packetInfo );
+                #endif /* ENABLE_TWCC_SUPPORT */
+
                 pSession->rtpConfig.twccSequence++;
             }
 
@@ -329,10 +358,12 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
             bytesSent += pRollingBufferPacket->rtpPacket.payloadLength;
         }
 
+        #if METRIC_PRINT_ENABLED
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             Metric_EndEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
         }
+        #endif
     }
 
     if( isLocked )

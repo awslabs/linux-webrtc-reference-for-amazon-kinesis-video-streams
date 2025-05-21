@@ -1,32 +1,17 @@
 /*
- * FreeRTOS V202212.00
- * Copyright (C) 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * https://www.FreeRTOS.org
- * https://github.com/FreeRTOS
- *
- */
-
-/**
- * @file tls_freertos.h
- * @brief TLS transport interface header.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef USING_MBEDTLS
@@ -48,6 +33,9 @@
 
 /* Transport interface include. */
 #include "transport_interface.h"
+
+/* Flags to be used in TLS_FreeRTOS_Connect. */
+#define TLS_CONNECT_NON_BLOCKING_HANDSHAKE   ( 1 << 0 )
 
 /**
  * @brief Secured connection context.
@@ -74,6 +62,11 @@ typedef struct TlsTransportParams
     SSLContext_t sslContext;
 } TlsTransportParams_t;
 
+struct NetworkContext
+{
+    TlsTransportParams_t * pParams;
+};
+
 /**
  * @brief Contains the credentials necessary for tls connection setup.
  */
@@ -96,25 +89,44 @@ typedef struct NetworkCredentials
 
     const uint8_t * pRootCa;     /**< @brief String representing a trusted server root certificate. */
     size_t rootCaSize;           /**< @brief Size associated with #NetworkCredentials.pRootCa. */
+    const uint8_t * pRootCaPath; /**< @brief String representing a trusted server root certificate path. */
+    size_t rootCaPathLength;     /**< @brief Length associated with #NetworkCredentials.pRootCaPath. */
     const uint8_t * pClientCert; /**< @brief String representing the client certificate. */
     size_t clientCertSize;       /**< @brief Size associated with #NetworkCredentials.pClientCert. */
     const uint8_t * pPrivateKey; /**< @brief String representing the client certificate's private key. */
     size_t privateKeySize;       /**< @brief Size associated with #NetworkCredentials.pPrivateKey. */
 } NetworkCredentials_t;
 
+typedef struct TlsSession
+{
+    NetworkContext_t xTlsNetworkContext;
+    TlsTransportParams_t xTlsTransportParams;
+} TlsSession_t;
+
 /**
  * @brief TLS Connect / Disconnect return status.
  */
 typedef enum TlsTransportStatus
 {
-    TLS_TRANSPORT_SUCCESS = 0,         /**< Function successfully completed. */
-    TLS_TRANSPORT_INVALID_PARAMETER,   /**< At least one parameter was invalid. */
-    TLS_TRANSPORT_INSUFFICIENT_MEMORY, /**< Insufficient memory required to establish connection. */
-    TLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid. */
-    TLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server failed. */
-    TLS_TRANSPORT_INTERNAL_ERROR,      /**< A call to a system API resulted in an internal error. */
-    TLS_TRANSPORT_CONNECT_FAILURE      /**< Initial connection to the server failed. */
+    TLS_TRANSPORT_SUCCESS = 0,              /**< Function successfully completed. */
+    TLS_TRANSPORT_INVALID_PARAMETER,        /**< At least one parameter was invalid. */
+    TLS_TRANSPORT_INSUFFICIENT_MEMORY,      /**< Insufficient memory required to establish connection. */
+    TLS_TRANSPORT_INVALID_CREDENTIALS,      /**< Provided credentials were invalid. */
+    TLS_TRANSPORT_HANDSHAKE_FAILED,         /**< Performing TLS handshake with server failed. */
+    TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS,    /**< TLS handshake with server is in-progress. */
+    TLS_TRANSPORT_INTERNAL_ERROR,           /**< A call to a system API resulted in an internal error. */
+    TLS_TRANSPORT_CONNECT_FAILURE           /**< Initial connection to the server failed. */
 } TlsTransportStatus_t;
+
+/**
+ * @brief Continue the TLS handshake that was started in TLS_FreeRTOS_Connect.
+ *
+ * @param[in] pNetworkContext The Network context.
+ *
+ * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_INVALID_PARAMETER,
+ * #TLS_TRANSPORT_HANDSHAKE_FAILED, or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
+ */
+TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( NetworkContext_t * pNetworkContext );
 
 /**
  * @brief Create a TLS connection with FreeRTOS sockets.
@@ -128,14 +140,16 @@ typedef enum TlsTransportStatus
  * @param[in] sendTimeoutMs Send socket timeout.
  *
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_INSUFFICIENT_MEMORY, #TLS_TRANSPORT_INVALID_CREDENTIALS,
- * #TLS_TRANSPORT_HANDSHAKE_FAILED, #TLS_TRANSPORT_INTERNAL_ERROR, or #TLS_TRANSPORT_CONNECT_FAILURE.
+ * #TLS_TRANSPORT_HANDSHAKE_FAILED, #TLS_TRANSPORT_INTERNAL_ERROR, #TLS_TRANSPORT_CONNECT_FAILURE,
+ * or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
  */
 TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
                                            const char * pHostName,
                                            uint16_t port,
                                            const NetworkCredentials_t * pNetworkCredentials,
                                            uint32_t receiveTimeoutMs,
-                                           uint32_t sendTimeoutMs );
+                                           uint32_t sendTimeoutMs,
+                                           uint32_t flags );
 
 /**
  * @brief Gracefully disconnect an established TLS connection.

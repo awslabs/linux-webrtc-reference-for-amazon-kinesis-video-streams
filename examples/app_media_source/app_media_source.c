@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -5,8 +21,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-//#include "FreeRTOS.h"
-//#include "task.h"
+#include "demo_config.h"
 #include "app_media_source.h"
 
 #define DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND ( 3 )
@@ -39,19 +54,19 @@
 #define SAMPLE_FPS_VALUE                                25
 #define SAMPLE_VIDEO_FRAME_DURATION_IN_US               ( ( 1000 * 1000 ) / SAMPLE_FPS_VALUE )
 
-
 static void * VideoTx_Task( void * pParameter );
 static void * AudioTx_Task( void * pParameter );
 
 static void * VideoTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pVideoContext = ( AppMediaSourceContext_t * )pParameter;
-    webrtc_frame_t frame;
-    char filePath[ MAX_PATH_LEN + 1 ];
-    FILE * fp = NULL;
-    int32_t fileIndex = 0;
-    size_t frameLength;
-    size_t allocatedBufferLength = 0;
+    WebrtcFrame_t frame;
+    #ifndef ENABLE_STREAMING_LOOPBACK
+        char filePath[ MAX_PATH_LEN + 1 ];
+        FILE * fp = NULL;
+        size_t frameLength;
+        size_t allocatedBufferLength = 0;
+    #endif /* ifndef ENABLE_STREAMING_LOOPBACK */
 
     if( pVideoContext == NULL )
     {
@@ -60,6 +75,7 @@ static void * VideoTx_Task( void * pParameter )
     else
     {
         frame.timestampUs = 0;
+        ( void ) frame;
 
         while( 1 )
         {
@@ -69,13 +85,13 @@ static void * VideoTx_Task( void * pParameter )
             {
                 #if USE_H265
                 {
-                    fileIndex = fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", fileIndex );
+                    pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", pVideoContext->fileIndex );
                 }
                 #else
                 {
-                    fileIndex = fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", fileIndex );
+                    pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", pVideoContext->fileIndex );
                 }
                 #endif
 
@@ -106,7 +122,7 @@ static void * VideoTx_Task( void * pParameter )
                         fseek( fp, 0, SEEK_SET );
                         if( fread( frame.pData, frameLength, 1, fp ) == 1 )
                         {
-                            LogDebug( ( "Sending video frame of length %lu.", frameLength ) );
+                            LogVerbose( ( "Sending video frame of length %lu.", frameLength ) );
                             if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
                             {
                                 ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
@@ -120,7 +136,7 @@ static void * VideoTx_Task( void * pParameter )
                         fclose( fp );
                     }
                 }
-            #endif
+            #endif /* ifndef ENABLE_STREAMING_LOOPBACK */
             usleep( SAMPLE_VIDEO_FRAME_DURATION_IN_US );
         }
     }
@@ -131,12 +147,13 @@ static void * VideoTx_Task( void * pParameter )
 static void * AudioTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pAudioContext = ( AppMediaSourceContext_t * )pParameter;
-    webrtc_frame_t frame;
-    char filePath[ MAX_PATH_LEN + 1 ];
-    FILE * fp = NULL;
-    int32_t fileIndex = 0;
-    size_t frameLength;
-    size_t allocatedBufferLength = 0;
+    WebrtcFrame_t frame;
+    #ifndef ENABLE_STREAMING_LOOPBACK
+        char filePath[ MAX_PATH_LEN + 1 ];
+        FILE * fp = NULL;
+        size_t frameLength;
+        size_t allocatedBufferLength = 0;
+    #endif /* ifndef ENABLE_STREAMING_LOOPBACK */
 
     if( pAudioContext == NULL )
     {
@@ -145,14 +162,15 @@ static void * AudioTx_Task( void * pParameter )
     else
     {
         frame.timestampUs = 0;
+        ( void ) frame;
 
         while( 1 )
         {
             #ifndef ENABLE_STREAMING_LOOPBACK
                 if( pAudioContext->numReadyPeer != 0 )
                 {
-                    fileIndex = fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", fileIndex );
+                    pAudioContext->fileIndex = pAudioContext->fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
+                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", pAudioContext->fileIndex );
 
                     fp = fopen( filePath, "rb" );
 
@@ -181,7 +199,7 @@ static void * AudioTx_Task( void * pParameter )
                         fseek( fp, 0, SEEK_SET );
                         if( fread( frame.pData, frameLength, 1, fp ) == 1 )
                         {
-                            LogDebug( ( "Sending audio frame of length %lu.", frameLength ) );
+                            LogVerbose( ( "Sending audio frame of length %lu.", frameLength ) );
                             if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
                             {
                                 ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom, &frame );
@@ -195,7 +213,7 @@ static void * AudioTx_Task( void * pParameter )
                         fclose( fp );
                     }
                 }
-            #endif
+            #endif /* ifndef ENABLE_STREAMING_LOOPBACK == 0 */
             usleep( SAMPLE_AUDIO_FRAME_DURATION_IN_US );
         }
     }
@@ -215,7 +233,7 @@ static int32_t OnPcEventRemotePeerReady( AppMediaSourceContext_t * pMediaSource 
 
     if( ret == 0 )
     {
-        if( pthread_mutex_lock( &( pMediaSource->mediaMutex ) ) == 0 )
+        if( pthread_mutex_lock( &( pMediaSource->pSourcesContext->mediaMutex ) ) == 0 )
         {
             if( pMediaSource->numReadyPeer < AWS_MAX_VIEWER_NUM )
             {
@@ -223,7 +241,7 @@ static int32_t OnPcEventRemotePeerReady( AppMediaSourceContext_t * pMediaSource 
             }
 
             /* We have finished accessing the shared resource.  Release the mutex. */
-            pthread_mutex_unlock( &( pMediaSource->mediaMutex ) );
+            pthread_mutex_unlock( &( pMediaSource->pSourcesContext->mediaMutex ) );
             LogInfo( ( "Starting track kind(%d) media, value=%u", pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
         }
         else
@@ -248,15 +266,19 @@ static int32_t OnPcEventRemotePeerClosed( AppMediaSourceContext_t * pMediaSource
 
     if( ret == 0 )
     {
-        if( pthread_mutex_lock( &( pMediaSource->mediaMutex ) ) == 0 )
+        if( pthread_mutex_lock( &( pMediaSource->pSourcesContext->mediaMutex ) ) == 0 )
         {
             if( pMediaSource->numReadyPeer > 0U )
             {
                 pMediaSource->numReadyPeer--;
+                if( pMediaSource->numReadyPeer == 0 )
+                {
+                    pMediaSource->fileIndex = 0;
+                }
             }
 
             /* We have finished accessing the shared resource.  Release the mutex. */
-            pthread_mutex_unlock( &( pMediaSource->mediaMutex ) );
+            pthread_mutex_unlock( &( pMediaSource->pSourcesContext->mediaMutex ) );
             LogInfo( ( "Stopping track kind(%d) media, value=%u", pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
         }
         else
@@ -313,22 +335,11 @@ static int32_t InitializeVideoSource( AppMediaSourceContext_t * pVideoSource )
     {
         retMessageQueue = MessageQueue_Create( &pVideoSource->dataQueue,
                                                DEMO_TRANSCEIVER_VIDEO_DATA_QUEUE_NAME,
-                                               sizeof( webrtc_frame_t ),
+                                               sizeof( WebrtcFrame_t ),
                                                DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to open video transceiver data queue." ) );
-            ret = -1;
-        }
-    }
-
-    if( ret == 0 )
-    {
-        /* Mutex can only be created in executing scheduler. */
-        if( pthread_mutex_init( &( pVideoSource->mediaMutex ),
-                                NULL ) != 0 )
-        {
-            LogError( ( "Fail to create mutex for Video source." ) );
             ret = -1;
         }
     }
@@ -371,21 +382,11 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
     {
         retMessageQueue = MessageQueue_Create( &pAudioSource->dataQueue,
                                                DEMO_TRANSCEIVER_AUDIO_DATA_QUEUE_NAME,
-                                               sizeof( webrtc_frame_t ),
+                                               sizeof( WebrtcFrame_t ),
                                                DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to open audio transceiver data queue." ) );
-            ret = -1;
-        }
-    }
-
-    if( ret == 0 )
-    {
-        if( pthread_mutex_init( &( pAudioSource->mediaMutex ),
-                                NULL ) != 0 )
-        {
-            LogError( ( "Fail to create mutex for Audio source." ) );
             ret = -1;
         }
     }
@@ -429,18 +430,30 @@ int32_t AppMediaSource_Init( AppMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         memset( pCtx, 0, sizeof( AppMediaSourcesContext_t ) );
-        pCtx->videoContext.pSourcesContext = pCtx;
+
+        /* Mutex can only be created in executing scheduler. */
+        if( pthread_mutex_init( &( pCtx->mediaMutex ),
+                                NULL ) != 0 )
+        {
+            LogError( ( "Fail to create mutex for media source." ) );
+            ret = -1;
+        }
+    }
+
+    if( ret == 0 )
+    {
         ret = InitializeVideoSource( &pCtx->videoContext );
     }
 
     if( ret == 0 )
     {
-        pCtx->audioContext.pSourcesContext = pCtx;
         ret = InitializeAudioSource( &pCtx->audioContext );
     }
 
     if( ret == 0 )
     {
+        pCtx->videoContext.pSourcesContext = pCtx;
+        pCtx->audioContext.pSourcesContext = pCtx;
         pCtx->onMediaSinkHookFunc = onMediaSinkHookFunc;
         pCtx->pOnMediaSinkHookCustom = pOnMediaSinkHookCustom;
     }

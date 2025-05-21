@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef DATA_CHANNEL_SCTP_H
 #define DATA_CHANNEL_SCTP_H
 
@@ -14,12 +30,8 @@
 
 /*-----------------------------------------------------------*/
 
-/* TODO aggarg - Move to a central config file. */
 #define SCTP_SHUTDOWN_TIMEOUT_SEC           ( 2 )
 #define SCTP_TEARDOWN_POLLING_INTERVAL_USEC ( 10 )
-
-/*-----------------------------------------------------------*/
-
 #define MAX_DATA_CHANNEL_NAME_LEN           255
 #define MAX_DATA_CHANNEL_PROTOCOL_LEN       255
 #define SCTP_MAX_PACKET_LENGTH              ( DCEP_HEADER_LENGTH +        \

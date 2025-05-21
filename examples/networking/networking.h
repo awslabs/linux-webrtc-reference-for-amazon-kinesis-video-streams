@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /* Standard includes. */
 #include <stdlib.h>
 
@@ -18,7 +34,7 @@
 #define SIGV4_METADATA_BUFFER_LENGTH                4096
 #define SIGV4_AUTHORIZATION_HEADER_BUFFER_LENGTH    2048
 #define HTTP_RX_BUFFER_LENGTH                       2048
-#define WEBSOCKET_RX_BUFFER_LENGTH                  ( 10 * 1024 )
+#define WEBSOCKET_RX_BUFFER_LENGTH                  ( 12 * 1024 )
 
 /*----------------------------------------------------------------------------*/
 
@@ -98,8 +114,9 @@ typedef struct HttpRequest
 
 typedef struct HttpResponse
 {
-    char * pBuffer;
-    size_t bufferLength;
+    char * pContent;
+    size_t contentLength;
+    size_t contentMaxCapacity;
 } HttpResponse_t;
 
 typedef int ( * WebsocketMessageReceivedCallback_t )( char * pMessage,
@@ -142,12 +159,15 @@ typedef struct NetworkingHttpContext
     HttpResponse_t * pResponse;
     char rxBuffer[ HTTP_RX_BUFFER_LENGTH ];
     uint8_t connectionClosed;
+    int httpStatusCode;
 } NetworkingHttpContext_t;
 
 typedef struct NetworkingWebsocketContext
 {
     struct lws_context * pLwsContext;
+    struct lws * pWsi;
     struct lws_protocols protocols[ 2 ];
+    SSLCredentials_t sslCreds;
 
     /* Current time in ISO8601 format. */
     char iso8601Time[ ISO8601_TIME_LENGTH ];
@@ -173,8 +193,8 @@ typedef struct NetworkingWebsocketContext
     size_t dataLengthInRxBuffer;
     uint8_t connectionEstablished;
     uint8_t connectionClosed;
+    uint8_t connectionCloseRequested;
     RingBuffer_t ringBuffer;
-    struct lws * pWsi;
 } NetworkingWebsocketContext_t;
 
 /*----------------------------------------------------------------------------*/
@@ -196,10 +216,25 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
                                                 const AwsCredentials_t * pAwsCredentials,
                                                 const AwsConfig_t * pAwsConfig );
 
+NetworkingResult_t Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx );
+
 NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWebsocketCtx,
                                              const char * pMessage,
                                              size_t messageLength );
 
 NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pWebsocketCtx );
+
+/**
+ * @brief Configure libwebsockets logging based on the application's log level.
+ *
+ * This function maps the application's log levels (LOG_ERROR, LOG_WARN, etc.)
+ * to libwebsockets log levels (LLL_ERR, LLL_WARN, etc.) and configures
+ * libwebsockets to use the appropriate log level.
+ *
+ * @param[in] logLevel The application's log level.
+ *
+ * @return NetworkingResult_t Returns NETWORKING_RESULT_OK on success.
+ */
+NetworkingResult_t Networking_ConfigureLwsLogging( uint32_t logLevel );
 
 /*----------------------------------------------------------------------------*/

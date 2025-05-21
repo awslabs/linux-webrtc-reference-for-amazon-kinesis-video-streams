@@ -1,33 +1,17 @@
 /*
- * FreeRTOS V202212.00
- * Copyright (C) 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * https://www.FreeRTOS.org
- * https://github.com/FreeRTOS
- *
- */
-
-/**
- * @file transport_mbedtls.c
- * @brief TLS transport interface implementations. This implementation uses
- * mbedTLS.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include "logging.h"
@@ -60,21 +44,6 @@
 /*-----------------------------------------------------------*/
 
 /**
- * @brief Each compilation unit that consumes the NetworkContext must define it.
- * It should contain a single pointer as seen below whenever the header file
- * of this transport implementation is included to your project.
- *
- * @note When using multiple transports in the same compilation unit,
- *       define this pointer as void *.
- */
-struct NetworkContext
-{
-    TlsTransportParams_t * pParams;
-};
-
-/*-----------------------------------------------------------*/
-
-/**
  * @brief Utility for converting the high-level code in an mbedTLS error to string,
  * if the code-contains a high-level code; otherwise, using a default string.
  */
@@ -85,6 +54,8 @@ struct NetworkContext
  * if the code-contains a level-level code; otherwise, using a default string.
  */
 #define mbedtlsLowLevelCodeOrDefault( mbedTlsCode )       "mbedTLS low level Error"
+
+#define TRANSPORT_MBEDTLS_MAX_FILE_PATH_LENGTH ( 1024 )
 
 /*-----------------------------------------------------------*/
 
@@ -196,7 +167,8 @@ static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_HANDSHAKE_FAILED, or #TLS_TRANSPORT_INTERNAL_ERROR.
  */
 static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
-                                          const NetworkCredentials_t * pNetworkCredentials );
+                                          const NetworkCredentials_t * pNetworkCredentials,
+                                          uint32_t flags );
 
 /**
  * @brief Initialize mbedTLS.
@@ -272,6 +244,42 @@ static int32_t setRootCa( SSLContext_t * pSslContext,
     mbedtlsError = mbedtls_x509_crt_parse( &( pSslContext->rootCa ),
                                            pRootCa,
                                            rootCaSize );
+
+    if( mbedtlsError != 0 )
+    {
+        LogError( ( "Failed to parse server root CA certificate: mbedTLSError= %s : %s.",
+                    mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
+                    mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+    }
+    else
+    {
+        mbedtls_ssl_conf_ca_chain( &( pSslContext->config ),
+                                   &( pSslContext->rootCa ),
+                                   NULL );
+    }
+
+    return mbedtlsError;
+}
+/*-----------------------------------------------------------*/
+
+static int32_t setRootCaPath( SSLContext_t * pSslContext,
+                              const char * pRootCaPath,
+                              size_t rootCaPathLength )
+{
+    int32_t mbedtlsError = -1;
+    /* Allocate one extra space for NULL terminator. */
+    static char caFilePath[ TRANSPORT_MBEDTLS_MAX_FILE_PATH_LENGTH + 1 ];
+
+    assert( pSslContext != NULL );
+    assert( pRootCaPath != NULL );
+    assert( rootCaPathLength < TRANSPORT_MBEDTLS_MAX_FILE_PATH_LENGTH );
+
+    memcpy( caFilePath, pRootCaPath, rootCaPathLength );
+    caFilePath[ rootCaPathLength ] = '\0';
+
+    /* Parse the server root CA certificate into the SSL context. */
+    mbedtlsError = mbedtls_x509_crt_parse_file( &( pSslContext->rootCa ),
+                                                caFilePath );
 
     if( mbedtlsError != 0 )
     {
@@ -369,9 +377,18 @@ static int32_t setCredentials( SSLContext_t * pSslContext,
     mbedtls_ssl_conf_cert_profile( &( pSslContext->config ),
                                    &( pSslContext->certProfile ) );
 
-    mbedtlsError = setRootCa( pSslContext,
-                              pNetworkCredentials->pRootCa,
-                              pNetworkCredentials->rootCaSize );
+    if( pNetworkCredentials->pRootCa != NULL )
+    {
+        mbedtlsError = setRootCa( pSslContext,
+                                  pNetworkCredentials->pRootCa,
+                                  pNetworkCredentials->rootCaSize );
+    }
+    else
+    {
+        mbedtlsError = setRootCaPath( pSslContext,
+                                      ( const char * ) pNetworkCredentials->pRootCaPath,
+                                      pNetworkCredentials->rootCaPathLength );
+    }
 
     if( ( pNetworkCredentials->pClientCert != NULL ) &&
         ( pNetworkCredentials->pPrivateKey != NULL ) )
@@ -455,7 +472,7 @@ static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
     assert( pNetworkContext->pParams != NULL );
     assert( pHostName != NULL );
     assert( pNetworkCredentials != NULL );
-    assert( pNetworkCredentials->pRootCa != NULL );
+    assert( pNetworkCredentials->pRootCa != NULL || pNetworkCredentials->pRootCaPath != NULL );
 
     pTlsTransportParams = pNetworkContext->pParams;
     /* Initialize the mbed TLS context structures. */
@@ -499,7 +516,8 @@ static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
 /*-----------------------------------------------------------*/
 
 static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
-                                          const NetworkCredentials_t * pNetworkCredentials )
+                                          const NetworkCredentials_t * pNetworkCredentials,
+                                          uint32_t flags )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
@@ -545,19 +563,25 @@ static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
     if( returnStatus == TLS_TRANSPORT_SUCCESS )
     {
         /* Perform the TLS handshake. */
-        do
+        if( ( flags & TLS_CONNECT_NON_BLOCKING_HANDSHAKE ) == 0 )
         {
-            mbedtlsError = mbedtls_ssl_handshake( &( pTlsTransportParams->sslContext.context ) );
-        } while( ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) ||
-                 ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) );
-
-        if( mbedtlsError != 0 )
+            do
+            {
+                returnStatus = TLS_FreeRTOS_ContinueHandshake( pNetworkContext );
+            } while( returnStatus == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS );
+        }
+        else
         {
-            LogError( ( "Failed to perform TLS handshake: mbedTLSError= %s : %s.",
-                        mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
-                        mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+            returnStatus = TLS_FreeRTOS_ContinueHandshake( pNetworkContext );
+        }
 
-            returnStatus = TLS_TRANSPORT_HANDSHAKE_FAILED;
+        if( returnStatus ==  TLS_TRANSPORT_HANDSHAKE_FAILED )
+        {
+            LogError( ( "Failed to perform TLS handshake." ) );
+        }
+        else if( returnStatus == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
+        {
+            LogDebug( ( "TLS handshake is in progress." ) );
         }
         else
         {
@@ -633,12 +657,45 @@ static TlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyConte
 }
 /*-----------------------------------------------------------*/
 
+TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( NetworkContext_t * pNetworkContext )
+{
+    TlsTransportParams_t * pTlsTransportParams = NULL;
+    TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
+    int32_t mbedtlsError = 0;
+
+    if( ( pNetworkContext == NULL ) ||
+        ( pNetworkContext->pParams == NULL ) )
+    {
+        returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
+    }
+
+    if( returnStatus == TLS_TRANSPORT_SUCCESS )
+    {
+        pTlsTransportParams = pNetworkContext->pParams;
+        mbedtlsError = mbedtls_ssl_handshake( &( pTlsTransportParams->sslContext.context ) );
+
+        if( ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) ||
+            ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) )
+        {
+            returnStatus = TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS;
+        }
+        else if( mbedtlsError != 0 )
+        {
+            returnStatus = TLS_TRANSPORT_HANDSHAKE_FAILED;
+        }
+    }
+
+    return returnStatus;
+}
+/*-----------------------------------------------------------*/
+
 TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
                                            const char * pHostName,
                                            uint16_t port,
                                            const NetworkCredentials_t * pNetworkCredentials,
                                            uint32_t receiveTimeoutMs,
-                                           uint32_t sendTimeoutMs )
+                                           uint32_t sendTimeoutMs,
+                                           uint32_t flags )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
@@ -657,9 +714,10 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
                     pNetworkCredentials ) );
         returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
     }
-    else if( ( pNetworkCredentials->pRootCa == NULL ) )
+    else if( ( pNetworkCredentials->pRootCa == NULL ) &&
+             ( pNetworkCredentials->pRootCaPath == NULL ) )
     {
-        LogError( ( "pRootCa cannot be NULL." ) );
+        LogError( ( "pRootCa & pRootCaPath cannot both be NULL." ) );
         returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
     }
     else
@@ -710,11 +768,12 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     {
         isTlsSetup = 1;
 
-        returnStatus = tlsHandshake( pNetworkContext, pNetworkCredentials );
+        returnStatus = tlsHandshake( pNetworkContext, pNetworkCredentials, flags );
     }
 
     /* Clean up on failure. */
-    if( returnStatus != TLS_TRANSPORT_SUCCESS )
+    if( ( returnStatus != TLS_TRANSPORT_SUCCESS ) &&
+        ( returnStatus != TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS ) )
     {
         /* Free SSL context if it's setup. */
         if( isTlsSetup == 1 )
@@ -901,7 +960,7 @@ int32_t TLS_FreeRTOS_send( NetworkContext_t * pNetworkContext,
         }
         else
         {
-            /* Empty else marker. */
+            /* Sent data successfully. */
         }
     }
 

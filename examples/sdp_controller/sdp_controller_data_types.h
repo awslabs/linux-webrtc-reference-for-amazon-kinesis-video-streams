@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef SDP_CONTROLLER_DATA_TYPES_H
 #define SDP_CONTROLLER_DATA_TYPES_H
 
@@ -15,7 +31,7 @@ extern "C" {
 
 #define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT ( 2 )
 #define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT ( 2 )
-#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ( 256 )
+#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ( 255 )
 #define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ( 5 )
 
 typedef enum SdpControllerResult
@@ -150,8 +166,9 @@ typedef struct SdpControllerQuickAccess
     uint32_t audioCodecRtxPayload;
     uint32_t videoSsrc;
     uint32_t audioSsrc;
-    const char * pRemoteCandidate;
-    size_t remoteCandidateLength;
+    const char * pRemoteCandidates[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
+    size_t remoteCandidateLengths[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
+    uint8_t remoteCandidateCount;
 } SdpControllerQuickAccess_t;
 
 typedef struct SdpControllerSdpOffer

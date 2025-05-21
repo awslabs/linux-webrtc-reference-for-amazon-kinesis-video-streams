@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /* Interface includes. */
 #include "networking.h"
 
@@ -919,7 +935,7 @@ static int LwsHttpCallback( struct lws * pWsi,
                             void * pData,
                             size_t dataLength )
 {
-    int ret = 0, bufferLength, writtenBodyLength, status, lwsStatus = 0;
+    int ret = 0, bufferLength, writtenBodyLength, lwsStatus = 0;
     unsigned char * pEnd;
     unsigned char ** ppStart;
     size_t i;
@@ -934,7 +950,7 @@ static int LwsHttpCallback( struct lws * pWsi,
         {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
-            pHttpContext->connectionClosed = 1;
+            pHttpContext->httpStatusCode = -1;
             LogError( ( "HTTP connection error!" ) );
         }
         break;
@@ -943,16 +959,16 @@ static int LwsHttpCallback( struct lws * pWsi,
         {
             pLwsProtocol = lws_get_protocol( pWsi );
             pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
-            pHttpContext->connectionClosed = 1;
             LogDebug( ( "HTTP connection closed." ) );
         }
         break;
 
         case LWS_CALLBACK_ESTABLISHED_CLIENT_HTTP:
         {
-            status = lws_http_client_http_response( pWsi );
-            ( void ) status;
-            LogDebug( ( "Connected with HTTP server. Response: %d.", status ) );
+            pLwsProtocol = lws_get_protocol( pWsi );
+            pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
+            pHttpContext->httpStatusCode = lws_http_client_http_response( pWsi );
+            LogDebug( ( "Connected with HTTP server. Response: %d.", pHttpContext->httpStatusCode ) );
         }
         break;
 
@@ -966,7 +982,7 @@ static int LwsHttpCallback( struct lws * pWsi,
 
             if( dataLength != 0 )
             {
-                if( dataLength >= pHttpContext->pResponse->bufferLength )
+                if( dataLength >= pHttpContext->pResponse->contentMaxCapacity )
                 {
                     /* Receive data is larger than buffer size. */
                     ret = -2;
@@ -974,8 +990,8 @@ static int LwsHttpCallback( struct lws * pWsi,
                 }
                 else
                 {
-                    memcpy( pHttpContext->pResponse->pBuffer, pData, dataLength );
-                    pHttpContext->pResponse->bufferLength = dataLength;
+                    memcpy( pHttpContext->pResponse->pContent, pData, dataLength );
+                    pHttpContext->pResponse->contentLength = dataLength;
                 }
             }
         }
@@ -1161,6 +1177,22 @@ static int LwsWebsocketCallback( struct lws * pWsi,
         }
         break;
 
+        case LWS_CALLBACK_WSI_DESTROY:
+        {
+            pLwsProtocol = lws_get_protocol( pWsi );
+            pWebsocketContext = ( NetworkingWebsocketContext_t * ) pLwsProtocol->user;
+
+            pWebsocketContext->connectionEstablished = 0;
+            pWebsocketContext->connectionClosed = 1;
+            pWebsocketContext->connectionCloseRequested = 0U;
+
+            /* Ensure that lws_service returns immediately instead of waiting
+             * till next poll timeout. */
+            lws_cancel_service( pWebsocketContext->pLwsContext );
+            LogDebug( ( "WSS wsi has been destroyed." ) );
+        }
+        break;
+
         case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE:
         {
             pLwsProtocol = lws_get_protocol( pWsi );
@@ -1210,6 +1242,11 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                 }
                 else
                 {
+                    /* If you are getting this warning, one possible reason is
+                     * that we receive an SDP Offer which is large because it
+                     * contains ICE Candidates (non-trickle functionality).
+                     * Increasing the Macro WEBSOCKET_RX_BUFFER_LENGTH to a
+                     * larger value (such as 13 * 1024) may help in this case. */
                     LogWarn( ( "WSS RX buffer is not large enough for received message. Message size: %lu.",
                                pWebsocketContext->dataLengthInRxBuffer + dataLength ) );
                     ret = 1;
@@ -1278,9 +1315,21 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 
             LogDebug( ( "LWS_CALLBACK_EVENT_WAIT_CANCELLED callback." ) );
 
-            if( pWebsocketContext->connectionEstablished == 1 )
+            if( pWebsocketContext->connectionCloseRequested != 0U )
+            {
+                LogDebug( ( "Received request to close websocket connection. Initiating graceful shutdown." ) );
+
+                lws_set_timeout( pWebsocketContext->pWsi,
+                                 PENDING_TIMEOUT_USER_OK,
+                                 LWS_TO_KILL_ASYNC );
+            }
+            else if( pWebsocketContext->connectionEstablished == 1 )
             {
                 lws_callback_on_writable( pWebsocketContext->pWsi );
+            }
+            else
+            {
+                /* Empty else marker. */
             }
         }
         break;
@@ -1340,7 +1389,9 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
             creationInfo.client_ssl_private_key_filepath = pCreds->pDeviceKeyPath;
         }
 
-        lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
+         /* Configure libwebsockets logging based on application log level */
+         Networking_ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+
         pHttpCtx->pLwsContext = lws_create_context( &( creationInfo ) );
 
         if( pHttpCtx->pLwsContext == NULL )
@@ -1359,12 +1410,6 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
                                              const SSLCredentials_t * pCreds )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
-    struct lws_context_creation_info creationInfo;
-    const lws_retry_bo_t retryPolicy =
-    {
-        .secs_since_valid_ping = 10,
-        .secs_since_valid_hangup = 7200,
-    };
 
     if( ( pWebsocketCtx == NULL ) || ( pCreds == NULL ) )
     {
@@ -1388,36 +1433,14 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
         pWebsocketCtx->protocols[ 0 ].callback = LwsWebsocketCallback;
         pWebsocketCtx->protocols[ 0 ].user = pWebsocketCtx;
         pWebsocketCtx->protocols[ 1 ].callback = NULL; /* End marker. */
+        pWebsocketCtx->connectionEstablished = 0U;
+        pWebsocketCtx->connectionClosed = 1U;
+        pWebsocketCtx->connectionCloseRequested = 0U;
 
-        memset( &( creationInfo ), 0, sizeof( struct lws_context_creation_info ) );
-        creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-        creationInfo.port = CONTEXT_PORT_NO_LISTEN;
-        creationInfo.protocols = &( pWebsocketCtx->protocols[ 0 ] );
-        creationInfo.timeout_secs = 10;
-        creationInfo.gid = -1;
-        creationInfo.uid = -1;
-        creationInfo.client_ssl_ca_filepath = pCreds->pCaCertPath;
-        creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
-        creationInfo.ka_time = 1;
-        creationInfo.ka_probes = 1;
-        creationInfo.ka_interval = 1;
-        creationInfo.retry_and_idle_policy = &( retryPolicy );
-        creationInfo.fd_limit_per_thread = 3;
-
-        if( ( pCreds->pDeviceCertPath != NULL ) && ( pCreds->pDeviceKeyPath != NULL ) )
-        {
-            creationInfo.client_ssl_cert_filepath = pCreds->pDeviceCertPath;
-            creationInfo.client_ssl_private_key_filepath = pCreds->pDeviceKeyPath;
-        }
-
-        lws_set_log_level( LLL_NOTICE | LLL_WARN | LLL_ERR, NULL );
-        pWebsocketCtx->pLwsContext = lws_create_context( &( creationInfo ) );
-
-        if( pWebsocketCtx->pLwsContext == NULL )
-        {
-            LogError( ( "lws_create_context failed!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
+        memset( &( pWebsocketCtx->sslCreds ), 0, sizeof( SSLCredentials_t ) );
+        pWebsocketCtx->sslCreds.pCaCertPath = pCreds->pCaCertPath;
+        pWebsocketCtx->sslCreds.pDeviceCertPath = pCreds->pDeviceCertPath;
+        pWebsocketCtx->sslCreds.pDeviceKeyPath = pCreds->pDeviceKeyPath;
     }
 
     return ret;
@@ -1567,6 +1590,9 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         /* Needed to receive the response in the user supplied buffer. */
         pHttpCtx->pResponse = pResponse;
 
+        /* HTTP status code (200, 403, etc) would be stored in this varirable. */
+        pHttpCtx->httpStatusCode = 0;
+
         memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
 
         connectInfo.context = pHttpCtx->pLwsContext;
@@ -1587,6 +1613,12 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         {
             ( void ) lws_service( pHttpCtx->pLwsContext, 0 );
         }
+
+        if( pHttpCtx->httpStatusCode != 200 )
+        {
+            LogWarn( ( "HTTP status code = %d", pHttpCtx->httpStatusCode ) );
+            ret = NETWORKING_RESULT_FAIL;
+        }
     }
 
     return ret;
@@ -1604,6 +1636,8 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
     struct lws * clientLws;
     const char * pHost = NULL;
     size_t hostLength = 0;
+    struct lws_context_creation_info creationInfo;
+    lws_retry_bo_t retryPolicy;
 
     if( ( pWebsocketCtx == NULL ) ||
         ( pConnectInfo == NULL ) ||
@@ -1614,89 +1648,136 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
 
     if( ret == NETWORKING_RESULT_OK )
     {
-        if( GetHostFromUrl( pConnectInfo->pUrl,
-                            pConnectInfo->urlLength,
-                            &( pHost ),
-                            &( hostLength ) ) == 0 )
+        do
         {
-            if( hostLength <= WEBSOCKET_URI_HOST_BUFFER_LENGTH )
+            /* Connection check before starting. Will skip following process if connection is already there.
+             * This might happen when fail happening at join storage session request for any reason. */
+            if( pWebsocketCtx->connectionEstablished != 0 )
             {
-                memcpy( &( pWebsocketCtx->uriHost[ 0 ] ),
-                        pHost,
-                        hostLength );
-                pWebsocketCtx->uriHost[ hostLength ] = '\0';
-                pWebsocketCtx->uriHostLength = hostLength;
+                LogDebug( ( "Websocket connection is already there, skip the connect process." ) );
+                break;
+            }
+
+            memset( &retryPolicy, 0, sizeof( lws_retry_bo_t ) );
+            retryPolicy.secs_since_valid_ping = 10;
+            retryPolicy.secs_since_valid_hangup = 7200;
+        
+            memset( &creationInfo, 0, sizeof( struct lws_context_creation_info ) );
+            creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+            creationInfo.port = CONTEXT_PORT_NO_LISTEN;
+            creationInfo.protocols = &( pWebsocketCtx->protocols[ 0 ] );
+            creationInfo.timeout_secs = 10;
+            creationInfo.gid = -1;
+            creationInfo.uid = -1;
+            creationInfo.client_ssl_ca_filepath = pWebsocketCtx->sslCreds.pCaCertPath;
+            creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
+            creationInfo.ka_time = 1;
+            creationInfo.ka_probes = 1;
+            creationInfo.ka_interval = 1;
+            creationInfo.retry_and_idle_policy = &retryPolicy;
+            creationInfo.fd_limit_per_thread = 3;
+        
+            if( ( pWebsocketCtx->sslCreds.pDeviceCertPath != NULL ) && ( pWebsocketCtx->sslCreds.pDeviceKeyPath != NULL ) )
+            {
+                creationInfo.client_ssl_cert_filepath = pWebsocketCtx->sslCreds.pDeviceCertPath;
+                creationInfo.client_ssl_private_key_filepath = pWebsocketCtx->sslCreds.pDeviceKeyPath;
+            }
+
+            /* Configure libwebsockets logging based on application log level */
+            Networking_ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+
+            pWebsocketCtx->pLwsContext = lws_create_context( &creationInfo );
+            if( pWebsocketCtx->pLwsContext == NULL )
+            {
+                LogError( ( "lws_create_context failed!" ) );
+                ret = NETWORKING_RESULT_FAIL;
+                break;
+            }
+
+            /* Get host name from URL. */
+            if( GetHostFromUrl( pConnectInfo->pUrl,
+                                pConnectInfo->urlLength,
+                                &( pHost ),
+                                &( hostLength ) ) == 0 )
+            {
+                if( hostLength <= WEBSOCKET_URI_HOST_BUFFER_LENGTH )
+                {
+                    memcpy( &( pWebsocketCtx->uriHost[ 0 ] ),
+                            pHost,
+                            hostLength );
+                    pWebsocketCtx->uriHost[ hostLength ] = '\0';
+                    pWebsocketCtx->uriHostLength = hostLength;
+                }
+                else
+                {
+                    LogError( ( "uriHost buffer is not large enough to fit the host, hostLength = %lu!", hostLength ) );
+                    ret = NETWORKING_RESULT_FAIL;
+                    break;
+                }
             }
             else
             {
-                LogError( ( "uriHost buffer is not large enough to fit the host, hostLength = %lu!", hostLength ) );
+                LogError( ( "Failed to extract host from the URL!" ) );
                 ret = NETWORKING_RESULT_FAIL;
+                break;
             }
-        }
-        else
-        {
-            LogError( ( "Failed to extract host from the URL!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
-    }
 
-    if( ret == NETWORKING_RESULT_OK )
-    {
-        pWebsocketCtx->iso8601TimeLength = ISO8601_TIME_LENGTH;
+            /* Get current time in ISO8601 format. */
+            pWebsocketCtx->iso8601TimeLength = ISO8601_TIME_LENGTH;
+            if( GetCurrentTimeInIso8601Format( &( pWebsocketCtx->iso8601Time[ 0 ] ),
+                                               &( pWebsocketCtx->iso8601TimeLength ) ) != 0 )
+            {
+                LogError( ( "Failed to get ISO8601 time!" ) );
+                ret = NETWORKING_RESULT_FAIL;
+                break;
+            }
 
-        if( GetCurrentTimeInIso8601Format( &( pWebsocketCtx->iso8601Time[ 0 ] ),
-                                           &( pWebsocketCtx->iso8601TimeLength ) ) != 0 )
-        {
-            LogError( ( "Failed to get ISO8601 time!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
-    }
+            if( SignWebsocketRequest( pWebsocketCtx,
+                                      pConnectInfo,
+                                      pAwsCredentials,
+                                      pAwsConfig ) != 0 )
+            {
+                LogError( ( "Failed to sign Websocket request!" ) );
+                ret = NETWORKING_RESULT_FAIL;
+                break;
+            }
 
-    if( ret == NETWORKING_RESULT_OK )
-    {
-        if( SignWebsocketRequest( pWebsocketCtx,
-                                  pConnectInfo,
-                                  pAwsCredentials,
-                                  pAwsConfig ) != 0 )
-        {
-            LogError( ( "Failed to sign Websocket request!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
-    }
+            /* Try connect with websocket server. */
+            {
+                pWebsocketCtx->rxCallback = pConnectInfo->rxCallback;
+                pWebsocketCtx->pRxCallbackData = pConnectInfo->pRxCallbackData;
 
-    /* Send the request and wait for the response. */
-    if( ret == NETWORKING_RESULT_OK )
-    {
-        pWebsocketCtx->rxCallback = pConnectInfo->rxCallback;
-        pWebsocketCtx->pRxCallbackData = pConnectInfo->pRxCallbackData;
+                memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
 
-        memset( &( connectInfo ), 0, sizeof( struct lws_client_connect_info ) );
+                connectInfo.context = pWebsocketCtx->pLwsContext;
+                connectInfo.ssl_connection = LCCSCF_USE_SSL;
+                connectInfo.port = 443;
+                connectInfo.address = &( pWebsocketCtx->uriHost[ 0 ] );
+                connectInfo.path = &( pWebsocketCtx->uriPath[ 0 ] );
+                connectInfo.host = connectInfo.address;
+                connectInfo.pwsi = &( clientLws );
+                connectInfo.opaque_user_data = NULL;
+                connectInfo.method = NULL;
+                connectInfo.protocol = "wss";
 
-        connectInfo.context = pWebsocketCtx->pLwsContext;
-        connectInfo.ssl_connection = LCCSCF_USE_SSL;
-        connectInfo.port = 443;
-        connectInfo.address = &( pWebsocketCtx->uriHost[ 0 ] );
-        connectInfo.path = &( pWebsocketCtx->uriPath[ 0 ] );
-        connectInfo.host = connectInfo.address;
-        connectInfo.pwsi = &( clientLws );
-        connectInfo.opaque_user_data = NULL;
-        connectInfo.method = NULL;
-        connectInfo.protocol = "wss";
+                pWebsocketCtx->pWsi = lws_client_connect_via_info( &( connectInfo ) );
 
-        pWebsocketCtx->pWsi = lws_client_connect_via_info( &( connectInfo ) );
+                pWebsocketCtx->connectionEstablished = 0U;
+                pWebsocketCtx->connectionClosed = 0U;
+                pWebsocketCtx->connectionCloseRequested = 0U;
+                while( ( pWebsocketCtx->connectionEstablished == 0U ) &&
+                       ( pWebsocketCtx->connectionClosed == 0U ) )
+                {
+                    ( void ) lws_service( pWebsocketCtx->pLwsContext, 0 );
+                }
 
-        pWebsocketCtx->connectionEstablished = 0U;
-        pWebsocketCtx->connectionClosed = 0U;
-        while( ( pWebsocketCtx->connectionEstablished == 0U ) &&
-               ( pWebsocketCtx->connectionClosed == 0U ) )
-        {
-            ( void ) lws_service( pWebsocketCtx->pLwsContext, 0 );
-        }
-
-        if( pWebsocketCtx->connectionClosed == 1U )
-        {
-            ret = NETWORKING_RESULT_FAIL;
-        }
+                if( pWebsocketCtx->connectionClosed == 1U )
+                {
+                    ret = NETWORKING_RESULT_FAIL;
+                    break;
+                }
+            }
+        } while( 0 );
     }
 
     return ret;
@@ -1757,6 +1838,30 @@ NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWeb
 
 /*----------------------------------------------------------------------------*/
 
+NetworkingResult_t Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx )
+{
+    NetworkingResult_t result = NETWORKING_RESULT_OK;
+
+    if( pWebsocketCtx == NULL )
+    {
+        LogError( ( "Invalid input. Websocket context is %p", pWebsocketCtx ) );
+        result = NETWORKING_RESULT_BAD_PARAM;
+    }
+
+    if( result == NETWORKING_RESULT_OK )
+    {
+        pWebsocketCtx->connectionCloseRequested = 1U;
+
+        /* This will cause a LWS_CALLBACK_EVENT_WAIT_CANCELLED in the lws
+         * service thread context. */
+        lws_cancel_service( pWebsocketCtx->pLwsContext );
+    }
+
+    return result;
+}
+
+/*----------------------------------------------------------------------------*/
+
 NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pWebsocketCtx )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
@@ -1772,6 +1877,10 @@ NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pW
 
         if( pWebsocketCtx->connectionClosed == 1 )
         {
+            /* Clean lws context. */
+            lws_context_destroy( pWebsocketCtx->pLwsContext );
+            pWebsocketCtx->pLwsContext = NULL;
+
             LogWarn( ( "Websocket connection is closed!" ) );
             ret = NETWORKING_RESULT_FAIL;
         }

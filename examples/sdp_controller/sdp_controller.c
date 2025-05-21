@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdlib.h>
 #include "logging.h"
 #include "sdp_controller.h"
@@ -326,11 +342,16 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
         else if( ( pAttribute->attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH ) &&
                  ( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH ) == 0 ) )
         {
-            /* Got a remote candidate from remote SDP */
-            if( pOffer->quickAccess.pRemoteCandidate == NULL )
+            /* Ensure we do not exceed the maximum candidate limit. */
+            if( pOffer->quickAccess.remoteCandidateCount < SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT )
             {
-                pOffer->quickAccess.pRemoteCandidate = pAttribute->pAttributeValue;
-                pOffer->quickAccess.remoteCandidateLength = pAttribute->attributeValueLength;
+                pOffer->quickAccess.pRemoteCandidates[ pOffer->quickAccess.remoteCandidateCount ] = pAttribute->pAttributeValue;
+                pOffer->quickAccess.remoteCandidateLengths[ pOffer->quickAccess.remoteCandidateCount ] = pAttribute->attributeValueLength;
+                pOffer->quickAccess.remoteCandidateCount++;
+            }
+            else
+            {
+                LogWarn( ( "Max candidate limit reached (%d), ignoring extra candidates.", SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ) );
             }
         }
     }
@@ -2618,16 +2639,18 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     else if( ( populateConfiguration.pCname == NULL ) ||
              ( populateConfiguration.pLocalFingerprint == NULL ) ||
              ( populateConfiguration.pPassword == NULL ) ||
-             ( trackKind == TRANSCEIVER_TRACK_KIND_UNKNOWN ) ||
+             ( trackKind < TRANSCEIVER_TRACK_KIND_AUDIO ) ||
+             ( trackKind > TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) ||
              ( ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) && ( populateConfiguration.pTransceiver == NULL ) ) ||
              ( populateConfiguration.pUserName == NULL ) )
     {
-        LogError( ( "Invalid input, pCname: %p, pLocalFingerprint: %p, pPassword: %p, pTransceiver: %p, pUserName: %p",
+        LogError( ( "Invalid input, pCname: %p, pLocalFingerprint: %p, pPassword: %p, pTransceiver: %p, pUserName: %p, trackKind: %d",
                     populateConfiguration.pCname,
                     populateConfiguration.pLocalFingerprint,
                     populateConfiguration.pPassword,
                     populateConfiguration.pTransceiver,
-                    populateConfiguration.pUserName ) );
+                    populateConfiguration.pUserName,
+                    trackKind ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
     else
@@ -2647,31 +2670,43 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* We support only one payload type, so only one payload type printed in media name. */
-        if( trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
+        switch( trackKind )
         {
-            if( populateConfiguration.rtxPayloadType == 0 )
+            case TRANSCEIVER_TRACK_KIND_VIDEO:
             {
-                written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                if( populateConfiguration.rtxPayloadType == 0 )
+                {
+                    written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                }
+                else
+                {
+                    written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+                }
+                break;
             }
-            else
+            case TRANSCEIVER_TRACK_KIND_AUDIO:
             {
-                written = snprintf( pCurBuffer, remainSize, "video 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+                if( populateConfiguration.rtxPayloadType == 0 )
+                {
+                    written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                }
+                else
+                {
+                    written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
+                }
+                break;
             }
-        }
-        else if( trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
-        {
-            if( populateConfiguration.rtxPayloadType == 0 )
+            case TRANSCEIVER_TRACK_KIND_DATA_CHANNEL:
             {
-                written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u", populateConfiguration.payloadType );
+                written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
+                break;
             }
-            else
-            {
-                written = snprintf( pCurBuffer, remainSize, "audio 9 UDP/TLS/RTP/SAVPF %u %u", populateConfiguration.payloadType, populateConfiguration.rtxPayloadType );
-            }
-        }
-        else if( trackKind == TRANSCEIVER_TRACK_KIND_DATA_CHANNEL )
-        {
-            written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
+            /* Since the range of trackKind is checked above the
+             * TRANSCEIVER_TRACK_KIND_UNKNOWN and default case is not required to be handled.
+             * The labels are kept for keeping the compiler happy wrt -Werror=switch */
+            case TRANSCEIVER_TRACK_KIND_UNKNOWN:
+            default:
+                break;
         }
 
         if( written < 0 )
@@ -2880,7 +2915,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* When populating offer, there is no remote description for reference. */
-        if( populateConfiguration.isOffer != 0 )
+        if( populateConfiguration.isOffer == 0 )
         {
             /* Try to match the mid number in the remote media description. */
             pSourceAttribute = FindAttributeName( pRemoteMediaDescription->attributes,
@@ -2900,8 +2935,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         }
         else
         {
-            written = snprintf( pCurBuffer, remainSize, "%u",
-                                currentMediaIdx );
+            written = snprintf( pCurBuffer, remainSize, "%u", currentMediaIdx );
 
             if( written < 0 )
             {

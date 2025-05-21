@@ -1,32 +1,17 @@
 /*
- * FreeRTOS V202212.00
- * Copyright (C) 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * https://www.FreeRTOS.org
- * https://github.com/FreeRTOS
- *
- */
-
-/**
- * @file transport_dtls_mbedtls.h
- * @brief DTLS transport interface header.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef TRANSPORT_DTLS_MBEDTLS_H
@@ -65,8 +50,6 @@
 #define MAX_SRTP_SALT_KEY_LEN 14
 #define MAX_DTLS_RANDOM_BYTES_LEN 32
 #define MAX_DTLS_MASTER_KEY_LEN 48
-
-#define KEYING_EXTRACTOR_LABEL "EXTRACTOR-dtls_srtp"
 
 typedef int32_t (* OnTransportDtlsSendHook_t)( void * pCustomContext,
                                                const uint8_t * pInputBuffer,
@@ -154,7 +137,7 @@ typedef struct DtlsTransportParams
     /* Store the processing packet here. */
     uint8_t * pReceivedPacket;
     size_t receivedPacketLength;
-    uint32_t receivedPacketOffset;
+    size_t receivedPacketOffset;
 } DtlsTransportParams_t;
 
 typedef enum DtlsState
@@ -234,34 +217,34 @@ typedef struct DtlsSession
  */
 typedef enum DtlsTransportStatus
 {
-    DTLS_SUCCESS = 0,         /**< Function successfully completed. */
+    DTLS_SUCCESS = 0,                                /**< Function successfully completed. */
 
     /* Common error code. */
-    DTLS_INVALID_PARAMETER,   /**< At least one parameter was invalid. */
-    DTLS_OUT_OF_MEMORY, /**< Fail to allocate memory by malloc. */
+    DTLS_INVALID_PARAMETER,                          /**< At least one parameter was invalid. */
+    DTLS_OUT_OF_MEMORY,                              /**< Fail to allocate memory by malloc. */
 
     /* Transport error code */
-    DTLS_TRANSPORT_INSUFFICIENT_MEMORY, /**< Insufficient memory required to establish connection. */
-    DTLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid. */
-    DTLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server failed. */
-    DTLS_TRANSPORT_INTERNAL_ERROR,      /**< A call to a system API resulted in an internal error. */
-    DTLS_TRANSPORT_CONNECT_FAILURE,     /**< Initial connection to the server failed. */
-    DTLS_TRANSPORT_PROCESS_FAILURE,     /**< Fail while processing received packet. */
+    DTLS_TRANSPORT_INSUFFICIENT_MEMORY,              /**< Insufficient memory required to establish connection. */
+    DTLS_TRANSPORT_INVALID_CREDENTIALS,              /**< Provided credentials were invalid. */
+    DTLS_TRANSPORT_HANDSHAKE_FAILED,                 /**< Performing TLS handshake with server failed. */
+    DTLS_TRANSPORT_INTERNAL_ERROR,                   /**< A call to a system API resulted in an internal error. */
+    DTLS_TRANSPORT_CONNECT_FAILURE,                  /**< Initial connection to the server failed. */
+    DTLS_TRANSPORT_PROCESS_FAILURE,                  /**< Fail while processing received packet. */
 
     /* Error code for key and certificate generation. */
-    DTLS_INITIALIZE_PK_FAILURE,         /**< Fail to initialize SSL context before generating RSA key. */
-    DTLS_GENERATE_KEY_FAILURE,          /**< Fail to generate SSL key. */
-    DTLS_SET_CERT_ISSUER_NAME_FAILURE,  /**< Fail to set issuer name. */
-    DTLS_SET_CERT_VALIDITY_FAILURE,     /**< Fail to set validity. */
-    DTLS_WRITE_CERT_CRT_DER_FAILURE,    /**< Fail to write X509 crt der. */
-    DTLS_PARSE_CERT_DER_FAILURE,        /**< Fail to parse X509 der. */
-    DTLS_SET_CERT_SERIAL_FAILURE,       /**< Fail to set cert serial. */
-    DTLS_GENERATE_TIMESTAMP_STRING_FAILURE, /**< Fail to generate timestamp string. */
-    DTLS_READ_BINARY_FAILURE, /**< Fail to read binary. */
-    DTLS_GENERATE_RANDOM_BITS_FAILURE, /**< Fail to generate random bits. */
+    DTLS_INITIALIZE_PK_FAILURE,                      /**< Fail to initialize SSL context before generating RSA key. */
+    DTLS_GENERATE_KEY_FAILURE,                       /**< Fail to generate SSL key. */
+    DTLS_SET_CERT_ISSUER_NAME_FAILURE,               /**< Fail to set issuer name. */
+    DTLS_SET_CERT_VALIDITY_FAILURE,                  /**< Fail to set validity. */
+    DTLS_WRITE_CERT_CRT_DER_FAILURE,                 /**< Fail to write X509 crt der. */
+    DTLS_PARSE_CERT_DER_FAILURE,                     /**< Fail to parse X509 der. */
+    DTLS_SET_CERT_SERIAL_FAILURE,                    /**< Fail to set cert serial. */
+    DTLS_GENERATE_TIMESTAMP_STRING_FAILURE,          /**< Fail to generate timestamp string. */
+    DTLS_READ_BINARY_FAILURE,                        /**< Fail to read binary. */
+    DTLS_GENERATE_RANDOM_BITS_FAILURE,               /**< Fail to generate random bits. */
 
     DTLS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED, /**< The remote certificate failed verification. */
-    DTLS_SSL_UNKNOWN_SRTP_PROFILE, /**< The SRTP profile is unknown. */
+    DTLS_SSL_UNKNOWN_SRTP_PROFILE,                   /**< The SRTP profile is unknown. */
 
     /* User info. */
     DTLS_HANDSHAKE_COMPLETE, /**< Just complete the DTLS handshaking. */

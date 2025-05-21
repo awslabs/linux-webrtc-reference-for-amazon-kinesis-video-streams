@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdlib.h>
 #include "logging.h"
 #include "peer_connection.h"
@@ -11,7 +27,6 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
                                                            size_t maxSizePerPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-    RtpPacketInfo_t * pRtpPacketInfoArray;
     RtpPacketQueueResult_t resultRtpPacketQueue;
 
     if( ( pRollingBuffer == NULL ) ||
@@ -31,8 +46,8 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
     {
         pRollingBuffer->maxSizePerPacket = maxSizePerPacket;
         pRollingBuffer->capacity = rollingbufferDurationSec * rollingbufferBitRate / 8U / maxSizePerPacket;
-        pRtpPacketInfoArray = ( RtpPacketInfo_t * )malloc( pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ) );
-        if( pRtpPacketInfoArray == NULL )
+        pRollingBuffer->packetQueue.pRtpPacketInfoArray = ( RtpPacketInfo_t * )malloc( pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ) );
+        if( pRollingBuffer->packetQueue.pRtpPacketInfoArray == NULL )
         {
             LogError( ( "No memory available for allocating RTP packet info array with total size %lu, capacity: %lu, sizeof( RtpPacketInfo_t ): %lu",
                         pRollingBuffer->capacity * sizeof( RtpPacketInfo_t ),
@@ -52,7 +67,7 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultRtpPacketQueue = RtpPacketQueue_Init( &pRollingBuffer->packetQueue,
-                                                    pRtpPacketInfoArray,
+                                                    pRollingBuffer->packetQueue.pRtpPacketInfoArray,
                                                     pRollingBuffer->capacity );
         if( resultRtpPacketQueue != RTP_PACKET_QUEUE_RESULT_OK )
         {
@@ -92,6 +107,7 @@ void PeerConnectionRollingBuffer_Free( PeerConnectionRollingBuffer_t * pRollingB
         if( pRollingBuffer->packetQueue.pRtpPacketInfoArray != NULL )
         {
             free( pRollingBuffer->packetQueue.pRtpPacketInfoArray );
+            pRollingBuffer->packetQueue.pRtpPacketInfoArray = NULL;
         }
     }
 }

@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef METRIC_H
 #define METRIC_H
 
@@ -11,10 +27,6 @@ extern "C" {
 
 #include <stdio.h>
 #include <inttypes.h>
-
-/* FreeRTOS includes. */
-// #include "FreeRTOS.h"
-// #include "semphr.h"
 #include <pthread.h>
 
 typedef enum MetricEvent
@@ -27,10 +39,12 @@ typedef enum MetricEvent
     METRIC_EVENT_SIGNALING_GET_ICE_SERVER_LIST,
     METRIC_EVENT_SIGNALING_CONNECT_WSS_SERVER,
     METRIC_EVENT_SIGNALING_GET_CREDENTIALS,
+    METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION,
 
     /* ICE Events. */
     METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES,
     METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES,
+    METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES,
     METRIC_EVENT_ICE_FIND_P2P_CONNECTION,
 
     /* Peer Connection Events. */
@@ -67,6 +81,7 @@ void Metric_Init( void );
 void Metric_StartEvent( MetricEvent_t event );
 void Metric_EndEvent( MetricEvent_t event );
 void Metric_PrintMetrics( void );
+void Metric_ResetEvent( void );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

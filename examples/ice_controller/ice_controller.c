@@ -1,3 +1,19 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,8 +27,11 @@
 #include "core_json.h"
 #include "string_utils.h"
 #include "mbedtls/md.h"
-//#include "task.h"
+#include "mbedtls/md5.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
+#include "networking_utils.h"
 
 #define ICE_CONTROLLER_MESSAGE_QUEUE_NAME "/WebrtcApplicationIceController"
 #define ICE_CONTROLLER_CANDIDATE_TYPE_HOST_STRING "host"
@@ -50,15 +69,63 @@ static const uint32_t gCrc32Table[256] = {
     0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
 };
 
-static void onConnectivityCheckTimerExpire( void * pContext )
+static void OnTimerExpire( void * pContext )
 {
     IceControllerContext_t * pCtx = ( IceControllerContext_t * ) pContext;
+    int32_t result = 0;
 
     if( pCtx->onIceEventCallbackFunc )
     {
-        pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                      ICE_CONTROLLER_CB_EVENT_CONNECTIVITY_CHECK_TIMEOUT,
-                                      NULL );
+        switch( pCtx->state )
+        {
+            case ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS:
+                result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                                       ICE_CONTROLLER_CB_EVENT_PROCESS_ICE_CANDIDATES_AND_PAIRS,
+                                                       NULL );
+                if( result != 0 )
+                {
+                    LogDebug( ( "Failed to process ICE candidates and pairs event, result: %d.", result ) );
+                    IceController_UpdateTimerInterval( pCtx,
+                                                       ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
+                }
+                break;
+            case ICE_CONTROLLER_STATE_READY:
+                result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                              ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK,
+                                              NULL );
+                if( result != 0 )
+                {
+                    LogDebug( ( "Failed to process ICE periodic connection check event, result: %d.", result ) );
+                    IceController_UpdateTimerInterval( pCtx,
+                                                       ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
+                }
+                break;
+            case ICE_CONTROLLER_STATE_CLOSING:
+                result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
+                                              NULL );
+                if( result != 0 )
+                {
+                    LogDebug( ( "Failed to process ICE closing event, result: %d.", result ) );
+                    IceController_UpdateTimerInterval( pCtx,
+                                                       ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+                }
+                break;
+            case ICE_CONTROLLER_STATE_CLOSED:
+                result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
+                                              NULL );
+                if( result != 0 )
+                {
+                    LogDebug( ( "Failed to process ICE closed event, result: %d.", result ) );
+                    IceController_UpdateTimerInterval( pCtx,
+                                                       ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+                }
+                break;
+            default:
+                LogError( ( "Unexpected state: %d.", pCtx->state ) );
+                break;
+        }
     }
 }
 
@@ -137,6 +204,52 @@ static IceResult_t IceController_MbedtlsHmac( const uint8_t * pPassword,
     return ret;
 }
 
+static IceResult_t IceController_MbedtlsMd5( const uint8_t * pBuffer,
+                                             size_t bufferLength,
+                                             uint8_t * pOutputBuffer,
+                                             uint16_t * pOutputBufferLength )
+{
+    IceResult_t ret = ICE_RESULT_OK;
+    int retMbedtls;
+
+    if( ( pBuffer == NULL ) || ( pOutputBuffer == NULL ) || ( pOutputBufferLength == NULL ) )
+    {
+        LogError( ( "Invalid inputs, pBuffer=%p, pOutputBuffer=%p, pOutputBufferLength=%p", pBuffer, pOutputBuffer, pOutputBufferLength ) );
+
+        ret = ICE_RESULT_MD5_ERROR;
+    }
+    else if( *pOutputBufferLength < 16U )
+    {
+        LogError( ( "Invalid MD5 output buffer length, pOutputBufferLength=%u", *pOutputBufferLength ) );
+
+        ret = ICE_RESULT_MD5_ERROR;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
+
+    if( ret == ICE_RESULT_OK )
+    {
+        retMbedtls = mbedtls_md5_ret( pBuffer,
+                                      bufferLength,
+                                      pOutputBuffer );
+        if( retMbedtls != 0 )
+        {
+            LogError( ( "mbedtls_md_hmac fails, return=%d.", retMbedtls ) );
+            ret = ICE_RESULT_MD5_ERROR;
+        }
+    }
+
+    if( ret == ICE_RESULT_OK )
+    {
+        /* MD5 result is always 16 bytes. */
+        *pOutputBufferLength = 16U;
+    }
+
+    return ret;
+}
+
 static IceControllerResult_t parseIceCandidate( const char * pDecodeMessage,
                                                 size_t decodeMessageLength,
                                                 const char ** ppCandidateString,
@@ -198,13 +311,462 @@ static IceControllerResult_t parseIceCandidate( const char * pDecodeMessage,
     return ret;
 }
 
+static IceControllerSocketContext_t * FindSocketContextByLocalCandidate( IceControllerContext_t * pCtx,
+                                                                         IceCandidate_t * pLocalCandidate )
+{
+    IceControllerSocketContext_t * pReturnContext = NULL;
+    uint32_t i;
+
+    if( pLocalCandidate != NULL )
+    {
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
+        {
+            if( pCtx->socketsContexts[i].pLocalCandidate == pLocalCandidate )
+            {
+                pReturnContext = &pCtx->socketsContexts[i];
+            }
+        }
+    }
+
+    return pReturnContext;
+}
+
+static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint32_t i;
+    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
+    size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+    IceControllerSocketContext_t * pSocketContext;
+    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+        char ipFromBuffer[ INET_ADDRSTRLEN ];
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
+
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    {
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
+        {
+            pSocketContext = &( pCtx->socketsContexts[ i ] );
+
+            if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
+            {
+                result = IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 1U );
+            }
+            else if( pSocketContext->pLocalCandidate != NULL )
+            {
+                stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+
+                iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
+                                                            pSocketContext->pLocalCandidate,
+                                                            currentTimeSeconds,
+                                                            stunBuffer,
+                                                            &stunBufferLength );
+
+                if( iceResult == ICE_RESULT_NO_NEXT_ACTION )
+                {
+                    /*
+                    * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
+                    * has no pending operations and can be skipped for this iteration
+                    */
+                    LogVerbose( ( "No next action for local candidate ID: 0x%04x, idx: %d", pSocketContext->pLocalCandidate->candidateId, i ) );
+                    continue;
+                }
+                else if( iceResult != ICE_RESULT_OK )
+                {
+                    /* Fail to create connectivity check for this round, ignore and continue next round. */
+                    LogWarn( ( "Fail to create request for local candidate ID: 0x%04x, result: %d", pSocketContext->pLocalCandidate->candidateId, iceResult ) );
+                    continue;
+                }
+                else
+                {
+                    /* Do nothing, coverity happy. */
+                }
+
+                LogVerbose( ( "Sending allocation/binding/refresh request from IP/port: %s/%d",
+                              IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint,
+                                                                 ipFromBuffer,
+                                                                 sizeof( ipFromBuffer ) ),
+                              pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
+                IceControllerNet_LogStunPacket( stunBuffer,
+                                                stunBufferLength );
+
+                result = IceControllerNet_SendPacket( pCtx,
+                                                      pSocketContext,
+                                                      &( pSocketContext->pIceServer->iceEndpoint ),
+                                                      stunBuffer,
+                                                      stunBufferLength );
+
+                if( ( result != ICE_CONTROLLER_RESULT_OK ) &&
+                    ( result != ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED ) )
+                {
+                    LogWarn( ( "Unable to send packet to remote address, result: %d", result ) );
+                    continue;
+                }
+            }
+        }
+
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+    }
+    else
+    {
+        LogError( ( "Failed to process local candidates: mutex lock acquisition." ) );
+    }
+}
+
+static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t * pCtx,
+                                                         IceControllerSocketContext_t * pTargetSocketContext,
+                                                         IceCandidatePair_t * pTargetCandidatePair )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
+    size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+    IceControllerSocketContext_t * pSocketContext = pTargetSocketContext;
+    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+        char ipFromBuffer[ INET_ADDRSTRLEN ];
+        char ipToBuffer[ INET_ADDRSTRLEN ];
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+    IceEndpoint_t * pDestEndpoint = NULL;
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
+
+    LogVerbose( ( "Candidate Pair local/remote ID:0x%04x/0x%04x state is %d",
+                  pTargetCandidatePair->pLocalCandidate->candidateId,
+                  pTargetCandidatePair->pRemoteCandidate->candidateId,
+                  pTargetCandidatePair->state ) );
+
+    do
+    {
+        stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+        iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
+                                               pTargetCandidatePair,
+                                               currentTimeSeconds,
+                                               stunBuffer,
+                                               &stunBufferLength );
+
+        if( iceResult == ICE_RESULT_NO_NEXT_ACTION )
+        {
+            /*
+             * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
+             * has no pending operations and can be skipped for this iteration
+             */
+            LogVerbose( ( "No next action for candidate pair local/remote candidate ID 0x%x / 0x%x",
+                          pTargetCandidatePair->pLocalCandidate->candidateId,
+                          pTargetCandidatePair->pRemoteCandidate->candidateId ) );
+            break;
+        }
+        else if( iceResult != ICE_RESULT_OK )
+        {
+            LogWarn( ( "Fail to create next pair request, result: %d", iceResult ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_NEXT_PAIR_REQUEST;
+            break;
+        }
+        else if( pTargetCandidatePair->pRemoteCandidate == NULL )
+        {
+            /* No remote candidate mapped to this pair, ignore and continue next round. */
+            LogWarn( ( "No remote candidate available for this pair, skip this pair" ) );
+            break;
+        }
+        else
+        {
+            /* Do nothing, coverity happy. */
+        }
+
+        if( pSocketContext == NULL )
+        {
+            pSocketContext = FindSocketContextByLocalCandidate( pCtx,
+                                                                pTargetCandidatePair->pLocalCandidate );
+            if( pSocketContext == NULL )
+            {
+                LogWarn( ( "Not able to find socket context mapping to local candidate ID: 0x%x", pTargetCandidatePair->pLocalCandidate->candidateId ) );
+                break;
+            }
+        }
+
+        if( pTargetCandidatePair->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
+        {
+            pDestEndpoint = &( pSocketContext->pIceServer->iceEndpoint );
+        }
+        else
+        {
+            pDestEndpoint = &pTargetCandidatePair->pRemoteCandidate->endpoint;
+        }
+        LogVerbose( ( "Sending candidate pair request from IP/port: %s/%d to %s/%d",
+                      IceControllerNet_LogIpAddressInfo( &pTargetCandidatePair->pLocalCandidate->endpoint,
+                                                         ipFromBuffer,
+                                                         sizeof( ipFromBuffer ) ),
+                      pTargetCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
+                      IceControllerNet_LogIpAddressInfo( pDestEndpoint,
+                                                         ipToBuffer,
+                                                         sizeof( ipToBuffer ) ),
+                      pDestEndpoint->transportAddress.port ) );
+        LogDebug( ( "Sending STUN packet to candidate pair, pair state: %d, local/remote candidate ID: 0x%04x / 0x%04x",
+                    pTargetCandidatePair->state,
+                    pTargetCandidatePair->pLocalCandidate->candidateId,
+                    pTargetCandidatePair->pRemoteCandidate->candidateId ) );
+
+        IceControllerNet_LogStunPacket( stunBuffer,
+                                        stunBufferLength );
+
+        ret = IceControllerNet_SendPacket( pCtx,
+                                           pSocketContext,
+                                           pDestEndpoint,
+                                           stunBuffer,
+                                           stunBufferLength );
+
+        if( ( ret != ICE_CONTROLLER_RESULT_OK ) && ( ret != ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED ) )
+        {
+            LogWarn( ( "Unable to send packet to remote address, result: %d", ret ) );
+        }
+    } while( 0 );
+
+    return ret;
+}
+
+static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint32_t i;
+    size_t count;
+    IceControllerSocketContext_t * pSocketContext = NULL;
+    uint8_t isLocked = 0U;
+
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    {
+        isLocked = 1U;
+    }
+    else
+    {
+        LogError( ( "Failed to process candidate pairs: mutex lock acquisition." ) );
+        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Set the metric for first connectivity check request. */
+        if( pCtx->metrics.isFirstConnectivityRequest == 1 )
+        {
+            pCtx->metrics.isFirstConnectivityRequest = 0;
+            #if METRIC_PRINT_ENABLED
+            Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+            #endif
+        }
+
+        iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
+                                               &count );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate pair count, result: %d", iceResult ) );
+            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_CANDIDATE_PAIR_COUNT;
+        }
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < count; i++ )
+        {
+            pSocketContext = FindSocketContextByLocalCandidate( pCtx,
+                                                                pCtx->iceContext.pCandidatePairs[i].pLocalCandidate );
+            if( pSocketContext == NULL )
+            {
+                LogWarn( ( "Not able to find socket context mapping to local candidate ID: 0x%x", pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->candidateId ) );
+                continue;
+            }
+
+            result = HandleCandidatePairRequest( pCtx,
+                                                 pSocketContext,
+                                                 &pCtx->iceContext.pCandidatePairs[i] );
+
+        }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+    }
+}
+
+static void PrintCandidatesStatus( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint32_t i;
+    size_t candidatesCount;
+    uint8_t isLocked = 0U;
+
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    {
+        isLocked = 1U;
+    }
+    else
+    {
+        LogError( ( "Failed to print candidates' status: mutex lock acquisition." ) );
+        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        iceResult = Ice_GetLocalCandidateCount( &pCtx->iceContext,
+                                                &candidatesCount );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate count, result: %d", iceResult ) );
+            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_LOCAL_CANDIDATE_COUNT;
+        }
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < candidatesCount; i++ )
+        {
+            LogInfo( ( "Local candidate ID: 0x%04x, state is %d",
+                       pCtx->iceContext.pLocalCandidates[ i ].candidateId,
+                       pCtx->iceContext.pLocalCandidates[ i ].state ) );
+        }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+    }
+}
+
+static void PrintCandidatePairsStatus( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint32_t i;
+    size_t candidatePairsCount;
+    uint8_t isLocked = 0U;
+
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    {
+        isLocked = 1U;
+    }
+    else
+    {
+        LogError( ( "Failed to print candidate pairs' status: mutex lock acquisition." ) );
+        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
+                                               &candidatePairsCount );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate count, result: %d", iceResult ) );
+            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_LOCAL_CANDIDATE_COUNT;
+        }
+    }
+
+    if( result == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < candidatePairsCount; i++ )
+        {
+            LogInfo( ( "Local/Remote candidate ID: 0x%04x / 0x%04x, state is %d",
+                       pCtx->iceContext.pCandidatePairs[ i ].pLocalCandidate->candidateId,
+                       pCtx->iceContext.pCandidatePairs[ i ].pRemoteCandidate->candidateId,
+                       pCtx->iceContext.pCandidatePairs[ i ].state ) );
+        }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+    }
+}
+
+static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
+                                 IceControllerSocketContext_t * pChosenSocketContext )
+{
+    uint8_t skipProcess = 0;
+    int i;
+
+    if( ( pCtx == NULL ) || ( pChosenSocketContext == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: %p, pChosenSocketContext: %p", pCtx, pChosenSocketContext ) );
+        skipProcess = 1;
+    }
+
+    if( skipProcess == 0 )
+    {
+        LogDebug( ( "Closing sockets other than local candidate ID: 0x%04x", pChosenSocketContext->pLocalCandidate->candidateId ) );
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
+        {
+            if( pCtx->socketsContexts[i].socketFd != pChosenSocketContext->socketFd )
+            {
+                if( ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) && ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
+                {
+                    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+                    {
+                        /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
+                         * Thus keep the socket alive until it's terminated. */
+                        Ice_CloseCandidate( &pCtx->iceContext,
+                                            pCtx->socketsContexts[i].pLocalCandidate );
+                        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+                        LogDebug( ( "Keep socket of local relay candidate ID: 0x%04x for terminating TURN resource", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
+                    }
+                    else
+                    {
+                        LogError( ( "Failed to close ICE candidate: mutex lock acquisition." ) );
+                    }
+                }
+                else
+                {
+                    /* Release all unused socket contexts. */
+                    LogDebug( ( "Closing socket fd %d", pCtx->socketsContexts[i].socketFd ) );
+                    IceControllerNet_FreeSocketContext( pCtx,
+                                                        &pCtx->socketsContexts[i] );
+                }
+            }
+        }
+    }
+
+    if( skipProcess == 0 )
+    {
+        IceController_CloseOtherCandidatePairs( pCtx,
+                                                pChosenSocketContext->pCandidatePair );
+    }
+}
+
+void IceController_HandleEvent( IceControllerContext_t * pCtx,
+                                IceControllerEvent_t event )
+{
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+    }
+    else
+    {
+        switch( event )
+        {
+            case ICE_CONTROLLER_EVENT_DTLS_HANDSHAKE_DONE:
+            {
+                ReleaseOtherSockets( pCtx,
+                                     pCtx->pNominatedSocketContext );
+                LogDebug( ( "Released all other socket contexts" ) );
+                break;
+            }
+            default:
+            {
+                LogError( ( "Unknown ICE event: %d", event ) );
+                break;
+            }
+        }
+    }
+}
+
 IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t * pCtx,
                                                         IceRemoteCandidateInfo_t * pRemoteCandidate )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
+    uint8_t acceptCandidate = 0U;
     #if LIBRARY_LOG_LEVEL >= LOG_INFO
-        char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET6_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( ( pCtx == NULL ) || ( pRemoteCandidate == NULL ) )
@@ -244,132 +806,255 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        iceResult = Ice_AddRemoteCandidate( &pCtx->iceContext,
-                                            pRemoteCandidate );
-        if( iceResult != ICE_RESULT_OK )
+        switch( pRemoteCandidate->candidateType )
         {
-            LogError( ( "Fail to add remote candidate, result: %d", iceResult ) );
-            ret = ICE_CONTROLLER_RESULT_FAIL_ADD_REMOTE_CANDIDATE;
+            case ICE_CANDIDATE_TYPE_HOST:
+            {
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx,
+                                                      ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_HOST ) )
+                {
+                    acceptCandidate = 1U;
+                }
+                break;
+            }
+            case ICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
+            {
+                acceptCandidate = 1U;
+                break;
+            }
+            case ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+            {
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx,
+                                                      ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_SRFLX ) )
+                {
+                    acceptCandidate = 1U;
+                }
+                break;
+            }
+            case ICE_CANDIDATE_TYPE_RELAY:
+            {
+                if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx,
+                                                      ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ACCEPT_RELAY ) )
+                {
+                    acceptCandidate = 1U;
+                }
+                break;
+            }
+            default:
+                LogWarn( ( "Unknown candidate type: %d", pRemoteCandidate->candidateType ) );
+                break;
+        }
+
+        if( acceptCandidate == 0U )
+        {
+            LogInfo( ( "Dropping remote candidate with type: %d, NAT traversal config bitmap: 0x%x", pRemoteCandidate->candidateType, pCtx->natTraversalConfigBitmap ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_ADD_CANDIDATE_TYPE;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+        {
+            iceResult = Ice_AddRemoteCandidate( &pCtx->iceContext,
+                                                pRemoteCandidate );
+            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+            if( iceResult != ICE_RESULT_OK )
+            {
+                LogError( ( "Fail to add remote candidate, result: %d", iceResult ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_ADD_REMOTE_CANDIDATE;
+            }
+            else
+            {
+                LogVerbose( ( "Received remote candidate with IP/port: %s/%d",
+                              IceControllerNet_LogIpAddressInfo( pRemoteCandidate->pEndpoint,
+                                                                 ipBuffer,
+                                                                 sizeof( ipBuffer ) ),
+                              pRemoteCandidate->pEndpoint->transportAddress.port ) );
+
+                LogInfo( ( "Added new remote candidate with ID: 0x%04x", pCtx->iceContext.pRemoteCandidates[ pCtx->iceContext.numRemoteCandidates - 1 ].candidateId ) );
+            }
         }
         else
         {
-            LogVerbose( ( "Received remote candidate with IP/port: %s/%d",
-                          IceControllerNet_LogIpAddressInfo( pRemoteCandidate->pEndpoint,
-                                                             ipBuffer,
-                                                             sizeof( ipBuffer ) ),
-                          pRemoteCandidate->pEndpoint->transportAddress.port ) );
+            LogError( ( "Failed to add remote candidate: mutex lock acquisition." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
         }
     }
 
     return ret;
 }
 
-static IceControllerSocketContext_t * FindSocketContextByLocalCandidate( IceControllerContext_t * pCtx,
-                                                                         IceCandidate_t * pLocalCandidate )
-{
-    IceControllerSocketContext_t * pReturnContext = NULL;
-    uint32_t i;
-
-    if( pLocalCandidate != NULL )
-    {
-        for( i = 0; i < pCtx->socketsContextsCount; i++ )
-        {
-            if( pCtx->socketsContexts[i].pLocalCandidate == pLocalCandidate )
-            {
-                pReturnContext = &pCtx->socketsContexts[i];
-            }
-        }
-    }
-
-    return pReturnContext;
-}
-
-IceControllerResult_t IceController_SendConnectivityCheck( IceControllerContext_t * pCtx )
+IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    IceResult_t iceResult;
-    uint32_t i;
-    size_t pairCount;
-    uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
-    size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
-    IceControllerSocketContext_t * pSocketContext;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipFromBuffer[ INET_ADDRSTRLEN ];
-        char ipToBuffer[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+    uint64_t currentTimeMs = NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000;
 
-    if( pCtx->metrics.isFirstConnectivityRequest == 1 )
+    if( pCtx == NULL )
     {
-        pCtx->metrics.isFirstConnectivityRequest = 0;
-        Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
-    }
-
-    iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
-                                           &pairCount );
-    if( iceResult != ICE_RESULT_OK )
-    {
-        LogError( ( "Fail to query valid candidate pair count, result: %d", iceResult ) );
-        ret = ICE_CONTROLLER_RESULT_FAIL_QUERY_CANDIDATE_PAIR_COUNT;
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        for( i = 0; i < pairCount; i++ )
+        /* Send next candidate pair request for each candidate pair. */
+        ProcessCandidatePairs( pCtx );
+
+        /* Send request for local candidates. */
+        ProcessLocalCandidates( pCtx );
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Check timeout. */
+        if( currentTimeMs > pCtx->connectivityCheckTimeoutMs )
         {
-            ret = ICE_CONTROLLER_RESULT_OK;
+            LogWarn( ( "Unable to find valid connection before timeout for ICE combined name: %.*s, closing peer connection session.",
+                       ( int ) pCtx->iceContext.creds.combinedUsernameLength,
+                       pCtx->iceContext.creds.pCombinedUsername ) );
 
-            iceResult = Ice_CreateRequestForConnectivityCheck( &pCtx->iceContext,
-                                                               &pCtx->iceContext.pCandidatePairs[i],
-                                                               stunBuffer,
-                                                               &stunBufferLength );
-
-            if( iceResult != ICE_RESULT_OK )
+            /* Notify peer connection for closing the connection. */
+            if( pCtx->onIceEventCallbackFunc )
             {
-                /* Fail to create connectivity check for this round, ignore and continue next round. */
-                LogWarn( ( "Fail to create request for connectivity check, result: %d", iceResult ) );
-                continue;
-            }
-            else if( pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate == NULL )
-            {
-                /* No remote candidate mapped to this pair, ignore and continue next round. */
-                LogWarn( ( "No remote candidate available for this pair, skip this pair" ) );
-                continue;
+                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSE_NOTIFY,
+                                              NULL );
+                /* Re-set the timer. */
+                IceController_UpdateTimerInterval( pCtx,
+                                                   ICE_CONTROLLER_CLOSING_INTERVAL_MS );
             }
             else
             {
-                /* Do nothing, coverity happy. */
+                LogError( ( "There is no ICE event callback function set." ) );
             }
 
-            pSocketContext = FindSocketContextByLocalCandidate( pCtx,
-                                                                pCtx->iceContext.pCandidatePairs[i].pLocalCandidate );
-            if( pSocketContext == NULL )
+            ret = ICE_CONTROLLER_RESULT_CONNECTIVITY_CHECK_TIMEOUT;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Re-set the timer. */
+        IceController_UpdateTimerInterval( pCtx,
+                                           ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( currentTimeMs > pCtx->metrics.printCandidatePairsStatusMs )
+        {
+            LogInfo( ( "========== Print Candidates / Pairs States ==========" ) );
+            PrintCandidatesStatus( pCtx );
+            PrintCandidatePairsStatus( pCtx );
+            LogInfo( ( "========== Print Candidates / Pairs States ==========" ) );
+
+            pCtx->metrics.printCandidatePairsStatusMs = currentTimeMs + ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS;
+        }
+    }
+
+    return ret;
+}
+
+IceControllerResult_t IceController_PeriodConnectionCheck( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( ( pCtx->pNominatedSocketContext != NULL ) &&
+            ( pCtx->pNominatedSocketContext->pLocalCandidate != NULL ) )
+        {
+            /* Check nominated candidated pair lifetime by calling Ice_CreateNextPairRequest. */
+            if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
             {
-                LogWarn( ( "Not able to find socket context mapping, mapping local candidate: %p", pCtx->iceContext.pCandidatePairs[i].pLocalCandidate ) );
-                continue;
+                ( void ) HandleCandidatePairRequest( pCtx,
+                                                     pCtx->pNominatedSocketContext,
+                                                     pCtx->pNominatedSocketContext->pCandidatePair );
+                pthread_mutex_unlock( &( pCtx->iceMutex ) );
             }
-
-            LogVerbose( ( "Sending connecitivity check from IP/port: %s/%d to %s/%d",
-                          IceControllerNet_LogIpAddressInfo( &pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->endpoint,
-                                                             ipFromBuffer,
-                                                             sizeof( ipFromBuffer ) ),
-                          pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->endpoint.transportAddress.port,
-                          IceControllerNet_LogIpAddressInfo( &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint,
-                                                             ipToBuffer,
-                                                             sizeof( ipToBuffer ) ),
-                          pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint.transportAddress.port ) );
-            IceControllerNet_LogStunPacket( stunBuffer,
-                                            stunBufferLength );
-
-            ret = IceControllerNet_SendPacket( pCtx,
-                                               pSocketContext,
-                                               &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint,
-                                               stunBuffer,
-                                               stunBufferLength );
-            if( ret != ICE_CONTROLLER_RESULT_OK )
+            else
             {
-                LogWarn( ( "Unable to send packet to remote address, result: %d", ret ) );
-                continue;
+                LogError( ( "Failed to check nominated pair request: mutex lock acquisition." ) );
             }
+        }
+        else
+        {
+            LogError( ( "Unexpected behavior, nominated pair must be set before entering ready state. pNominatedSocketContext: %p", pCtx->pNominatedSocketContext ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_FIND_NOMINATED_CONTEXT;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Check local candidates to make sure all unused TURN session are released correctly. */
+        ProcessLocalCandidates( pCtx );
+
+        /* Reset the timer. */
+        IceController_UpdateTimerInterval( pCtx,
+                                           ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
+    }
+
+    return ret;
+}
+
+IceControllerResult_t IceController_AddressClosing( IceControllerContext_t * pCtx )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    uint32_t i;
+    uint8_t isAnySocketAlive = 0U;
+
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
+        {
+            if( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE )
+            {
+                isAnySocketAlive = 1U;
+                break;
+            }
+        }
+
+        /* Send request for local candidates. */
+        if( isAnySocketAlive != 0U )
+        {
+            ProcessLocalCandidates( pCtx );
+
+            IceController_UpdateTimerInterval( pCtx,
+                                               ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+        }
+        else
+        {
+            LogInfo( ( "Stopping polling for Ice controller." ) );
+            ( void ) IceControllerSocketListener_StopPolling( pCtx );
+
+            /* All sockets have been closed, notify peer connection. */
+            if( pCtx->onIceEventCallbackFunc )
+            {
+                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
+                                              NULL );
+            }
+            else
+            {
+                LogError( ( "There is no ICE event callback function set." ) );
+            }
+
+            IceController_UpdateState( pCtx,
+                                       ICE_CONTROLLER_STATE_CLOSED );
         }
     }
 
@@ -380,48 +1065,116 @@ IceControllerResult_t IceController_Destroy( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     int i;
+    uint8_t needReleaseTurnResource = 0U;
 
     if( pCtx == NULL )
     {
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
-    /* Stop polling */
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        LogInfo( ( "Stopping polling for Ice controller." ) );
-        ret = IceControllerSocketListener_StopPolling( pCtx );
+        switch( pCtx->state )
+        {
+            case ICE_CONTROLLER_STATE_NEW:
+                IceController_UpdateState( pCtx,
+                                           ICE_CONTROLLER_STATE_NONE );
+                break;
+            case ICE_CONTROLLER_STATE_READY:
+            case ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS:
+            case ICE_CONTROLLER_STATE_CLOSING:
+                IceController_UpdateState( pCtx,
+                                           ICE_CONTROLLER_STATE_CLOSING );
+                break;
+            case ICE_CONTROLLER_STATE_NONE:
+            case ICE_CONTROLLER_STATE_CLOSED:
+            default:
+                ret = ICE_CONTROLLER_RESULT_CONTEXT_ALREADY_CLOSED;
+                break;
+        }
     }
 
     /* Reset socket contexts. */
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        for( i = 0; i < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT; i++ )
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
-            if( pCtx->socketsContexts[i].state > ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE )
+            if( ( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE ) &&
+                ( pCtx->socketsContexts[i].pLocalCandidate != NULL ) &&
+                ( pCtx->socketsContexts[i].pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY ) )
+            {
+                if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+                {
+                    /* If the local candidate is a relay candidate, we have to send refresh request with lifetime 0 to end the session.
+                     * Thus keep the socket alive until it's terminated. */
+                    Ice_CloseCandidate( &pCtx->iceContext,
+                                        pCtx->socketsContexts[i].pLocalCandidate );
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                    needReleaseTurnResource = 1U;
+                }
+                else
+                {
+                    LogError( ( "Failed to close ICE candidate: mutex lock acquisition." ) );
+                }
+            }
+            else if( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE )
             {
                 IceControllerNet_FreeSocketContext( pCtx,
                                                     &pCtx->socketsContexts[i] );
             }
+            else
+            {
+                /* Empty else marker. */
+            }
         }
-        pCtx->socketsContextsCount = 0;
-        pCtx->pNominatedSocketContext = NULL;
+    }
+
+    /* Stop polling */
+    if( ( ret == ICE_CONTROLLER_RESULT_OK ) && ( needReleaseTurnResource == 0U ) )
+    {
+        LogInfo( ( "Stopping polling for Ice controller." ) );
+        ret = IceControllerSocketListener_StopPolling( pCtx );
+
+        /* All sockets have been closed, notify peer connection. */
+        if( pCtx->onIceEventCallbackFunc )
+        {
+            pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                          ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
+                                          NULL );
+        }
+        else
+        {
+            LogError( ( "There is no ICE event callback function set." ) );
+        }
+
+        IceController_UpdateState( pCtx,
+                                   ICE_CONTROLLER_STATE_CLOSED );
+    }
+    else if( ( ret == ICE_CONTROLLER_RESULT_OK ) && ( needReleaseTurnResource != 0U ) )
+    {
+        LogInfo( ( "Waiting for TURN session to be released." ) );
+        IceController_UpdateTimerInterval( pCtx,
+                                           ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     return ret;
 }
 
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
-                                          OnIceEventCallback_t onIceEventCallbackFunc,
-                                          void * pOnIceEventCallbackContext,
-                                          OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                                          void * pOnRecvNonStunPacketCallbackContext )
+                                          IceControllerInitConfig_t * pInitConfig )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TimerControllerResult_t retTimer;
+    int i;
 
-    if( pCtx == NULL )
+    if( ( pCtx == NULL ) || ( pInitConfig == NULL ) )
     {
+        LogError( ( "Invalid parameters, pCtx: %p, pInitConfig: %p", pCtx, pInitConfig ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -431,18 +1184,24 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                 0,
                 sizeof( IceControllerContext_t ) );
 
-        pCtx->onIceEventCallbackFunc = onIceEventCallbackFunc;
-        pCtx->pOnIceEventCustomContext = pOnIceEventCallbackContext;
+        IceController_UpdateState( pCtx,
+                                   ICE_CONTROLLER_STATE_NEW );
+
+        pCtx->onIceEventCallbackFunc = pInitConfig->onIceEventCallbackFunc;
+        pCtx->pOnIceEventCustomContext = pInitConfig->pOnIceEventCallbackContext;
 
         /* Initialize metrics. */
         pCtx->metrics.isFirstConnectivityRequest = 1;
+
+        /* Store NAT traversal config. */
+        pCtx->natTraversalConfigBitmap = pInitConfig->natTraversalConfigBitmap;
     }
 
     /* Initialize timer for connectivity check. */
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        retTimer = TimerController_Create( &pCtx->connectivityCheckTimer,
-                                           onConnectivityCheckTimerExpire,
+        retTimer = TimerController_Create( &pCtx->timerHandler,
+                                           OnTimerExpire,
                                            pCtx );
         if( retTimer != TIMER_CONTROLLER_RESULT_OK )
         {
@@ -453,11 +1212,31 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
+        for( i = 0; i < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT; i++ )
+        {
+            pCtx->socketsContexts[i].socketFd = -1;
+            pCtx->socketsContexts[i].state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
         /* Mutex can only be created in executing scheduler. */
         if( pthread_mutex_init( &( pCtx->socketMutex ),
                                 NULL ) != 0 )
         {
-            LogError( ( "Fail to create mutex for Ice controller." ) );
+            LogError( ( "Fail to create socket mutex for Ice controller." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_CREATE;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Mutex can only be created in executing scheduler. */
+        if( pthread_mutex_init( &( pCtx->iceMutex ),
+                                NULL ) != 0 )
+        {
+            LogError( ( "Fail to create ICE mutex for Ice controller." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_CREATE;
         }
     }
@@ -466,8 +1245,8 @@ IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         ret = IceControllerSocketListener_Init( pCtx,
-                                                onRecvNonStunPacketFunc,
-                                                pOnRecvNonStunPacketCallbackContext );
+                                                pInitConfig->onRecvNonStunPacketFunc,
+                                                pInitConfig->pOnRecvNonStunPacketCallbackContext );
     }
 
     return ret;
@@ -480,7 +1259,7 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecod
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     StringUtilsResult_t stringResult;
     const char * pCandidateString;
-    size_t candidateStringLength;
+    size_t candidateStringLength = 0;
     const char * pCurr, * pTail, * pNext;
     size_t tokenLength;
     IceControllerCandidateDeserializerState_t deserializerState = ICE_CONTROLLER_CANDIDATE_DESERIALIZER_STATE_FOUNDATION;
@@ -629,7 +1408,7 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecod
                                   ICE_CONTROLLER_CANDIDATE_TYPE_RELAY_STRING,
                                   tokenLength ) == 0 )
                 {
-                    pCandidate->candidateType = ICE_CANDIDATE_TYPE_RELAYED;
+                    pCandidate->candidateType = ICE_CANDIDATE_TYPE_RELAY;
                 }
                 else
                 {
@@ -668,9 +1447,9 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
-    TimerControllerResult_t retTimer;
     IceInitInfo_t iceInitInfo;
     int i;
+    uint64_t currentTimeMs = NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000;
 
     if( ( pCtx == NULL ) ||
         ( pLocalUserName == NULL ) || ( pLocalPassword == NULL ) ||
@@ -709,19 +1488,31 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         iceInitInfo.remoteCandidatesArrayLength = ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT;
         iceInitInfo.pCandidatePairsArray = pCtx->candidatePairsBuffer;
         iceInitInfo.candidatePairsArrayLength = ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT;
+        iceInitInfo.pTurnServerArray = pCtx->turnServersBuffer;
+        iceInitInfo.turnServerArrayLength = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
         iceInitInfo.cryptoFunctions.randomFxn = IceController_CalculateRandom;
         iceInitInfo.cryptoFunctions.crc32Fxn = IceController_CalculateCrc32;
         iceInitInfo.cryptoFunctions.hmacFxn = IceController_MbedtlsHmac;
+        iceInitInfo.cryptoFunctions.md5Fxn = IceController_MbedtlsMd5;
         iceInitInfo.isControlling = 0;
         iceInitInfo.pStunBindingRequestTransactionIdStore = &pCtx->transactionIdStore;
 
-        iceResult = Ice_Init( &pCtx->iceContext,
-                              &iceInitInfo );
-
-        if( iceResult != ICE_RESULT_OK )
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
         {
-            LogError( ( "Fail to create ICE agent, result: %d", iceResult ) );
-            ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_ICE_AGENT;
+            iceResult = Ice_Init( &pCtx->iceContext,
+                                  &iceInitInfo );
+            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+            if( iceResult != ICE_RESULT_OK )
+            {
+                LogError( ( "Fail to create ICE agent, result: %d", iceResult ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_ICE_AGENT;
+            }
+        }
+        else
+        {
+            LogError( ( "Failed to initialize ICE context: mutex lock acquisition." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
         }
     }
 
@@ -730,16 +1521,33 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
     {
         for( i = 0; i < ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT; i++ )
         {
-            pCtx->socketsContexts[i].socketFd = -1;
+            if( pCtx->socketsContexts[i].socketFd >= 0 )
+            {
+                /* Force close socket before next round. */
+                IceControllerNet_FreeSocketContext( pCtx,
+                                                    &pCtx->socketsContexts[i] );
+            }
         }
+        pCtx->socketsContextsCount = 0;
+        pCtx->pNominatedSocketContext = NULL;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        Metric_StartEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
-        Metric_StartEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
-        ret = IceControllerNet_AddLocalCandidates( pCtx );
-        Metric_EndEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
+        IceController_UpdateState( pCtx,
+                                   ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS );
+        pCtx->metrics.printCandidatePairsStatusMs = currentTimeMs + ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        IceControllerNet_AddLocalCandidates( pCtx );
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        /* Update the connectivity timeout before starting connectivity check. */
+        pCtx->connectivityCheckTimeoutMs = currentTimeMs + ICE_CONTROLLER_CONNECTIVITY_CHECK_TIMEOUT_MS;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -749,21 +1557,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        retTimer = TimerController_IsTimerSet( &pCtx->connectivityCheckTimer );
-        if( retTimer == TIMER_CONTROLLER_RESULT_NOT_SET )
-        {
-            /* The timer is not set before, send the request immendiately and start connectivity check timer. */
-            LogDebug( ( "Trigger connectivity check timer." ) );
-            onConnectivityCheckTimerExpire( pCtx );
-            retTimer = TimerController_SetTimer( &pCtx->connectivityCheckTimer,
-                                                 ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS,
-                                                 ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
-            if( retTimer != TIMER_CONTROLLER_RESULT_OK )
-            {
-                LogError( ( "Fail to start connectivity timer, result: %d", retTimer ) );
-                ret = ICE_CONTROLLER_RESULT_FAIL_SET_CONNECTIVITY_CHECK_TIMER;
-            }
-        }
+        OnTimerExpire( pCtx );
     }
 
     return ret;
@@ -774,6 +1568,12 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
                                                       size_t bufferLength )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    const uint8_t * pSendingBuffer = pBuffer;
+    size_t sendingBufferLength = bufferLength;
+    size_t turnBufferLength;
+    IceEndpoint_t * pDestEndpoint = NULL;
+    uint8_t turnSendBuffer[ ICE_CONTROLLER_MAX_MTU ];
 
     if( ( pCtx == NULL ) ||
         ( pBuffer == NULL ) )
@@ -790,14 +1590,76 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
             LogWarn( ( "The connection of this session is not ready." ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_CONNECTION_NOT_READY;
         }
+        else if( pCtx->pNominatedSocketContext->pLocalCandidate == NULL )
+        {
+            LogWarn( ( "The connection of this session is not ready, local candidate pointer is NULL" ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_CONNECTION_NOT_READY;
+        }
         else if( pCtx->pNominatedSocketContext->pRemoteCandidate == NULL )
         {
-            LogWarn( ( "The connection of this session is not ready." ) );
+            LogWarn( ( "The connection of this session is not ready, remote candidate pointer is NULL" ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_CONNECTION_NOT_READY;
+        }
+        else if( pCtx->pNominatedSocketContext->pCandidatePair == NULL )
+        {
+            LogWarn( ( "The connection of this session is not ready, candidate pair pointer is NULL" ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_CONNECTION_NOT_READY;
         }
         else
         {
-            /* Do nothing. */
+            pDestEndpoint = &pCtx->pNominatedSocketContext->pRemoteCandidate->endpoint;
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( pCtx->pNominatedSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
+        {
+            if( bufferLength + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH > ICE_CONTROLLER_MAX_MTU )
+            {
+                LogError( ( "The sending buffer is larger than MTU, length: %ld", sendingBufferLength ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_EXCEED_MTU;
+            }
+            else
+            {
+                memcpy( turnSendBuffer + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH,
+                        pBuffer,
+                        bufferLength );
+
+                if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+                {
+                    turnBufferLength = ICE_CONTROLLER_MAX_MTU;
+                    iceResult = Ice_CreateTurnChannelDataMessage( &pCtx->iceContext,
+                                                                  pCtx->pNominatedSocketContext->pCandidatePair,
+                                                                  turnSendBuffer + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH,
+                                                                  bufferLength,
+                                                                  &turnBufferLength );
+                    pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+                    if( ( iceResult != ICE_RESULT_OK ) && ( iceResult != ICE_RESULT_TURN_CHANNEL_DATA_HEADER_NOT_REQUIRED ) )
+                    {
+                        LogError( ( "Fail to create TURN channel data, result: %d", iceResult ) );
+                        ret = ICE_CONTROLLER_RESULT_FAIL_CREATE_TURN_CHANNEL_DATA;
+                    }
+                    else
+                    {
+                        /* Redirect the output to the TURN server instead of remote endpoint. */
+                        pDestEndpoint = &( pCtx->pNominatedSocketContext->pIceServer->iceEndpoint );
+
+                        if( iceResult == ICE_RESULT_OK )
+                        {
+                            /* Set sending buffer/length to turn buffer since TURN channel header has been appended successfully. */
+                            pSendingBuffer = turnSendBuffer;
+                            sendingBufferLength = turnBufferLength;
+                        }
+                    }
+                }
+                else
+                {
+                    LogError( ( "Failed to create TURN channel data message: mutex lock acquisition." ) );
+                    ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+                }
+            }
         }
     }
 
@@ -805,32 +1667,71 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
     {
         ret = IceControllerNet_SendPacket( pCtx,
                                            pCtx->pNominatedSocketContext,
-                                           &pCtx->pNominatedSocketContext->pRemoteCandidate->endpoint,
-                                           pBuffer,
-                                           bufferLength );
+                                           pDestEndpoint,
+                                           pSendingBuffer,
+                                           sendingBufferLength );
     }
 
     return ret;
 }
 
 IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t * pCtx,
-                                                        IceControllerIceServer_t * pIceServers,
-                                                        size_t iceServersCount )
+                                                        IceControllerIceServerConfig_t * pIceServersConfig )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceControllerResult_t dnsResult;
     int i;
 
     if( ( pCtx == NULL ) ||
-        ( pIceServers == NULL ) )
+        ( pIceServersConfig == NULL ) )
     {
-        LogError( ( "Invalid input, pCtx: %p, pIceServers: %p", pCtx, pIceServers ) );
+        LogError( ( "Invalid input, pCtx: %p, pIceServersConfig: %p", pCtx, pIceServersConfig ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( pIceServersConfig->rootCaPathLength > ICE_CONTROLLER_MAX_PATH_LENGTH )
+    {
+        LogError( ( "The root CA path is longer than buffer size, length: %lu", pIceServersConfig->rootCaPathLength ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( pIceServersConfig->rootCaPemLength > ICE_CONTROLLER_MAX_PEM_LENGTH )
+    {
+        LogError( ( "The root CA PEM is larger than buffer size, length: %lu", pIceServersConfig->rootCaPemLength ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        for( i = 0; i < iceServersCount; i++ )
+        if( pIceServersConfig->rootCaPathLength > 0U )
+        {
+            memcpy( &pCtx->rootCaPath,
+                    pIceServersConfig->pRootCaPath,
+                    pIceServersConfig->rootCaPathLength );
+            pCtx->rootCaPathLength = pIceServersConfig->rootCaPathLength;
+            pCtx->rootCaPath[ pIceServersConfig->rootCaPathLength ] = '\0';
+        }
+
+        if( pIceServersConfig->rootCaPemLength > 0U )
+        {
+            memcpy( &pCtx->rootCaPem,
+                    pIceServersConfig->pRootCaPem,
+                    pIceServersConfig->rootCaPemLength );
+            pCtx->rootCaPemLength = pIceServersConfig->rootCaPemLength;
+            pCtx->rootCaPem[ pIceServersConfig->rootCaPemLength ] = '\0';
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        memset( pCtx->iceServers,
+                0,
+                sizeof( pCtx->iceServers ) );
+        pCtx->iceServersCount = 0;
+
+        for( i = 0; i < pIceServersConfig->iceServersCount; i++ )
         {
             if( pCtx->iceServersCount >= ICE_CONTROLLER_MAX_ICE_SERVER_COUNT )
             {
@@ -839,7 +1740,7 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
             }
 
             memcpy( &pCtx->iceServers[ pCtx->iceServersCount ],
-                    &pIceServers[i],
+                    &pIceServersConfig->pIceServers[i],
                     sizeof( IceControllerIceServer_t ) );
             dnsResult = IceControllerNet_DnsLookUp( pCtx->iceServers[ pCtx->iceServersCount ].url,
                                                     &pCtx->iceServers[ pCtx->iceServersCount ].iceEndpoint.transportAddress );
@@ -852,4 +1753,121 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
     }
 
     return ret;
+}
+
+void IceController_CloseOtherCandidatePairs( IceControllerContext_t * pCtx,
+                                             IceCandidatePair_t * pCandidatePair )
+{
+    uint8_t skipProcess = 0;
+    uint8_t isLocked = 0U;
+    size_t i;
+    IceResult_t iceResult;
+    size_t count;
+
+    if( ( pCtx == NULL ) || ( pCandidatePair == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: %p, pCandidatePair: %p", pCtx, pCandidatePair ) );
+        skipProcess = 1;
+    }
+
+    if( skipProcess == 0 )
+    {
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+        {
+            isLocked = 1U;
+        }
+        else
+        {
+            LogError( ( "Failed to release non-selected candidate pairs: mutex lock acquisition." ) );
+            skipProcess = 1;
+        }
+    }
+
+    if( skipProcess == 0 )
+    {
+        iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
+                                               &count );
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogError( ( "Fail to query valid candidate pair count, result: %d", iceResult ) );
+            skipProcess = 1;
+        }
+    }
+
+    if( skipProcess == 0 )
+    {
+        for( i = 0; i < count; i++ )
+        {
+            if( &pCtx->iceContext.pCandidatePairs[i] != pCandidatePair )
+            {
+                iceResult = Ice_CloseCandidatePair( &pCtx->iceContext,
+                                                    &pCtx->iceContext.pCandidatePairs[i] );
+                if( iceResult != ICE_RESULT_OK )
+                {
+                    LogWarn( ( "Fail to close candidate pair, result: %d", iceResult ) );
+                    continue;
+                }
+            }
+        }
+    }
+
+    if( isLocked != 0U )
+    {
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+    }
+}
+
+void IceController_UpdateState( IceControllerContext_t * pCtx,
+                                IceControllerState_t newState )
+{
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+    }
+    else
+    {
+        pCtx->state = newState;
+    }
+}
+
+void IceController_UpdateTimerInterval( IceControllerContext_t * pCtx,
+                                        uint32_t newIntervalMs )
+{
+    TimerControllerResult_t retTimer;
+    uint8_t skipProcess = 0U;
+
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input, pCtx: %p", pCtx ) );
+        skipProcess = 1U;
+    }
+
+    if( skipProcess == 0U )
+    {
+        retTimer = TimerController_IsTimerSet( &pCtx->timerHandler );
+        if( retTimer == TIMER_CONTROLLER_RESULT_SET )
+        {
+            TimerController_Reset( &pCtx->timerHandler );
+        }
+    }
+
+    if( skipProcess == 0U )
+    {
+        retTimer = TimerController_SetTimer( &pCtx->timerHandler,
+                                             newIntervalMs,
+                                             0U );
+        if( retTimer != TIMER_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to re-start timer, result: %d, intervalMs: %u", retTimer, newIntervalMs ) );
+        }
+        else if( newIntervalMs != pCtx->timerIntervalMs )
+        {
+            LogInfo( ( "Timer interval is updated from %u to %u", pCtx->timerIntervalMs, newIntervalMs ) );
+            pCtx->timerIntervalMs = newIntervalMs;
+        }
+        else
+        {
+            LogVerbose( ( "Timer interval is %u", pCtx->timerIntervalMs ) );
+        }
+    }
 }
