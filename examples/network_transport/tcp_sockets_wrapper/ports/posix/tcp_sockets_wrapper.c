@@ -119,28 +119,29 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
 
     if( xRet == TCP_SOCKETS_ERRNO_NONE )
     {
-        setsockopt( xFd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeoutMs, sizeof( receiveTimeoutMs ) );
-        setsockopt( xFd, SOL_SOCKET, SO_SNDTIMEO, &sendTimeoutMs, sizeof( sendTimeoutMs ) );
-    }
-
-    if( ( xRet == TCP_SOCKETS_ERRNO_NONE ) &&
-        ( receiveTimeoutMs == 0 ) &&
-        ( sendTimeoutMs == 0 ) )
-    {
-        fcntlFlags = fcntl( xFd, F_GETFL, 0 );
-        if( fcntlFlags < 0 )
+        if( ( receiveTimeoutMs == 0 ) &&
+            ( sendTimeoutMs == 0 ) )
         {
-            LogError( ( "fcntl() failed with errno: %d", errno ) );
-            xRet = TCP_SOCKETS_ERRNO_ERROR;
-        }
-        else
-        {
-            fcntlFlags |= O_NONBLOCK;
-            if( fcntl( xFd, F_SETFL, fcntlFlags ) < 0 )
+            fcntlFlags = fcntl( xFd, F_GETFL, 0 );
+            if( fcntlFlags < 0 )
             {
                 LogError( ( "fcntl() failed with errno: %d", errno ) );
                 xRet = TCP_SOCKETS_ERRNO_ERROR;
             }
+            else
+            {
+                fcntlFlags |= O_NONBLOCK;
+                if( fcntl( xFd, F_SETFL, fcntlFlags ) < 0 )
+                {
+                    LogError( ( "fcntl() failed with errno: %d", errno ) );
+                    xRet = TCP_SOCKETS_ERRNO_ERROR;
+                }
+            }
+        }
+        else
+        {
+            setsockopt( xFd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeoutMs, sizeof( receiveTimeoutMs ) );
+            setsockopt( xFd, SOL_SOCKET, SO_SNDTIMEO, &sendTimeoutMs, sizeof( sendTimeoutMs ) );
         }
     }
 
