@@ -147,26 +147,26 @@ static void setOptionalConfigurations( SSLContext_t * pSslContext,
 /**
  * @brief Setup TLS by initializing contexts and setting configurations.
  *
- * @param[in] pNetworkContext Network context.
+ * @param[in] pTlsNetworkContext Network context.
  * @param[in] pHostName Remote host name, used for server name indication.
  * @param[in] pNetworkCredentials TLS setup parameters.
  *
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_INSUFFICIENT_MEMORY, #TLS_TRANSPORT_INVALID_CREDENTIALS,
  * or #TLS_TRANSPORT_INTERNAL_ERROR.
  */
-static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
+static TlsTransportStatus_t tlsSetup( TlsNetworkContext_t * pTlsNetworkContext,
                                       const char * pHostName,
                                       const NetworkCredentials_t * pNetworkCredentials );
 
 /**
  * @brief Perform the TLS handshake on a TCP connection.
  *
- * @param[in] pNetworkContext Network context.
+ * @param[in] pTlsNetworkContext Network context.
  * @param[in] pNetworkCredentials TLS setup parameters.
  *
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_HANDSHAKE_FAILED, or #TLS_TRANSPORT_INTERNAL_ERROR.
  */
-static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
+static TlsTransportStatus_t tlsHandshake( TlsNetworkContext_t * pTlsNetworkContext,
                                           const NetworkCredentials_t * pNetworkCredentials,
                                           uint32_t flags );
 
@@ -460,7 +460,7 @@ static void setOptionalConfigurations( SSLContext_t * pSslContext,
 }
 /*-----------------------------------------------------------*/
 
-static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
+static TlsTransportStatus_t tlsSetup( TlsNetworkContext_t * pTlsNetworkContext,
                                       const char * pHostName,
                                       const NetworkCredentials_t * pNetworkCredentials )
 {
@@ -468,13 +468,13 @@ static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
     int32_t mbedtlsError = 0;
 
-    assert( pNetworkContext != NULL );
-    assert( pNetworkContext->pParams != NULL );
+    assert( pTlsNetworkContext != NULL );
+    assert( pTlsNetworkContext->pParams != NULL );
     assert( pHostName != NULL );
     assert( pNetworkCredentials != NULL );
     assert( pNetworkCredentials->pRootCa != NULL || pNetworkCredentials->pRootCaPath != NULL );
 
-    pTlsTransportParams = pNetworkContext->pParams;
+    pTlsTransportParams = pTlsNetworkContext->pParams;
     /* Initialize the mbed TLS context structures. */
     sslContextInit( &( pTlsTransportParams->sslContext ) );
 
@@ -515,7 +515,7 @@ static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
 }
 /*-----------------------------------------------------------*/
 
-static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
+static TlsTransportStatus_t tlsHandshake( TlsNetworkContext_t * pTlsNetworkContext,
                                           const NetworkCredentials_t * pNetworkCredentials,
                                           uint32_t flags )
 {
@@ -523,11 +523,11 @@ static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
     int32_t mbedtlsError = 0;
 
-    assert( pNetworkContext != NULL );
-    assert( pNetworkContext->pParams != NULL );
+    assert( pTlsNetworkContext != NULL );
+    assert( pTlsNetworkContext->pParams != NULL );
     assert( pNetworkCredentials != NULL );
 
-    pTlsTransportParams = pNetworkContext->pParams;
+    pTlsTransportParams = pTlsNetworkContext->pParams;
     /* Initialize the mbed TLS secured connection context. */
     mbedtlsError = mbedtls_ssl_setup( &( pTlsTransportParams->sslContext.context ),
                                       &( pTlsTransportParams->sslContext.config ) );
@@ -567,12 +567,12 @@ static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
         {
             do
             {
-                returnStatus = TLS_FreeRTOS_ContinueHandshake( pNetworkContext );
+                returnStatus = TLS_FreeRTOS_ContinueHandshake( pTlsNetworkContext );
             } while( returnStatus == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS );
         }
         else
         {
-            returnStatus = TLS_FreeRTOS_ContinueHandshake( pNetworkContext );
+            returnStatus = TLS_FreeRTOS_ContinueHandshake( pTlsNetworkContext );
         }
 
         if( returnStatus ==  TLS_TRANSPORT_HANDSHAKE_FAILED )
@@ -586,7 +586,7 @@ static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
         else
         {
             LogInfo( ( "(Network connection %p) TLS handshake successful.",
-                       pNetworkContext ) );
+                       pTlsNetworkContext ) );
         }
     }
 
@@ -657,21 +657,21 @@ static TlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyConte
 }
 /*-----------------------------------------------------------*/
 
-TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( NetworkContext_t * pNetworkContext )
+TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( TlsNetworkContext_t * pTlsNetworkContext )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
     int32_t mbedtlsError = 0;
 
-    if( ( pNetworkContext == NULL ) ||
-        ( pNetworkContext->pParams == NULL ) )
+    if( ( pTlsNetworkContext == NULL ) ||
+        ( pTlsNetworkContext->pParams == NULL ) )
     {
         returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
     }
 
     if( returnStatus == TLS_TRANSPORT_SUCCESS )
     {
-        pTlsTransportParams = pNetworkContext->pParams;
+        pTlsTransportParams = pTlsNetworkContext->pParams;
         mbedtlsError = mbedtls_ssl_handshake( &( pTlsTransportParams->sslContext.context ) );
 
         if( ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) ||
@@ -689,7 +689,7 @@ TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( NetworkContext_t * pNetwork
 }
 /*-----------------------------------------------------------*/
 
-TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
+TlsTransportStatus_t TLS_FreeRTOS_Connect( TlsNetworkContext_t * pTlsNetworkContext,
                                            const char * pHostName,
                                            uint16_t port,
                                            const NetworkCredentials_t * pNetworkCredentials,
@@ -702,14 +702,14 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     int32_t socketStatus = 0;
     int32_t isSocketConnected = 0, isTlsSetup = 0;
 
-    if( ( pNetworkContext == NULL ) ||
-        ( pNetworkContext->pParams == NULL ) ||
+    if( ( pTlsNetworkContext == NULL ) ||
+        ( pTlsNetworkContext->pParams == NULL ) ||
         ( pHostName == NULL ) ||
         ( pNetworkCredentials == NULL ) )
     {
-        LogError( ( "Invalid input parameter(s): Arguments cannot be NULL. pNetworkContext=%p, "
+        LogError( ( "Invalid input parameter(s): Arguments cannot be NULL. pTlsNetworkContext=%p, "
                     "pHostName=%p, pNetworkCredentials=%p.",
-                    pNetworkContext,
+                    pTlsNetworkContext,
                     pHostName,
                     pNetworkCredentials ) );
         returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
@@ -728,7 +728,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     /* Establish a TCP connection with the server. */
     if( returnStatus == TLS_TRANSPORT_SUCCESS )
     {
-        pTlsTransportParams = pNetworkContext->pParams;
+        pTlsTransportParams = pTlsNetworkContext->pParams;
 
         /* Initialize tcpSocket. */
         pTlsTransportParams->tcpSocket = NULL;
@@ -760,7 +760,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     /* Initialize TLS contexts and set credentials. */
     if( returnStatus == TLS_TRANSPORT_SUCCESS )
     {
-        returnStatus = tlsSetup( pNetworkContext, pHostName, pNetworkCredentials );
+        returnStatus = tlsSetup( pTlsNetworkContext, pHostName, pNetworkCredentials );
     }
 
     /* Perform TLS handshake. */
@@ -768,7 +768,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     {
         isTlsSetup = 1;
 
-        returnStatus = tlsHandshake( pNetworkContext, pNetworkCredentials, flags );
+        returnStatus = tlsHandshake( pTlsNetworkContext, pNetworkCredentials, flags );
     }
 
     /* Clean up on failure. */
@@ -791,7 +791,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
     else
     {
         LogInfo( ( "(Network connection %p) Connection to %s established.",
-                   pNetworkContext,
+                   pTlsNetworkContext,
                    pHostName ) );
     }
 
@@ -799,15 +799,15 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
 }
 /*-----------------------------------------------------------*/
 
-TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext )
+TlsTransportStatus_t TLS_FreeRTOS_Disconnect( TlsNetworkContext_t * pTlsNetworkContext )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     int32_t tlsStatus = 0;
     TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
 
-    if( ( pNetworkContext != NULL ) && ( pNetworkContext->pParams != NULL ) )
+    if( ( pTlsNetworkContext != NULL ) && ( pTlsNetworkContext->pParams != NULL ) )
     {
-        pTlsTransportParams = pNetworkContext->pParams;
+        pTlsTransportParams = pTlsNetworkContext->pParams;
         /* Attempting to terminate TLS connection. */
         tlsStatus = ( int32_t ) mbedtls_ssl_close_notify( &( pTlsTransportParams->sslContext.context ) );
 
@@ -818,12 +818,12 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext
             if( tlsStatus == 0 )
             {
                 LogInfo( ( "(Network connection %p) TLS close-notify sent.",
-                           pNetworkContext ) );
+                           pTlsNetworkContext ) );
             }
             else
             {
                 LogError( ( "(Network connection %p) Failed to send TLS close-notify: mbedTLSError= %s : %s.",
-                            pNetworkContext,
+                            pTlsNetworkContext,
                             mbedtlsHighLevelCodeOrDefault( tlsStatus ),
                             mbedtlsLowLevelCodeOrDefault( tlsStatus ) ) );
                 returnStatus = TLS_TRANSPORT_INTERNAL_ERROR;
@@ -834,7 +834,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext
             /* WANT_READ and WANT_WRITE can be ignored. Logging for debugging purposes. */
             LogInfo( ( "(Network connection %p) TLS close-notify sent; "
                        "received %s as the TLS status can be ignored for close-notify.",
-                       pNetworkContext,
+                       pTlsNetworkContext,
                        ( tlsStatus == MBEDTLS_ERR_SSL_WANT_READ ) ? "WANT_READ" : "WANT_WRITE" ) );
         }
 
@@ -846,8 +846,8 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext
     }
     else
     {
-        LogError( ( "Invalid input parameter(s): Arguments cannot be NULL. pNetworkContext=%p.",
-                    pNetworkContext ) );
+        LogError( ( "Invalid input parameter(s): Arguments cannot be NULL. pTlsNetworkContext=%p.",
+                    pTlsNetworkContext ) );
         returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
     }
 
@@ -855,16 +855,16 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext
 }
 /*-----------------------------------------------------------*/
 
-int32_t TLS_FreeRTOS_recv( NetworkContext_t * pNetworkContext,
+int32_t TLS_FreeRTOS_recv( TlsNetworkContext_t * pTlsNetworkContext,
                            void * pBuffer,
                            size_t bytesToRecv )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     int32_t tlsStatus = 0;
 
-    if( ( pNetworkContext == NULL ) || ( pNetworkContext->pParams == NULL ) )
+    if( ( pTlsNetworkContext == NULL ) || ( pTlsNetworkContext->pParams == NULL ) )
     {
-        LogError( ( "invalid input, pNetworkContext=%p", pNetworkContext ) );
+        LogError( ( "invalid input, pTlsNetworkContext=%p", pTlsNetworkContext ) );
         tlsStatus = -1;
     }
     else if( pBuffer == NULL )
@@ -879,7 +879,7 @@ int32_t TLS_FreeRTOS_recv( NetworkContext_t * pNetworkContext,
     }
     else
     {
-        pTlsTransportParams = pNetworkContext->pParams;
+        pTlsTransportParams = pTlsNetworkContext->pParams;
 
         tlsStatus = ( int32_t ) mbedtls_ssl_read( &( pTlsTransportParams->sslContext.context ),
                                                   pBuffer,
@@ -909,16 +909,16 @@ int32_t TLS_FreeRTOS_recv( NetworkContext_t * pNetworkContext,
 }
 /*-----------------------------------------------------------*/
 
-int32_t TLS_FreeRTOS_send( NetworkContext_t * pNetworkContext,
+int32_t TLS_FreeRTOS_send( TlsNetworkContext_t * pTlsNetworkContext,
                            const void * pBuffer,
                            size_t bytesToSend )
 {
     TlsTransportParams_t * pTlsTransportParams = NULL;
     int32_t tlsStatus = 0;
 
-    if( ( pNetworkContext == NULL ) || ( pNetworkContext->pParams == NULL ) )
+    if( ( pTlsNetworkContext == NULL ) || ( pTlsNetworkContext->pParams == NULL ) )
     {
-        LogError( ( "invalid input, pNetworkContext=%p", pNetworkContext ) );
+        LogError( ( "invalid input, pTlsNetworkContext=%p", pTlsNetworkContext ) );
         tlsStatus = -1;
     }
     else if( pBuffer == NULL )
@@ -933,7 +933,7 @@ int32_t TLS_FreeRTOS_send( NetworkContext_t * pNetworkContext,
     }
     else
     {
-        pTlsTransportParams = pNetworkContext->pParams;
+        pTlsTransportParams = pTlsNetworkContext->pParams;
 
         tlsStatus = ( int32_t ) mbedtls_ssl_write( &( pTlsTransportParams->sslContext.context ),
                                                    pBuffer,
@@ -968,13 +968,13 @@ int32_t TLS_FreeRTOS_send( NetworkContext_t * pNetworkContext,
 }
 /*-----------------------------------------------------------*/
 
-int32_t TLS_FreeRTOS_GetSocketFd( NetworkContext_t * pNetworkContext )
+int32_t TLS_FreeRTOS_GetSocketFd( TlsNetworkContext_t * pTlsNetworkContext )
 {
     int32_t ret = -1;
 
-    if( ( pNetworkContext != NULL ) && ( pNetworkContext->pParams != NULL ) )
+    if( ( pTlsNetworkContext != NULL ) && ( pTlsNetworkContext->pParams != NULL ) )
     {
-        ret = TCP_Sockets_GetSocketFd( pNetworkContext->pParams->tcpSocket );
+        ret = TCP_Sockets_GetSocketFd( pTlsNetworkContext->pParams->tcpSocket );
     }
 
     return ret;

@@ -31,9 +31,6 @@
 /* TCP Sockets Wrapper include.*/
 #include "tcp_sockets_wrapper.h"
 
-/* Transport interface include. */
-#include "transport_interface.h"
-
 /* Flags to be used in TLS_FreeRTOS_Connect. */
 #define TLS_CONNECT_NON_BLOCKING_HANDSHAKE   ( 1 << 0 )
 
@@ -62,10 +59,10 @@ typedef struct TlsTransportParams
     SSLContext_t sslContext;
 } TlsTransportParams_t;
 
-struct NetworkContext
+typedef struct TlsNetworkContext
 {
     TlsTransportParams_t * pParams;
-};
+} TlsNetworkContext_t;
 
 /**
  * @brief Contains the credentials necessary for tls connection setup.
@@ -99,7 +96,7 @@ typedef struct NetworkCredentials
 
 typedef struct TlsSession
 {
-    NetworkContext_t xTlsNetworkContext;
+    TlsNetworkContext_t xTlsNetworkContext;
     TlsTransportParams_t xTlsTransportParams;
 } TlsSession_t;
 
@@ -121,17 +118,17 @@ typedef enum TlsTransportStatus
 /**
  * @brief Continue the TLS handshake that was started in TLS_FreeRTOS_Connect.
  *
- * @param[in] pNetworkContext The Network context.
+ * @param[in] pTlsNetworkContext The Network context.
  *
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_INVALID_PARAMETER,
  * #TLS_TRANSPORT_HANDSHAKE_FAILED, or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
  */
-TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( NetworkContext_t * pNetworkContext );
+TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( TlsNetworkContext_t * pTlsNetworkContext );
 
 /**
  * @brief Create a TLS connection with FreeRTOS sockets.
  *
- * @param[out] pNetworkContext Pointer to a network context to contain the
+ * @param[out] pTlsNetworkContext Pointer to a network context to contain the
  * initialized socket handle.
  * @param[in] pHostName The hostname of the remote endpoint.
  * @param[in] port The destination port.
@@ -143,7 +140,7 @@ TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( NetworkContext_t * pNetwork
  * #TLS_TRANSPORT_HANDSHAKE_FAILED, #TLS_TRANSPORT_INTERNAL_ERROR, #TLS_TRANSPORT_CONNECT_FAILURE,
  * or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
  */
-TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
+TlsTransportStatus_t TLS_FreeRTOS_Connect( TlsNetworkContext_t * pTlsNetworkContext,
                                            const char * pHostName,
                                            uint16_t port,
                                            const NetworkCredentials_t * pNetworkCredentials,
@@ -154,9 +151,9 @@ TlsTransportStatus_t TLS_FreeRTOS_Connect( NetworkContext_t * pNetworkContext,
 /**
  * @brief Gracefully disconnect an established TLS connection.
  *
- * @param[in] pNetworkContext Network context.
+ * @param[in] pTlsNetworkContext Network context.
  */
-TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext );
+TlsTransportStatus_t TLS_FreeRTOS_Disconnect( TlsNetworkContext_t * pTlsNetworkContext );
 
 /**
  * @brief Receives data from an established TLS connection.
@@ -164,7 +161,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext
  * @note This is the TLS version of the transport interface's
  * #TransportRecv_t function.
  *
- * @param[in] pNetworkContext The Network context.
+ * @param[in] pTlsNetworkContext The Network context.
  * @param[out] pBuffer Buffer to receive bytes into.
  * @param[in] bytesToRecv Number of bytes to receive from the network.
  *
@@ -172,7 +169,7 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( NetworkContext_t * pNetworkContext
  * 0 if the socket times out without reading any bytes;
  * negative value on error.
  */
-int32_t TLS_FreeRTOS_recv( NetworkContext_t * pNetworkContext,
+int32_t TLS_FreeRTOS_recv( TlsNetworkContext_t * pNetworkContext,
                            void * pBuffer,
                            size_t bytesToRecv );
 
@@ -182,7 +179,7 @@ int32_t TLS_FreeRTOS_recv( NetworkContext_t * pNetworkContext,
  * @note This is the TLS version of the transport interface's
  * #TransportSend_t function.
  *
- * @param[in] pNetworkContext The network context.
+ * @param[in] pTlsNetworkContext The network context.
  * @param[in] pBuffer Buffer containing the bytes to send.
  * @param[in] bytesToSend Number of bytes to send from the buffer.
  *
@@ -190,18 +187,18 @@ int32_t TLS_FreeRTOS_recv( NetworkContext_t * pNetworkContext,
  * 0 if the socket times out without sending any bytes;
  * else a negative value to represent error.
  */
-int32_t TLS_FreeRTOS_send( NetworkContext_t * pNetworkContext,
+int32_t TLS_FreeRTOS_send( TlsNetworkContext_t * pTlsNetworkContext,
                            const void * pBuffer,
                            size_t bytesToSend );
 
 /**
  * @brief Get the socket FD for this network context.
  *
- * @param[in] pNetworkContext The network context.
+ * @param[in] pTlsNetworkContext The network context.
  *
  * @return The socket descriptor if value >= 0. It returns -1 when failure.
  */
-int32_t TLS_FreeRTOS_GetSocketFd( NetworkContext_t * pNetworkContext );
+int32_t TLS_FreeRTOS_GetSocketFd( TlsNetworkContext_t * pTlsNetworkContext );
 
 #ifdef MBEDTLS_DEBUG_C
 

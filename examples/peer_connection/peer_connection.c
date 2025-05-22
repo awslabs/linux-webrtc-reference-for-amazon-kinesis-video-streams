@@ -639,7 +639,7 @@ static int32_t HandleDtlsTermination( PeerConnectionSession_t * pSession )
 
     if( ret == 0 )
     {
-        DTLS_Disconnect( &pSession->dtlsSession.xNetworkContext );
+        DTLS_Disconnect( &pSession->dtlsSession.xDtlsNetworkContext );
 
         /* Close the socket context to avoid any input packets triggering unexpected RTP/RTCP handling. */
         PeerConnection_CloseSession( pSession );
@@ -766,7 +766,7 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
     {
         /* Set the pParams member of the network context with desired transport. */
         pDtlsSession = &pSession->dtlsSession;
-        pDtlsSession->xNetworkContext.pParams = &pDtlsSession->xDtlsTransportParams;
+        pDtlsSession->xDtlsNetworkContext.pParams = &pDtlsSession->xDtlsTransportParams;
 
         /* Assign transport send callback function/context for different connection types. */
         memset( &pDtlsSession->xDtlsTransportParams,
@@ -797,7 +797,7 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
             pDtlsSession->xNetworkCredentials.pPrivateKey = &pSession->pCtx->dtlsContext.localKey;
 
             /* Attempt to create a DTLS connection. */
-            xNetworkStatus = DTLS_Init( &pDtlsSession->xNetworkContext,
+            xNetworkStatus = DTLS_Init( &pDtlsSession->xDtlsNetworkContext,
                                         &pDtlsSession->xNetworkCredentials,
                                         0U );
 
@@ -837,7 +837,7 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession )
         pDtlsSession = &pSession->dtlsSession;
 
         /* Trigger the DTLS handshaking to send client hello if necessary. */
-        xNetworkStatus = DTLS_ExecuteHandshake( &pDtlsSession->xNetworkContext );
+        xNetworkStatus = DTLS_ExecuteHandshake( &pDtlsSession->xDtlsNetworkContext );
 
         if( xNetworkStatus == DTLS_HANDSHAKE_COMPLETE )
         {
@@ -927,7 +927,7 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     #endif
 
     /* Verify remote fingerprint (if remote cert fingerprint is the expected one) */
-    xNetworkStatus = DTLS_VerifyRemoteCertificateFingerprint( &pSession->dtlsSession.xNetworkContext.pParams->dtlsSslContext,
+    xNetworkStatus = DTLS_VerifyRemoteCertificateFingerprint( &pSession->dtlsSession.xDtlsNetworkContext.pParams->dtlsSslContext,
                                                               pSession->remoteCertFingerprint,
                                                               pSession->remoteCertFingerprintLength );
 
@@ -940,7 +940,7 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     if( ret == 0 )
     {
         /* Retrieve key material into DTLS session. */
-        xNetworkStatus = DTLS_PopulateKeyingMaterial( &pSession->dtlsSession.xNetworkContext.pParams->dtlsSslContext,
+        xNetworkStatus = DTLS_PopulateKeyingMaterial( &pSession->dtlsSession.xDtlsNetworkContext.pParams->dtlsSslContext,
                                                       &pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial );
 
         if( xNetworkStatus != DTLS_SUCCESS )
@@ -1024,7 +1024,7 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     uint8_t dtlsDecryptBuffer[ PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH ];
     size_t dtlsDecryptBufferLength = PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH;
 
-    xNetworkStatus = DTLS_ProcessPacket( &pSession->dtlsSession.xNetworkContext,
+    xNetworkStatus = DTLS_ProcessPacket( &pSession->dtlsSession.xDtlsNetworkContext,
                                          pDtlsEncryptData,
                                          dtlsEncryptDataLength,
                                          dtlsDecryptBuffer,

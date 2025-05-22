@@ -366,7 +366,7 @@ static void OnSCTPSessionOutboundPacket( void * customData,
 
     pPeerConnectionSession = ( PeerConnectionSession_t * ) customData;
 
-    if( DTLS_Send( &( pPeerConnectionSession->dtlsSession.xNetworkContext ), pPacket, packetLen ) < 0 )
+    if( DTLS_Send( &( pPeerConnectionSession->dtlsSession.xDtlsNetworkContext ), pPacket, packetLen ) < 0 )
     {
         LogError( ( "SCTP encrypt error" ) );
     }

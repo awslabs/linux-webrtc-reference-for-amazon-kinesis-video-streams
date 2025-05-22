@@ -156,12 +156,11 @@ typedef enum DtlsState
  * @note When using multiple transports in the same compilation unit,
  *       define this pointer as void *.
  */
-struct DtlsNetworkContext
+typedef struct DtlsNetworkContext
 {
     DtlsState_t state;
     DtlsTransportParams_t * pParams;
-};
-typedef struct DtlsNetworkContext DtlsNetworkContext_t;
+} DtlsNetworkContext_t;
 
 
 // DtlsKeyingMaterial is information extracted via https://tools.ietf.org/html/rfc5705
@@ -207,7 +206,7 @@ typedef struct DtlsNetworkCredentials
 typedef struct DtlsSession
 {
     /* The DTLS network context. */
-    DtlsNetworkContext_t xNetworkContext;
+    DtlsNetworkContext_t xDtlsNetworkContext;
     DtlsTransportParams_t xDtlsTransportParams;
     DtlsNetworkCredentials_t xNetworkCredentials;
 } DtlsSession_t;
