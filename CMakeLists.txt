@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.6.3)
 
+# Set CMake policy CMP0048 to NEW to enable VERSION variables in project() command
+# This addresses the following CMake warning:
+# - Policy CMP0048 controls how project() command manages VERSION variables
+# - Without this, PROJECT_VERSION* variables would be empty
+# - Setting to NEW ensures proper version variable handlingcmake_policy(SET CMP0048 NEW)
+cmake_policy(SET CMP0048 NEW)
+
 project(ProjectWebRTCLinuxApplication VERSION 0.0.1 LANGUAGES C)
 
 set(CMAKE_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -42,8 +49,6 @@ elseif( ENABLE_THREAD_SANITIZER )
   set( CMAKE_C_FLAGS "-O0 -g -fsanitize=thread -fno-omit-frame-pointer -fno-optimize-sibling-calls" )
 endif()
 
-include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake)
-include(${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtp/rtpFilePaths.cmake)
 file(
   GLOB
   WEBRTC_APPLICATION_SIGNALING_CONTROLLER_SOURCE_FILES
@@ -97,10 +102,8 @@ set( WEBRTC_APPLICATION_COMMON_UTILS_INCLUDE_DIRS
      "examples/network_transport"
      "examples/network_transport/tcp_sockets_wrapper/include"
      "examples/network_transport/udp_sockets_wrapper/include"
-     "examples/libsrtp"
      "examples/logging"
      "examples/base64"
-     "configs/mbedtls"
      "configs/sigv4"
      "examples/demo_config" )
 
@@ -126,54 +129,6 @@ set( WEBRTC_APPLICATION_MASTER_MEDIA_INCLUDE_FILES
 
 file(
   GLOB
-  WEBRTC_APPLICATION_MBEDTLS_SOURCE_FILES
-  "libraries/crypto/mbedtls/library/*.c" )
-
-set( WEBRTC_APPLICATION_MBEDTLS_INCLUDE_DIRS
-     "libraries/crypto/mbedtls/include"
-     "configs/mbedtls" )
-
-set_source_files_properties("libraries/crypto/mbedtls/library/ssl_tls.c" PROPERTIES COMPILE_FLAGS -Wno-stringop-overflow)
-
-file(
-  GLOB
-  WEBRTC_APPLICATION_COREHTTP_SOURCE_FILES
-  "libraries/protocols/coreHTTP/source/*.c"
-  "libraries/protocols/coreHTTP/source/dependency/3rdparty/llhttp/src/*.c" )
-
-set( WEBRTC_APPLICATION_COREHTTP_INCLUDE_DIRS
-     "libraries/protocols/coreHTTP/source/include"
-     "libraries/protocols/coreHTTP/source/interface"
-     "libraries/protocols/coreHTTP/source/dependency/3rdparty/llhttp/include" )
-
-file(
-  GLOB
-  WEBRTC_APPLICATION_LIBSRTP_GLOB_SOURCE_FILES
-  "libraries/protocols/libsrtp/srtp/*.c"
-  "libraries/protocols/libsrtp/crypto/kernel/*.c"
-  "libraries/protocols/libsrtp/crypto/math/*.c"
-  "libraries/protocols/libsrtp/crypto/replay/*.c" )
-
-set( WEBRTC_APPLICATION_LIBSRTP_SOURCE_FILES
-     ${WEBRTC_APPLICATION_LIBSRTP_GLOB_SOURCE_FILES}
-     "libraries/protocols/libsrtp/crypto/cipher/aes.c"
-     "libraries/protocols/libsrtp/crypto/cipher/aes_gcm_mbedtls.c"
-     "libraries/protocols/libsrtp/crypto/cipher/aes_icm_mbedtls.c"
-     "libraries/protocols/libsrtp/crypto/cipher/cipher.c"
-     "libraries/protocols/libsrtp/crypto/cipher/cipher_test_cases.c"
-     "libraries/protocols/libsrtp/crypto/cipher/null_cipher.c"
-     "libraries/protocols/libsrtp/crypto/hash/auth_test_cases.c"
-     "libraries/protocols/libsrtp/crypto/hash/auth.c"
-     "libraries/protocols/libsrtp/crypto/hash/hmac_mbedtls.c"
-     "libraries/protocols/libsrtp/crypto/hash/null_auth.c"
-     "libraries/protocols/libsrtp/crypto/hash/sha1.c" )
-
-set( WEBRTC_APPLICATION_LIBSRTP_INCLUDE_DIRS
-     "libraries/protocols/libsrtp/include"
-     "libraries/protocols/libsrtp/crypto/include" )
-
-file(
-  GLOB
   WEBRTC_APPLICATION_SDP_CONTROLLER_SOURCE_FILES
   "examples/sdp_controller/*.c" )
 
@@ -191,6 +146,9 @@ set( WEBRTC_APPLICATION_ICE_CONTROLLER_INCLUDE_DIRS
 # Include dependencies
 ## Include sigV4
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/sigV4.cmake )
+
+## MbedTLS
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/mbedtls.cmake )
 
 ## Include libwebsockets
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/libwebsockets.cmake )
@@ -210,16 +168,21 @@ include( ${CMAKE_ROOT_DIRECTORY}/CMake/stun.cmake )
 ## Include ICE
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/ice.cmake )
 
+## RTCP
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtcp.cmake )
+
+## RTP
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/rtp.cmake )
+
+## LIBSRTP
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/libsrtp.cmake )
+
 if(BUILD_USRSCTP_LIBRARY)
   ## Include usrsctp
   include( ${CMAKE_ROOT_DIRECTORY}/CMake/libusrsctp.cmake )
 
   ## Include DCEP
   include( ${CMAKE_ROOT_DIRECTORY}/CMake/dcep.cmake )
-
-  # usrsctp library public include directories.
-  set( SCTP_INCLUDE_PUBLIC_DIRS
-       "${CMAKE_ROOT_DIRECTORY}/libraries/protocols/usrsctp/usrsctplib" )
 endif()
 
 ### Master Application

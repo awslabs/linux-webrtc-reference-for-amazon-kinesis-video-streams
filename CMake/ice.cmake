@@ -1,4 +1,4 @@
-# This cmake file is used to include libwebsockets as static library.
+# This cmake file is used to include ICE as static library.
 set(CMAKE_ICE_DIRECTORY ${CMAKE_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-ice)
 
 # ICE library source files.
@@ -14,9 +14,8 @@ set( ICE_INCLUDE_PUBLIC_DIRS
 add_library( ice
              ${ICE_SOURCES} )
 
-target_include_directories( ice PRIVATE
-                            ${ICE_INCLUDE_PUBLIC_DIRS}
-                            ${STUN_INCLUDE_PUBLIC_DIRS} )
+target_include_directories( ice PUBLIC
+                            ${ICE_INCLUDE_PUBLIC_DIRS} )
 
 target_link_libraries( ice PRIVATE
                        stun )

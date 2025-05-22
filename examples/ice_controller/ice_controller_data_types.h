@@ -34,7 +34,6 @@ extern "C" {
 #include <arpa/inet.h>
 #include "transport_mbedtls.h"
 #include "transport_dtls_mbedtls.h"
-#include "transport_interface.h"
 
 /* FreeRTOS includes. */
 #include <pthread.h>
