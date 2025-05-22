@@ -19,8 +19,6 @@
 /* Standard includes. */
 #include <string.h>
 #include <assert.h>
-/* FreeRTOS includes. */
-//#include "FreeRTOS.h"
 
 #include "mbedtls/config.h"
 #include "mbedtls/version.h"
