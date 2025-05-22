@@ -59,4 +59,6 @@
 #define JOIN_STORAGE_SESSION 0
 #endif
 
+#define USE_H265 0
+
 #endif /* DEMO_CONFIG_H */
