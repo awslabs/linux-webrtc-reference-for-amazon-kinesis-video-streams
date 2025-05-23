@@ -20,6 +20,7 @@
 #include "peer_connection_jitter_buffer.h"
 #include "peer_connection_g711_helper.h"
 #include "peer_connection_h264_helper.h"
+#include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
 
 //#include "FreeRTOS.h"
@@ -367,7 +368,8 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
-
+            pJitterBuffer->getPacketPropertyFunc = GetH265PacketProperty;
+            pJitterBuffer->fillFrameFunc = FillFrameH265;
         }
         else
         {
