@@ -1,4 +1,4 @@
-e/*
+/*
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
@@ -83,8 +83,8 @@ static void * VideoTx_Task( void * pParameter )
                 {
                     #if USE_H265
                     {
-                        fileIndex = fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
-                        snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", fileIndex );
+                        pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
+                        snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", pVideoContext->fileIndex );
                     }
                     #else
                     {

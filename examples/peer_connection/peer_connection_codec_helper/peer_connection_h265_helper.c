@@ -305,7 +305,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
                 
                 #if ENABLE_TWCC_SUPPORT
                 memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
-                packetInfo.packetSize = packetH264.packetDataLength;
+                packetInfo.packetSize = packeth265.packetDataLength;
                 packetInfo.localSentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
                 packetInfo.packetSeqNum = pSession->rtpConfig.twccSequence;
 
