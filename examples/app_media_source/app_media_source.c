@@ -81,7 +81,7 @@ static void * VideoTx_Task( void * pParameter )
             #ifndef ENABLE_STREAMING_LOOPBACK
                 if( pVideoContext->numReadyPeer != 0 )
                 {
-                    #if USE_H265
+                    #if USE_VIDEO_CODEC_H265
                     {
                         pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
                         snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", pVideoContext->fileIndex );
@@ -476,7 +476,7 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
         memset( pVideoTranceiver, 0, sizeof( Transceiver_t ) );
         pVideoTranceiver->trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
         pVideoTranceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
-        #if USE_H265
+        #if USE_VIDEO_CODEC_H265
         {
             TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT );
             pVideoTranceiver->rollingbufferBitRate = TRANSCEIVER_H265_VIDEO_BIT_RATE;
