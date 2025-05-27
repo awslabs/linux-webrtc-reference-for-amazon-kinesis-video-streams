@@ -79,14 +79,14 @@ podman run -it -v $PWD/..:/work --replace --name buildtestcontainer buildtestcon
 E.g. run a build
 
 ```bash
-cd /work/FreeRTOS-WebRTC-Application
+cd /work/linux-webrtc-reference-for-amazon-kinesis-video-streams
 rm -rf build/ && cmake -S . -B build -DCMAKE_C_FLAGS='-DLIBRARY_LOG_LEVEL=LOG_VERBOSE' && make -C build -j $(nproc)
 ```
 
 E.g. run a test
 
 ```bash
-cd /work/FreeRTOS-WebRTC-Application/
+cd /work/linux-webrtc-reference-for-amazon-kinesis-video-streams/
 ./build/WebRTCLinuxApplicationMaster
 ```
 
