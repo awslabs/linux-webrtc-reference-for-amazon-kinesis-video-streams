@@ -373,6 +373,7 @@ typedef struct IceControllerContext
     pthread_mutex_t iceMutex;
 
     uint64_t connectivityCheckTimeoutMs;
+    uint8_t addRelayCandidates;
 } IceControllerContext_t;
 
 /* *INDENT-OFF* */
