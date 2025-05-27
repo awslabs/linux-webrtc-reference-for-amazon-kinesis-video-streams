@@ -45,8 +45,8 @@ jobs:
       - name: Run build in container
         shell: bash
         run: |
-          podman run -v $PWD/.:/FreeRTOS-WebRTC-Application --replace --name ggl container:latest bash -c "\
-            cd FreeRTOS-WebRTC-Application && \
+          podman run -v $PWD/.:/linux-webrtc-reference-for-amazon-kinesis-video-streams --replace --name ggl container:latest bash -c "\
+            cd linux-webrtc-reference-for-amazon-kinesis-video-streams && \
             rm -rf build/ && \
             cmake -B build \
             -DLIBRARY_LOG_LEVEL=LOG_VERBOSE && \
