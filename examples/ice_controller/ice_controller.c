@@ -91,8 +91,8 @@ static void OnTimerExpire( void * pContext )
                 break;
             case ICE_CONTROLLER_STATE_READY:
                 result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK,
-                                              NULL );
+                                                       ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK,
+                                                       NULL );
                 if( result != 0 )
                 {
                     LogDebug( ( "Failed to process ICE periodic connection check event, result: %d.", result ) );
@@ -102,8 +102,8 @@ static void OnTimerExpire( void * pContext )
                 break;
             case ICE_CONTROLLER_STATE_CLOSING:
                 result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
-                                              NULL );
+                                                       ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
+                                                       NULL );
                 if( result != 0 )
                 {
                     LogDebug( ( "Failed to process ICE closing event, result: %d.", result ) );
@@ -113,8 +113,8 @@ static void OnTimerExpire( void * pContext )
                 break;
             case ICE_CONTROLLER_STATE_CLOSED:
                 result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
-                                              NULL );
+                                                       ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
+                                                       NULL );
                 if( result != 0 )
                 {
                     LogDebug( ( "Failed to process ICE closed event, result: %d.", result ) );
@@ -367,9 +367,9 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
                 if( iceResult == ICE_RESULT_NO_NEXT_ACTION )
                 {
                     /*
-                    * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
-                    * has no pending operations and can be skipped for this iteration
-                    */
+                     * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
+                     * has no pending operations and can be skipped for this iteration
+                     */
                     LogVerbose( ( "No next action for local candidate ID: 0x%04x, idx: %d", pSocketContext->pLocalCandidate->candidateId, i ) );
                     continue;
                 }
@@ -550,7 +550,7 @@ static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
         {
             pCtx->metrics.isFirstConnectivityRequest = 0;
             #if METRIC_PRINT_ENABLED
-            Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+                Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
             #endif
         }
 
@@ -903,7 +903,7 @@ IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerC
         {
             pCtx->addRelayCandidates = 0U;
             #if METRIC_PRINT_ENABLED
-            Metric_StartEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
+                Metric_StartEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
             #endif
             IceControllerNet_AddRelayCandidates( pCtx );
         }
