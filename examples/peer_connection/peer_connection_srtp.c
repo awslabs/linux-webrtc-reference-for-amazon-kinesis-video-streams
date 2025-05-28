@@ -48,7 +48,7 @@
  |                                                               |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-#define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES ( 2 ) 
+#define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES ( 2 )
 #define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH      ( 1200 )
 #define PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND ( 2 )
 
@@ -348,11 +348,15 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
             }
 
             /* Mutex can only be created in executing scheduler. */
-            if( pthread_mutex_init( &( pSrtpSender->senderMutex ), NULL ) != 0 )
+            if( pSrtpSender->isSenderMutexInit == 0U )
             {
-                LogError( ( "Fail to create mutex for SRTP sender." ) );
-                ret = PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX;
-                break;
+                if( pthread_mutex_init( &( pSrtpSender->senderMutex ), NULL ) != 0 )
+                {
+                    LogError( ( "Fail to create mutex for SRTP sender." ) );
+                    ret = PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX;
+                    break;
+                }
+                pSrtpSender->isSenderMutexInit = 1U;
             }
         }
     }
@@ -478,7 +482,6 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
         {
             PeerConnectionRollingBuffer_Free( &pSession->videoSrtpSender.txRollingBuffer );
             pthread_mutex_unlock( &( pSession->videoSrtpSender.senderMutex ) );
-            pthread_mutex_destroy( &( pSession->videoSrtpSender.senderMutex ) );
         }
 
         /* Clean up Audio SRTP Sender */
@@ -486,7 +489,6 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
         {
             PeerConnectionRollingBuffer_Free( &pSession->audioSrtpSender.txRollingBuffer );
             pthread_mutex_unlock( &( pSession->audioSrtpSender.senderMutex ) );
-            pthread_mutex_destroy( &( pSession->audioSrtpSender.senderMutex ) );
         }
     }
 

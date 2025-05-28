@@ -377,7 +377,11 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
             LogError( ( "Codec is not supported, codec bit map: 0x%x", ( int ) codec ) );
             ret = PEER_CONNECTION_RESULT_UNKNOWN_TX_CODEC;
         }
+    }
 
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pJitterBuffer->isInit = 1U;
     }
 
     return ret;
@@ -393,9 +397,20 @@ void PeerConnectionJitterBuffer_Free( PeerConnectionJitterBuffer_t * pJitterBuff
                     pJitterBuffer ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
+    else if( pJitterBuffer->isInit == 0U )
+    {
+        LogError( ( "Jitter buffer is not initialized yet." ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        pJitterBuffer->isInit = 0U;
+
         ( void ) ParseFramesInJitterBuffer( pJitterBuffer, 1 );
     }
 
@@ -417,6 +432,11 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_AllocateBuffer( PeerConnection
         ( ppOutPacket == NULL ) )
     {
         LogError( ( "Invalid input, pJitterBuffer: %p, ppOutPacket: %p", pJitterBuffer, ppOutPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else if( pJitterBuffer->isInit == 0U )
+    {
+        LogError( ( "Jitter buffer is not initialized yet or it has been freed." ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
     else if( packetBufferSize == 0 )
@@ -459,6 +479,15 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_GetPacket( PeerConnectionJitte
         LogError( ( "Invalid input, pJitterBuffer: %p, ppOutPacket: %p", pJitterBuffer, ppOutPacket ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
+    else if( pJitterBuffer->isInit == 0U )
+    {
+        LogError( ( "Jitter buffer is not initialized yet or it has been freed." ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
@@ -488,6 +517,15 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Push( PeerConnectionJitterBuff
     {
         LogError( ( "Invalid input, pJitterBuffer: %p, pPacket: %p", pJitterBuffer, pPacket ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else if( pJitterBuffer->isInit == 0U )
+    {
+        LogError( ( "Jitter buffer is not initialized yet or it has been freed." ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -546,6 +584,15 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_FillFrame( PeerConnectionJitte
     {
         LogError( ( "Invalid input, pJitterBuffer: %p, pOutBuffer: %p, pOutBufferLength: %p, pRtpTimestamp: %p", pJitterBuffer, pOutBuffer, pOutBufferLength, pRtpTimestamp ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else if( pJitterBuffer->isInit == 0U )
+    {
+        LogError( ( "Jitter buffer is not initialized yet or it has been freed." ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
