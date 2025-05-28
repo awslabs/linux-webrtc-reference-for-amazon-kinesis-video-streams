@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
- #ifndef DEMO_CONFIG_H
+#ifndef DEMO_CONFIG_H
 #define DEMO_CONFIG_H
 
 #define AWS_REGION "us-west-2"
@@ -33,7 +33,8 @@
 #define ENABLE_TWCC_SUPPORT 1U
 #endif
 
-/* Uncomment to use fetching credentials by IoT Role-alias for Authentication. */
+/* Uncomment to use fetching credentials by IoT Role-alias for Authentication.
+ */
 // #define AWS_CREDENTIALS_ENDPOINT ""
 // #define AWS_IOT_THING_NAME ""
 // #define AWS_IOT_THING_ROLE_ALIAS ""
@@ -45,14 +46,17 @@
 // #define AWS_SECRET_ACCESS_KEY ""
 // #define AWS_SESSION_TOKEN ""
 
-#if defined( AWS_ACCESS_KEY_ID ) && defined( AWS_IOT_THING_ROLE_ALIAS )
-#error "Configuration Error: AWS_ACCESS_KEY_ID and AWS_IOT_THING_ROLE_ALIAS are mutually exclusive authentication methods. Please define only one of them."
-#endif /* #if defined( AWS_ACCESS_KEY_ID ) && defined( AWS_IOT_THING_ROLE_ALIAS ). */
+#if defined(AWS_ACCESS_KEY_ID) && defined(AWS_IOT_THING_ROLE_ALIAS)
+#error                                                                         \
+    "Configuration Error: AWS_ACCESS_KEY_ID and AWS_IOT_THING_ROLE_ALIAS are mutually exclusive authentication methods. Please define only one of them."
+#endif /* #if defined( AWS_ACCESS_KEY_ID ) && defined(                         \
+          AWS_IOT_THING_ROLE_ALIAS ). */
 
-#define AWS_MAX_VIEWER_NUM ( 2 )
+#define AWS_MAX_VIEWER_NUM (2)
 
-/* Audio format setting - currently only opus codec is supported in Linux environments. */
-#define AUDIO_OPUS         1
+/* Audio format setting - currently only opus codec is supported in Linux
+ * environments. */
+#define AUDIO_OPUS 1
 
 /* Join Storage Session setting. */
 #ifndef JOIN_STORAGE_SESSION
@@ -62,8 +66,8 @@
 /* Video format setting - H264 is the default codec in Linux environments. */
 #define USE_VIDEO_CODEC_H264 1
 #define USE_VIDEO_CODEC_H265 0
-#if ( USE_VIDEO_CODEC_H264 + USE_VIDEO_CODEC_H265 ) != 1
-    #error only one of video codec should be set
+#if (USE_VIDEO_CODEC_H264 + USE_VIDEO_CODEC_H265) != 1
+#error only one of video codec should be set
 #endif
 
 #endif /* DEMO_CONFIG_H */

@@ -14,54 +14,49 @@
  * limitations under the License.
  */
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
 /*----------------------------------------------------------------------------*/
 
-typedef enum RingBufferResult
-{
-    RING_BUFFER_RESULT_OK,
-    RING_BUFFER_RESULT_BAD_PARAM,
-    RING_BUFFER_RESULT_OUT_OF_MEM,
-    RING_BUFFER_RESULT_EMPTY,
-    RING_BUFFER_RESULT_INCONSISTENT,
+typedef enum RingBufferResult {
+  RING_BUFFER_RESULT_OK,
+  RING_BUFFER_RESULT_BAD_PARAM,
+  RING_BUFFER_RESULT_OUT_OF_MEM,
+  RING_BUFFER_RESULT_EMPTY,
+  RING_BUFFER_RESULT_INCONSISTENT,
 } RingBufferResult_t;
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct RingBufferElement
-{
-    char * pBuffer;
-    size_t bufferLength;
-    size_t currentIndex;
+typedef struct RingBufferElement {
+  char *pBuffer;
+  size_t bufferLength;
+  size_t currentIndex;
 } RingBufferElement_t;
 
-typedef struct RingBufferElementInternal
-{
-    RingBufferElement_t element;
-    struct RingBufferElementInternal * pNext;
+typedef struct RingBufferElementInternal {
+  RingBufferElement_t element;
+  struct RingBufferElementInternal *pNext;
 } RingBufferElementInternal_t;
 
-typedef struct RingBuffer
-{
-    pthread_mutex_t lock;
-    RingBufferElementInternal_t * pHead;
-    RingBufferElementInternal_t * pTail;
+typedef struct RingBuffer {
+  pthread_mutex_t lock;
+  RingBufferElementInternal_t *pHead;
+  RingBufferElementInternal_t *pTail;
 } RingBuffer_t;
 
 /*----------------------------------------------------------------------------*/
 
-RingBufferResult_t RingBuffer_Init( RingBuffer_t * pRingBuffer );
+RingBufferResult_t RingBuffer_Init(RingBuffer_t *pRingBuffer);
 
-RingBufferResult_t RingBuffer_Insert( RingBuffer_t * pRingBuffer,
-                                      char * pBuffer,
-                                      size_t bufferLength );
+RingBufferResult_t RingBuffer_Insert(RingBuffer_t *pRingBuffer, char *pBuffer,
+                                     size_t bufferLength);
 
-RingBufferResult_t RingBuffer_GetHeadEntry( RingBuffer_t * pRingBuffer,
-                                            RingBufferElement_t ** ppElement );
+RingBufferResult_t RingBuffer_GetHeadEntry(RingBuffer_t *pRingBuffer,
+                                           RingBufferElement_t **ppElement);
 
-RingBufferResult_t RingBuffer_RemoveHeadEntry( RingBuffer_t * pRingBuffer,
-                                               RingBufferElement_t * pElement );
+RingBufferResult_t RingBuffer_RemoveHeadEntry(RingBuffer_t *pRingBuffer,
+                                              RingBufferElement_t *pElement);
 
 /*----------------------------------------------------------------------------*/
