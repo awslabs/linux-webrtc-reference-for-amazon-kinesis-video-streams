@@ -14,31 +14,28 @@
  * limitations under the License.
  */
 
-#include "networking_utils.h"
-#include <string.h>
 #include <time.h>
+#include <string.h>
+#include "networking_utils.h"
 
 /* length of ISO8601 format (e.g. 2024-12-31T03:27:52Z). */
-#define NETWORKING_ISO8601_TIME_STRING_LENGTH (20)
+#define NETWORKING_ISO8601_TIME_STRING_LENGTH ( 20 )
 
 /*
-   NETWORKING_NTP_OFFSET (2208988800ULL) represents the number of seconds
-   between two important epochs:
+   NETWORKING_NTP_OFFSET (2208988800ULL) represents the number of seconds between two important epochs:
 
    NTP Epoch: January 1, 1900, 00:00:00 UTC
    Unix Epoch: January 1, 1970, 00:00:00 UTC
    This offset is required because:
 
    NTP timestamps count seconds from January 1, 1900
-   Unix timestamps (what we're converting from) count seconds from January 1,
-   1970 The offset (2208988800) is exactly the number of seconds between these
-   two dates
+   Unix timestamps (what we're converting from) count seconds from January 1, 1970
+   The offset (2208988800) is exactly the number of seconds between these two dates
  */
-#define NETWORKING_NTP_OFFSET 2208988800ULL
+#define NETWORKING_NTP_OFFSET    2208988800ULL
 
 /*
-   The scaling (NETWORKING_NTP_TIMESCALE = 2^32 = 4294967296) is used for
-   handling fractional seconds in NTP's timestamp format. Here's why:
+   The scaling (NETWORKING_NTP_TIMESCALE = 2^32 = 4294967296) is used for handling fractional seconds in NTP's timestamp format. Here's why:
 
    NTP timestamp format consists of two 32-bit fields:
 
@@ -51,48 +48,50 @@
    2. Any value from 0 to 2^32-1 represents a fraction of a second */
 #define NETWORKING_NTP_TIMESCALE 4294967296ULL
 
-uint64_t NetworkingUtils_GetCurrentTimeSec(void *pTick) {
-  return (uint64_t)time(NULL);
+uint64_t NetworkingUtils_GetCurrentTimeSec( void * pTick )
+{
+    return ( uint64_t ) time( NULL );
 }
 
-uint64_t NetworkingUtils_GetCurrentTimeUs(void *pTick) {
-  struct timespec nowTime;
-  clock_gettime(CLOCK_REALTIME, &nowTime);
-  return ((uint64_t)nowTime.tv_sec * 1000 * 1000) +
-         ((uint64_t)nowTime.tv_nsec / 1000);
+uint64_t NetworkingUtils_GetCurrentTimeUs( void * pTick )
+{
+    struct timespec nowTime;
+    clock_gettime( CLOCK_REALTIME, &nowTime );
+    return ( ( uint64_t ) nowTime.tv_sec * 1000 * 1000 ) + ( ( uint64_t ) nowTime.tv_nsec / 1000 );
 }
 
-uint64_t NetworkingUtils_GetTimeFromIso8601(const char *pDate,
-                                            size_t dateLength) {
-  uint64_t ret = 0;
-  char isoTimeBuffer[NETWORKING_ISO8601_TIME_STRING_LENGTH + 1];
-  struct tm tm;
-  time_t t;
-  int year, month, day, hour, minute, second;
+uint64_t NetworkingUtils_GetTimeFromIso8601( const char * pDate,
+                                             size_t dateLength )
+{
+    uint64_t ret = 0;
+    char isoTimeBuffer[NETWORKING_ISO8601_TIME_STRING_LENGTH + 1];
+    struct tm tm;
+    time_t t;
+    int year, month, day, hour, minute, second;
 
-  if ((dateLength == NETWORKING_ISO8601_TIME_STRING_LENGTH) &&
-      (pDate != NULL)) {
-    memcpy(isoTimeBuffer, pDate, dateLength);
-    isoTimeBuffer[dateLength] = '\0';
+    if( ( dateLength == NETWORKING_ISO8601_TIME_STRING_LENGTH ) && ( pDate != NULL ) )
+    {
+        memcpy( isoTimeBuffer, pDate, dateLength );
+        isoTimeBuffer[dateLength] = '\0';
 
-    sscanf(isoTimeBuffer, "%d-%d-%dT%d:%d:%dZ", &year, &month, &day, &hour,
-           &minute, &second);
+        sscanf( isoTimeBuffer, "%d-%d-%dT%d:%d:%dZ", &year, &month, &day, &hour, &minute, &second );
 
-    tm.tm_year = year - 1900;
-    tm.tm_mon = month - 1;
-    tm.tm_mday = day;
-    tm.tm_hour = hour;
-    tm.tm_min = minute;
-    tm.tm_sec = second;
+        tm.tm_year = year - 1900;
+        tm.tm_mon = month - 1;
+        tm.tm_mday = day;
+        tm.tm_hour = hour;
+        tm.tm_min = minute;
+        tm.tm_sec = second;
 
-    t = timegm(&tm);
+        t = timegm( &tm );
 
-    if (t != -1) {
-      ret = (uint64_t)t;
+        if( t != -1 )
+        {
+            ret = ( uint64_t ) t;
+        }
     }
-  }
 
-  return ret;
+    return ret;
 }
 
 /*
@@ -123,12 +122,13 @@ uint64_t NetworkingUtils_GetTimeFromIso8601(const char *pDate,
    3881515845 << 32 | 2147483648 = 16677181839663572288
  */
 
-uint64_t NetworkingUtils_GetNTPTimeFromUnixTimeUs(uint64_t timeUs) {
-  uint64_t sec = timeUs / 1000000ULL;  // Convert microseconds to seconds
-  uint64_t usec = timeUs % 1000000ULL; // Get microsecond remainder
+uint64_t NetworkingUtils_GetNTPTimeFromUnixTimeUs( uint64_t timeUs )
+{
+    uint64_t sec = timeUs / 1000000ULL;  // Convert microseconds to seconds
+    uint64_t usec = timeUs % 1000000ULL; // Get microsecond remainder
 
-  uint64_t ntp_sec = sec + NETWORKING_NTP_OFFSET;
-  uint64_t ntp_frac = (usec * NETWORKING_NTP_TIMESCALE) / 1000000ULL;
+    uint64_t ntp_sec = sec + NETWORKING_NTP_OFFSET;
+    uint64_t ntp_frac = ( usec * NETWORKING_NTP_TIMESCALE ) / 1000000ULL;
 
-  return (ntp_sec << 32U | ntp_frac);
+    return( ntp_sec << 32U | ntp_frac );
 }
