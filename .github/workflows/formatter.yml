@@ -1,5 +1,8 @@
 name: Code Formatting Check
 
+permissions:
+  contents: read
+
 on:
     push:
     workflow_dispatch:
