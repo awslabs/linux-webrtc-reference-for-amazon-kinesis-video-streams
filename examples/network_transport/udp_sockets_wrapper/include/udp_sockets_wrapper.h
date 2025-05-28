@@ -25,10 +25,11 @@
 #define UDP_SOCKETS_ERRNO_ERROR (-1) /*!< Catch-all sockets error code. */
 #define UDP_SOCKETS_ERRNO_EWOULDBLOCK                                          \
   (-2) /*!< A resource is temporarily unavailable. */
-#define UDP_SOCKETS_ERRNO_ENOMEM (-3)      /*!< Memory allocation failed. */
-#define UDP_SOCKETS_ERRNO_EINVAL (-4)      /*!< Invalid argument. */
-#define UDP_SOCKETS_ERRNO_ENOPROTOOPT (-5) /*!< A bad option was specified .   \
-                                            */
+#define UDP_SOCKETS_ERRNO_ENOMEM (-3) /*!< Memory allocation failed. */
+#define UDP_SOCKETS_ERRNO_EINVAL (-4) /*!< Invalid argument. */
+#define UDP_SOCKETS_ERRNO_ENOPROTOOPT                                          \
+  (-5) /*!< A bad option was specified .                                       \
+        */
 #define UDP_SOCKETS_ERRNO_ENOTCONN                                             \
   (-6) /*!< The supplied socket is not connected. */
 #define UDP_SOCKETS_ERRNO_EISCONN                                              \
