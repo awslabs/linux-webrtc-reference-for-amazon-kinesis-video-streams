@@ -693,121 +693,7 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
     }
 }
 
-static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
-                                                  IceControllerSocketContext_t * pSocketContext,
-                                                  IceCandidatePair_t * pCandidatePair,
-                                                  uint8_t * pTransactionIdBuffer )
-{
-    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    IceResult_t iceResult;
-    uint8_t sentStunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
-    size_t sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
-    IceEndpoint_t * pDestEndpoint = NULL;
-
-    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
-    {
-        iceResult = Ice_CreateResponseForRequest( &pCtx->iceContext,
-                                                  pCandidatePair,
-                                                  pTransactionIdBuffer,
-                                                  sentStunBuffer,
-                                                  &sentStunBufferLength );
-        pthread_mutex_unlock( &( pCtx->iceMutex ) );
-
-        if( iceResult != ICE_RESULT_OK )
-        {
-            LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
-            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
-        }
-    }
-    else
-    {
-        LogError( ( "Failed to create binding response: mutex lock acquisition." ) );
-        ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
-    }
-
-    if( ret == ICE_CONTROLLER_RESULT_OK )
-    {
-        IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
-
-        if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
-        {
-            pDestEndpoint = &( pSocketContext->pIceServer->iceEndpoint );
-        }
-        else
-        {
-            pDestEndpoint = &pCandidatePair->pRemoteCandidate->endpoint;
-        }
-
-        if( IceControllerNet_SendPacket( pCtx, pSocketContext, pDestEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
-        {
-            LogWarn( ( "Unable to send STUN response for nomination" ) );
-            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
-        }
-        else
-        {
-            LogDebug( ( "Sending STUN bind response back to remote, local/remote candidate ID: 0x%04x / 0x%04x",
-                        pCandidatePair->pLocalCandidate->candidateId,
-                        pCandidatePair->pRemoteCandidate->candidateId ) );
-        }
-    }
-
-    return ret;
-}
-
-static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
-                                              IceControllerSocketContext_t * pSocketContext,
-                                              IceCandidatePair_t * pCandidatePair )
-{
-    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipBuffer[ INET_ADDRSTRLEN ];
-        char ipBuffer2[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
-
-    if( ( pCtx == NULL ) ||
-        ( pSocketContext == NULL ) ||
-        ( pCandidatePair == NULL ) )
-    {
-        LogWarn( ( "Invalid input, pCtx: %p, pSocketContext: %p, pCandidatePair: %p",
-                   pCtx, pSocketContext, pCandidatePair ) );
-        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
-    }
-
-    if( ret == ICE_CONTROLLER_RESULT_OK )
-    {
-        if( ( pCandidatePair->state == ICE_CANDIDATE_PAIR_STATE_SUCCEEDED ) &&
-            ( pCtx->pNominatedSocketContext == NULL ) )
-        {
-            #if METRIC_PRINT_ENABLED
-                Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
-            #endif
-            LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x / 0x%04x",
-                       pCandidatePair->pLocalCandidate->candidateId,
-                       pCandidatePair->pRemoteCandidate->candidateId ) );
-
-            LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
-                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
-                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
-
-            /* Update socket context. */
-            if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
-            {
-                pCtx->pNominatedSocketContext = pSocketContext;
-                pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
-                pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
-
-                /* We have finished accessing the shared resource.  Release the mutex. */
-                pthread_mutex_unlock( &( pCtx->socketMutex ) );
-            }
-
-            ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
-        }
-    }
-
-    return ret;
-}
-
-void IceControllerNet_AddRelayCandidates( IceControllerContext_t * pCtx )
+static void AddRelayCandidates( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
@@ -943,6 +829,120 @@ void IceControllerNet_AddRelayCandidates( IceControllerContext_t * pCtx )
             }
         }
     }
+}
+
+static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
+                                                  IceControllerSocketContext_t * pSocketContext,
+                                                  IceCandidatePair_t * pCandidatePair,
+                                                  uint8_t * pTransactionIdBuffer )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint8_t sentStunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
+    size_t sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+    IceEndpoint_t * pDestEndpoint = NULL;
+
+    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    {
+        iceResult = Ice_CreateResponseForRequest( &pCtx->iceContext,
+                                                  pCandidatePair,
+                                                  pTransactionIdBuffer,
+                                                  sentStunBuffer,
+                                                  &sentStunBufferLength );
+        pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
+        }
+    }
+    else
+    {
+        LogError( ( "Failed to create binding response: mutex lock acquisition." ) );
+        ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+
+        if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
+        {
+            pDestEndpoint = &( pSocketContext->pIceServer->iceEndpoint );
+        }
+        else
+        {
+            pDestEndpoint = &pCandidatePair->pRemoteCandidate->endpoint;
+        }
+
+        if( IceControllerNet_SendPacket( pCtx, pSocketContext, pDestEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+        {
+            LogWarn( ( "Unable to send STUN response for nomination" ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
+        }
+        else
+        {
+            LogDebug( ( "Sending STUN bind response back to remote, local/remote candidate ID: 0x%04x / 0x%04x",
+                        pCandidatePair->pLocalCandidate->candidateId,
+                        pCandidatePair->pRemoteCandidate->candidateId ) );
+        }
+    }
+
+    return ret;
+}
+
+static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
+                                              IceControllerSocketContext_t * pSocketContext,
+                                              IceCandidatePair_t * pCandidatePair )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+        char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer2[ INET_ADDRSTRLEN ];
+    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
+
+    if( ( pCtx == NULL ) ||
+        ( pSocketContext == NULL ) ||
+        ( pCandidatePair == NULL ) )
+    {
+        LogWarn( ( "Invalid input, pCtx: %p, pSocketContext: %p, pCandidatePair: %p",
+                   pCtx, pSocketContext, pCandidatePair ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( ( pCandidatePair->state == ICE_CANDIDATE_PAIR_STATE_SUCCEEDED ) &&
+            ( pCtx->pNominatedSocketContext == NULL ) )
+        {
+            #if METRIC_PRINT_ENABLED
+                Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+            #endif
+            LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x / 0x%04x",
+                       pCandidatePair->pLocalCandidate->candidateId,
+                       pCandidatePair->pRemoteCandidate->candidateId ) );
+
+            LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
+                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
+                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
+
+            /* Update socket context. */
+            if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
+            {
+                pCtx->pNominatedSocketContext = pSocketContext;
+                pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
+                pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
+
+                /* We have finished accessing the shared resource.  Release the mutex. */
+                pthread_mutex_unlock( &( pCtx->socketMutex ) );
+            }
+
+            ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
+        }
+    }
+
+    return ret;
 }
 
 IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
@@ -1167,7 +1167,10 @@ void IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx )
 
         if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_RELAY ) )
         {
-            pCtx->addRelayCandidates = 1U;
+            #if METRIC_PRINT_ENABLED
+                Metric_StartEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
+            #endif
+            AddRelayCandidates( pCtx );
         }
     }
 }
