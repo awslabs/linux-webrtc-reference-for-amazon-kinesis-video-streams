@@ -25,21 +25,22 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include <stdio.h>
 #include "message_queue.h"
 #include "peer_connection.h"
+#include <stdio.h>
 
-typedef struct {
+typedef struct
+{
     uint8_t * pData;
     uint32_t size;
     uint64_t timestampUs;
     TransceiverTrackKind_t trackKind;
-    uint8_t freeData;  /* indicate user need to free pData after using it */
+    uint8_t freeData; /* indicate user need to free pData after using it */
 } WebrtcFrame_t;
 
 typedef struct AppMediaSourcesContext AppMediaSourcesContext_t;
-typedef int32_t (* AppMediaSourceOnMediaSinkHook)( void * pCustom,
-                                                   WebrtcFrame_t * pFrame );
+typedef int32_t ( *AppMediaSourceOnMediaSinkHook )( void * pCustom,
+    WebrtcFrame_t * pFrame );
 
 typedef struct AppMediaSourceContext
 {
@@ -64,12 +65,12 @@ typedef struct AppMediaSourcesContext
 } AppMediaSourcesContext_t;
 
 int32_t AppMediaSource_Init( AppMediaSourcesContext_t * pCtx,
-                             AppMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
-                             void * pOnMediaSinkHookCustom );
+    AppMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
+    void * pOnMediaSinkHookCustom );
 int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
-                                             Transceiver_t * pVideoTranceiver );
+    Transceiver_t * pVideoTranceiver );
 int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
-                                             Transceiver_t * pAudioTranceiver );
+    Transceiver_t * pAudioTranceiver );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

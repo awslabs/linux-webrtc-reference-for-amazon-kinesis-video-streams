@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
 /*----------------------------------------------------------------------------*/
 
 typedef enum RingBufferResult
@@ -55,13 +55,13 @@ typedef struct RingBuffer
 RingBufferResult_t RingBuffer_Init( RingBuffer_t * pRingBuffer );
 
 RingBufferResult_t RingBuffer_Insert( RingBuffer_t * pRingBuffer,
-                                      char * pBuffer,
-                                      size_t bufferLength );
+    char * pBuffer,
+    size_t bufferLength );
 
 RingBufferResult_t RingBuffer_GetHeadEntry( RingBuffer_t * pRingBuffer,
-                                            RingBufferElement_t ** ppElement );
+    RingBufferElement_t ** ppElement );
 
 RingBufferResult_t RingBuffer_RemoveHeadEntry( RingBuffer_t * pRingBuffer,
-                                               RingBufferElement_t * pElement );
+    RingBufferElement_t * pElement );
 
 /*----------------------------------------------------------------------------*/

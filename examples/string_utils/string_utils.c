@@ -17,8 +17,8 @@
 #include "string_utils.h"
 
 StringUtilsResult_t StringUtils_ConvertStringToUl( const char * pStr,
-                                                   size_t strLength,
-                                                   uint32_t * pOutUl )
+    size_t strLength,
+    uint32_t * pOutUl )
 {
     StringUtilsResult_t ret = STRING_UTILS_RESULT_OK;
     uint32_t i, result = 0;
@@ -30,11 +30,11 @@ StringUtilsResult_t StringUtils_ConvertStringToUl( const char * pStr,
 
     if( ret == STRING_UTILS_RESULT_OK )
     {
-        for( i = 0; pStr[i] != '\0' && i < strLength; i++ )
+        for( i = 0; pStr[ i ] != '\0' && i < strLength; i++ )
         {
-            if( ( pStr[i] >= '0' ) && ( pStr[i] <= '9' ) )
+            if( ( pStr[ i ] >= '0' ) && ( pStr[ i ] <= '9' ) )
             {
-                result = result * 10 + ( pStr[i] - '0' );
+                result = result * 10 + ( pStr[ i ] - '0' );
             }
             else if( i == 0 )
             {
@@ -57,8 +57,8 @@ StringUtilsResult_t StringUtils_ConvertStringToUl( const char * pStr,
 }
 
 StringUtilsResult_t StringUtils_ConvertStringToHex( const char * pStr,
-                                                    size_t strLength,
-                                                    uint32_t * pOutUl )
+    size_t strLength,
+    uint32_t * pOutUl )
 {
     StringUtilsResult_t ret = STRING_UTILS_RESULT_OK;
     int result;
@@ -81,12 +81,12 @@ StringUtilsResult_t StringUtils_ConvertStringToHex( const char * pStr,
 }
 
 const char * StringUtils_StrStr( const char * pStr,
-                                 size_t strLength,
-                                 const char * pPattern,
-                                 size_t patternLength )
+    size_t strLength,
+    const char * pPattern,
+    size_t patternLength )
 {
     const char * pRet = NULL;
-    const char * pCurrentStr, * pCurrentPattern;
+    const char *pCurrentStr, *pCurrentPattern;
     int i;
     size_t checkedLength = 0;
 
@@ -98,7 +98,7 @@ const char * StringUtils_StrStr( const char * pStr,
     {
         for( i = 0; i <= strLength - patternLength; i++ )
         {
-            pCurrentStr = &pStr[i];
+            pCurrentStr = &pStr[ i ];
             pCurrentPattern = pPattern;
             checkedLength = 0;
             while( pCurrentStr[ checkedLength ] == pCurrentPattern[ checkedLength ] && checkedLength < patternLength )
@@ -109,7 +109,7 @@ const char * StringUtils_StrStr( const char * pStr,
             if( checkedLength == patternLength )
             {
                 /* Found pattern. */
-                pRet = &pStr[i];
+                pRet = &pStr[ i ];
                 break;
             }
         }

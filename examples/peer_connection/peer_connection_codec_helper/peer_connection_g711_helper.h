@@ -23,17 +23,17 @@
 #include "peer_connection_data_types.h"
 
 PeerConnectionResult_t GetG711PacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
-                                              uint8_t * pIsStartPacket );
+    uint8_t * pIsStartPacket );
 
 PeerConnectionResult_t FillFrameG711( PeerConnectionJitterBuffer_t * pJitterBuffer,
-                                      uint16_t rtpSeqStart,
-                                      uint16_t rtpSeqEnd,
-                                      uint8_t * pOutBuffer,
-                                      size_t * pOutBufferLength,
-                                      uint32_t * pRtpTimestamp );
+    uint16_t rtpSeqStart,
+    uint16_t rtpSeqEnd,
+    uint8_t * pOutBuffer,
+    size_t * pOutBufferLength,
+    uint32_t * pRtpTimestamp );
 
 PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_t * pSession,
-                                                          Transceiver_t * pTransceiver,
-                                                          const PeerConnectionFrame_t * pFrame );
+    Transceiver_t * pTransceiver,
+    const PeerConnectionFrame_t * pFrame );
 
 #endif /* PEER_CONNECTION_G711_HELPER_H */

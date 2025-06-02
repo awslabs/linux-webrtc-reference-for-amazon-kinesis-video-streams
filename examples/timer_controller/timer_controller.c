@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
+#include "timer_controller.h"
+#include "logging.h"
+#include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <errno.h>
-#include "logging.h"
-#include "timer_controller.h"
 
 static void generalTimerCallback( union sigval sv )
 {
@@ -35,8 +35,8 @@ static void generalTimerCallback( union sigval sv )
 }
 
 TimerControllerResult_t TimerController_Create( TimerHandler_t * pTimerHandler,
-                                                TimerControllerTimerExpireCallback onTimerExpire,
-                                                void * pUserContext )
+    TimerControllerTimerExpireCallback onTimerExpire,
+    void * pUserContext )
 {
     TimerControllerResult_t ret = TIMER_CONTROLLER_RESULT_OK;
     struct sigevent sigEvent;
@@ -70,8 +70,8 @@ TimerControllerResult_t TimerController_Create( TimerHandler_t * pTimerHandler,
 }
 
 TimerControllerResult_t TimerController_SetTimer( TimerHandler_t * pTimerHandler,
-                                                  uint32_t initialTimeMs,
-                                                  uint32_t repeatTimeMs )
+    uint32_t initialTimeMs,
+    uint32_t repeatTimeMs )
 {
     TimerControllerResult_t ret = TIMER_CONTROLLER_RESULT_OK;
     struct itimerspec its;

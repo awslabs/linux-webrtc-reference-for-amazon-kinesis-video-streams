@@ -36,8 +36,8 @@
  * @return Number of bytes sent on success; else a negative value.
  */
 int xMbedTLSBioTCPSocketsWrapperSend( void * ctx,
-                                      const unsigned char * buf,
-                                      size_t len )
+    const unsigned char * buf,
+    size_t len )
 {
     int32_t xReturnStatus;
 
@@ -85,8 +85,8 @@ int xMbedTLSBioTCPSocketsWrapperSend( void * ctx,
  * @return Number of bytes received if successful; Negative value on error.
  */
 int xMbedTLSBioTCPSocketsWrapperRecv( void * ctx,
-                                      unsigned char * buf,
-                                      size_t len )
+    unsigned char * buf,
+    size_t len )
 {
     int32_t xReturnStatus;
 

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "peer_connection_codec_helper.h"
-#include "h265_packetizer.h"
 #include "h265_depacketizer.h"
+#include "h265_packetizer.h"
+#include "peer_connection_codec_helper.h"
 
 PeerConnectionResult_t GetH265PacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
-                                              uint8_t * pIsStartPacket )
+    uint8_t * pIsStartPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     H265Result_t resultH265;
@@ -35,8 +35,8 @@ PeerConnectionResult_t GetH265PacketProperty( PeerConnectionJitterBufferPacket_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultH265 = H265Depacketizer_GetPacketProperties( pPacket->pPacketBuffer,
-                                                           pPacket->packetBufferLength,
-                                                           &properties );
+            pPacket->packetBufferLength,
+            &properties );
         if( resultH265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to get h265 packet properties, result: %d", resultH265 ) );
@@ -57,11 +57,11 @@ PeerConnectionResult_t GetH265PacketProperty( PeerConnectionJitterBufferPacket_t
 }
 
 PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuffer,
-                                      uint16_t rtpSeqStart,
-                                      uint16_t rtpSeqEnd,
-                                      uint8_t * pOutBuffer,
-                                      size_t * pOutBufferLength,
-                                      uint32_t * pRtpTimestamp )
+    uint16_t rtpSeqStart,
+    uint16_t rtpSeqEnd,
+    uint8_t * pOutBuffer,
+    size_t * pOutBufferLength,
+    uint32_t * pRtpTimestamp )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     uint16_t i, index;
@@ -85,8 +85,8 @@ PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuff
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultH265 = H265Depacketizer_Init( &h265DepacketizerContext,
-                                            h265Packets,
-                                            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+            h265Packets,
+            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
         if( resultH265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to initialize H265 depacketizer, result: %d", resultH265 ) );
@@ -106,9 +106,8 @@ PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuff
 
             LogDebug( ( "Adding packet seq: %u, length: %lu, timestamp: %u", i, h265Packet.packetDataLength, rtpTimestamp ) );
 
-
             resultH265 = H265Depacketizer_AddPacket( &h265DepacketizerContext,
-                                                     &h265Packet );
+                &h265Packet );
             if( resultH265 != H265_RESULT_OK )
             {
                 LogError( ( "Fail to add h265 depacketizer packet, result: %d", resultH265 ) );
@@ -123,7 +122,7 @@ PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuff
         frame.pFrameData = pOutBuffer;
         frame.frameDataLength = *pOutBufferLength;
         resultH265 = H265Depacketizer_GetFrame( &h265DepacketizerContext,
-                                                &frame );
+            &frame );
         if( resultH265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to get h265 depacketizer frame, result: %d", resultH265 ) );
@@ -141,8 +140,8 @@ PeerConnectionResult_t FillFrameH265( PeerConnectionJitterBuffer_t * pJitterBuff
 }
 
 PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_t * pSession,
-                                                          Transceiver_t * pTransceiver,
-                                                          const PeerConnectionFrame_t * pFrame )
+    Transceiver_t * pTransceiver,
+    const PeerConnectionFrame_t * pFrame )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     H265PacketizerContext_t h265PacketizerContext;
@@ -163,18 +162,18 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
     uint32_t * pSsrc = NULL;
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
-    uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
-    #if ENABLE_TWCC_SUPPORT
+    uint32_t randomRtpTimeoffset = 0; // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+#if ENABLE_TWCC_SUPPORT
     /* Add TWCC packet tracking */
     TwccPacketInfo_t packetInfo;
-    #endif /* ENABLE_TWCC_SUPPORT */
+#endif /* ENABLE_TWCC_SUPPORT */
 
     if( ( pSession == NULL ) ||
         ( pTransceiver == NULL ) ||
         ( pFrame == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pTransceiver: %p, pFrame: %p",
-                    pSession, pTransceiver, pFrame ) );
+            pSession, pTransceiver, pFrame ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -187,8 +186,8 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resulth265 = H265Packetizer_Init( &h265PacketizerContext,
-                                          nalusArray,
-                                          PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME );
+            nalusArray,
+            PEER_CONNECTION_SRTP_H265_MAX_NALUS_IN_A_FRAME );
         if( resulth265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to init h265 packetizer, result: %d", resulth265 ) );
@@ -201,7 +200,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
         h265Frame.pFrameData = pFrame->pData;
         h265Frame.frameDataLength = pFrame->dataLength;
         resulth265 = H265Packetizer_AddFrame( &h265PacketizerContext,
-                                              &h265Frame );
+            &h265Frame );
         if( resulth265 != H265_RESULT_OK )
         {
             LogError( ( "Fail to add frame in  h265 packetizer, result: %d", resulth265 ) );
@@ -239,8 +238,8 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
          * If the bufferAfterEncrypt = 1, we store the encrypted SRTP packet to the buffer. */
         pRollingBufferPacket = NULL;
         ret = PeerConnectionRollingBuffer_GetRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-                                                                *pRtpSeq,
-                                                                &pRollingBufferPacket );
+            *pRtpSeq,
+            &pRollingBufferPacket );
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "Fail to get RTP buffer for seq: %u", *pRtpSeq ) );
@@ -268,12 +267,12 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
         }
 
         resulth265 = H265Packetizer_GetPacket( &h265PacketizerContext,
-                                               &packeth265 );
+            &packeth265 );
 
         if( resulth265 == H265_RESULT_NO_MORE_NALUS )
         {
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-                                                                  pRollingBufferPacket );
+                pRollingBufferPacket );
             /* Early break because no packet available. */
             break;
         }
@@ -293,7 +292,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
             pRollingBufferPacket->rtpPacket.header.csrcCount = 0;
             pRollingBufferPacket->rtpPacket.header.pCsrc = NULL;
             pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE,
-                                                                                                                      pFrame->presentationUs );
+                pFrame->presentationUs );
 
             if( pSession->rtpConfig.twccId > 0 )
             {
@@ -302,17 +301,17 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
                 pRollingBufferPacket->rtpPacket.header.extension.extensionPayloadLength = 1;
                 pRollingBufferPacket->twccExtensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId, pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &pRollingBufferPacket->twccExtensionPayload;
-                
-                #if ENABLE_TWCC_SUPPORT
+
+#if ENABLE_TWCC_SUPPORT
                 memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
                 packetInfo.packetSize = packeth265.packetDataLength;
                 packetInfo.localSentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
                 packetInfo.packetSeqNum = pSession->rtpConfig.twccSequence;
 
                 RtcpTwccManager_AddPacketInfo( &pSession->pCtx->rtcpTwccManager,
-                                               &packetInfo );
-                #endif /* ENABLE_TWCC_SUPPORT */
-                
+                    &packetInfo );
+#endif /* ENABLE_TWCC_SUPPORT */
+
                 pSession->rtpConfig.twccSequence++;
             }
 
@@ -321,9 +320,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
 
             /* PeerConnectionSrtp_ConstructSrtpPacket() serializes RTP packet and encrypt it. */
             ret = PeerConnectionSrtp_ConstructSrtpPacket( pSession,
-                                                          &pRollingBufferPacket->rtpPacket,
-                                                          pSrtpPacket,
-                                                          &srtpPacketLength );
+                &pRollingBufferPacket->rtpPacket,
+                pSrtpPacket,
+                &srtpPacketLength );
         }
         else
         {
@@ -345,23 +344,23 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
 
             /* Udpate the packet into rolling buffer. */
             ret = PeerConnectionRollingBuffer_SetPacket( &pSrtpSender->txRollingBuffer,
-                                                         ( *pRtpSeq )++,
-                                                         pRollingBufferPacket );
+                ( *pRtpSeq )++,
+                pRollingBufferPacket );
         }
 
         if( ( ret != PEER_CONNECTION_RESULT_OK ) && ( pRollingBufferPacket != NULL ) )
         {
             /* If any failure, release the allocated RTP buffer. */
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-                                                                  pRollingBufferPacket );
+                pRollingBufferPacket );
         }
 
         /* Write the constructed RTP packets through network. */
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
-                                                                  pSrtpPacket,
-                                                                  srtpPacketLength );
+                pSrtpPacket,
+                srtpPacketLength );
             if( resultIceController != ICE_CONTROLLER_RESULT_OK )
             {
                 LogWarn( ( "Fail to send RTP packet, ret: %d", resultIceController ) );
@@ -375,12 +374,12 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH265Frame( PeerConnectionSession_
             bytesSent += pRollingBufferPacket->rtpPacket.payloadLength;
         }
 
-        #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             Metric_EndEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
         }
-        #endif
+#endif
     }
 
     if( isLocked )

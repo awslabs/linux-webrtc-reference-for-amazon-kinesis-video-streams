@@ -17,7 +17,6 @@
 #ifndef TCP_SOCKETS_WRAPPER_H
 #define TCP_SOCKETS_WRAPPER_H
 
-
 /* Standard includes. */
 #include <stdint.h>
 
@@ -25,18 +24,18 @@
 //#include "FreeRTOS.h"
 
 /* Error codes. */
-#define TCP_SOCKETS_ERRNO_NONE                ( 0 )   /*!< No error. */
-#define TCP_SOCKETS_ERRNO_ERROR               ( -1 )  /*!< Catch-all sockets error code. */
-#define TCP_SOCKETS_ERRNO_EWOULDBLOCK         ( -2 )  /*!< A resource is temporarily unavailable. */
-#define TCP_SOCKETS_ERRNO_ENOMEM              ( -3 )  /*!< Memory allocation failed. */
-#define TCP_SOCKETS_ERRNO_EINVAL              ( -4 )  /*!< Invalid argument. */
-#define TCP_SOCKETS_ERRNO_ENOPROTOOPT         ( -5 )  /*!< A bad option was specified . */
-#define TCP_SOCKETS_ERRNO_ENOTCONN            ( -6 )  /*!< The supplied socket is not connected. */
-#define TCP_SOCKETS_ERRNO_EISCONN             ( -7 )  /*!< The supplied socket is already connected. */
-#define TCP_SOCKETS_ERRNO_ECLOSED             ( -8 )  /*!< The supplied socket has already been closed. */
-#define TCP_SOCKETS_ERRNO_PERIPHERAL_RESET    ( -9 )  /*!< Communications peripheral has been reset. */
-#define TCP_SOCKETS_ERRNO_ENOSPC              ( -10 ) /*!< No space left on device */
-#define TCP_SOCKETS_ERRNO_EINTR               ( -11 ) /*!< Interrupted system call */
+#define TCP_SOCKETS_ERRNO_NONE             ( 0 )   /*!< No error. */
+#define TCP_SOCKETS_ERRNO_ERROR            ( -1 )  /*!< Catch-all sockets error code. */
+#define TCP_SOCKETS_ERRNO_EWOULDBLOCK      ( -2 )  /*!< A resource is temporarily unavailable. */
+#define TCP_SOCKETS_ERRNO_ENOMEM           ( -3 )  /*!< Memory allocation failed. */
+#define TCP_SOCKETS_ERRNO_EINVAL           ( -4 )  /*!< Invalid argument. */
+#define TCP_SOCKETS_ERRNO_ENOPROTOOPT      ( -5 )  /*!< A bad option was specified . */
+#define TCP_SOCKETS_ERRNO_ENOTCONN         ( -6 )  /*!< The supplied socket is not connected. */
+#define TCP_SOCKETS_ERRNO_EISCONN          ( -7 )  /*!< The supplied socket is already connected. */
+#define TCP_SOCKETS_ERRNO_ECLOSED          ( -8 )  /*!< The supplied socket has already been closed. */
+#define TCP_SOCKETS_ERRNO_PERIPHERAL_RESET ( -9 )  /*!< Communications peripheral has been reset. */
+#define TCP_SOCKETS_ERRNO_ENOSPC           ( -10 ) /*!< No space left on device */
+#define TCP_SOCKETS_ERRNO_EINTR            ( -11 ) /*!< Interrupted system call */
 
 struct xSOCKET
 {
@@ -44,8 +43,8 @@ struct xSOCKET
 };
 
 #ifndef SOCKET_T_TYPEDEFED
-    struct xSOCKET;
-    typedef struct xSOCKET * Socket_t; /**< @brief Socket handle data type. */
+struct xSOCKET;
+typedef struct xSOCKET * Socket_t; /**< @brief Socket handle data type. */
 #endif
 
 /**
@@ -62,10 +61,10 @@ struct xSOCKET
  * @return Non-zero value on error, 0 on success.
  */
 int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
-                             const char * pHostName,
-                             uint16_t port,
-                             uint32_t receiveTimeoutMs,
-                             uint32_t sendTimeoutMs );
+    const char * pHostName,
+    uint16_t port,
+    uint32_t receiveTimeoutMs,
+    uint32_t sendTimeoutMs );
 
 /**
  * @brief End connection to server.
@@ -88,8 +87,8 @@ void TCP_Sockets_Disconnect( Socket_t tcpSocket );
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t TCP_Sockets_Send( Socket_t xSocket,
-                          const void * pvBuffer,
-                          size_t xDataLength );
+    const void * pvBuffer,
+    size_t xDataLength );
 
 /**
  * @brief Receive data from a TCP socket.
@@ -109,8 +108,8 @@ int32_t TCP_Sockets_Send( Socket_t xSocket,
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t TCP_Sockets_Recv( Socket_t xSocket,
-                          void * pvBuffer,
-                          size_t xBufferLength );
+    void * pvBuffer,
+    size_t xBufferLength );
 
 /**
  * @brief Get socket descriptor from Socket_t structure.

@@ -1,15 +1,15 @@
-#include "logging.h"
 #include "base64.h"
+#include "logging.h"
 
 /**
  * Padding values for mod3 indicating how many '=' to append
  */
-uint8_t base64EncodePadding[3] = {0, 2, 1};
+uint8_t base64EncodePadding[ 3 ] = { 0, 2, 1 };
 
 /**
  * Padding values for mod4 indicating how many '=' has been padded. NOTE: value for 1 is invalid = 0xff
  */
-uint8_t base64DecodePadding[4] = {0, 0xff, 2, 1};
+uint8_t base64DecodePadding[ 4 ] = { 0, 0xff, 2, 1 };
 
 /**
  * Base64 encoding alphabet
@@ -20,7 +20,8 @@ uint8_t base64EecodeAlpha[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
  * Base64 decoding alphabet - an array of 256 values corresponding to the encoded base64 indexes
  * maps A -> 0, B -> 1, etc..
  */
-uint8_t base64DecodeAlpha[256] =
+// clang-format off
+uint8_t base64DecodeAlpha[ 256 ] =
 {
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 10
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 20
@@ -49,11 +50,12 @@ uint8_t base64DecodeAlpha[256] =
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 250
     0,  0,  0,  0,  0,  0,
 };
+// clang-format on
 
 Base64Result_t base64Encode( const char * pInputData,
-                             size_t inputDataLength,
-                             char * pOutputData,
-                             size_t * pOutputDataLength )
+    size_t inputDataLength,
+    char * pOutputData,
+    size_t * pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
     uint32_t padding, i;
@@ -71,7 +73,7 @@ Base64Result_t base64Encode( const char * pInputData,
     if( ret == BASE64_RESULT_OK )
     {
         mod3 = inputDataLength % 3;
-        padding = base64EncodePadding[mod3];
+        padding = base64EncodePadding[ mod3 ];
         outputLength = 4 * ( inputDataLength + padding ) / 3;
 
         if( outputLength > *pOutputDataLength )
@@ -125,9 +127,9 @@ Base64Result_t base64Encode( const char * pInputData,
 }
 
 Base64Result_t base64Decode( const char * pInputData,
-                             size_t inputDataLength,
-                             char * pOutputData,
-                             size_t * pOutputDataLength )
+    size_t inputDataLength,
+    char * pOutputData,
+    size_t * pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
     const unsigned char * pInput = ( const unsigned char * ) pInputData;
@@ -214,8 +216,8 @@ Base64Result_t base64Decode( const char * pInputData,
         }
         else if( padding == 2 )
         {
-            b0 = base64DecodeAlpha[*pInput++];
-            b1 = base64DecodeAlpha[*pInput++];
+            b0 = base64DecodeAlpha[ *pInput++ ];
+            b1 = base64DecodeAlpha[ *pInput++ ];
 
             *pOutput++ = ( b0 << 2 ) | ( b1 >> 4 );
         }

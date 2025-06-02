@@ -20,10 +20,10 @@
 #include "mbedtls/config.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
+#include "mbedtls/error.h"
 #include "mbedtls/ssl.h"
 #include "mbedtls/threading.h"
 #include "mbedtls/x509.h"
-#include "mbedtls/error.h"
 
 /* Include header that defines log levels. */
 #include "logging.h"
@@ -32,7 +32,7 @@
 #include "tcp_sockets_wrapper.h"
 
 /* Flags to be used in TLS_FreeRTOS_Connect. */
-#define TLS_CONNECT_NON_BLOCKING_HANDSHAKE   ( 1 << 0 )
+#define TLS_CONNECT_NON_BLOCKING_HANDSHAKE ( 1 << 0 )
 
 /**
  * @brief Secured connection context.
@@ -105,14 +105,14 @@ typedef struct TlsSession
  */
 typedef enum TlsTransportStatus
 {
-    TLS_TRANSPORT_SUCCESS = 0,              /**< Function successfully completed. */
-    TLS_TRANSPORT_INVALID_PARAMETER,        /**< At least one parameter was invalid. */
-    TLS_TRANSPORT_INSUFFICIENT_MEMORY,      /**< Insufficient memory required to establish connection. */
-    TLS_TRANSPORT_INVALID_CREDENTIALS,      /**< Provided credentials were invalid. */
-    TLS_TRANSPORT_HANDSHAKE_FAILED,         /**< Performing TLS handshake with server failed. */
-    TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS,    /**< TLS handshake with server is in-progress. */
-    TLS_TRANSPORT_INTERNAL_ERROR,           /**< A call to a system API resulted in an internal error. */
-    TLS_TRANSPORT_CONNECT_FAILURE           /**< Initial connection to the server failed. */
+    TLS_TRANSPORT_SUCCESS = 0,           /**< Function successfully completed. */
+    TLS_TRANSPORT_INVALID_PARAMETER,     /**< At least one parameter was invalid. */
+    TLS_TRANSPORT_INSUFFICIENT_MEMORY,   /**< Insufficient memory required to establish connection. */
+    TLS_TRANSPORT_INVALID_CREDENTIALS,   /**< Provided credentials were invalid. */
+    TLS_TRANSPORT_HANDSHAKE_FAILED,      /**< Performing TLS handshake with server failed. */
+    TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS, /**< TLS handshake with server is in-progress. */
+    TLS_TRANSPORT_INTERNAL_ERROR,        /**< A call to a system API resulted in an internal error. */
+    TLS_TRANSPORT_CONNECT_FAILURE        /**< Initial connection to the server failed. */
 } TlsTransportStatus_t;
 
 /**
@@ -141,12 +141,12 @@ TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( TlsNetworkContext_t * pTlsN
  * or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
  */
 TlsTransportStatus_t TLS_FreeRTOS_Connect( TlsNetworkContext_t * pTlsNetworkContext,
-                                           const char * pHostName,
-                                           uint16_t port,
-                                           const NetworkCredentials_t * pNetworkCredentials,
-                                           uint32_t receiveTimeoutMs,
-                                           uint32_t sendTimeoutMs,
-                                           uint32_t flags );
+    const char * pHostName,
+    uint16_t port,
+    const NetworkCredentials_t * pNetworkCredentials,
+    uint32_t receiveTimeoutMs,
+    uint32_t sendTimeoutMs,
+    uint32_t flags );
 
 /**
  * @brief Gracefully disconnect an established TLS connection.
@@ -170,8 +170,8 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( TlsNetworkContext_t * pTlsNetworkC
  * negative value on error.
  */
 int32_t TLS_FreeRTOS_recv( TlsNetworkContext_t * pNetworkContext,
-                           void * pBuffer,
-                           size_t bytesToRecv );
+    void * pBuffer,
+    size_t bytesToRecv );
 
 /**
  * @brief Sends data over an established TLS connection.
@@ -188,8 +188,8 @@ int32_t TLS_FreeRTOS_recv( TlsNetworkContext_t * pNetworkContext,
  * else a negative value to represent error.
  */
 int32_t TLS_FreeRTOS_send( TlsNetworkContext_t * pTlsNetworkContext,
-                           const void * pBuffer,
-                           size_t bytesToSend );
+    const void * pBuffer,
+    size_t bytesToSend );
 
 /**
  * @brief Get the socket FD for this network context.
@@ -213,11 +213,11 @@ int32_t TLS_FreeRTOS_GetSocketFd( TlsNetworkContext_t * pTlsNetworkContext );
  *
  * @return void
  */
-    void mbedtls_string_printf( void * sslContext,
-                                int level,
-                                const char * file,
-                                int line,
-                                const char * str );
+void mbedtls_string_printf( void * sslContext,
+    int level,
+    const char * file,
+    int line,
+    const char * str );
 #endif /* MBEDTLS_DEBUG_C */
 
 #endif /* ifndef USING_MBEDTLS */

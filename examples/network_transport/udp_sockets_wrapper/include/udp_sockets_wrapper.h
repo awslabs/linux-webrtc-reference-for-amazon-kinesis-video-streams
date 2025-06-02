@@ -17,28 +17,26 @@
 #ifndef UDP_SOCKETS_WRAPPER_H
 #define UDP_SOCKETS_WRAPPER_H
 
-
 /* Standard includes. */
 #include <stdint.h>
 
-
 /* Error codes. */
-#define UDP_SOCKETS_ERRNO_NONE                ( 0 )   /*!< No error. */
-#define UDP_SOCKETS_ERRNO_ERROR               ( -1 )  /*!< Catch-all sockets error code. */
-#define UDP_SOCKETS_ERRNO_EWOULDBLOCK         ( -2 )  /*!< A resource is temporarily unavailable. */
-#define UDP_SOCKETS_ERRNO_ENOMEM              ( -3 )  /*!< Memory allocation failed. */
-#define UDP_SOCKETS_ERRNO_EINVAL              ( -4 )  /*!< Invalid argument. */
-#define UDP_SOCKETS_ERRNO_ENOPROTOOPT         ( -5 )  /*!< A bad option was specified . */
-#define UDP_SOCKETS_ERRNO_ENOTCONN            ( -6 )  /*!< The supplied socket is not connected. */
-#define UDP_SOCKETS_ERRNO_EISCONN             ( -7 )  /*!< The supplied socket is already connected. */
-#define UDP_SOCKETS_ERRNO_ECLOSED             ( -8 )  /*!< The supplied socket has already been closed. */
-#define UDP_SOCKETS_ERRNO_PERIPHERAL_RESET    ( -9 )  /*!< Communications peripheral has been reset. */
-#define UDP_SOCKETS_ERRNO_ENOSPC              ( -10 ) /*!< No space left on device */
-#define UDP_SOCKETS_ERRNO_EINTR               ( -11 ) /*!< Interrupted system call */
+#define UDP_SOCKETS_ERRNO_NONE             ( 0 )   /*!< No error. */
+#define UDP_SOCKETS_ERRNO_ERROR            ( -1 )  /*!< Catch-all sockets error code. */
+#define UDP_SOCKETS_ERRNO_EWOULDBLOCK      ( -2 )  /*!< A resource is temporarily unavailable. */
+#define UDP_SOCKETS_ERRNO_ENOMEM           ( -3 )  /*!< Memory allocation failed. */
+#define UDP_SOCKETS_ERRNO_EINVAL           ( -4 )  /*!< Invalid argument. */
+#define UDP_SOCKETS_ERRNO_ENOPROTOOPT      ( -5 )  /*!< A bad option was specified . */
+#define UDP_SOCKETS_ERRNO_ENOTCONN         ( -6 )  /*!< The supplied socket is not connected. */
+#define UDP_SOCKETS_ERRNO_EISCONN          ( -7 )  /*!< The supplied socket is already connected. */
+#define UDP_SOCKETS_ERRNO_ECLOSED          ( -8 )  /*!< The supplied socket has already been closed. */
+#define UDP_SOCKETS_ERRNO_PERIPHERAL_RESET ( -9 )  /*!< Communications peripheral has been reset. */
+#define UDP_SOCKETS_ERRNO_ENOSPC           ( -10 ) /*!< No space left on device */
+#define UDP_SOCKETS_ERRNO_EINTR            ( -11 ) /*!< Interrupted system call */
 
 #ifndef SOCKET_T_TYPEDEFED
-    struct xSOCKET;
-    typedef struct xSOCKET * Socket_t; /**< @brief Socket handle data type. */
+struct xSOCKET;
+typedef struct xSOCKET * Socket_t; /**< @brief Socket handle data type. */
 #endif
 
 /**
@@ -50,7 +48,7 @@
  * @return Non-zero value on error, 0 on success.
  */
 int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
-                                 int assignFd );
+    int assignFd );
 
 /**
  * @brief Establish a connection to server.
@@ -66,10 +64,10 @@ int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
  * @return Non-zero value on error, 0 on success.
  */
 int UDP_Sockets_Connect( Socket_t * pUdpSocket,
-                         const char * pHostName,
-                         uint16_t port,
-                         uint32_t receiveTimeoutMs,
-                         uint32_t sendTimeoutMs );
+    const char * pHostName,
+    uint16_t port,
+    uint32_t receiveTimeoutMs,
+    uint32_t sendTimeoutMs );
 
 /**
  * @brief End connection to server.
@@ -92,8 +90,8 @@ void UDP_Sockets_Disconnect( Socket_t udpSocket );
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t UDP_Sockets_Send( Socket_t xSocket,
-                          const void * pvBuffer,
-                          size_t xDataLength );
+    const void * pvBuffer,
+    size_t xDataLength );
 
 /**
  * @brief Receive data from a UDP socket.
@@ -113,8 +111,8 @@ int32_t UDP_Sockets_Send( Socket_t xSocket,
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t UDP_Sockets_Recv( Socket_t xSocket,
-                          void * pvBuffer,
-                          size_t xBufferLength );
+    void * pvBuffer,
+    size_t xBufferLength );
 
 /**
  * @brief Get socket descriptor from Socket_t structure.

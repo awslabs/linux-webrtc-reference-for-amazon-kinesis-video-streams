@@ -14,52 +14,52 @@
  * limitations under the License.
  */
 
-#include <errno.h>
-#include <time.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <net/if.h>
+#include <errno.h>
 #include <ifaddrs.h>
+#include <net/if.h>
 #include <netdb.h>
+#include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
-#include "logging.h"
+#include "ice_api.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
-#include "ice_api.h"
+#include "logging.h"
 #include "signaling_controller.h"
 #if METRIC_PRINT_ENABLED
-#include "metric.h"
+    #include "metric.h"
 #endif
 #include "networking_utils.h"
 
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN "UNKNOWN"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_REQUEST "BINDING_REQUEST"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_SUCCESS "BINDING_SUCCESS_RESPONSE"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_FAILURE "BINDING_FAILURE_RESPONSE"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_INDICATION "BINDING_INDICATION"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_REQUEST "ALLOCATE_REQUEST"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_SUCCESS "ALLOCATE_SUCCESS_RESPONSE"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_FAILURE "ALLOCATE_FAILURE_RESPONSE"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_REQUEST "REFRESH_REQUEST"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_SUCCESS "REFRESH_SUCCESS_RESPONSE"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_FAILURE "REFRESH_FAILURE_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN                   "UNKNOWN"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_REQUEST           "BINDING_REQUEST"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_SUCCESS           "BINDING_SUCCESS_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_FAILURE           "BINDING_FAILURE_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_INDICATION        "BINDING_INDICATION"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_REQUEST          "ALLOCATE_REQUEST"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_SUCCESS          "ALLOCATE_SUCCESS_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_FAILURE          "ALLOCATE_FAILURE_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_REQUEST           "REFRESH_REQUEST"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_SUCCESS           "REFRESH_SUCCESS_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_FAILURE           "REFRESH_FAILURE_RESPONSE"
 #define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_REQUEST "CREATE_PERMISSION_REQUEST"
 #define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_SUCCESS "CREATE_PERMISSION_SUCCESS_RESPONSE"
 #define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_FAILURE "CREATE_PERMISSION_FAILURE_RESPONSE"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_REQUEST "CHANNEL_BIND_REQUEST"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_SUCCESS "CHANNEL_BIND_SUCCESS_RESPONSE"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_FAILURE "CHANNEL_BIND_FAILURE_RESPONSE"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_SEND_INDICATION "SEND_INDICATION"
-#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_DATA_INDICATION "DATA_INDICATION"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_REQUEST      "CHANNEL_BIND_REQUEST"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_SUCCESS      "CHANNEL_BIND_SUCCESS_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_FAILURE      "CHANNEL_BIND_FAILURE_RESPONSE"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_SEND_INDICATION           "SEND_INDICATION"
+#define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_DATA_INDICATION           "DATA_INDICATION"
 
-#define ICE_CONTROLLER_RESEND_DELAY_MS ( 50 )
-#define ICE_CONTROLLER_RESEND_TIMEOUT_MS ( 1000 )
+#define ICE_CONTROLLER_RESEND_DELAY_MS                                    ( 50 )
+#define ICE_CONTROLLER_RESEND_TIMEOUT_MS                                  ( 1000 )
 
 static void GetLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
-                                size_t * pLocalIpAddressesNum )
+    size_t * pLocalIpAddressesNum )
 {
-    struct ifaddrs * pIfAddrs, * pIfAddr;
+    struct ifaddrs *pIfAddrs, *pIfAddr;
     struct sockaddr_in * pIpv4Addr = NULL;
     size_t localIpAddressesSize = *pLocalIpAddressesNum;
     size_t localIpAddressesNum = 0;
@@ -102,11 +102,11 @@ static void GetLocalIPAdresses( IceEndpoint_t * pLocalIpAddresses,
 }
 
 void IceControllerNet_UpdateSocketContext( IceControllerContext_t * pCtx,
-                                           IceControllerSocketContext_t * pSocketContext,
-                                           IceControllerSocketContextState_t newState,
-                                           IceCandidate_t * pLocalCandidate,
-                                           IceCandidate_t * pRemoteCandidate,
-                                           IceControllerIceServer_t * pIceServer )
+    IceControllerSocketContext_t * pSocketContext,
+    IceControllerSocketContextState_t newState,
+    IceCandidate_t * pLocalCandidate,
+    IceCandidate_t * pRemoteCandidate,
+    IceControllerIceServer_t * pIceServer )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
 
@@ -136,11 +136,11 @@ void IceControllerNet_UpdateSocketContext( IceControllerContext_t * pCtx,
 }
 
 static IceControllerResult_t CreateSocketContextUdp( IceControllerContext_t * pCtx,
-                                                     uint16_t family,
-                                                     IceEndpoint_t * pBindEndpoint,
-                                                     IceEndpoint_t * pConnectEndpoint,
-                                                     IceSocketProtocol_t protocol,
-                                                     IceControllerSocketContext_t ** ppOutSocketContext )
+    uint16_t family,
+    IceEndpoint_t * pBindEndpoint,
+    IceEndpoint_t * pConnectEndpoint,
+    IceSocketProtocol_t protocol,
+    IceControllerSocketContext_t ** ppOutSocketContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceControllerSocketContext_t * pSocketContext = NULL;
@@ -169,8 +169,8 @@ static IceControllerResult_t CreateSocketContextUdp( IceControllerContext_t * pC
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
         pSocketContext->socketFd = socket( family == STUN_ADDRESS_IPv4 ? AF_INET : AF_INET6,
-                                           SOCK_DGRAM,
-                                           0 );
+            SOCK_DGRAM,
+            0 );
 
         if( pSocketContext->socketFd == -1 )
         {
@@ -252,11 +252,11 @@ static IceControllerResult_t CreateSocketContextUdp( IceControllerContext_t * pC
 }
 
 static IceControllerResult_t CreateSocketContextTcp( IceControllerContext_t * pCtx,
-                                                     uint16_t family,
-                                                     IceEndpoint_t * pBindEndpoint,
-                                                     IceEndpoint_t * pConnectEndpoint,
-                                                     IceSocketProtocol_t protocol,
-                                                     IceControllerSocketContext_t ** ppOutSocketContext )
+    uint16_t family,
+    IceEndpoint_t * pBindEndpoint,
+    IceEndpoint_t * pConnectEndpoint,
+    IceSocketProtocol_t protocol,
+    IceControllerSocketContext_t ** ppOutSocketContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceControllerSocketContext_t * pSocketContext = NULL;
@@ -271,17 +271,17 @@ static IceControllerResult_t CreateSocketContextTcp( IceControllerContext_t * pC
     char remoteIpAddr[ INET_ADDRSTRLEN ];
 
     pRemoteIpPos = inet_ntop( AF_INET,
-                              pConnectEndpoint->transportAddress.address,
-                              remoteIpAddr,
-                              INET_ADDRSTRLEN );
+        pConnectEndpoint->transportAddress.address,
+        remoteIpAddr,
+        INET_ADDRSTRLEN );
     LogInfo( ( "Start TLS handshaking with %s:%d", pRemoteIpPos ? pRemoteIpPos : "UNKNOWN", pConnectEndpoint->transportAddress.port ) );
     if( pRemoteIpPos == NULL )
     {
         LogError( ( "Unknown address, address: 0x%02x%02x%02x%02x",
-                    pConnectEndpoint->transportAddress.address[0],
-                    pConnectEndpoint->transportAddress.address[1],
-                    pConnectEndpoint->transportAddress.address[2],
-                    pConnectEndpoint->transportAddress.address[3] ) );
+            pConnectEndpoint->transportAddress.address[ 0 ],
+            pConnectEndpoint->transportAddress.address[ 1 ],
+            pConnectEndpoint->transportAddress.address[ 2 ],
+            pConnectEndpoint->transportAddress.address[ 3 ] ) );
         ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_NTOP;
     }
 
@@ -317,17 +317,17 @@ static IceControllerResult_t CreateSocketContextTcp( IceControllerContext_t * pC
         pSocketContext->tlsSession.xTlsNetworkContext.pParams = &pSocketContext->tlsSession.xTlsTransportParams;
 
         LogInfo( ( "Establishing a TLS session with %s:%d.",
-                   pRemoteIpPos,
-                   pConnectEndpoint->transportAddress.port ) );
+            pRemoteIpPos,
+            pConnectEndpoint->transportAddress.port ) );
 
         /* Attempt to create a server-authenticated TLS connection. */
         xNetworkStatus = TLS_FreeRTOS_Connect( &pSocketContext->tlsSession.xTlsNetworkContext,
-                                               pRemoteIpPos,
-                                               pConnectEndpoint->transportAddress.port,
-                                               &credentials,
-                                               0U,
-                                               0U,
-                                               TLS_CONNECT_NON_BLOCKING_HANDSHAKE );
+            pRemoteIpPos,
+            pConnectEndpoint->transportAddress.port,
+            &credentials,
+            0U,
+            0U,
+            TLS_CONNECT_NON_BLOCKING_HANDSHAKE );
 
         if( xNetworkStatus == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
         {
@@ -364,11 +364,11 @@ static IceControllerResult_t CreateSocketContextTcp( IceControllerContext_t * pC
 }
 
 static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
-                                                  uint16_t family,
-                                                  IceEndpoint_t * pBindEndpoint,
-                                                  IceEndpoint_t * pConnectEndpoint,
-                                                  IceSocketProtocol_t protocol,
-                                                  IceControllerSocketContext_t ** ppOutSocketContext )
+    uint16_t family,
+    IceEndpoint_t * pBindEndpoint,
+    IceEndpoint_t * pConnectEndpoint,
+    IceSocketProtocol_t protocol,
+    IceControllerSocketContext_t ** ppOutSocketContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     uint8_t isLocked = 0;
@@ -397,20 +397,20 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
         if( protocol == ICE_SOCKET_PROTOCOL_UDP )
         {
             ret = CreateSocketContextUdp( pCtx,
-                                          family,
-                                          pBindEndpoint,
-                                          pConnectEndpoint,
-                                          protocol,
-                                          ppOutSocketContext );
+                family,
+                pBindEndpoint,
+                pConnectEndpoint,
+                protocol,
+                ppOutSocketContext );
         }
         else if( protocol == ICE_SOCKET_PROTOCOL_TCP )
         {
             ret = CreateSocketContextTcp( pCtx,
-                                          family,
-                                          pBindEndpoint,
-                                          pConnectEndpoint,
-                                          protocol,
-                                          ppOutSocketContext );
+                family,
+                pBindEndpoint,
+                pConnectEndpoint,
+                protocol,
+                ppOutSocketContext );
         }
         else
         {
@@ -428,36 +428,36 @@ static IceControllerResult_t CreateSocketContext( IceControllerContext_t * pCtx,
 }
 
 static IceControllerResult_t SendSocketPacket( IceControllerSocketContext_t * pSocketContext,
-                                               const uint8_t * pBuffer,
-                                               size_t length,
-                                               int flags,
-                                               struct sockaddr * pDestinationAddress,
-                                               socklen_t addressLength,
-                                               IceEndpoint_t * pDestinationEndpoint )
+    const uint8_t * pBuffer,
+    size_t length,
+    int flags,
+    struct sockaddr * pDestinationAddress,
+    socklen_t addressLength,
+    IceEndpoint_t * pDestinationEndpoint )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     int sentBytes, sendTotalBytes = 0;
     uint32_t totalDelayMs = 0;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipBuffer[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+#if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    char ipBuffer[ INET_ADDRSTRLEN ];
+#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     while( sendTotalBytes < length )
     {
         if( pSocketContext->socketType == ICE_CONTROLLER_SOCKET_TYPE_UDP )
         {
             sentBytes = sendto( pSocketContext->socketFd,
-                                pBuffer + sendTotalBytes,
-                                length - sendTotalBytes,
-                                flags,
-                                pDestinationAddress,
-                                addressLength );
+                pBuffer + sendTotalBytes,
+                length - sendTotalBytes,
+                flags,
+                pDestinationAddress,
+                addressLength );
         }
         else if( pSocketContext->socketType == ICE_CONTROLLER_SOCKET_TYPE_TLS )
         {
             sentBytes = TLS_FreeRTOS_send( &pSocketContext->tlsSession.xTlsNetworkContext,
-                                           pBuffer + sendTotalBytes,
-                                           length - sendTotalBytes );
+                pBuffer + sendTotalBytes,
+                length - sendTotalBytes );
         }
         else
         {
@@ -489,14 +489,14 @@ static IceControllerResult_t SendSocketPacket( IceControllerSocketContext_t * pS
             {
                 LogWarn( ( "Failed to send to socket fd: %d error, errno(%d): %s", pSocketContext->socketFd, errno, strerror( errno ) ) );
                 LogVerbose( ( "Source family: %d, IP:port: %s:%u",
-                              pSocketContext->pLocalCandidate->endpoint.transportAddress.family,
-                              IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ),
-                              pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
+                    pSocketContext->pLocalCandidate->endpoint.transportAddress.family,
+                    IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ),
+                    pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
 
                 LogVerbose( ( "Dest family: %d, IP:port: %s:%u",
-                              pDestinationEndpoint->transportAddress.family,
-                              IceControllerNet_LogIpAddressInfo( pDestinationEndpoint, ipBuffer, sizeof( ipBuffer ) ),
-                              pDestinationEndpoint->transportAddress.port ) );
+                    pDestinationEndpoint->transportAddress.family,
+                    IceControllerNet_LogIpAddressInfo( pDestinationEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                    pDestinationEndpoint->transportAddress.port ) );
                 ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_SENDTO;
                 break;
             }
@@ -511,7 +511,7 @@ static IceControllerResult_t SendSocketPacket( IceControllerSocketContext_t * pS
 }
 
 void IceControllerNet_FreeSocketContext( IceControllerContext_t * pCtx,
-                                         IceControllerSocketContext_t * pSocketContext )
+    IceControllerSocketContext_t * pSocketContext )
 {
     TlsTransportStatus_t retTlsTransport;
 
@@ -542,7 +542,7 @@ void IceControllerNet_FreeSocketContext( IceControllerContext_t * pCtx,
 }
 
 static void AddHostCandidate( IceControllerContext_t * pCtx,
-                              IceEndpoint_t * pLocalIceEndpoint )
+    IceEndpoint_t * pLocalIceEndpoint )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
@@ -550,9 +550,9 @@ static void AddHostCandidate( IceControllerContext_t * pCtx,
     IceControllerSocketContext_t * pSocketContext;
     IceControllerCallbackContent_t localCandidateReadyContent;
     int32_t retLocalCandidateReady;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipBuffer[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+#if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    char ipBuffer[ INET_ADDRSTRLEN ];
+#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     ret = CreateSocketContext( pCtx, pLocalIceEndpoint->transportAddress.family, pLocalIceEndpoint, NULL, ICE_SOCKET_PROTOCOL_UDP, &pSocketContext );
 
@@ -605,24 +605,24 @@ static void AddHostCandidate( IceControllerContext_t * pCtx,
         IceControllerNet_UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY, pCandidate, NULL, NULL );
 
         LogInfo( ( "Created host candidate with fd %d, ID: 0x%04x",
-                   pSocketContext->socketFd,
-                   pCandidate->candidateId ) );
+            pSocketContext->socketFd,
+            pCandidate->candidateId ) );
         LogVerbose( ( "host candidate's local IP/port: %s/%d",
-                      IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
-                      pLocalIceEndpoint->transportAddress.port ) );
+            IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+            pLocalIceEndpoint->transportAddress.port ) );
     }
 }
 
 static void AddSrflxCandidate( IceControllerContext_t * pCtx,
-                               IceEndpoint_t * pLocalIceEndpoint )
+    IceEndpoint_t * pLocalIceEndpoint )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
     uint32_t i;
     IceControllerSocketContext_t * pSocketContext;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipBuffer[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+#if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    char ipBuffer[ INET_ADDRSTRLEN ];
+#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     for( i = 0; i < pCtx->iceServersCount; i++ )
     {
@@ -656,7 +656,7 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
             if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
             {
                 iceResult = Ice_AddServerReflexiveCandidate( &pCtx->iceContext,
-                                                             pLocalIceEndpoint );
+                    pLocalIceEndpoint );
                 pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
                 if( iceResult != ICE_RESULT_OK )
@@ -680,12 +680,12 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
             IceControllerNet_UpdateSocketContext( pCtx, pSocketContext, ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE, &pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ], NULL, &pCtx->iceServers[ i ] );
 
             LogInfo( ( "Created srflx candidate with fd %d, ID: 0x%04x",
-                       pSocketContext->socketFd,
-                       pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+                pSocketContext->socketFd,
+                pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
 
             LogVerbose( ( "srflx candidate's local IP/port: %s/%d",
-                          IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
-                          pLocalIceEndpoint->transportAddress.port ) );
+                IceControllerNet_LogIpAddressInfo( pLocalIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                pLocalIceEndpoint->transportAddress.port ) );
             pCtx->metrics.pendingSrflxCandidateNum++;
         }
     }
@@ -697,9 +697,9 @@ static void AddRelayCandidates( IceControllerContext_t * pCtx )
     IceResult_t iceResult;
     uint32_t i;
     IceControllerSocketContext_t * pSocketContext = NULL;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipBuffer[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+#if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    char ipBuffer[ INET_ADDRSTRLEN ];
+#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     if( pCtx == NULL )
     {
@@ -715,61 +715,61 @@ static void AddRelayCandidates( IceControllerContext_t * pCtx )
             /* Reset ret for every round. */
             ret = ICE_CONTROLLER_RESULT_OK;
 
-            if( pCtx->iceServers[i].iceEndpoint.transportAddress.family != STUN_ADDRESS_IPv4 )
+            if( pCtx->iceServers[ i ].iceEndpoint.transportAddress.family != STUN_ADDRESS_IPv4 )
             {
                 LogInfo( ( "Only IPv4 TURN server is supported." ) );
                 continue;
             }
-            else if( ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) &&
-                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
+            else if( ( pCtx->iceServers[ i ].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) &&
+                     ( pCtx->iceServers[ i ].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
             {
                 /* Skip STUN servers. */
                 continue;
             }
-            else if( ( pCtx->iceServers[i].protocol != ICE_SOCKET_PROTOCOL_UDP ) &&
-                     ( pCtx->iceServers[i].protocol != ICE_SOCKET_PROTOCOL_TCP ) )
+            else if( ( pCtx->iceServers[ i ].protocol != ICE_SOCKET_PROTOCOL_UDP ) &&
+                     ( pCtx->iceServers[ i ].protocol != ICE_SOCKET_PROTOCOL_TCP ) )
             {
                 LogInfo( ( "Unknown TURN Server, protocol: %d, Server URL: %.*s",
-                           pCtx->iceServers[i].protocol,
-                           ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url ) );
+                    pCtx->iceServers[ i ].protocol,
+                    ( int ) pCtx->iceServers[ i ].urlLength,
+                    pCtx->iceServers[ i ].url ) );
                 continue;
             }
-            else if( ( pCtx->iceServers[i].protocol == ICE_SOCKET_PROTOCOL_UDP ) &&
-                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) )
+            else if( ( pCtx->iceServers[ i ].protocol == ICE_SOCKET_PROTOCOL_UDP ) &&
+                     ( pCtx->iceServers[ i ].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURN ) )
             {
                 /* For now we do not support DTLS connection over TURN server. */
                 LogInfo( ( "Only pure UDP TURN server is supported, serverType: %d, Server URL: %.*s",
-                           pCtx->iceServers[i].serverType,
-                           ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url ) );
+                    pCtx->iceServers[ i ].serverType,
+                    ( int ) pCtx->iceServers[ i ].urlLength,
+                    pCtx->iceServers[ i ].url ) );
                 continue;
             }
-            else if( ( pCtx->iceServers[i].protocol == ICE_SOCKET_PROTOCOL_TCP ) &&
-                     ( pCtx->iceServers[i].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
+            else if( ( pCtx->iceServers[ i ].protocol == ICE_SOCKET_PROTOCOL_TCP ) &&
+                     ( pCtx->iceServers[ i ].serverType != ICE_CONTROLLER_ICE_SERVER_TYPE_TURNS ) )
             {
                 /* For now we only support TLS connection over TURN server. */
                 LogInfo( ( "Only TLS/TCP TURN server is supported, serverType: %d, Server URL: %.*s",
-                           pCtx->iceServers[i].serverType,
-                           ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url ) );
+                    pCtx->iceServers[ i ].serverType,
+                    ( int ) pCtx->iceServers[ i ].urlLength,
+                    pCtx->iceServers[ i ].url ) );
                 continue;
             }
             else
             {
                 LogInfo( ( "Creating connection with TURN server %.*s, protocol: %s.",
-                           ( int ) pCtx->iceServers[i].urlLength,
-                           pCtx->iceServers[i].url,
-                           pCtx->iceServers[i].protocol == ICE_SOCKET_PROTOCOL_UDP ? "UDP" : "TLS" ) );
+                    ( int ) pCtx->iceServers[ i ].urlLength,
+                    pCtx->iceServers[ i ].url,
+                    pCtx->iceServers[ i ].protocol == ICE_SOCKET_PROTOCOL_UDP ? "UDP" : "TLS" ) );
             }
 
-            ret = CreateSocketContext( pCtx, STUN_ADDRESS_IPv4, NULL, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].protocol, &pSocketContext );
+            ret = CreateSocketContext( pCtx, STUN_ADDRESS_IPv4, NULL, &pCtx->iceServers[ i ].iceEndpoint, pCtx->iceServers[ i ].protocol, &pSocketContext );
 
             if( ret == ICE_CONTROLLER_RESULT_OK )
             {
                 if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
-                    iceResult = Ice_AddRelayCandidate( &pCtx->iceContext, &pCtx->iceServers[i].iceEndpoint, pCtx->iceServers[i].userName, pCtx->iceServers[i].userNameLength, pCtx->iceServers[i].password, pCtx->iceServers[i].passwordLength );
+                    iceResult = Ice_AddRelayCandidate( &pCtx->iceContext, &pCtx->iceServers[ i ].iceEndpoint, pCtx->iceServers[ i ].userName, pCtx->iceServers[ i ].userNameLength, pCtx->iceServers[ i ].password, pCtx->iceServers[ i ].passwordLength );
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
                     if( iceResult != ICE_RESULT_OK )
@@ -791,29 +791,29 @@ static void AddRelayCandidates( IceControllerContext_t * pCtx )
             if( ret == ICE_CONTROLLER_RESULT_OK )
             {
                 IceControllerNet_UpdateSocketContext( pCtx,
-                                                      pSocketContext,
-                                                      ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
-                                                      &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
-                                                      NULL,
-                                                      &( pCtx->iceServers[ i ] ) );
+                    pSocketContext,
+                    ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
+                    &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
+                    NULL,
+                    &( pCtx->iceServers[ i ] ) );
 
                 LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
-                           pSocketContext->socketFd,
-                           pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+                    pSocketContext->socketFd,
+                    pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
                 LogVerbose( ( "relay candidate's local IP/port: %s/%d",
-                              IceControllerNet_LogIpAddressInfo( &pCtx->iceServers[ i ].iceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
-                              pCtx->iceServers[ i ].iceEndpoint.transportAddress.port ) );
+                    IceControllerNet_LogIpAddressInfo( &pCtx->iceServers[ i ].iceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                    pCtx->iceServers[ i ].iceEndpoint.transportAddress.port ) );
 
                 pCtx->metrics.pendingRelayCandidateNum++;
             }
             else if( ret == ICE_CONTROLLER_RESULT_CONNECTION_IN_PROGRESS )
             {
                 IceControllerNet_UpdateSocketContext( pCtx,
-                                                      pSocketContext,
-                                                      ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS,
-                                                      NULL,
-                                                      NULL,
-                                                      &( pCtx->iceServers[ i ] ) );
+                    pSocketContext,
+                    ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS,
+                    NULL,
+                    NULL,
+                    &( pCtx->iceServers[ i ] ) );
 
                 LogVerbose( ( "Connection in-progress with TURN server for socket fd %d...", pSocketContext->socketFd ) );
 
@@ -824,9 +824,9 @@ static void AddRelayCandidates( IceControllerContext_t * pCtx )
 }
 
 static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
-                                                  IceControllerSocketContext_t * pSocketContext,
-                                                  IceCandidatePair_t * pCandidatePair,
-                                                  uint8_t * pTransactionIdBuffer )
+    IceControllerSocketContext_t * pSocketContext,
+    IceCandidatePair_t * pCandidatePair,
+    uint8_t * pTransactionIdBuffer )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
@@ -837,10 +837,10 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
     if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
     {
         iceResult = Ice_CreateResponseForRequest( &pCtx->iceContext,
-                                                  pCandidatePair,
-                                                  pTransactionIdBuffer,
-                                                  sentStunBuffer,
-                                                  &sentStunBufferLength );
+            pCandidatePair,
+            pTransactionIdBuffer,
+            sentStunBuffer,
+            &sentStunBufferLength );
         pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
         if( iceResult != ICE_RESULT_OK )
@@ -876,8 +876,8 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
         else
         {
             LogDebug( ( "Sending STUN bind response back to remote, local/remote candidate ID: 0x%04x / 0x%04x",
-                        pCandidatePair->pLocalCandidate->candidateId,
-                        pCandidatePair->pRemoteCandidate->candidateId ) );
+                pCandidatePair->pLocalCandidate->candidateId,
+                pCandidatePair->pRemoteCandidate->candidateId ) );
         }
     }
 
@@ -885,21 +885,21 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
 }
 
 static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
-                                              IceControllerSocketContext_t * pSocketContext,
-                                              IceCandidatePair_t * pCandidatePair )
+    IceControllerSocketContext_t * pSocketContext,
+    IceCandidatePair_t * pCandidatePair )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipBuffer[ INET_ADDRSTRLEN ];
-        char ipBuffer2[ INET_ADDRSTRLEN ];
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
+#if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    char ipBuffer[ INET_ADDRSTRLEN ];
+    char ipBuffer2[ INET_ADDRSTRLEN ];
+#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
 
     if( ( pCtx == NULL ) ||
         ( pSocketContext == NULL ) ||
         ( pCandidatePair == NULL ) )
     {
         LogWarn( ( "Invalid input, pCtx: %p, pSocketContext: %p, pCandidatePair: %p",
-                   pCtx, pSocketContext, pCandidatePair ) );
+            pCtx, pSocketContext, pCandidatePair ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -908,16 +908,16 @@ static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
         if( ( pCandidatePair->state == ICE_CANDIDATE_PAIR_STATE_SUCCEEDED ) &&
             ( pCtx->pNominatedSocketContext == NULL ) )
         {
-            #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
             Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
-            #endif
+#endif
             LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x / 0x%04x",
-                       pCandidatePair->pLocalCandidate->candidateId,
-                       pCandidatePair->pRemoteCandidate->candidateId ) );
+                pCandidatePair->pLocalCandidate->candidateId,
+                pCandidatePair->pRemoteCandidate->candidateId ) );
 
             LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
-                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
-                          IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
+                IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
+                IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
 
             /* Update socket context. */
             if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
@@ -938,8 +938,8 @@ static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
 }
 
 IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
-                                                        size_t ipAddrLength,
-                                                        IceEndpoint_t * pDestinationIceEndpoint )
+    size_t ipAddrLength,
+    IceEndpoint_t * pDestinationIceEndpoint )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     char ipAddress[ ICE_CONTROLLER_IP_ADDR_STRING_BUFFER_LENGTH + 1 ];
@@ -947,7 +947,7 @@ IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
     if( ipAddrLength > ICE_CONTROLLER_IP_ADDR_STRING_BUFFER_LENGTH )
     {
         LogWarn( ( "invalid IP address detected, IP: %.*s",
-                   ( int ) ipAddrLength, pIpAddr ) );
+            ( int ) ipAddrLength, pIpAddr ) );
         ret = ICE_CONTROLLER_RESULT_IP_BUFFER_TOO_SMALL;
     }
 
@@ -974,7 +974,7 @@ IceControllerResult_t IceControllerNet_ConvertIpString( const char * pIpAddr,
 }
 
 IceControllerResult_t IceControllerNet_Htons( uint16_t port,
-                                              uint16_t * pOutPort )
+    uint16_t * pOutPort )
 {
     *pOutPort = htons( port );
 
@@ -982,10 +982,10 @@ IceControllerResult_t IceControllerNet_Htons( uint16_t port,
 }
 
 IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx,
-                                                   IceControllerSocketContext_t * pSocketContext,
-                                                   IceEndpoint_t * pRemoteEndpoint,
-                                                   const uint8_t * pBuffer,
-                                                   size_t bufferLength )
+    IceControllerSocketContext_t * pSocketContext,
+    IceEndpoint_t * pRemoteEndpoint,
+    const uint8_t * pBuffer,
+    size_t bufferLength )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     struct sockaddr * pDestinationAddress = NULL;
@@ -997,7 +997,7 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
     if( ( pCtx == NULL ) || ( pSocketContext == NULL ) || ( pRemoteEndpoint == NULL ) || ( pBuffer == NULL ) )
     {
         LogError( ( "Invalid input, pCtx: %p, pSocketContext: %p, pRemoteEndpoint: %p, pBuffer: %p",
-                    pCtx, pSocketContext, pRemoteEndpoint, pBuffer ) );
+            pCtx, pSocketContext, pRemoteEndpoint, pBuffer ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -1030,8 +1030,8 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
         if( pSocketContext->pLocalCandidate->endpoint.transportAddress.family != pRemoteEndpoint->transportAddress.family )
         {
             LogWarn( ( "The sending IP family: %d is different from receiving IP family: %d",
-                       pSocketContext->pLocalCandidate->endpoint.transportAddress.family,
-                       pRemoteEndpoint->transportAddress.family ) );
+                pSocketContext->pLocalCandidate->endpoint.transportAddress.family,
+                pRemoteEndpoint->transportAddress.family ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_SOCKET_SENDTO;
         }
     }
@@ -1082,7 +1082,7 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
 
     if( ret == ICE_CONTROLLER_RESULT_FAIL_SOCKET_SENDTO )
     {
-        /* 
+        /*
          * Socket read error detected.
          * This typically indicates the remote peer closed the connection.
          * Action required: Close the local socket to properly terminate the connection.
@@ -1094,18 +1094,18 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
         {
             /* Disconnecting nominated socket connection, closing. */
             LogWarn( ( "Unable to send packet through nominated socket, closing session: %.*s",
-                     ( int ) pCtx->iceContext.creds.combinedUsernameLength,
-                     pCtx->iceContext.creds.pCombinedUsername ) );
+                ( int ) pCtx->iceContext.creds.combinedUsernameLength,
+                pCtx->iceContext.creds.pCombinedUsername ) );
 
             /* Notify peer connection for closing the connection. */
             if( pCtx->onIceEventCallbackFunc )
             {
                 pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSE_NOTIFY,
-                                              NULL );
+                    ICE_CONTROLLER_CB_EVENT_ICE_CLOSE_NOTIFY,
+                    NULL );
                 /* Re-set the timer. */
                 IceController_UpdateTimerInterval( pCtx,
-                                                   ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+                    ICE_CONTROLLER_CLOSING_INTERVAL_MS );
             }
             else
             {
@@ -1139,37 +1139,37 @@ void IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx )
         {
             if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_HOST ) )
             {
-                #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
                 Metric_StartEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
-                #endif
-                AddHostCandidate( pCtx, &pCtx->localEndpoints[i] );
-                #if METRIC_PRINT_ENABLED
+#endif
+                AddHostCandidate( pCtx, &pCtx->localEndpoints[ i ] );
+#if METRIC_PRINT_ENABLED
                 Metric_EndEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
-                #endif
+#endif
             }
 
             if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_SRFLX ) )
             {
-                #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
                 Metric_StartEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
-                #endif
-                AddSrflxCandidate( pCtx, &pCtx->localEndpoints[i] );
+#endif
+                AddSrflxCandidate( pCtx, &pCtx->localEndpoints[ i ] );
             }
         }
 
         if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_RELAY ) )
         {
-            #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
             Metric_StartEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
-            #endif
+#endif
             AddRelayCandidates( pCtx );
         }
     }
 }
 
 IceControllerResult_t IceControllerNet_ExecuteTlsHandshake( IceControllerContext_t * pCtx,
-                                                            IceControllerSocketContext_t * pSocketContext,
-                                                            uint8_t isIceLockTakenBeforeCall )
+    IceControllerSocketContext_t * pSocketContext,
+    uint8_t isIceLockTakenBeforeCall )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     TlsTransportStatus_t transportResult = TLS_TRANSPORT_SUCCESS;
@@ -1178,7 +1178,7 @@ IceControllerResult_t IceControllerNet_ExecuteTlsHandshake( IceControllerContext
     if( ( pCtx == NULL ) || ( pSocketContext == NULL ) )
     {
         LogError( ( "Invalid input, pCtx: %p, pSocketContext: %p",
-                    pCtx, pSocketContext ) );
+            pCtx, pSocketContext ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
     else if( pSocketContext->socketType != ICE_CONTROLLER_SOCKET_TYPE_TLS )
@@ -1216,11 +1216,11 @@ IceControllerResult_t IceControllerNet_ExecuteTlsHandshake( IceControllerContext
                 ( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 ) )
             {
                 iceResult = Ice_AddRelayCandidate( &( pCtx->iceContext ),
-                                                   &( pSocketContext->pIceServer->iceEndpoint ),
-                                                   &( pSocketContext->pIceServer->userName[ 0 ] ),
-                                                   pSocketContext->pIceServer->userNameLength,
-                                                   &( pSocketContext->pIceServer->password[ 0 ] ),
-                                                   pSocketContext->pIceServer->passwordLength );
+                    &( pSocketContext->pIceServer->iceEndpoint ),
+                    &( pSocketContext->pIceServer->userName[ 0 ] ),
+                    pSocketContext->pIceServer->userNameLength,
+                    &( pSocketContext->pIceServer->password[ 0 ] ),
+                    pSocketContext->pIceServer->passwordLength );
                 if( isIceLockTakenBeforeCall == 0U )
                 {
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
@@ -1237,21 +1237,21 @@ IceControllerResult_t IceControllerNet_ExecuteTlsHandshake( IceControllerContext
                 if( iceResult != ICE_RESULT_OK )
                 {
                     LogError( ( "Failed to created relay candidate for socket fd %d",
-                                pSocketContext->socketFd ) );
+                        pSocketContext->socketFd ) );
                     IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
                 }
                 else
                 {
                     LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
-                               pSocketContext->socketFd,
-                               pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
-    
+                        pSocketContext->socketFd,
+                        pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+
                     IceControllerNet_UpdateSocketContext( pCtx,
-                                                          pSocketContext,
-                                                          ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
-                                                          &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
-                                                          NULL,
-                                                          pSocketContext->pIceServer );
+                        pSocketContext,
+                        ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
+                        &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
+                        NULL,
+                        pSocketContext->pIceServer );
                 }
             }
         }
@@ -1270,11 +1270,11 @@ IceControllerResult_t IceControllerNet_ExecuteTlsHandshake( IceControllerContext
 }
 
 IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t * pCtx,
-                                                         IceControllerSocketContext_t * pSocketContext,
-                                                         uint8_t * pReceiveBuffer,
-                                                         size_t receiveBufferLength,
-                                                         IceEndpoint_t * pRemoteIceEndpoint,
-                                                         IceCandidatePair_t * pCandidatePair )
+    IceControllerSocketContext_t * pSocketContext,
+    uint8_t * pReceiveBuffer,
+    size_t receiveBufferLength,
+    IceEndpoint_t * pRemoteIceEndpoint,
+    IceCandidatePair_t * pCandidatePair )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceHandleStunPacketResult_t iceHandleStunResult;
@@ -1289,7 +1289,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
     if( ( pCtx == NULL ) || ( pReceiveBuffer == NULL ) || ( pRemoteIceEndpoint == NULL ) )
     {
         LogError( ( "Invalid input, pCtx: %p, pReceiveBuffer: %p, pRemoteIceEndpoint: %p",
-                    pCtx, pReceiveBuffer, pRemoteIceEndpoint ) );
+            pCtx, pReceiveBuffer, pRemoteIceEndpoint ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -1298,13 +1298,13 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
         if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
         {
             iceHandleStunResult = Ice_HandleStunPacket( &pCtx->iceContext,
-                                                        pReceiveBuffer,
-                                                        ( size_t ) receiveBufferLength,
-                                                        pSocketContext->pLocalCandidate,
-                                                        pRemoteIceEndpoint,
-                                                        currentTimeSeconds,
-                                                        &pTransactionIdBuffer,
-                                                        &pCandidatePair );
+                pReceiveBuffer,
+                ( size_t ) receiveBufferLength,
+                pSocketContext->pLocalCandidate,
+                pRemoteIceEndpoint,
+                currentTimeSeconds,
+                &pTransactionIdBuffer,
+                &pCandidatePair );
             pthread_mutex_unlock( &( pCtx->iceMutex ) );
         }
         else
@@ -1323,8 +1323,8 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
             if( pCandidatePair != NULL )
             {
                 LogDebug( ( "Receiving STUN packet, local/remote candidate ID: 0x%04x / 0x%04x",
-                            pCandidatePair->pLocalCandidate->candidateId,
-                            pCandidatePair->pRemoteCandidate->candidateId ) );
+                    pCandidatePair->pLocalCandidate->candidateId,
+                    pCandidatePair->pRemoteCandidate->candidateId ) );
             }
         }
 
@@ -1357,12 +1357,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 }
 
                 pCtx->metrics.pendingSrflxCandidateNum--;
-                #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
                 if( pCtx->metrics.pendingSrflxCandidateNum == 0 )
                 {
                     Metric_EndEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
                 }
-                #endif
+#endif
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_UPDATED_RELAY_CANDIDATE_ADDRESS:
                 if( pCtx->onIceEventCallbackFunc )
@@ -1384,12 +1384,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     }
 
                     pCtx->metrics.pendingRelayCandidateNum--;
-                    #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
                     if( pCtx->metrics.pendingRelayCandidateNum == 0 )
                     {
                         Metric_EndEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
                     }
-                    #endif
+#endif
                 }
                 else
                 {
@@ -1404,18 +1404,18 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 if( ret == ICE_CONTROLLER_RESULT_OK )
                 {
                     ret = CheckNomination( pCtx,
-                                           pSocketContext,
-                                           pCandidatePair );
+                        pSocketContext,
+                        pCandidatePair );
                 }
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_CHANNEL_BIND_REQUEST:
                 if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
                     iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
-                                                           pCandidatePair,
-                                                           currentTimeSeconds,
-                                                           sentStunBuffer,
-                                                           &sentStunBufferLength );
+                        pCandidatePair,
+                        currentTimeSeconds,
+                        sentStunBuffer,
+                        &sentStunBufferLength );
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
                     if( iceResult != ICE_RESULT_OK )
@@ -1425,8 +1425,8 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     else
                     {
                         LogDebug( ( "Sending channel binding request, local/remote candidate ID: 0x%04x / 0x%04x",
-                                    pCandidatePair->pLocalCandidate->candidateId,
-                                    pCandidatePair->pRemoteCandidate->candidateId ) );
+                            pCandidatePair->pLocalCandidate->candidateId,
+                            pCandidatePair->pRemoteCandidate->candidateId ) );
                         IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
 
                         if( IceControllerNet_SendPacket( pCtx, pSocketContext, &( pSocketContext->pIceServer->iceEndpoint ), sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
@@ -1445,10 +1445,10 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
                 {
                     iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
-                                                           pCandidatePair,
-                                                           currentTimeSeconds,
-                                                           sentStunBuffer,
-                                                           &sentStunBufferLength );
+                        pCandidatePair,
+                        currentTimeSeconds,
+                        sentStunBuffer,
+                        &sentStunBufferLength );
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
                     if( iceResult != ICE_RESULT_OK )
@@ -1458,8 +1458,8 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     else
                     {
                         LogDebug( ( "Sending STUN binding request, local/remote candidate ID: 0x%04x / 0x%04x",
-                                    pCandidatePair->pLocalCandidate->candidateId,
-                                    pCandidatePair->pRemoteCandidate->candidateId ) );
+                            pCandidatePair->pLocalCandidate->candidateId,
+                            pCandidatePair->pRemoteCandidate->candidateId ) );
                         IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
 
                         if( IceControllerNet_SendPacket( pCtx, pSocketContext, &( pSocketContext->pIceServer->iceEndpoint ), sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
@@ -1482,8 +1482,8 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_PAIR_READY:
                 ret = CheckNomination( pCtx,
-                                       pSocketContext,
-                                       pCandidatePair );
+                    pSocketContext,
+                    pCandidatePair );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_INTEGRITY_MISMATCH:
                 LogWarn( ( "Message Integrity check of the received packet failed" ) );
@@ -1496,15 +1496,15 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_PAIR_NOT_FOUND:
                 LogDebug( ( "Valid Candidate Pair is not found, it might be a duplicate response, local candidate ID: 0x%04x",
-                            pSocketContext->pLocalCandidate->candidateId ) );
+                    pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_CANDIDATE_NOT_FOUND:
                 LogError( ( "Error : Valid Server Reflexive Candidate is not found, local candidate ID: 0x%04x",
-                            pSocketContext->pLocalCandidate->candidateId ) );
+                    pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_DROP_PACKET:
                 LogInfo( ( "Drop the packet of local candidate ID: 0x%04x.",
-                           pSocketContext->pLocalCandidate->candidateId ) );
+                    pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_ALLOCATION_REQUEST:
                 /* Received TURN allocation error response, get the nonce/realm from the message.
@@ -1513,16 +1513,16 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 {
                     sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
                     iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
-                                                                pSocketContext->pLocalCandidate,
-                                                                currentTimeSeconds,
-                                                                sentStunBuffer,
-                                                                &sentStunBufferLength );
+                        pSocketContext->pLocalCandidate,
+                        currentTimeSeconds,
+                        sentStunBuffer,
+                        &sentStunBufferLength );
                     pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
                     if( iceResult == ICE_RESULT_OK )
                     {
                         LogDebug( ( "Sending TURN allocation request, local candidate ID: 0x%04x",
-                                    pSocketContext->pLocalCandidate->candidateId ) );
+                            pSocketContext->pLocalCandidate->candidateId ) );
                         IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
 
                         if( IceControllerNet_SendPacket( pCtx, pSocketContext, &( pSocketContext->pIceServer->iceEndpoint ), sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
@@ -1544,11 +1544,11 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_FRESH_COMPLETE:
                 LogInfo( ( "TURN session of local candidate ID: 0x%04x is refreshed.",
-                           pSocketContext->pLocalCandidate->candidateId ) );
+                    pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_TURN_SESSION_TERMINATED:
                 LogInfo( ( "TURN session of local candidate ID: 0x%04x is terminated.",
-                           pSocketContext->pLocalCandidate->candidateId ) );
+                    pSocketContext->pLocalCandidate->candidateId ) );
 
                 /* Close the socket as the TURN session is terminated. */
                 IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
@@ -1557,8 +1557,8 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_UNEXPECTED_RESPONSE:
                 LogDebug( ( "Unexpected response. pair state is %d, local candidate ID: 0x%04x",
-                            pCandidatePair->state,
-                            pSocketContext->pLocalCandidate->candidateId ) );
+                    pCandidatePair->state,
+                    pSocketContext->pLocalCandidate->candidateId ) );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_OK:
                 LogVerbose( ( "ICE_HANDLE_STUN_PACKET_RESULT_OK" ) );
@@ -1574,9 +1574,9 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 break;
             default:
                 LogWarn( ( "Unknown case: %d, packet length: %lu, first two bytes: 0x%02x 0x%02x",
-                           iceHandleStunResult,
-                           receiveBufferLength,
-                           pReceiveBuffer[ 0 ], pReceiveBuffer[ 1 ] ) );
+                    iceHandleStunResult,
+                    receiveBufferLength,
+                    pReceiveBuffer[ 0 ], pReceiveBuffer[ 1 ] ) );
                 break;
         }
     }
@@ -1585,7 +1585,7 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
 }
 
 IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
-                                                  IceTransportAddress_t * pIceTransportAddress )
+    IceTransportAddress_t * pIceTransportAddress )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     int dnsResult;
@@ -1639,203 +1639,203 @@ IceControllerResult_t IceControllerNet_DnsLookUp( char * pUrl,
 }
 
 #if LIBRARY_LOG_LEVEL >= LOG_INFO
-    const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoint,
-                                                    char * pIpBuffer,
-                                                    size_t ipBufferLength )
+const char * IceControllerNet_LogIpAddressInfo( const IceEndpoint_t * pIceEndpoint,
+    char * pIpBuffer,
+    size_t ipBufferLength )
+{
+    const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
+
+    if( ( pIceEndpoint != NULL ) && ( pIpBuffer != NULL ) )
     {
-        const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
-
-        if( ( pIceEndpoint != NULL ) && ( pIpBuffer != NULL ) )
+        switch( pIceEndpoint->transportAddress.family )
         {
-            switch( pIceEndpoint->transportAddress.family )
-            {
-                case STUN_ADDRESS_IPv4:
-                    ret = inet_ntop( AF_INET, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
-                    if( ret == NULL )
-                    {
-                        /*
-                         * IP address to string conversion failed due to insufficient buffer size.
-                         * Required: IPv4 (16 bytes), IPv6 (46 bytes)
-                         */
-                        ret = "Masked IPv4 Address";
-                    }
-                    break;
-                case STUN_ADDRESS_IPv6:
-                    ret = inet_ntop( AF_INET6, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
-                    if( ret == NULL )
-                    {
-                        /*
-                         * IP address to string conversion failed due to insufficient buffer size.
-                         * Required: IPv4 (16 bytes), IPv6 (46 bytes)
-                         */
-                        ret = "Masked IPv6 Address";
-                    }
-                    break;
-                default:
-                    ret = "Unsupported IP Family";
-                    break;
-            }
+            case STUN_ADDRESS_IPv4:
+                ret = inet_ntop( AF_INET, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
+                if( ret == NULL )
+                {
+                    /*
+                     * IP address to string conversion failed due to insufficient buffer size.
+                     * Required: IPv4 (16 bytes), IPv6 (46 bytes)
+                     */
+                    ret = "Masked IPv4 Address";
+                }
+                break;
+            case STUN_ADDRESS_IPv6:
+                ret = inet_ntop( AF_INET6, pIceEndpoint->transportAddress.address, pIpBuffer, ipBufferLength );
+                if( ret == NULL )
+                {
+                    /*
+                     * IP address to string conversion failed due to insufficient buffer size.
+                     * Required: IPv4 (16 bytes), IPv6 (46 bytes)
+                     */
+                    ret = "Masked IPv6 Address";
+                }
+                break;
+            default:
+                ret = "Unsupported IP Family";
+                break;
         }
-
-        return ret;
     }
+
+    return ret;
+}
 #endif /* #if LIBRARY_LOG_LEVEL >= LOG_INFO */
 
 #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
 
-#define SWAP_BYTES_16( value )        \
-    ( ( ( ( value ) >> 8 ) & 0xFF ) | \
-      ( ( ( value ) & 0xFF ) << 8 ) )
+    #define SWAP_BYTES_16( value )        \
+        ( ( ( ( value ) >> 8 ) & 0xFF ) | \
+            ( ( ( value ) &0xFF ) << 8 ) )
 
-    static uint16_t ReadUint16Swap( const uint8_t * pSrc )
-    {
-        return SWAP_BYTES_16( *( ( uint16_t * )( pSrc ) ) );
-    }
-
-    static uint16_t ReadUint16NoSwap( const uint8_t * pSrc )
-    {
-        return *( ( uint16_t * )( pSrc ) );
-    }
-
-    static const char * convertStunMsgTypeToString( uint16_t stunMsgType )
-    {
-        const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
-        static ReadUint16_t readUint16Fn;
-        static uint8_t isFirst = 1;
-        uint8_t isLittleEndian;
-        uint16_t msgType;
-
-        if( isFirst )
-        {
-            isFirst = 0;
-            isLittleEndian = ( *( uint8_t * )( &( uint16_t ) { 1 } ) == 1 );
-
-            if( isLittleEndian != 0 )
-            {
-                readUint16Fn = ReadUint16Swap;
-            }
-            else
-            {
-                readUint16Fn = ReadUint16NoSwap;
-            }
-        }
-
-        msgType = readUint16Fn( ( uint8_t * ) &stunMsgType );
-        switch( msgType )
-        {
-            case STUN_MESSAGE_TYPE_BINDING_REQUEST:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_REQUEST;
-                break;
-            case STUN_MESSAGE_TYPE_BINDING_SUCCESS_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_SUCCESS;
-                break;
-            case STUN_MESSAGE_TYPE_BINDING_FAILURE_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_FAILURE;
-                break;
-            case STUN_MESSAGE_TYPE_BINDING_INDICATION:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_INDICATION;
-                break;
-            case STUN_MESSAGE_TYPE_ALLOCATE_REQUEST:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_REQUEST;
-                break;
-            case STUN_MESSAGE_TYPE_ALLOCATE_SUCCESS_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_SUCCESS;
-                break;
-            case STUN_MESSAGE_TYPE_ALLOCATE_ERROR_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_FAILURE;
-                break;
-            case STUN_MESSAGE_TYPE_REFRESH_REQUEST:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_REQUEST;
-                break;
-            case STUN_MESSAGE_TYPE_REFRESH_SUCCESS_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_SUCCESS;
-                break;
-            case STUN_MESSAGE_TYPE_REFRESH_ERROR_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_FAILURE;
-                break;
-            case STUN_MESSAGE_TYPE_CREATE_PERMISSION_REQUEST:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_REQUEST;
-                break;
-            case STUN_MESSAGE_TYPE_CREATE_PERMISSION_SUCCESS_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_SUCCESS;
-                break;
-            case STUN_MESSAGE_TYPE_CREATE_PERMISSION_ERROR_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_FAILURE;
-                break;
-            case STUN_MESSAGE_TYPE_CHANNEL_BIND_REQUEST:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_REQUEST;
-                break;
-            case STUN_MESSAGE_TYPE_CHANNEL_BIND_SUCCESS_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_SUCCESS;
-                break;
-            case STUN_MESSAGE_TYPE_CHANNEL_BIND_ERROR_RESPONSE:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_FAILURE;
-                break;
-            case STUN_MESSAGE_TYPE_SEND_INDICATION:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_SEND_INDICATION;
-                break;
-            case STUN_MESSAGE_TYPE_DATA_INDICATION:
-                ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_DATA_INDICATION;
-                break;
-        }
-
-        return ret;
-    }
-#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
-
-void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
-                                     size_t stunPacketSize )
+static uint16_t ReadUint16Swap( const uint8_t * pSrc )
 {
-    #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        const uint8_t * pStunMsgContent = pStunPacket;
-        IceControllerStunMsgHeader_t * pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunMsgContent;
+    return SWAP_BYTES_16( *( ( uint16_t * ) ( pSrc ) ) );
+}
 
-        if( ( pStunPacket == NULL ) || ( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) ) )
+static uint16_t ReadUint16NoSwap( const uint8_t * pSrc )
+{
+    return *( ( uint16_t * ) ( pSrc ) );
+}
+
+static const char * convertStunMsgTypeToString( uint16_t stunMsgType )
+{
+    const char * ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN;
+    static ReadUint16_t readUint16Fn;
+    static uint8_t isFirst = 1;
+    uint8_t isLittleEndian;
+    uint16_t msgType;
+
+    if( isFirst )
+    {
+        isFirst = 0;
+        isLittleEndian = ( *( uint8_t * ) ( &( uint16_t ) { 1 } ) == 1 );
+
+        if( isLittleEndian != 0 )
         {
-            // invalid STUN packet, ignore it
+            readUint16Fn = ReadUint16Swap;
         }
         else
         {
-            do
-            {
-                if( ( pStunPacket[0] & 0xF0 ) == 0x40 )
-                {
-                    LogVerbose( ( "TURN channel number: 0x%02x%02x, TURN application data length: 0x%02x%02x",
-                                  pStunPacket[ 0 ], pStunPacket[ 1 ],
-                                  pStunPacket[ 2 ], pStunPacket[ 3 ] ) );
-                    pStunMsgContent = &pStunPacket[ ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
-                    pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunMsgContent;
-                    if( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH )
-                    {
-                        // invalid STUN packet, ignore it.
-                        LogWarn( ( "Invalid TURN packet, packet size: %lu", stunPacketSize ) );
-                        break;
-                    }
-                }
-
-                /*
-                 * demux each packet off of its first byte
-                 * https://tools.ietf.org/html/rfc5764#section-5.1.2
-                 * +----------------+
-                 * | 127 < B < 192 -+--> forward to RTP/RTCP
-                 * |                |
-                 * |  19 < B < 64  -+--> forward to DTLS
-                 * |                |
-                 * |       B < 2   -+--> forward to STUN
-                 * +----------------+
-                 */
-                if( pStunMsgContent[ 0 ] < 2 )
-                {
-                    LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-                                  convertStunMsgTypeToString( pStunMsgHeader->msgType ),
-                                  pStunMsgHeader->contentLength[ 0 ], pStunMsgHeader->contentLength[ 1 ],
-                                  pStunMsgHeader->transactionId[ 0 ], pStunMsgHeader->transactionId[ 1 ], pStunMsgHeader->transactionId[ 2 ], pStunMsgHeader->transactionId[ 3 ],
-                                  pStunMsgHeader->transactionId[ 4 ], pStunMsgHeader->transactionId[ 5 ], pStunMsgHeader->transactionId[ 6 ], pStunMsgHeader->transactionId[ 7 ],
-                                  pStunMsgHeader->transactionId[ 8 ], pStunMsgHeader->transactionId[ 9 ], pStunMsgHeader->transactionId[ 10 ], pStunMsgHeader->transactionId[ 11 ] ) );
-                }
-            } while( 0U );
+            readUint16Fn = ReadUint16NoSwap;
         }
-    #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
+    }
+
+    msgType = readUint16Fn( ( uint8_t * ) &stunMsgType );
+    switch( msgType )
+    {
+        case STUN_MESSAGE_TYPE_BINDING_REQUEST:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_REQUEST;
+            break;
+        case STUN_MESSAGE_TYPE_BINDING_SUCCESS_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_SUCCESS;
+            break;
+        case STUN_MESSAGE_TYPE_BINDING_FAILURE_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_FAILURE;
+            break;
+        case STUN_MESSAGE_TYPE_BINDING_INDICATION:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_BINDING_INDICATION;
+            break;
+        case STUN_MESSAGE_TYPE_ALLOCATE_REQUEST:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_REQUEST;
+            break;
+        case STUN_MESSAGE_TYPE_ALLOCATE_SUCCESS_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_SUCCESS;
+            break;
+        case STUN_MESSAGE_TYPE_ALLOCATE_ERROR_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_ALLOCATE_FAILURE;
+            break;
+        case STUN_MESSAGE_TYPE_REFRESH_REQUEST:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_REQUEST;
+            break;
+        case STUN_MESSAGE_TYPE_REFRESH_SUCCESS_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_SUCCESS;
+            break;
+        case STUN_MESSAGE_TYPE_REFRESH_ERROR_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_REFRESH_FAILURE;
+            break;
+        case STUN_MESSAGE_TYPE_CREATE_PERMISSION_REQUEST:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_REQUEST;
+            break;
+        case STUN_MESSAGE_TYPE_CREATE_PERMISSION_SUCCESS_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_SUCCESS;
+            break;
+        case STUN_MESSAGE_TYPE_CREATE_PERMISSION_ERROR_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CREATE_PERMISSION_FAILURE;
+            break;
+        case STUN_MESSAGE_TYPE_CHANNEL_BIND_REQUEST:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_REQUEST;
+            break;
+        case STUN_MESSAGE_TYPE_CHANNEL_BIND_SUCCESS_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_SUCCESS;
+            break;
+        case STUN_MESSAGE_TYPE_CHANNEL_BIND_ERROR_RESPONSE:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_CHANNEL_BIND_FAILURE;
+            break;
+        case STUN_MESSAGE_TYPE_SEND_INDICATION:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_SEND_INDICATION;
+            break;
+        case STUN_MESSAGE_TYPE_DATA_INDICATION:
+            ret = ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_DATA_INDICATION;
+            break;
+    }
+
+    return ret;
+}
+#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
+
+void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
+    size_t stunPacketSize )
+{
+#if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
+    const uint8_t * pStunMsgContent = pStunPacket;
+    IceControllerStunMsgHeader_t * pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunMsgContent;
+
+    if( ( pStunPacket == NULL ) || ( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) ) )
+    {
+        // invalid STUN packet, ignore it
+    }
+    else
+    {
+        do
+        {
+            if( ( pStunPacket[ 0 ] & 0xF0 ) == 0x40 )
+            {
+                LogVerbose( ( "TURN channel number: 0x%02x%02x, TURN application data length: 0x%02x%02x",
+                    pStunPacket[ 0 ], pStunPacket[ 1 ],
+                    pStunPacket[ 2 ], pStunPacket[ 3 ] ) );
+                pStunMsgContent = &pStunPacket[ ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
+                pStunMsgHeader = ( IceControllerStunMsgHeader_t * ) pStunMsgContent;
+                if( stunPacketSize < sizeof( IceControllerStunMsgHeader_t ) + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH )
+                {
+                    // invalid STUN packet, ignore it.
+                    LogWarn( ( "Invalid TURN packet, packet size: %lu", stunPacketSize ) );
+                    break;
+                }
+            }
+
+            /*
+             * demux each packet off of its first byte
+             * https://tools.ietf.org/html/rfc5764#section-5.1.2
+             * +----------------+
+             * | 127 < B < 192 -+--> forward to RTP/RTCP
+             * |                |
+             * |  19 < B < 64  -+--> forward to DTLS
+             * |                |
+             * |       B < 2   -+--> forward to STUN
+             * +----------------+
+             */
+            if( pStunMsgContent[ 0 ] < 2 )
+            {
+                LogVerbose( ( "Dumping STUN packets: STUN type: %s, content length:: 0x%02x%02x, transaction ID: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+                    convertStunMsgTypeToString( pStunMsgHeader->msgType ),
+                    pStunMsgHeader->contentLength[ 0 ], pStunMsgHeader->contentLength[ 1 ],
+                    pStunMsgHeader->transactionId[ 0 ], pStunMsgHeader->transactionId[ 1 ], pStunMsgHeader->transactionId[ 2 ], pStunMsgHeader->transactionId[ 3 ],
+                    pStunMsgHeader->transactionId[ 4 ], pStunMsgHeader->transactionId[ 5 ], pStunMsgHeader->transactionId[ 6 ], pStunMsgHeader->transactionId[ 7 ],
+                    pStunMsgHeader->transactionId[ 8 ], pStunMsgHeader->transactionId[ 9 ], pStunMsgHeader->transactionId[ 10 ], pStunMsgHeader->transactionId[ 11 ] ) );
+            }
+        } while( 0U );
+    }
+#endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
 
     ( void ) pStunPacket;
     ( void ) stunPacketSize;
