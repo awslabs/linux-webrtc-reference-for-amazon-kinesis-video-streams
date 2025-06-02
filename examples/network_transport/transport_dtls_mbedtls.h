@@ -92,14 +92,14 @@ typedef struct
  */
 typedef struct DtlsSSLContext
 {
-    mbedtls_ssl_config config;   /**< @brief SSL connection configuration. */
-    mbedtls_ssl_context context; /**< @brief SSL connection context */
-    mbedtls_x509_crt_profile certProfile; /**< @brief Certificate security
-                                             profile for this connection. */
-    mbedtls_x509_crt rootCa;     /**< @brief Root CA certificate context. */
-    mbedtls_x509_crt clientCert; /**< @brief Client certificate context. */
-    mbedtls_pk_context privKey;  /**< @brief Client private key context. */
-    TlsKeys tlsKeys;             /**< @brief Client private key context. */
+    mbedtls_ssl_config config;               /**< @brief SSL connection configuration. */
+    mbedtls_ssl_context context;             /**< @brief SSL connection context */
+    mbedtls_x509_crt_profile certProfile;    /**< @brief Certificate security
+                                                profile for this connection. */
+    mbedtls_x509_crt rootCa;                 /**< @brief Root CA certificate context. */
+    mbedtls_x509_crt clientCert;             /**< @brief Client certificate context. */
+    mbedtls_pk_context privKey;              /**< @brief Client private key context. */
+    TlsKeys tlsKeys;                         /**< @brief Client private key context. */
     mbedtls_entropy_context entropyContext;  /**< @brief Entropy context for
                                                 random number generation. */
     mbedtls_ctr_drbg_context ctrDrbgContext; /**< @brief CTR DRBG context for
@@ -196,10 +196,10 @@ typedef struct DtlsNetworkCredentials
      */
     int disableSni;
 
-    const uint8_t * pRootCa; /**< @brief String representing a trusted server
-                                root certificate. */
-    size_t rootCaSize;       /**< @brief Size associated with
-                                #NetworkCredentials.pRootCa. */
+    const uint8_t * pRootCa;        /**< @brief String representing a trusted server
+                                       root certificate. */
+    size_t rootCaSize;              /**< @brief Size associated with
+                                       #NetworkCredentials.pRootCa. */
     mbedtls_x509_crt * pClientCert; /**< @brief Client certificate context. */
     mbedtls_pk_context * pPrivateKey;
 
@@ -230,19 +230,19 @@ typedef enum DtlsTransportStatus
                                            establish connection. */
     DTLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid.
                                          */
-    DTLS_TRANSPORT_HANDSHAKE_FAILED, /**< Performing TLS handshake with server
-                                        failed. */
-    DTLS_TRANSPORT_INTERNAL_ERROR,   /**< A call to a system API resulted in an
-                                        internal error. */
-    DTLS_TRANSPORT_CONNECT_FAILURE,  /**< Initial connection to the server
-                                        failed. */
-    DTLS_TRANSPORT_PROCESS_FAILURE,  /**< Fail while processing received packet.
-                                      */
+    DTLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server
+                                           failed. */
+    DTLS_TRANSPORT_INTERNAL_ERROR,      /**< A call to a system API resulted in an
+                                           internal error. */
+    DTLS_TRANSPORT_CONNECT_FAILURE,     /**< Initial connection to the server
+                                           failed. */
+    DTLS_TRANSPORT_PROCESS_FAILURE,     /**< Fail while processing received packet.
+                                         */
 
     /* Error code for key and certificate generation. */
-    DTLS_INITIALIZE_PK_FAILURE, /**< Fail to initialize SSL context before
-                                   generating RSA key. */
-    DTLS_GENERATE_KEY_FAILURE,  /**< Fail to generate SSL key. */
+    DTLS_INITIALIZE_PK_FAILURE,             /**< Fail to initialize SSL context before
+                                               generating RSA key. */
+    DTLS_GENERATE_KEY_FAILURE,              /**< Fail to generate SSL key. */
     DTLS_SET_CERT_ISSUER_NAME_FAILURE,      /**< Fail to set issuer name. */
     DTLS_SET_CERT_VALIDITY_FAILURE,         /**< Fail to set validity. */
     DTLS_WRITE_CERT_CRT_DER_FAILURE,        /**< Fail to write X509 crt der. */
@@ -251,11 +251,11 @@ typedef enum DtlsTransportStatus
     DTLS_GENERATE_TIMESTAMP_STRING_FAILURE, /**< Fail to generate timestamp
                                                string. */
     DTLS_READ_BINARY_FAILURE,               /**< Fail to read binary. */
-    DTLS_GENERATE_RANDOM_BITS_FAILURE, /**< Fail to generate random bits. */
+    DTLS_GENERATE_RANDOM_BITS_FAILURE,      /**< Fail to generate random bits. */
 
     DTLS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED, /**< The remote certificate
                                                         failed verification. */
-    DTLS_SSL_UNKNOWN_SRTP_PROFILE, /**< The SRTP profile is unknown. */
+    DTLS_SSL_UNKNOWN_SRTP_PROFILE,                   /**< The SRTP profile is unknown. */
 
     /* User info. */
     DTLS_HANDSHAKE_COMPLETE,         /**< Just complete the DTLS handshaking. */

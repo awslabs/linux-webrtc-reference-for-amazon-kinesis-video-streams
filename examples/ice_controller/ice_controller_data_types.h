@@ -249,7 +249,7 @@ typedef struct IceControllerIceServer
     IceControllerIceServerType_t serverType; /* STUN or TURN */
     char url[ ICE_CONTROLLER_ICE_SERVER_URL_MAX_LENGTH ];
     size_t urlLength;
-    IceEndpoint_t iceEndpoint; // IP address
+    IceEndpoint_t iceEndpoint;                                      // IP address
     char userName[ ICE_CONTROLLER_ICE_SERVER_USERNAME_MAX_LENGTH ]; // user name
     size_t userNameLength;
     char password[ ICE_CONTROLLER_ICE_SERVER_PASSWORD_MAX_LENGTH ]; // password

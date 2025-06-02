@@ -24,7 +24,7 @@
 #define UDP_SOCKETS_ERRNO_NONE  ( 0 )  /*!< No error. */
 #define UDP_SOCKETS_ERRNO_ERROR ( -1 ) /*!< Catch-all sockets error code. */
 #define UDP_SOCKETS_ERRNO_EWOULDBLOCK \
-    ( -2 ) /*!< A resource is temporarily unavailable. */
+    ( -2 )                              /*!< A resource is temporarily unavailable. */
 #define UDP_SOCKETS_ERRNO_ENOMEM ( -3 ) /*!< Memory allocation failed. */
 #define UDP_SOCKETS_ERRNO_EINVAL ( -4 ) /*!< Invalid argument. */
 #define UDP_SOCKETS_ERRNO_ENOPROTOOPT \
@@ -36,7 +36,7 @@
 #define UDP_SOCKETS_ERRNO_ECLOSED \
     ( -8 ) /*!< The supplied socket has already been closed. */
 #define UDP_SOCKETS_ERRNO_PERIPHERAL_RESET \
-    ( -9 ) /*!< Communications peripheral has been reset. */
+    ( -9 )                               /*!< Communications peripheral has been reset. */
 #define UDP_SOCKETS_ERRNO_ENOSPC ( -10 ) /*!< No space left on device */
 #define UDP_SOCKETS_ERRNO_EINTR  ( -11 ) /*!< Interrupted system call */
 

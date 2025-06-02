@@ -24,11 +24,11 @@
 
 #define STATIC_CRED_EXPIRES_SECONDS ( 604800 )
 #ifndef MIN
-#define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+    #define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 #ifndef MAX
-#define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+    #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 #define NETWORKING_USE_OPENSSL ( 0 )
@@ -37,134 +37,134 @@
 /*----------------------------------------------------------------------------*/
 
 #if NETWORKING_USE_MBEDTLS
-    /**
-     *  @brief mbedTLS Hash Context passed to SigV4 cryptointerface for generating the hash digest.
-     */
-    static mbedtls_sha256_context xHashContext = { 0 };
+/**
+ *  @brief mbedTLS Hash Context passed to SigV4 cryptointerface for generating the hash digest.
+ */
+static mbedtls_sha256_context xHashContext = { 0 };
 #endif /* NETWORKING_USE_MBEDTLS */
 
 /*----------------------------------------------------------------------------*/
 
 static int LwsHttpCallback( struct lws * pWsi,
-                            enum lws_callback_reasons reason,
-                            void * pUser,
-                            void * pData,
-                            size_t dataLength );
+    enum lws_callback_reasons reason,
+    void * pUser,
+    void * pData,
+    size_t dataLength );
 
 static int LwsWebsocketCallback( struct lws * pWsi,
-                                 enum lws_callback_reasons reason,
-                                 void * pUser,
-                                 void * pData,
-                                 size_t dataLength );
+    enum lws_callback_reasons reason,
+    void * pUser,
+    void * pData,
+    size_t dataLength );
 
 /*----------------------------------------------------------------------------*/
 
 #if NETWORKING_USE_OPENSSL
-    static int32_t Sha256Init( void * pHashContext )
+static int32_t Sha256Init( void * pHashContext )
+{
+    int32_t ret = 0;
+    const EVP_MD * md = EVP_sha256();
+
+    ret = EVP_DigestInit( pHashContext, md );
+
+    if( ret != 1 )
     {
-        int32_t ret = 0;
-        const EVP_MD * md = EVP_sha256();
-
-        ret = EVP_DigestInit( pHashContext, md );
-
-        if( ret != 1 )
-        {
-            LogError( ( "Failed to initialize EVP_sha256!" ) );
-        }
-
-        return ret == 1 ? 0 : -1;
+        LogError( ( "Failed to initialize EVP_sha256!" ) );
     }
+
+    return ret == 1 ? 0 : -1;
+}
 
 /*----------------------------------------------------------------------------*/
 
-    static int32_t Sha256Update( void * pHashContext,
-                                 const uint8_t * pInput,
-                                 size_t inputLen )
+static int32_t Sha256Update( void * pHashContext,
+    const uint8_t * pInput,
+    size_t inputLen )
+{
+    int32_t ret = 0;
+
+    ret = EVP_DigestUpdate( pHashContext, pInput, inputLen );
+
+    if( ret != 1 )
     {
-        int32_t ret = 0;
-
-        ret = EVP_DigestUpdate( pHashContext, pInput, inputLen );
-
-        if( ret != 1 )
-        {
-            LogError( ( "Failed to update EVP_sha256!" ) );
-        }
-
-        return ret == 1 ? 0 : -1;
+        LogError( ( "Failed to update EVP_sha256!" ) );
     }
+
+    return ret == 1 ? 0 : -1;
+}
 
 /*----------------------------------------------------------------------------*/
 
-    static int32_t Sha256Final( void * pHashContext,
-                                uint8_t * pOutput,
-                                size_t outputLen )
+static int32_t Sha256Final( void * pHashContext,
+    uint8_t * pOutput,
+    size_t outputLen )
+{
+    int32_t ret = 0;
+    unsigned int outLength = outputLen;
+
+    ret = EVP_DigestFinal( pHashContext, pOutput, &( outLength ) );
+
+    if( ret != 1 )
     {
-        int32_t ret = 0;
-        unsigned int outLength = outputLen;
-
-        ret = EVP_DigestFinal( pHashContext, pOutput, &( outLength ) );
-
-        if( ret != 1 )
-        {
-            LogError( ( "Failed to finalize EVP_sha256!" ) );
-        }
-
-        return ret == 1 ? 0 : -1;
+        LogError( ( "Failed to finalize EVP_sha256!" ) );
     }
+
+    return ret == 1 ? 0 : -1;
+}
 
 /*----------------------------------------------------------------------------*/
 
 #elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL  */
-    static int32_t Sha256Init( void * hashContext )
-    {
-        mbedtls_sha256_init( ( mbedtls_sha256_context * ) hashContext );
-        mbedtls_sha256_starts( hashContext, 0 );
+static int32_t Sha256Init( void * hashContext )
+{
+    mbedtls_sha256_init( ( mbedtls_sha256_context * ) hashContext );
+    mbedtls_sha256_starts( hashContext, 0 );
 
-        return 0;
-    }
-
-/*----------------------------------------------------------------------------*/
-
-    static int32_t Sha256Update( void * hashContext,
-                                 const uint8_t * pInput,
-                                 size_t inputLen )
-    {
-        mbedtls_sha256_update( hashContext, pInput, inputLen );
-
-        return 0;
-    }
+    return 0;
+}
 
 /*----------------------------------------------------------------------------*/
 
-    static int32_t Sha256Final( void * hashContext,
-                                uint8_t * pOutput,
-                                size_t outputLen )
+static int32_t Sha256Update( void * hashContext,
+    const uint8_t * pInput,
+    size_t inputLen )
+{
+    mbedtls_sha256_update( hashContext, pInput, inputLen );
+
+    return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int32_t Sha256Final( void * hashContext,
+    uint8_t * pOutput,
+    size_t outputLen )
+{
+    int32_t ret = 0;
+
+    if( outputLen < 32 )
     {
-        int32_t ret = 0;
-
-        if( outputLen < 32 )
-        {
-            LogError( ( "Invalid output length (%lu) for SHA256!", outputLen ) );
-            ret = -1;
-        }
-        else
-        {
-            mbedtls_sha256_finish( hashContext, pOutput );
-        }
-
-        return ret;
+        LogError( ( "Invalid output length (%lu) for SHA256!", outputLen ) );
+        ret = -1;
     }
-#endif /* elif NETWORKING_USE_MBEDTLS */
+    else
+    {
+        mbedtls_sha256_finish( hashContext, pOutput );
+    }
+
+    return ret;
+}
+#endif                       /* elif NETWORKING_USE_MBEDTLS */
 
 /*----------------------------------------------------------------------------*/
 
 static int GetHostFromUrl( const char * pUrl,
-                           size_t urlLength,
-                           const char ** ppHost,
-                           size_t * pHostLength )
+    size_t urlLength,
+    const char ** ppHost,
+    size_t * pHostLength )
 {
     int ret = 0;
-    const char * pStart = NULL, * pEnd = NULL, * pCurPtr;
+    const char *pStart = NULL, *pEnd = NULL, *pCurPtr;
     uint8_t foundEndMark = 0;
 
     pEnd = pUrl + urlLength;
@@ -223,12 +223,12 @@ static int GetHostFromUrl( const char * pUrl,
 /*----------------------------------------------------------------------------*/
 
 static int GetPathFromUrl( const char * pUrl,
-                           size_t urlLength,
-                           const char ** ppPath,
-                           size_t * pPathLength )
+    size_t urlLength,
+    const char ** ppPath,
+    size_t * pPathLength )
 {
     int ret = 0;
-    const char * pHost = NULL, * pPathStart, * pPathEnd, * pQueryStart;
+    const char *pHost = NULL, *pPathStart, *pPathEnd, *pQueryStart;
     size_t hostLength = 0;
 
     /* Find out the host part. */
@@ -263,7 +263,7 @@ static int GetPathFromUrl( const char * pUrl,
 /*----------------------------------------------------------------------------*/
 
 static int GetCurrentTimeInIso8601Format( char * pBuf,
-                                          size_t * pBufLength )
+    size_t * pBufLength )
 {
     int ret = 0;
     time_t now;
@@ -289,9 +289,9 @@ static int GetCurrentTimeInIso8601Format( char * pBuf,
 /*----------------------------------------------------------------------------*/
 
 static int UriEncode( const char * pSrc,
-                      size_t srcLength,
-                      char * pDst,
-                      size_t * pDstLength )
+    size_t srcLength,
+    char * pDst,
+    size_t * pDstLength )
 {
     int ret = 0;
     char ch;
@@ -367,9 +367,9 @@ static int UriEncode( const char * pSrc,
 /*----------------------------------------------------------------------------*/
 
 static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
-                            HttpRequest_t * pRequest,
-                            const AwsCredentials_t * pAwsCredentials,
-                            const AwsConfig_t * pAwsConfig )
+    HttpRequest_t * pRequest,
+    const AwsCredentials_t * pAwsCredentials,
+    const AwsConfig_t * pAwsConfig )
 {
     int ret = 0, snprintfRetVal;
     char * pSignature;
@@ -380,16 +380,16 @@ static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
     SigV4CryptoInterface_t sigv4CryptoInterface;
 
     snprintfRetVal = snprintf( &( pHttpCtx->sigV4Metadata[ 0 ] ),
-                               SIGV4_METADATA_BUFFER_LENGTH,
-                               "host: %.*s\r\n%s: %.*s\r\n%s: %.*s\r\n",
-                               ( int ) pHttpCtx->uriHostLength,
-                               &( pHttpCtx->uriHost[ 0 ] ),
-                               pHttpCtx->requiredHeaders[ REQUIRED_HEADER_USER_AGENT_IDX ].pName,
-                               ( int ) pHttpCtx->requiredHeaders[ REQUIRED_HEADER_USER_AGENT_IDX ].valueLength,
-                               pHttpCtx->requiredHeaders[ REQUIRED_HEADER_USER_AGENT_IDX ].pValue,
-                               pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].pName,
-                               ( int ) pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].valueLength,
-                               pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].pValue );
+        SIGV4_METADATA_BUFFER_LENGTH,
+        "host: %.*s\r\n%s: %.*s\r\n%s: %.*s\r\n",
+        ( int ) pHttpCtx->uriHostLength,
+        &( pHttpCtx->uriHost[ 0 ] ),
+        pHttpCtx->requiredHeaders[ REQUIRED_HEADER_USER_AGENT_IDX ].pName,
+        ( int ) pHttpCtx->requiredHeaders[ REQUIRED_HEADER_USER_AGENT_IDX ].valueLength,
+        pHttpCtx->requiredHeaders[ REQUIRED_HEADER_USER_AGENT_IDX ].pValue,
+        pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].pName,
+        ( int ) pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].valueLength,
+        pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].pValue );
 
     if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == SIGV4_METADATA_BUFFER_LENGTH ) )
     {
@@ -418,11 +418,11 @@ static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
         sigv4CryptoInterface.hashInit = Sha256Init;
         sigv4CryptoInterface.hashUpdate = Sha256Update;
         sigv4CryptoInterface.hashFinal = Sha256Final;
-        #if NETWORKING_USE_OPENSSL
-            sigv4CryptoInterface.pHashContext = EVP_MD_CTX_new();
-        #elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL */
-            sigv4CryptoInterface.pHashContext = &xHashContext;
-        #endif /* elif NETWORKING_USE_MBEDTLS */
+#if NETWORKING_USE_OPENSSL
+        sigv4CryptoInterface.pHashContext = EVP_MD_CTX_new();
+#elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL */
+        sigv4CryptoInterface.pHashContext = &xHashContext;
+#endif                       /* elif NETWORKING_USE_MBEDTLS */
         sigv4CryptoInterface.hashBlockLen = 64;
         sigv4CryptoInterface.hashDigestLen = 32;
 
@@ -440,18 +440,18 @@ static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
         pHttpCtx->sigv4AuthorizationHeaderLength = SIGV4_AUTHORIZATION_HEADER_BUFFER_LENGTH;
 
         if( SigV4_GenerateHTTPAuthorization( &( sigv4Params ),
-                                             &( pHttpCtx->sigv4AuthorizationHeader[ 0 ] ),
-                                             &( pHttpCtx->sigv4AuthorizationHeaderLength ),
-                                             &( pSignature ),
-                                             &( signatureLength ) ) != SigV4Success )
+                &( pHttpCtx->sigv4AuthorizationHeader[ 0 ] ),
+                &( pHttpCtx->sigv4AuthorizationHeaderLength ),
+                &( pSignature ),
+                &( signatureLength ) ) != SigV4Success )
         {
             LogError( ( "Failed to generate SigV4 authorization header!" ) );
             ret = -1;
         }
 
-        #if NETWORKING_USE_OPENSSL
-            EVP_MD_CTX_free( sigv4CryptoInterface.pHashContext );
-        #endif /* NETWORKING_USE_OPENSSL */
+#if NETWORKING_USE_OPENSSL
+        EVP_MD_CTX_free( sigv4CryptoInterface.pHashContext );
+#endif /* NETWORKING_USE_OPENSSL */
     }
 
     if( ret == 0 )
@@ -467,12 +467,12 @@ static int SignHttpRequest( NetworkingHttpContext_t * pHttpCtx,
 /*----------------------------------------------------------------------------*/
 
 static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
-                                 const WebsocketConnectInfo_t * pConnectInfo,
-                                 const AwsCredentials_t * pAwsCredentials,
-                                 const AwsConfig_t * pAwsConfig )
+    const WebsocketConnectInfo_t * pConnectInfo,
+    const AwsCredentials_t * pAwsCredentials,
+    const AwsConfig_t * pAwsConfig )
 {
     int ret = 0, snprintfRetVal;
-    const char * pPath, * pQueryStart, * pUrlEnd, * pEqualSign, * pChannelArnValue;
+    const char *pPath, *pQueryStart, *pUrlEnd, *pEqualSign, *pChannelArnValue;
     char * pSignature;
     size_t pathLength, queryLength, remainingLength, writtenLength, signatureLength;
     size_t channelArnValueLength, encodedLength, canonicalQueryStringLength, canonicalHeadersLength;
@@ -486,8 +486,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
 
     /* Write X-Amz-Algorithm. */
     snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                               remainingLength,
-                               "X-Amz-Algorithm=AWS4-HMAC-SHA256" );
+        remainingLength,
+        "X-Amz-Algorithm=AWS4-HMAC-SHA256" );
 
     if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
     {
@@ -504,9 +504,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
     if( ret == 0 )
     {
         ret = GetPathFromUrl( pConnectInfo->pUrl,
-                              pConnectInfo->urlLength,
-                              &( pPath ),
-                              &( pathLength ) );
+            pConnectInfo->urlLength,
+            &( pPath ),
+            &( pathLength ) );
 
         if( ret == 0 )
         {
@@ -558,8 +558,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         if( ret == 0 )
         {
             snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                                       remainingLength,
-                                       "&X-Amz-ChannelARN=" );
+                remainingLength,
+                "&X-Amz-ChannelARN=" );
             if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
             {
                 LogError( ( "Failed to write X-Amz-ChannelARN key!" ) );
@@ -576,9 +576,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( pChannelArnValue,
-                             channelArnValueLength,
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                channelArnValueLength,
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -596,8 +596,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
     if( ret == 0 )
     {
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                                   remainingLength,
-                                   "&X-Amz-Credential=" );
+            remainingLength,
+            "&X-Amz-Credential=" );
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-Credential key!" ) );
@@ -613,9 +613,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( pAwsCredentials->pAccessKeyId,
-                             pAwsCredentials->accessKeyIdLen,
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                pAwsCredentials->accessKeyIdLen,
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -632,9 +632,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( "/",
-                             1,
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                1,
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -651,9 +651,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( &( pWebsocketCtx->iso8601Time[ 0 ] ),
-                             8, /* Only the date part. */
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                8, /* Only the date part. */
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -670,9 +670,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( "/",
-                             1,
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                1,
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -689,9 +689,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( pAwsConfig->pRegion,
-                             pAwsConfig->regionLen,
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                pAwsConfig->regionLen,
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -708,9 +708,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( "/",
-                             1,
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                1,
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -727,9 +727,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( pAwsConfig->pService,
-                             pAwsConfig->serviceLen,
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                pAwsConfig->serviceLen,
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -746,9 +746,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( "/aws4_request",
-                             strlen( "/aws4_request" ),
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                strlen( "/aws4_request" ),
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -766,10 +766,10 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
     if( ret == 0 )
     {
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                                   remainingLength,
-                                   "&X-Amz-Date=%.*s",
-                                   ( int ) pWebsocketCtx->iso8601TimeLength,
-                                   &( pWebsocketCtx->iso8601Time[ 0 ] ) );
+            remainingLength,
+            "&X-Amz-Date=%.*s",
+            ( int ) pWebsocketCtx->iso8601TimeLength,
+            &( pWebsocketCtx->iso8601Time[ 0 ] ) );
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-Date!" ) );
@@ -790,14 +790,14 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         if( pAwsCredentials->expirationSeconds != 0 )
         {
             expirationSeconds = MIN( STATIC_CRED_EXPIRES_SECONDS,
-                                     pAwsCredentials->expirationSeconds - time( NULL ) );
+                pAwsCredentials->expirationSeconds - time( NULL ) );
             expirationSeconds = MAX( expirationSeconds, 1 );
         }
 
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                                   remainingLength,
-                                   "&X-Amz-Expires=%lu",
-                                   expirationSeconds );
+            remainingLength,
+            "&X-Amz-Expires=%lu",
+            expirationSeconds );
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-Expires!" ) );
@@ -816,8 +816,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         ( pAwsCredentials->sessionTokenLength > 0 ) )
     {
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                                   remainingLength,
-                                   "&X-Amz-Security-Token=" );
+            remainingLength,
+            "&X-Amz-Security-Token=" );
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-Security-Token key!" ) );
@@ -833,9 +833,9 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         {
             encodedLength = remainingLength;
             ret = UriEncode( pAwsCredentials->pSessionToken,
-                             pAwsCredentials->sessionTokenLength,
-                             &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                             &( encodedLength ) );
+                pAwsCredentials->sessionTokenLength,
+                &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                &( encodedLength ) );
             if( ret == 0 )
             {
                 writtenLength += encodedLength;
@@ -853,8 +853,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
     if( ret == 0 )
     {
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                                   remainingLength,
-                                   "&X-Amz-SignedHeaders=host" );
+            remainingLength,
+            "&X-Amz-SignedHeaders=host" );
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
             LogError( ( "Failed to write X-Amz-SignedHeaders!" ) );
@@ -873,11 +873,11 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         canonicalQueryStringLength = writtenLength;
 
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                                   remainingLength,
-                                   "%s: %.*s\r\n",
-                                   "host",
-                                   ( int ) pWebsocketCtx->uriHostLength,
-                                   &( pWebsocketCtx->uriHost[ 0 ] ) );
+            remainingLength,
+            "%s: %.*s\r\n",
+            "host",
+            ( int ) pWebsocketCtx->uriHostLength,
+            &( pWebsocketCtx->uriHost[ 0 ] ) );
 
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
@@ -913,11 +913,11 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         sigv4CryptoInterface.hashInit = Sha256Init;
         sigv4CryptoInterface.hashUpdate = Sha256Update;
         sigv4CryptoInterface.hashFinal = Sha256Final;
-        #if NETWORKING_USE_OPENSSL
-            sigv4CryptoInterface.pHashContext = EVP_MD_CTX_new();
-        #elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL */
-            sigv4CryptoInterface.pHashContext = &xHashContext;
-        #endif /* elif NETWORKING_USE_MBEDTLS */
+#if NETWORKING_USE_OPENSSL
+        sigv4CryptoInterface.pHashContext = EVP_MD_CTX_new();
+#elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL */
+        sigv4CryptoInterface.pHashContext = &xHashContext;
+#endif                       /* elif NETWORKING_USE_MBEDTLS */
         sigv4CryptoInterface.hashBlockLen = 64;
         sigv4CryptoInterface.hashDigestLen = 32;
 
@@ -935,18 +935,18 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         pWebsocketCtx->sigv4AuthorizationHeaderLength = SIGV4_AUTHORIZATION_HEADER_BUFFER_LENGTH;
 
         if( SigV4_GenerateHTTPAuthorization( &( sigv4Params ),
-                                             &( pWebsocketCtx->sigv4AuthorizationHeader[ 0 ] ),
-                                             &( pWebsocketCtx->sigv4AuthorizationHeaderLength ),
-                                             &( pSignature ),
-                                             &( signatureLength ) ) != SigV4Success )
+                &( pWebsocketCtx->sigv4AuthorizationHeader[ 0 ] ),
+                &( pWebsocketCtx->sigv4AuthorizationHeaderLength ),
+                &( pSignature ),
+                &( signatureLength ) ) != SigV4Success )
         {
             LogError( ( "Failed to generate SigV4 authorization!" ) );
             ret = -1;
         }
 
-        #if NETWORKING_USE_OPENSSL
-            EVP_MD_CTX_free( sigv4CryptoInterface.pHashContext );
-        #endif /* NETWORKING_USE_OPENSSL */
+#if NETWORKING_USE_OPENSSL
+        EVP_MD_CTX_free( sigv4CryptoInterface.pHashContext );
+#endif /* NETWORKING_USE_OPENSSL */
     }
 
     /* Append signature. */
@@ -956,10 +956,10 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         remainingLength = SIGV4_METADATA_BUFFER_LENGTH - canonicalQueryStringLength;
 
         snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
-                                   remainingLength,
-                                   "&X-Amz-Signature=%.*s",
-                                   ( int ) signatureLength,
-                                   pSignature );
+            remainingLength,
+            "&X-Amz-Signature=%.*s",
+            ( int ) signatureLength,
+            pSignature );
 
         if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
         {
@@ -982,8 +982,8 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
             pWebsocketCtx->uriPath[ 0 ] = '/';
             pWebsocketCtx->uriPath[ 1 ] = '?';
             memcpy( &( pWebsocketCtx->uriPath[ 2 ] ),
-                    &( pWebsocketCtx->sigV4Metadata[ 0 ] ),
-                    pWebsocketCtx->uriPathLength );
+                &( pWebsocketCtx->sigV4Metadata[ 0 ] ),
+                pWebsocketCtx->uriPathLength );
             pWebsocketCtx->uriPath[ pWebsocketCtx->uriPathLength ] = '\0';
         }
         else
@@ -999,10 +999,10 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
 /*----------------------------------------------------------------------------*/
 
 static int LwsHttpCallback( struct lws * pWsi,
-                            enum lws_callback_reasons reason,
-                            void * pUser,
-                            void * pData,
-                            size_t dataLength )
+    enum lws_callback_reasons reason,
+    void * pUser,
+    void * pData,
+    size_t dataLength )
 {
     int ret = 0, bufferLength, writtenBodyLength, lwsStatus = 0;
     unsigned char * pEnd;
@@ -1104,37 +1104,37 @@ static int LwsHttpCallback( struct lws * pWsi,
                 if( pHttpContext->requiredHeaders[ i ].valueLength > 0 )
                 {
                     lwsStatus = lws_add_http_header_by_name( pWsi,
-                                                             ( const unsigned char * ) pHttpContext->requiredHeaders[ i ].pName,
-                                                             ( const unsigned char * ) pHttpContext->requiredHeaders[ i ].pValue,
-                                                             pHttpContext->requiredHeaders[ i ].valueLength,
-                                                             ppStart,
-                                                             pEnd );
+                        ( const unsigned char * ) pHttpContext->requiredHeaders[ i ].pName,
+                        ( const unsigned char * ) pHttpContext->requiredHeaders[ i ].pValue,
+                        pHttpContext->requiredHeaders[ i ].valueLength,
+                        ppStart,
+                        pEnd );
                 }
             }
 
             lwsStatus = lws_add_http_header_by_name( pWsi,
-                                                     ( const unsigned char * ) "content-type",
-                                                     ( const unsigned char * ) "application/json",
-                                                     strlen( "application/json" ),
-                                                     ppStart,
-                                                     pEnd );
+                ( const unsigned char * ) "content-type",
+                ( const unsigned char * ) "application/json",
+                strlen( "application/json" ),
+                ppStart,
+                pEnd );
 
             contentLengthStrLength = snprintf( &( contentLengthStr[ 0 ] ), 11, "%lu", pHttpContext->pRequest->bodyLength );
             lwsStatus = lws_add_http_header_by_name( pWsi,
-                                                     ( const unsigned char * ) "content-length",
-                                                     ( const unsigned char * ) &( contentLengthStr[ 0 ] ),
-                                                     contentLengthStrLength,
-                                                     ppStart,
-                                                     pEnd );
+                ( const unsigned char * ) "content-length",
+                ( const unsigned char * ) &( contentLengthStr[ 0 ] ),
+                contentLengthStrLength,
+                ppStart,
+                pEnd );
 
             for( i = 0; i < pHttpContext->pRequest->numHeaders; i++ )
             {
                 lwsStatus = lws_add_http_header_by_name( pWsi,
-                                                         ( const unsigned char * ) pHttpContext->pRequest->pHeaders[ i ].pName,
-                                                         ( const unsigned char * ) pHttpContext->pRequest->pHeaders[ i ].pValue,
-                                                         pHttpContext->pRequest->pHeaders[ i ].valueLength,
-                                                         ppStart,
-                                                         pEnd );
+                    ( const unsigned char * ) pHttpContext->pRequest->pHeaders[ i ].pName,
+                    ( const unsigned char * ) pHttpContext->pRequest->pHeaders[ i ].pValue,
+                    pHttpContext->pRequest->pHeaders[ i ].valueLength,
+                    ppStart,
+                    pEnd );
             }
 
             lws_client_http_body_pending( pWsi, 1 );
@@ -1150,9 +1150,9 @@ static int LwsHttpCallback( struct lws * pWsi,
             LogDebug( ( "LWS_CALLBACK_CLIENT_HTTP_WRITEABLE callback." ) );
 
             writtenBodyLength = lws_write( pWsi,
-                                           ( unsigned char * ) pHttpContext->pRequest->pBody,
-                                           pHttpContext->pRequest->bodyLength,
-                                           LWS_WRITE_TEXT );
+                ( unsigned char * ) pHttpContext->pRequest->pBody,
+                pHttpContext->pRequest->bodyLength,
+                LWS_WRITE_TEXT );
 
             if( writtenBodyLength != pHttpContext->pRequest->bodyLength )
             {
@@ -1203,10 +1203,10 @@ static int LwsHttpCallback( struct lws * pWsi,
 /*----------------------------------------------------------------------------*/
 
 static int LwsWebsocketCallback( struct lws * pWsi,
-                                 enum lws_callback_reasons reason,
-                                 void * pUser,
-                                 void * pData,
-                                 size_t dataLength )
+    enum lws_callback_reasons reason,
+    void * pUser,
+    void * pData,
+    size_t dataLength )
 {
     int ret = 0;
     const struct lws_protocols * pLwsProtocol = NULL;
@@ -1291,21 +1291,21 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                 if( ( pWebsocketContext->dataLengthInRxBuffer + dataLength ) <= WEBSOCKET_RX_BUFFER_LENGTH )
                 {
                     memcpy( &( pWebsocketContext->rxBuffer[ pWebsocketContext->dataLengthInRxBuffer ] ),
-                            pData,
-                            dataLength );
+                        pData,
+                        dataLength );
                     pWebsocketContext->dataLengthInRxBuffer += dataLength;
 
                     LogDebug( ( "Received %lu bytes of WSS message. Total %lu bytes received so far.",
-                                dataLength,
-                                pWebsocketContext->dataLengthInRxBuffer ) );
+                        dataLength,
+                        pWebsocketContext->dataLengthInRxBuffer ) );
 
                     if( lws_is_final_fragment( pWsi ) )
                     {
                         if( pWebsocketContext->rxCallback != NULL )
                         {
                             ret = pWebsocketContext->rxCallback( &( pWebsocketContext->rxBuffer[ 0 ] ),
-                                                                 pWebsocketContext->dataLengthInRxBuffer,
-                                                                 pWebsocketContext->pRxCallbackData );
+                                pWebsocketContext->dataLengthInRxBuffer,
+                                pWebsocketContext->pRxCallbackData );
                         }
                     }
                 }
@@ -1317,7 +1317,7 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                      * Increasing the Macro WEBSOCKET_RX_BUFFER_LENGTH to a
                      * larger value (such as 13 * 1024) may help in this case. */
                     LogWarn( ( "WSS RX buffer is not large enough for received message. Message size: %lu.",
-                               pWebsocketContext->dataLengthInRxBuffer + dataLength ) );
+                        pWebsocketContext->dataLengthInRxBuffer + dataLength ) );
                     ret = 1;
                 }
             }
@@ -1337,16 +1337,16 @@ static int LwsWebsocketCallback( struct lws * pWsi,
             LogDebug( ( "LWS_CALLBACK_CLIENT_WRITEABLE callback." ) );
 
             ringBufferResult = RingBuffer_GetHeadEntry( &( pWebsocketContext->ringBuffer ),
-                                                        &( pElement ) );
+                &( pElement ) );
 
             if( ringBufferResult == RING_BUFFER_RESULT_OK )
             {
                 remainingLength = pElement->bufferLength - pElement->currentIndex;
 
                 writtenLength = lws_write( pWsi,
-                                           ( unsigned char * ) &( pElement->pBuffer[ LWS_PRE + pElement->currentIndex ] ),
-                                           remainingLength,
-                                           LWS_WRITE_TEXT );
+                    ( unsigned char * ) &( pElement->pBuffer[ LWS_PRE + pElement->currentIndex ] ),
+                    remainingLength,
+                    LWS_WRITE_TEXT );
 
                 if( writtenLength < 0 )
                 {
@@ -1357,7 +1357,7 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                 {
                     free( pElement->pBuffer );
                     if( RingBuffer_RemoveHeadEntry( &( pWebsocketContext->ringBuffer ),
-                                                    pElement ) != RING_BUFFER_RESULT_OK )
+                            pElement ) != RING_BUFFER_RESULT_OK )
                     {
                         LogError( ( "Failed to remove element from the ring buffer!" ) );
                         ret = 1;
@@ -1389,8 +1389,8 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                 LogDebug( ( "Received request to close websocket connection. Initiating graceful shutdown." ) );
 
                 lws_set_timeout( pWebsocketContext->pWsi,
-                                 PENDING_TIMEOUT_USER_OK,
-                                 LWS_TO_KILL_ASYNC );
+                    PENDING_TIMEOUT_USER_OK,
+                    LWS_TO_KILL_ASYNC );
             }
             else if( pWebsocketContext->connectionEstablished == 1 )
             {
@@ -1427,7 +1427,7 @@ static NetworkingResult_t ConfigureLwsLogging( uint32_t logLevel )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     int lws_levels = 0;
-  
+
     /* Map application log levels to libwebsockets log levels */
     if( logLevel == LOG_NONE )
     {
@@ -1468,12 +1468,11 @@ static NetworkingResult_t ConfigureLwsLogging( uint32_t logLevel )
 /*----------------------------------------------------------------------------*/
 
 NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
-                                        const SSLCredentials_t * pCreds )
+    const SSLCredentials_t * pCreds )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     struct lws_context_creation_info creationInfo;
-    const lws_retry_bo_t retryPolicy =
-    {
+    const lws_retry_bo_t retryPolicy = {
         .secs_since_valid_ping = 10,
         .secs_since_valid_hangup = 7200,
     };
@@ -1514,8 +1513,8 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
             creationInfo.client_ssl_private_key_filepath = pCreds->pDeviceKeyPath;
         }
 
-         /* Configure libwebsockets logging based on application log level */
-         ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+        /* Configure libwebsockets logging based on application log level */
+        ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
 
         pHttpCtx->pLwsContext = lws_create_context( &( creationInfo ) );
 
@@ -1532,7 +1531,7 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
 /*----------------------------------------------------------------------------*/
 
 NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWebsocketCtx,
-                                             const SSLCredentials_t * pCreds )
+    const SSLCredentials_t * pCreds )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
 
@@ -1574,10 +1573,10 @@ NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWeb
 /*----------------------------------------------------------------------------*/
 
 NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
-                                        HttpRequest_t * pRequest,
-                                        const AwsCredentials_t * pAwsCredentials,
-                                        const AwsConfig_t * pAwsConfig,
-                                        HttpResponse_t * pResponse )
+    HttpRequest_t * pRequest,
+    const AwsCredentials_t * pAwsCredentials,
+    const AwsConfig_t * pAwsConfig,
+    HttpResponse_t * pResponse )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     const char * pHost = NULL;
@@ -1602,15 +1601,15 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         pHttpCtx->requiredHeaders[ REQUIRED_HEADER_USER_AGENT_IDX ].valueLength = pRequest->userAgentLength;
 
         if( GetHostFromUrl( pRequest->pUrl,
-                            pRequest->urlLength,
-                            &( pHost ),
-                            &( hostLength ) ) == 0 )
+                pRequest->urlLength,
+                &( pHost ),
+                &( hostLength ) ) == 0 )
         {
             if( hostLength <= HTTP_URI_HOST_BUFFER_LENGTH )
             {
                 memcpy( &( pHttpCtx->uriHost[ 0 ] ),
-                        pHost,
-                        hostLength );
+                    pHost,
+                    hostLength );
                 pHttpCtx->uriHost[ hostLength ] = '\0';
                 pHttpCtx->uriHostLength = hostLength;
             }
@@ -1632,7 +1631,7 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         pHttpCtx->iso8601TimeLength = ISO8601_TIME_LENGTH;
 
         if( GetCurrentTimeInIso8601Format( &( pHttpCtx->iso8601Time[ 0 ] ),
-                                           &( pHttpCtx->iso8601TimeLength ) ) == 0 )
+                &( pHttpCtx->iso8601TimeLength ) ) == 0 )
         {
             pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].pName = "x-amz-date";
             pHttpCtx->requiredHeaders[ REQUIRED_HEADER_ISO8601_TIME_IDX ].pValue = &( pHttpCtx->iso8601Time[ 0 ] );
@@ -1666,15 +1665,15 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
     if( ret == NETWORKING_RESULT_OK )
     {
         if( GetPathFromUrl( pRequest->pUrl,
-                            pRequest->urlLength,
-                            &( pPath ),
-                            &( pathLength ) ) == 0 )
+                pRequest->urlLength,
+                &( pPath ),
+                &( pathLength ) ) == 0 )
         {
             if( pathLength <= HTTP_URI_PATH_BUFFER_LENGTH )
             {
                 memcpy( &( pHttpCtx->uriPath[ 0 ] ),
-                        pPath,
-                        pathLength );
+                    pPath,
+                    pathLength );
                 pHttpCtx->uriPath[ 0 ] = '/';
                 pHttpCtx->uriPath[ pathLength ] = '\0';
                 pHttpCtx->uriPathLength = pathLength;
@@ -1697,9 +1696,9 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         ( pAwsCredentials != NULL ) )
     {
         if( SignHttpRequest( pHttpCtx,
-                             pRequest,
-                             pAwsCredentials,
-                             pAwsConfig ) != 0 )
+                pRequest,
+                pAwsCredentials,
+                pAwsConfig ) != 0 )
         {
             LogError( ( "Failed to sign HTTP request!" ) );
             ret = NETWORKING_RESULT_FAIL;
@@ -1752,9 +1751,9 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
 /*----------------------------------------------------------------------------*/
 
 NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * pWebsocketCtx,
-                                                const WebsocketConnectInfo_t * pConnectInfo,
-                                                const AwsCredentials_t * pAwsCredentials,
-                                                const AwsConfig_t * pAwsConfig )
+    const WebsocketConnectInfo_t * pConnectInfo,
+    const AwsCredentials_t * pAwsCredentials,
+    const AwsConfig_t * pAwsConfig )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     struct lws_client_connect_info connectInfo;
@@ -1786,7 +1785,7 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             memset( &retryPolicy, 0, sizeof( lws_retry_bo_t ) );
             retryPolicy.secs_since_valid_ping = 10;
             retryPolicy.secs_since_valid_hangup = 7200;
-        
+
             memset( &creationInfo, 0, sizeof( struct lws_context_creation_info ) );
             creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
             creationInfo.port = CONTEXT_PORT_NO_LISTEN;
@@ -1802,7 +1801,7 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             creationInfo.retry_and_idle_policy = &retryPolicy;
             creationInfo.fd_limit_per_thread = 3;
             creationInfo.alpn = "http/1.1";
-        
+
             if( ( pWebsocketCtx->sslCreds.pDeviceCertPath != NULL ) && ( pWebsocketCtx->sslCreds.pDeviceKeyPath != NULL ) )
             {
                 creationInfo.client_ssl_cert_filepath = pWebsocketCtx->sslCreds.pDeviceCertPath;
@@ -1822,15 +1821,15 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
 
             /* Get host name from URL. */
             if( GetHostFromUrl( pConnectInfo->pUrl,
-                                pConnectInfo->urlLength,
-                                &( pHost ),
-                                &( hostLength ) ) == 0 )
+                    pConnectInfo->urlLength,
+                    &( pHost ),
+                    &( hostLength ) ) == 0 )
             {
                 if( hostLength <= WEBSOCKET_URI_HOST_BUFFER_LENGTH )
                 {
                     memcpy( &( pWebsocketCtx->uriHost[ 0 ] ),
-                            pHost,
-                            hostLength );
+                        pHost,
+                        hostLength );
                     pWebsocketCtx->uriHost[ hostLength ] = '\0';
                     pWebsocketCtx->uriHostLength = hostLength;
                 }
@@ -1851,7 +1850,7 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             /* Get current time in ISO8601 format. */
             pWebsocketCtx->iso8601TimeLength = ISO8601_TIME_LENGTH;
             if( GetCurrentTimeInIso8601Format( &( pWebsocketCtx->iso8601Time[ 0 ] ),
-                                               &( pWebsocketCtx->iso8601TimeLength ) ) != 0 )
+                    &( pWebsocketCtx->iso8601TimeLength ) ) != 0 )
             {
                 LogError( ( "Failed to get ISO8601 time!" ) );
                 ret = NETWORKING_RESULT_FAIL;
@@ -1859,9 +1858,9 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             }
 
             if( SignWebsocketRequest( pWebsocketCtx,
-                                      pConnectInfo,
-                                      pAwsCredentials,
-                                      pAwsConfig ) != 0 )
+                    pConnectInfo,
+                    pAwsCredentials,
+                    pAwsConfig ) != 0 )
             {
                 LogError( ( "Failed to sign Websocket request!" ) );
                 ret = NETWORKING_RESULT_FAIL;
@@ -1912,8 +1911,8 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
 /*----------------------------------------------------------------------------*/
 
 NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWebsocketCtx,
-                                             const char * pMessage,
-                                             size_t messageLength )
+    const char * pMessage,
+    size_t messageLength )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     char * pWebsocketMessage;
@@ -1939,12 +1938,12 @@ NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWeb
     if( ret == NETWORKING_RESULT_OK )
     {
         memcpy( &( pWebsocketMessage[ LWS_PRE ] ),
-                pMessage,
-                messageLength );
+            pMessage,
+            messageLength );
 
         if( RingBuffer_Insert( &( pWebsocketCtx->ringBuffer ),
-                               pWebsocketMessage,
-                               messageLength ) != RING_BUFFER_RESULT_OK )
+                pWebsocketMessage,
+                messageLength ) != RING_BUFFER_RESULT_OK )
         {
             ret = NETWORKING_RESULT_FAIL;
             free( pWebsocketMessage );

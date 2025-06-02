@@ -27,7 +27,7 @@
 #define TCP_SOCKETS_ERRNO_NONE  ( 0 )  /*!< No error. */
 #define TCP_SOCKETS_ERRNO_ERROR ( -1 ) /*!< Catch-all sockets error code. */
 #define TCP_SOCKETS_ERRNO_EWOULDBLOCK \
-    ( -2 ) /*!< A resource is temporarily unavailable. */
+    ( -2 )                              /*!< A resource is temporarily unavailable. */
 #define TCP_SOCKETS_ERRNO_ENOMEM ( -3 ) /*!< Memory allocation failed. */
 #define TCP_SOCKETS_ERRNO_EINVAL ( -4 ) /*!< Invalid argument. */
 #define TCP_SOCKETS_ERRNO_ENOPROTOOPT \
@@ -39,7 +39,7 @@
 #define TCP_SOCKETS_ERRNO_ECLOSED \
     ( -8 ) /*!< The supplied socket has already been closed. */
 #define TCP_SOCKETS_ERRNO_PERIPHERAL_RESET \
-    ( -9 ) /*!< Communications peripheral has been reset. */
+    ( -9 )                               /*!< Communications peripheral has been reset. */
 #define TCP_SOCKETS_ERRNO_ENOSPC ( -10 ) /*!< No space left on device */
 #define TCP_SOCKETS_ERRNO_EINTR  ( -11 ) /*!< Interrupted system call */
 

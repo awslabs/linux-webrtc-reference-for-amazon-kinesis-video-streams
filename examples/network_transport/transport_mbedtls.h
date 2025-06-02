@@ -39,13 +39,13 @@
  */
 typedef struct SSLContext
 {
-    mbedtls_ssl_config config;   /**< @brief SSL connection configuration. */
-    mbedtls_ssl_context context; /**< @brief SSL connection context */
-    mbedtls_x509_crt_profile certProfile; /**< @brief Certificate security
-                                             profile for this connection. */
-    mbedtls_x509_crt rootCa;     /**< @brief Root CA certificate context. */
-    mbedtls_x509_crt clientCert; /**< @brief Client certificate context. */
-    mbedtls_pk_context privKey;  /**< @brief Client private key context. */
+    mbedtls_ssl_config config;               /**< @brief SSL connection configuration. */
+    mbedtls_ssl_context context;             /**< @brief SSL connection context */
+    mbedtls_x509_crt_profile certProfile;    /**< @brief Certificate security
+                                                profile for this connection. */
+    mbedtls_x509_crt rootCa;                 /**< @brief Root CA certificate context. */
+    mbedtls_x509_crt clientCert;             /**< @brief Client certificate context. */
+    mbedtls_pk_context privKey;              /**< @brief Client private key context. */
     mbedtls_entropy_context entropyContext;  /**< @brief Entropy context for
                                                 random number generation. */
     mbedtls_ctr_drbg_context ctrDrbgContext; /**< @brief CTR DRBG context for
@@ -87,10 +87,10 @@ typedef struct NetworkCredentials
      */
     int32_t disableSni;
 
-    const uint8_t * pRootCa; /**< @brief String representing a trusted server
-                                root certificate. */
-    size_t rootCaSize;       /**< @brief Size associated with
-                                #NetworkCredentials.pRootCa. */
+    const uint8_t * pRootCa;     /**< @brief String representing a trusted server
+                                    root certificate. */
+    size_t rootCaSize;           /**< @brief Size associated with
+                                    #NetworkCredentials.pRootCa. */
     const uint8_t * pRootCaPath; /**< @brief String representing a trusted
                                     server root certificate path. */
     size_t rootCaPathLength;     /**< @brief Length associated with
@@ -116,20 +116,20 @@ typedef struct TlsSession
  */
 typedef enum TlsTransportStatus
 {
-    TLS_TRANSPORT_SUCCESS = 0,       /**< Function successfully completed. */
-    TLS_TRANSPORT_INVALID_PARAMETER, /**< At least one parameter was invalid. */
-    TLS_TRANSPORT_INSUFFICIENT_MEMORY, /**< Insufficient memory required to
-                                          establish connection. */
-    TLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid.
-                                        */
-    TLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server
-                                          failed. */
+    TLS_TRANSPORT_SUCCESS = 0,           /**< Function successfully completed. */
+    TLS_TRANSPORT_INVALID_PARAMETER,     /**< At least one parameter was invalid. */
+    TLS_TRANSPORT_INSUFFICIENT_MEMORY,   /**< Insufficient memory required to
+                                            establish connection. */
+    TLS_TRANSPORT_INVALID_CREDENTIALS,   /**< Provided credentials were invalid.
+                                          */
+    TLS_TRANSPORT_HANDSHAKE_FAILED,      /**< Performing TLS handshake with server
+                                            failed. */
     TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS, /**< TLS handshake with server is
                                             in-progress. */
-    TLS_TRANSPORT_INTERNAL_ERROR, /**< A call to a system API resulted in an
-                                     internal error. */
-    TLS_TRANSPORT_CONNECT_FAILURE /**< Initial connection to the server failed.
-                                   */
+    TLS_TRANSPORT_INTERNAL_ERROR,        /**< A call to a system API resulted in an
+                                            internal error. */
+    TLS_TRANSPORT_CONNECT_FAILURE        /**< Initial connection to the server failed.
+                                          */
 } TlsTransportStatus_t;
 
 /**

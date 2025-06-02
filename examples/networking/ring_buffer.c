@@ -38,8 +38,8 @@ RingBufferResult_t RingBuffer_Init( RingBuffer_t * pRingBuffer )
 /*----------------------------------------------------------------------------*/
 
 RingBufferResult_t RingBuffer_Insert( RingBuffer_t * pRingBuffer,
-                                      char * pBuffer,
-                                      size_t bufferLength )
+    char * pBuffer,
+    size_t bufferLength )
 {
     RingBufferResult_t ret = RING_BUFFER_RESULT_OK;
     RingBufferElementInternal_t * pElement;
@@ -89,7 +89,7 @@ RingBufferResult_t RingBuffer_Insert( RingBuffer_t * pRingBuffer,
 /*----------------------------------------------------------------------------*/
 
 RingBufferResult_t RingBuffer_GetHeadEntry( RingBuffer_t * pRingBuffer,
-                                            RingBufferElement_t ** ppElement )
+    RingBufferElement_t ** ppElement )
 {
     RingBufferResult_t ret = RING_BUFFER_RESULT_OK;
 
@@ -121,7 +121,7 @@ RingBufferResult_t RingBuffer_GetHeadEntry( RingBuffer_t * pRingBuffer,
 /*----------------------------------------------------------------------------*/
 
 RingBufferResult_t RingBuffer_RemoveHeadEntry( RingBuffer_t * pRingBuffer,
-                                               RingBufferElement_t * pElement )
+    RingBufferElement_t * pElement )
 {
     RingBufferResult_t ret = RING_BUFFER_RESULT_OK;
     RingBufferElementInternal_t * pOldHead = NULL;

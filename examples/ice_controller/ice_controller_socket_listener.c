@@ -14,23 +14,23 @@
  * limitations under the License.
  */
 
-#include <errno.h>
-#include <unistd.h>
-#include "logging.h"
+#include "ice_api.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
-#include "ice_api.h"
+#include "logging.h"
 #include "stun_deserializer.h"
 #include "transport_mbedtls.h"
+#include <errno.h>
+#include <unistd.h>
 
 #define ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ( 50 )
-#define RX_BUFFER_SIZE ( 4096 )
+#define RX_BUFFER_SIZE                                      ( 4096 )
 
 static int32_t RecvPacketUdp( IceControllerSocketContext_t * pSocketContext,
-                              uint8_t * pBuffer,
-                              size_t bufferSize,
-                              int flags,
-                              IceEndpoint_t * pRemoteEndpoint )
+    uint8_t * pBuffer,
+    size_t bufferSize,
+    int flags,
+    IceEndpoint_t * pRemoteEndpoint )
 {
     int32_t ret;
     struct sockaddr_storage srcAddress;
@@ -91,16 +91,16 @@ static int32_t RecvPacketUdp( IceControllerSocketContext_t * pSocketContext,
 }
 
 static int32_t RecvPacketTls( IceControllerSocketContext_t * pSocketContext,
-                              uint8_t * pBuffer,
-                              size_t bufferSize,
-                              IceEndpoint_t * pRemoteEndpoint )
+    uint8_t * pBuffer,
+    size_t bufferSize,
+    IceEndpoint_t * pRemoteEndpoint )
 {
     int32_t ret;
 
     memcpy( pRemoteEndpoint, &( pSocketContext->pIceServer->iceEndpoint ), sizeof( IceEndpoint_t ) );
     ret = TLS_FreeRTOS_recv( &pSocketContext->tlsSession.xTlsNetworkContext,
-                             pBuffer,
-                             bufferSize );
+        pBuffer,
+        bufferSize );
 
     if( ret < 0 )
     {
@@ -111,8 +111,8 @@ static int32_t RecvPacketTls( IceControllerSocketContext_t * pSocketContext,
 }
 
 static IceCandidatePair_t * FindCandidatePairByRemoteIceEndpoint( IceControllerContext_t * pCtx,
-                                                                  IceControllerSocketContext_t * pSocketContext,
-                                                                  IceEndpoint_t * pRemoteIceEndpoint )
+    IceControllerSocketContext_t * pSocketContext,
+    IceEndpoint_t * pRemoteIceEndpoint )
 {
     IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
     IceCandidatePair_t * pCandidatePair = NULL;
@@ -135,7 +135,7 @@ static IceCandidatePair_t * FindCandidatePairByRemoteIceEndpoint( IceControllerC
     if( result == ICE_CONTROLLER_RESULT_OK )
     {
         iceResult = Ice_GetCandidatePairCount( &pCtx->iceContext,
-                                               &count );
+            &count );
         if( iceResult != ICE_RESULT_OK )
         {
             LogError( ( "Fail to query valid candidate pair count, result: %d", iceResult ) );
@@ -147,14 +147,14 @@ static IceCandidatePair_t * FindCandidatePairByRemoteIceEndpoint( IceControllerC
     {
         for( i = 0; i < count; i++ )
         {
-            if( ( memcmp( &pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->endpoint.transportAddress,
-                          &pSocketContext->pLocalCandidate->endpoint.transportAddress,
-                          sizeof( IceTransportAddress_t ) ) == 0 ) &&
-                ( memcmp( &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint.transportAddress,
-                          &pRemoteIceEndpoint->transportAddress,
-                          sizeof( IceTransportAddress_t ) ) == 0 ) )
+            if( ( memcmp( &pCtx->iceContext.pCandidatePairs[ i ].pLocalCandidate->endpoint.transportAddress,
+                      &pSocketContext->pLocalCandidate->endpoint.transportAddress,
+                      sizeof( IceTransportAddress_t ) ) == 0 ) &&
+                ( memcmp( &pCtx->iceContext.pCandidatePairs[ i ].pRemoteCandidate->endpoint.transportAddress,
+                      &pRemoteIceEndpoint->transportAddress,
+                      sizeof( IceTransportAddress_t ) ) == 0 ) )
             {
-                pCandidatePair = &pCtx->iceContext.pCandidatePairs[i];
+                pCandidatePair = &pCtx->iceContext.pCandidatePairs[ i ];
                 break;
             }
         }
@@ -169,15 +169,15 @@ static IceCandidatePair_t * FindCandidatePairByRemoteIceEndpoint( IceControllerC
 }
 
 static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_t * pCtx,
-                                                           IceControllerSocketContext_t * pSocketContext,
-                                                           IceCandidatePair_t * pCandidatePair,
-                                                           IceEndpoint_t * pRemoteIceEndpoint )
+    IceControllerSocketContext_t * pSocketContext,
+    IceCandidatePair_t * pCandidatePair,
+    IceEndpoint_t * pRemoteIceEndpoint )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceCandidatePair_t * pOriginalCandidatePair = NULL;
-    #if LIBRARY_LOG_LEVEL >= LOG_INFO
-        char ipBuffer[ INET_ADDRSTRLEN ];
-    #endif
+#if LIBRARY_LOG_LEVEL >= LOG_INFO
+    char ipBuffer[ INET_ADDRSTRLEN ];
+#endif
 
     /* Find valid candidate pair pointer for current packet.
      * There are two scenarios:
@@ -195,8 +195,8 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
                 LogWarn( ( "Invalid to find candidate pair for the remote endpoint." ) );
 
                 LogInfo( ( "Target remote endpoint IP address: %s, port: %u",
-                           IceControllerNet_LogIpAddressInfo( pRemoteIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
-                           pRemoteIceEndpoint->transportAddress.port ) );
+                    IceControllerNet_LogIpAddressInfo( pRemoteIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
+                    pRemoteIceEndpoint->transportAddress.port ) );
                 ret = ICE_CONTROLLER_RESULT_INVALID_PACKET;
             }
         }
@@ -233,10 +233,10 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
             pthread_mutex_unlock( &( pCtx->socketMutex ) );
 
             LogInfo( ( "Nominated pair is changed from local/remote candidate ID: 0x%04x / 0x%04x to local/remote candidate ID: 0x%04x / 0x%04x",
-                       pOriginalCandidatePair->pLocalCandidate->candidateId,
-                       pOriginalCandidatePair->pRemoteCandidate->candidateId,
-                       pCandidatePair->pLocalCandidate->candidateId,
-                       pCandidatePair->pRemoteCandidate->candidateId ) );
+                pOriginalCandidatePair->pLocalCandidate->candidateId,
+                pOriginalCandidatePair->pRemoteCandidate->candidateId,
+                pCandidatePair->pLocalCandidate->candidateId,
+                pCandidatePair->pRemoteCandidate->candidateId ) );
         }
         else
         {
@@ -249,11 +249,11 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
 }
 
 static void HandleRxPacket( IceControllerContext_t * pCtx,
-                            IceControllerSocketContext_t * pSocketContext,
-                            OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                            void * pOnRecvNonStunPacketCallbackContext,
-                            OnIceEventCallback_t onIceEventCallbackFunc,
-                            void * pOnIceEventCallbackCustomContext )
+    IceControllerSocketContext_t * pSocketContext,
+    OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
+    void * pOnRecvNonStunPacketCallbackContext,
+    OnIceEventCallback_t onIceEventCallbackFunc,
+    void * pOnIceEventCallbackCustomContext )
 {
     uint8_t skipProcess = 0;
     int32_t readBytes = 0;
@@ -315,21 +315,21 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
             {
                 iceResult = Ice_HandleTurnPacket( &pCtx->iceContext,
-                                                  pProcessingBuffer,
-                                                  processingBufferLength,
-                                                  pSocketContext->pLocalCandidate,
-                                                  ( const uint8_t ** ) &pTurnPayload,
-                                                  &turnPayloadBufferLength,
-                                                  &pCandidatePair );
+                    pProcessingBuffer,
+                    processingBufferLength,
+                    pSocketContext->pLocalCandidate,
+                    ( const uint8_t ** ) &pTurnPayload,
+                    &turnPayloadBufferLength,
+                    &pCandidatePair );
                 pthread_mutex_unlock( &( pCtx->iceMutex ) );
 
                 if( iceResult == ICE_RESULT_OK )
                 {
                     LogVerbose( ( "Removed TURN channel header for local/remote candidate ID 0x%04x / 0x%04x, number: 0x%02x%02x, length: 0x%02x%02x",
-                                  pCandidatePair->pLocalCandidate->candidateId,
-                                  pCandidatePair->pRemoteCandidate->candidateId,
-                                  pProcessingBuffer[ 0 ], pProcessingBuffer[ 1 ],
-                                  pProcessingBuffer[ 2 ], pProcessingBuffer[ 3 ] ) );
+                        pCandidatePair->pLocalCandidate->candidateId,
+                        pCandidatePair->pRemoteCandidate->candidateId,
+                        pProcessingBuffer[ 0 ], pProcessingBuffer[ 1 ],
+                        pProcessingBuffer[ 2 ], pProcessingBuffer[ 3 ] ) );
 
                     /* Received TURN buffer, replace buffer pointer for further processing. */
                     pProcessingBuffer = pTurnPayload;
@@ -377,8 +377,8 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                     if( ret == ICE_CONTROLLER_RESULT_OK )
                     {
                         ( void ) onRecvNonStunPacketFunc( pOnRecvNonStunPacketCallbackContext,
-                                                          pProcessingBuffer,
-                                                          processingBufferLength );
+                            pProcessingBuffer,
+                            processingBufferLength );
                     }
                     else
                     {
@@ -394,11 +394,11 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             {
                 /* STUN packet. */
                 ret = IceControllerNet_HandleStunPacket( pCtx,
-                                                         pSocketContext,
-                                                         pProcessingBuffer,
-                                                         processingBufferLength,
-                                                         &remoteIceEndpoint,
-                                                         pCandidatePair );
+                    pSocketContext,
+                    pProcessingBuffer,
+                    processingBufferLength,
+                    &remoteIceEndpoint,
+                    pCandidatePair );
                 if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) &&
                     ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
                 {
@@ -411,8 +411,8 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                     if( onIceEventCallbackFunc )
                     {
                         retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext,
-                                                                               ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
-                                                                               NULL );
+                            ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
+                            NULL );
                         if( retPeerToPeerConnectionFound != 0 )
                         {
                             LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );
@@ -441,8 +441,8 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
             {
                 /* Unknown packet. */
                 LogWarn( ( "drop unknown packet, length=%lu, first byte=0x%02x",
-                           processingBufferLength,
-                           pProcessingBuffer[ 0 ] ) );
+                    processingBufferLength,
+                    pProcessingBuffer[ 0 ] ) );
             }
         }
     }
@@ -484,7 +484,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
-            fds[i] = pCtx->socketsContexts[i].socketFd;
+            fds[ i ] = pCtx->socketsContexts[ i ].socketFd;
         }
         fdsCount = pCtx->socketsContextsCount;
         onRecvNonStunPacketFunc = pCtx->socketListenerContext.onRecvNonStunPacketFunc;
@@ -507,12 +507,12 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         for( i = 0; i < fdsCount; i++ )
         {
             /* fds might be removed for any reason. Handle that by checking if it's -1. */
-            if( fds[i] >= 0 )
+            if( fds[ i ] >= 0 )
             {
-                FD_SET( fds[i], &rfds );
-                if( fds[i] > maxFd )
+                FD_SET( fds[ i ], &rfds );
+                if( fds[ i ] > maxFd )
                 {
-                    maxFd = fds[i];
+                    maxFd = fds[ i ];
                 }
             }
         }
@@ -539,7 +539,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < fdsCount; i++ )
         {
-            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
+            if( ( fds[ i ] >= 0 ) && FD_ISSET( fds[ i ], &rfds ) )
             {
                 pSocketContext = &( pCtx->socketsContexts[ i ] );
 
@@ -550,11 +550,11 @@ static void pollingSockets( IceControllerContext_t * pCtx )
                 else
                 {
                     HandleRxPacket( pCtx,
-                                    pSocketContext,
-                                    onRecvNonStunPacketFunc,
-                                    pOnRecvNonStunPacketCallbackContext,
-                                    onIceEventCallbackFunc,
-                                    pOnIceEventCallbackCustomContext );
+                        pSocketContext,
+                        onRecvNonStunPacketFunc,
+                        pOnRecvNonStunPacketCallbackContext,
+                        onIceEventCallbackFunc,
+                        pOnIceEventCallbackCustomContext );
                 }
             }
         }
@@ -606,8 +606,8 @@ IceControllerResult_t IceControllerSocketListener_StopPolling( IceControllerCont
 }
 
 IceControllerResult_t IceControllerSocketListener_Init( IceControllerContext_t * pCtx,
-                                                        OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                                                        void * pOnRecvNonStunPacketCallbackContext )
+    OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
+    void * pOnRecvNonStunPacketCallbackContext )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
 
@@ -636,7 +636,7 @@ void * IceControllerSocketListener_Task( void * pParameter )
         while( pCtx->socketListenerContext.executeSocketListener == 0 )
         {
             usleep( ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS * 1000 );
-            //vTaskDelay( pdMS_TO_TICKS( ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ) );
+            // vTaskDelay( pdMS_TO_TICKS( ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ) );
         }
 
         if( pCtx->socketListenerContext.executeSocketListener == 1 )

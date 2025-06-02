@@ -255,28 +255,28 @@ typedef struct PeerConnectionJitterBufferPacket
 typedef struct PeerConnectionJitterBuffer
 {
     uint8_t isInit;
-    uint8_t isStart; /* The jitter buffer starts to receive packet or not. */
-    size_t capacity; /* The total number of packets that packet queue can store.
-                      */
-    uint32_t clockRate; /* The clock rate based on the codec. For example: the
-                           clock rate is 90000 if the chosen RTP is H264/90000.
-                         */
-    uint32_t codec; /* The codec. For example: the codec is set to H264 if the
-                       chosen RTP is H264/90000. */
-    uint32_t tolerenceRtpTimeStamp; /* The buffer time in RTP time stamp format.
-                                     */
-    uint32_t lastPopRtpTimestamp;   /* The timestamp in last pop RTP packet. */
-    uint64_t lastPopTick; /* The receive time ticks in last pop RTP packet. */
-    uint16_t lastPopSequenceNumber; /* The RTP sequence number in last pop RTP
-                                       packet. */
+    uint8_t isStart;                       /* The jitter buffer starts to receive packet or not. */
+    size_t capacity;                       /* The total number of packets that packet queue can store.
+                                            */
+    uint32_t clockRate;                    /* The clock rate based on the codec. For example: the
+                                              clock rate is 90000 if the chosen RTP is H264/90000.
+                                            */
+    uint32_t codec;                        /* The codec. For example: the codec is set to H264 if the
+                                              chosen RTP is H264/90000. */
+    uint32_t tolerenceRtpTimeStamp;        /* The buffer time in RTP time stamp format.
+                                            */
+    uint32_t lastPopRtpTimestamp;          /* The timestamp in last pop RTP packet. */
+    uint64_t lastPopTick;                  /* The receive time ticks in last pop RTP packet. */
+    uint16_t lastPopSequenceNumber;        /* The RTP sequence number in last pop RTP
+                                              packet. */
     uint16_t oldestReceivedSequenceNumber; /* The oldest RTP sequence number
                                               that received in the packet queue.
                                             */
     uint16_t newestReceivedSequenceNumber; /* The newest RTP sequence number
                                               that received in the packet queue.
                                             */
-    uint32_t newestReceivedTimestamp; /* The newest timestamp in packet queue.
-                                       */
+    uint32_t newestReceivedTimestamp;      /* The newest timestamp in packet queue.
+                                            */
     PeerConnectionJitterBufferPacket_t
         rtpPackets[ PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM ]; /* The buffer
                                                                       for packet
