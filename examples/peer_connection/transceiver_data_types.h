@@ -28,12 +28,12 @@ extern "C" {
 /* Standard includes. */
 #include <stdio.h>
 
-#define TRANSCEIVER_STREAM_ID_MAX_LENGTH (256)
-#define TRANSCEIVER_TRACK_ID_MAX_LENGTH (256)
-#define TRANSCEIVER_CODEC_STRING_MAX_LENGTH (3) /* The maximum value of codec is now 127, which has length 3 in string. */
+#define TRANSCEIVER_STREAM_ID_MAX_LENGTH ( 256 )
+#define TRANSCEIVER_TRACK_ID_MAX_LENGTH ( 256 )
+#define TRANSCEIVER_CODEC_STRING_MAX_LENGTH ( 3 ) /* The maximum value of codec is now 127, which has length 3 in string. */
 
-#define TRANSCEIVER_IS_CODEC_ENABLED(bitmap, bit) (bitmap & (1 << bit))
-#define TRANSCEIVER_ENABLE_CODEC(bitmap, bit) (bitmap |= (1 << bit))
+#define TRANSCEIVER_IS_CODEC_ENABLED( bitmap, bit ) ( bitmap & ( 1 << bit ) )
+#define TRANSCEIVER_ENABLE_CODEC( bitmap, bit ) ( bitmap |= ( 1 << bit ) )
 
 typedef enum TransceiverCallbackEvent
 {
@@ -45,20 +45,20 @@ typedef enum TransceiverCallbackEvent
 
 typedef struct TransceiverRemotePeerReadyMsg
 {
-    void* pContext;
+    void * pContext;
 } TransceiverRemotePeerReadyMsg_t;
 
 typedef struct TransceiverCallbackContent
 {
     union
     {
-        void* pContext; /* TRANSCEIVER_CB_EVENT_REMOTE_PEER_READY */
+        void * pContext; /* TRANSCEIVER_CB_EVENT_REMOTE_PEER_READY */
     };
 } TransceiverCallbackContent_t;
 
-typedef int32_t (*OnPcEventCallback_t)(void* pCustomContext,
-                                       TransceiverCallbackEvent_t event,
-                                       TransceiverCallbackContent_t* pEventMsg);
+typedef int32_t (* OnPcEventCallback_t)( void * pCustomContext,
+                                         TransceiverCallbackEvent_t event,
+                                         TransceiverCallbackContent_t * pEventMsg );
 
 typedef enum TransceiverDefaultRtcCodec
 {
@@ -104,8 +104,8 @@ typedef enum TransceiverDirection
 typedef struct TransceiverRtcpStats
 {
     /* RTCP Sender Report Stats. */
-    uint64_t rtpPacketsTransmitted; // Total number of bytes sent for this SSRC. Calculated as defined in [RFC3550] section 6.4.1.
-    uint64_t rtpBytesTransmitted;   // The total number of payload octets (i.e., not including header or padding )
+    uint64_t rtpPacketsTransmitted;    // Total number of bytes sent for this SSRC. Calculated as defined in [RFC3550] section 6.4.1.
+    uint64_t rtpBytesTransmitted;      // The total number of payload octets (i.e., not including header or padding )
 } TransceiverRtcpStats_t;
 
 typedef struct TransceiverRtpSender
@@ -122,15 +122,15 @@ typedef struct Transceiver
     uint32_t codecBitMap; // Use TransceiverRtcCodecBit_t to set corresponding bits
     uint32_t rollingbufferDurationSec;
     uint32_t rollingbufferBitRate; // bps
-    char streamId[TRANSCEIVER_STREAM_ID_MAX_LENGTH];
+    char streamId[ TRANSCEIVER_STREAM_ID_MAX_LENGTH ];
     size_t streamIdLength;
-    char trackId[TRANSCEIVER_TRACK_ID_MAX_LENGTH];
+    char trackId[ TRANSCEIVER_TRACK_ID_MAX_LENGTH ];
     size_t trackIdLength;
     uint32_t ssrc;
     uint32_t rtxSsrc;
 
     OnPcEventCallback_t onPcEventCallbackFunc;
-    void* pOnPcEventCustomContext;
+    void * pOnPcEventCustomContext;
 
     TransceiverRtcpStats_t rtcpStats;
     TransceiverRtpSender_t rtpSender;

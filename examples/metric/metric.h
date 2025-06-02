@@ -73,15 +73,15 @@ typedef struct MetricEventRecord
 typedef struct MetricContext
 {
     uint8_t isInit;
-    MetricEventRecord_t eventRecords[METRIC_EVENT_MAX];
+    MetricEventRecord_t eventRecords[ METRIC_EVENT_MAX ];
     pthread_mutex_t mutex;
 } MetricContext_t;
 
-void Metric_Init(void);
-void Metric_StartEvent(MetricEvent_t event);
-void Metric_EndEvent(MetricEvent_t event);
-void Metric_PrintMetrics(void);
-void Metric_ResetEvent(void);
+void Metric_Init( void );
+void Metric_StartEvent( MetricEvent_t event );
+void Metric_EndEvent( MetricEvent_t event );
+void Metric_PrintMetrics( void );
+void Metric_ResetEvent( void );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

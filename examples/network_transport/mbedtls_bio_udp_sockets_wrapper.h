@@ -26,9 +26,9 @@
  *
  * @return Number of bytes sent on success; else a negative value.
  */
-int xMbedTLSBioUDPSocketsWrapperSend(void* ctx,
-                                     const unsigned char* buf,
-                                     size_t len);
+int xMbedTLSBioUDPSocketsWrapperSend( void * ctx,
+                                      const unsigned char * buf,
+                                      size_t len );
 
 /**
  * @brief Receives data from UDP socket.
@@ -39,9 +39,9 @@ int xMbedTLSBioUDPSocketsWrapperSend(void* ctx,
  *
  * @return Number of bytes received if successful; Negative value on error.
  */
-int xMbedTLSBioUDPSocketsWrapperRecv(void* ctx,
-                                     unsigned char* buf,
-                                     size_t len);
+int xMbedTLSBioUDPSocketsWrapperRecv( void * ctx,
+                                      unsigned char * buf,
+                                      size_t len );
 
 
 #endif /* MBEDTLS_BIO_UDP_SOCKETS_WRAPPER */

@@ -29,10 +29,10 @@ extern "C" {
 #include <stdint.h>
 #include "transceiver_data_types.h"
 
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT (2)
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT (2)
-#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT (255)
-#define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT (5)
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ( 255 )
+#define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ( 5 )
 
 typedef enum SdpControllerResult
 {
@@ -71,11 +71,11 @@ typedef enum SdpControllerDtlsRole
  */
 typedef struct SdpControllerConnectionInformation
 {
-    const char* pNetworkType;
+    const char * pNetworkType;
     size_t networkTypeLength;
-    const char* pAddressType;
+    const char * pAddressType;
     size_t addressTypeLength;
-    const char* pConnectionAddress;
+    const char * pConnectionAddress;
     size_t connectionAddressLength;
 } SdpControllerConnectionInformation_t;
 
@@ -85,7 +85,7 @@ typedef struct SdpControllerConnectionInformation
  */
 typedef struct SdpControllerOrigin
 {
-    const char* pUserName;
+    const char * pUserName;
     size_t userNameLength;
     uint64_t sessionId;
     uint64_t sessionVersion;
@@ -109,7 +109,7 @@ typedef struct SdpControllerTiming
 typedef struct SdpControllerTimeZone
 {
     uint64_t adjustmentTime;
-    const char* pOffset;
+    const char * pOffset;
     size_t offsetLength;
 } SdpControllerTimeZone_t;
 
@@ -120,9 +120,9 @@ typedef struct SdpControllerTimeZone
  */
 typedef struct SdpControllerAttributes
 {
-    const char* pAttributeName;
+    const char * pAttributeName;
     size_t attributeNameLength;
-    const char* pAttributeValue;
+    const char * pAttributeValue;
     size_t attributeValueLength;
 } SdpControllerAttributes_t;
 
@@ -130,32 +130,32 @@ typedef struct SdpControllerMediaDescription
 {
     // m=<media> <port>/<number of ports> <proto> <fmt> ...
     // https://tools.ietf.org/html/rfc4566#section-5.14
-    const char* pMediaName;
+    const char * pMediaName;
     size_t mediaNameLength;
 
     // i=<session description>
     // https://tools.ietf.org/html/rfc4566#section-5.4. Given these are free-form strings, the length could be anything.
     // Although our SDK parses this information, the SDK does not use it. Leaving this attribute in if SDK uses it in
     // the future
-    const char* pMediaTitle;
+    const char * pMediaTitle;
     size_t mediaTitleLength;
 
     SdpControllerConnectionInformation_t connectionInformation;
 
-    SdpControllerAttributes_t attributes[SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT];
+    SdpControllerAttributes_t attributes[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
 
     uint8_t mediaAttributesCount;
 } SdpControllerMediaDescription_t;
 
 typedef struct SdpControllerQuickAccess
 {
-    const char* pFingerprint;
+    const char * pFingerprint;
     size_t fingerprintLength;
     SdpControllerDtlsRole_t dtlsRole;
     uint8_t isIceTrickle;
-    const char* pIceUfrag;
+    const char * pIceUfrag;
     size_t iceUfragLength;
-    const char* pIcePwd;
+    const char * pIcePwd;
     size_t icePwdLength;
     uint32_t twccExtId;
     uint8_t isVideoCodecPayloadSet;
@@ -166,8 +166,8 @@ typedef struct SdpControllerQuickAccess
     uint32_t audioCodecRtxPayload;
     uint32_t videoSsrc;
     uint32_t audioSsrc;
-    const char* pRemoteCandidates[SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT];
-    size_t remoteCandidateLengths[SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT];
+    const char * pRemoteCandidates[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
+    size_t remoteCandidateLengths[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
     uint8_t remoteCandidateCount;
 } SdpControllerQuickAccess_t;
 
@@ -180,36 +180,36 @@ typedef struct SdpControllerSdpOffer
 
     // s=<session name>
     // https://tools.ietf.org/html/rfc4566#section-5.3
-    const char* pSessionName;
+    const char * pSessionName;
     size_t sessionNameLength;
 
     // i=<session description>
     // https://tools.ietf.org/html/rfc4566#section-5.4
-    const char* pSessionInformation;
+    const char * pSessionInformation;
     size_t sessionInformationLength;
 
     // u=<uri>
     // https://tools.ietf.org/html/rfc4566#section-5.5
-    const char* pUri;
+    const char * pUri;
     size_t uriLength;
 
     // e=<email-address>
     // https://tools.ietf.org/html/rfc4566#section-5.6
-    const char* pEmailAddress;
+    const char * pEmailAddress;
     size_t emailAddressLength;
 
     // p=<phone-number>
     // https://tools.ietf.org/html/rfc4566#section-5.6
-    const char* pPhoneNumber;
+    const char * pPhoneNumber;
     size_t phoneNumberLength;
 
     SdpControllerConnectionInformation_t connectionInformation;
 
     SdpControllerTiming_t timingDescription;
 
-    SdpControllerAttributes_t attributes[SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT];
+    SdpControllerAttributes_t attributes[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
 
-    SdpControllerMediaDescription_t mediaDescriptions[SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT];
+    SdpControllerMediaDescription_t mediaDescriptions[ SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ];
 
     uint16_t sessionAttributesCount;
 
@@ -233,20 +233,20 @@ typedef struct SdpControllerPopulateMediaConfiguration
     uint8_t canTrickleIce;
 
     /* ICE information. */
-    const char* pCname;
+    const char * pCname;
     size_t cnameLength;
-    const char* pUserName; /* For ice-ufrag in SDP attributes */
+    const char * pUserName; /* For ice-ufrag in SDP attributes */
     size_t userNameLength;
-    const char* pPassword; /* For ice-pwd in SDP attributes */
+    const char * pPassword; /* For ice-pwd in SDP attributes */
     size_t passwordLength;
 
     /* Transceiver. */
-    const Transceiver_t* pTransceiver;
+    const Transceiver_t * pTransceiver;
     uint32_t payloadType;
     uint32_t rtxPayloadType;
 
     /* Fingerprint. */
-    const char* pLocalFingerprint;
+    const char * pLocalFingerprint;
     size_t localFingerprintLength;
 
     /* TWCC EXT ID */

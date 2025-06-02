@@ -32,7 +32,7 @@ typedef enum RingBufferResult
 
 typedef struct RingBufferElement
 {
-    char* pBuffer;
+    char * pBuffer;
     size_t bufferLength;
     size_t currentIndex;
 } RingBufferElement_t;
@@ -40,28 +40,28 @@ typedef struct RingBufferElement
 typedef struct RingBufferElementInternal
 {
     RingBufferElement_t element;
-    struct RingBufferElementInternal* pNext;
+    struct RingBufferElementInternal * pNext;
 } RingBufferElementInternal_t;
 
 typedef struct RingBuffer
 {
     pthread_mutex_t lock;
-    RingBufferElementInternal_t* pHead;
-    RingBufferElementInternal_t* pTail;
+    RingBufferElementInternal_t * pHead;
+    RingBufferElementInternal_t * pTail;
 } RingBuffer_t;
 
 /*----------------------------------------------------------------------------*/
 
-RingBufferResult_t RingBuffer_Init(RingBuffer_t* pRingBuffer);
+RingBufferResult_t RingBuffer_Init( RingBuffer_t * pRingBuffer );
 
-RingBufferResult_t RingBuffer_Insert(RingBuffer_t* pRingBuffer,
-                                     char* pBuffer,
-                                     size_t bufferLength);
+RingBufferResult_t RingBuffer_Insert( RingBuffer_t * pRingBuffer,
+                                      char * pBuffer,
+                                      size_t bufferLength );
 
-RingBufferResult_t RingBuffer_GetHeadEntry(RingBuffer_t* pRingBuffer,
-                                           RingBufferElement_t** ppElement);
+RingBufferResult_t RingBuffer_GetHeadEntry( RingBuffer_t * pRingBuffer,
+                                            RingBufferElement_t ** ppElement );
 
-RingBufferResult_t RingBuffer_RemoveHeadEntry(RingBuffer_t* pRingBuffer,
-                                              RingBufferElement_t* pElement);
+RingBufferResult_t RingBuffer_RemoveHeadEntry( RingBuffer_t * pRingBuffer,
+                                               RingBufferElement_t * pElement );
 
 /*----------------------------------------------------------------------------*/
