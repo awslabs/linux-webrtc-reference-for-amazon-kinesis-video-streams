@@ -17,24 +17,26 @@
 #ifndef APP_COMMON_H
 #define APP_COMMON_H
 
-#include <stdio.h>
+#include "peer_connection.h"
 #include "sdp_controller.h"
 #include "signaling_controller.h"
-#include "peer_connection.h"
+#include <stdio.h>
 
-#define DEMO_SDP_BUFFER_MAX_LENGTH ( 10000 )
+#define DEMO_SDP_BUFFER_MAX_LENGTH         ( 10000 )
 #define DEMO_TRANSCEIVER_MEDIA_INDEX_VIDEO ( 0 )
 #define DEMO_TRANSCEIVER_MEDIA_INDEX_AUDIO ( 1 )
-#define REMOTE_ID_MAX_LENGTH    ( 256 )
+#define REMOTE_ID_MAX_LENGTH               ( 256 )
 
 struct AppMediaSourcesContext;
 typedef struct AppMediaSourcesContext AppMediaSourcesContext_t;
 
-typedef int32_t ( * InitTransceiverFunc_t )( void * pCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
+typedef int32_t ( *InitTransceiverFunc_t )( void * pCtx,
+    TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
 
 typedef struct AppSession
 {
-    /* The remote client ID, representing the remote peer, from signaling message. */
+    /* The remote client ID, representing the remote peer, from signaling
+     * message. */
     char remoteClientId[ REMOTE_ID_MAX_LENGTH ];
     size_t remoteClientIdLength;
 
@@ -68,7 +70,8 @@ typedef struct AppContext
     AppMediaSourcesContext_t * pAppMediaSourcesContext;
 } AppContext_t;
 
-int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransceiverFunc, void * pMediaContext );
+int AppCommon_Init( AppContext_t * pAppContext,
+    InitTransceiverFunc_t initTransceiverFunc, void * pMediaContext );
 int AppCommon_Start( AppContext_t * pAppContext );
 
 #endif /* APP_COMMON_H */

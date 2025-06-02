@@ -30,12 +30,12 @@ extern "C" {
 #include <string.h>
 //#include "log_service.h"
 
-#define LOG_NONE     0
-#define LOG_ERROR    1
-#define LOG_WARN     2
-#define LOG_INFO     3
-#define LOG_DEBUG    4
-#define LOG_VERBOSE  5
+#define LOG_NONE    0
+#define LOG_ERROR   1
+#define LOG_WARN    2
+#define LOG_INFO    3
+#define LOG_DEBUG   4
+#define LOG_VERBOSE 5
 
 #ifndef LIBRARY_LOG_LEVEL
     #define LIBRARY_LOG_LEVEL LOG_INFO
@@ -43,11 +43,14 @@ extern "C" {
 
 /* Metadata information to prepend to every log message. */
 #ifndef LOG_METADATA_FORMAT
-    #define LOG_METADATA_FORMAT    "[%s: %d] "            /**< @brief Format of metadata prefix in log messages. */
+    #define LOG_METADATA_FORMAT \
+        "[%s: %d] " /**< @brief Format of metadata prefix in log messages. */
 #endif
 
 #ifndef LOG_METADATA_ARGS
-    #define LOG_METADATA_ARGS    __FUNCTION__, __LINE__  /**< @brief Arguments into the metadata logging prefix format. */
+    #define LOG_METADATA_ARGS                                                  \
+        __FUNCTION__, __LINE__ /**< @brief Arguments into the metadata logging \
+                                  prefix format. */
 #endif
 
 #ifndef SdkLog
@@ -55,54 +58,101 @@ extern "C" {
 #endif
 
 /**
- * Disable definition of logging interface macros when generating doxygen output,
- * to avoid conflict with documentation of macros at the end of the file.
+ * Disable definition of logging interface macros when generating doxygen
+ * output, to avoid conflict with documentation of macros at the end of the
+ * file.
  */
 /* Check that LIBRARY_LOG_LEVEL is defined and has a valid value. */
-#if !defined( LIBRARY_LOG_LEVEL ) ||       \
-    ( ( LIBRARY_LOG_LEVEL != LOG_NONE ) && \
-    ( LIBRARY_LOG_LEVEL != LOG_ERROR ) &&  \
-    ( LIBRARY_LOG_LEVEL != LOG_WARN ) &&   \
-    ( LIBRARY_LOG_LEVEL != LOG_INFO ) &&   \
-    ( LIBRARY_LOG_LEVEL != LOG_DEBUG ) &&  \
-    ( LIBRARY_LOG_LEVEL != LOG_VERBOSE ) )
-    #error "Please define LIBRARY_LOG_LEVEL as either LOG_NONE, LOG_ERROR, LOG_WARN, LOG_INFO, or LOG_DEBUG."
+#if !defined( LIBRARY_LOG_LEVEL ) ||          \
+    ( ( LIBRARY_LOG_LEVEL != LOG_NONE ) &&    \
+        ( LIBRARY_LOG_LEVEL != LOG_ERROR ) && \
+        ( LIBRARY_LOG_LEVEL != LOG_WARN ) &&  \
+        ( LIBRARY_LOG_LEVEL != LOG_INFO ) &&  \
+        ( LIBRARY_LOG_LEVEL != LOG_DEBUG ) && \
+        ( LIBRARY_LOG_LEVEL != LOG_VERBOSE ) )
+    #error \
+        "Please define LIBRARY_LOG_LEVEL as either LOG_NONE, LOG_ERROR, LOG_WARN, LOG_INFO, or LOG_DEBUG."
 #else
     #if LIBRARY_LOG_LEVEL == LOG_VERBOSE
-/* All log level messages will logged. */
-        #define LogError( message )    SdkLog( ( "[ERROR]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogWarn( message )     SdkLog( ( "[WARN]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogInfo( message )     SdkLog( ( "[INFO]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogDebug( message )    SdkLog( ( "[DEBUG]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogVerbose( message )    SdkLog( ( "[VERBOSE]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        /* All log level messages will logged. */
+        #define LogError( message )                                         \
+            SdkLog( ( "[ERROR]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                              \
+            SdkLog( ( "\r\n" ) )
+        #define LogWarn( message )                                         \
+            SdkLog( ( "[WARN]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                             \
+            SdkLog( ( "\r\n" ) )
+        #define LogInfo( message )                                         \
+            SdkLog( ( "[INFO]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                             \
+            SdkLog( ( "\r\n" ) )
+        #define LogDebug( message )                                         \
+            SdkLog( ( "[DEBUG]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                              \
+            SdkLog( ( "\r\n" ) )
+        #define LogVerbose( message )                                         \
+            SdkLog( ( "[VERBOSE]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                                \
+            SdkLog( ( "\r\n" ) )
 
     #elif LIBRARY_LOG_LEVEL == LOG_DEBUG
-/* All log level messages will logged. */
-        #define LogError( message )    SdkLog( ( "[ERROR]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogWarn( message )     SdkLog( ( "[WARN]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogInfo( message )     SdkLog( ( "[INFO]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogDebug( message )    SdkLog( ( "[DEBUG]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        /* All log level messages will logged. */
+        #define LogError( message )                                         \
+            SdkLog( ( "[ERROR]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                              \
+            SdkLog( ( "\r\n" ) )
+        #define LogWarn( message )                                         \
+            SdkLog( ( "[WARN]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                             \
+            SdkLog( ( "\r\n" ) )
+        #define LogInfo( message )                                         \
+            SdkLog( ( "[INFO]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                             \
+            SdkLog( ( "\r\n" ) )
+        #define LogDebug( message )                                         \
+            SdkLog( ( "[DEBUG]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                              \
+            SdkLog( ( "\r\n" ) )
         #define LogVerbose( message )
 
     #elif LIBRARY_LOG_LEVEL == LOG_INFO
-/* Only INFO, WARNING and ERROR messages will be logged. */
-        #define LogError( message )    SdkLog( ( "[ERROR]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogWarn( message )     SdkLog( ( "[WARN]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogInfo( message )     SdkLog( ( "[INFO]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        /* Only INFO, WARNING and ERROR messages will be logged. */
+        #define LogError( message )                                         \
+            SdkLog( ( "[ERROR]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                              \
+            SdkLog( ( "\r\n" ) )
+        #define LogWarn( message )                                         \
+            SdkLog( ( "[WARN]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                             \
+            SdkLog( ( "\r\n" ) )
+        #define LogInfo( message )                                         \
+            SdkLog( ( "[INFO]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                             \
+            SdkLog( ( "\r\n" ) )
         #define LogDebug( message )
         #define LogVerbose( message )
 
     #elif LIBRARY_LOG_LEVEL == LOG_WARN
-/* Only WARNING and ERROR messages will be logged.*/
-        #define LogError( message )    SdkLog( ( "[ERROR]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
-        #define LogWarn( message )     SdkLog( ( "[WARN]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        /* Only WARNING and ERROR messages will be logged.*/
+        #define LogError( message )                                         \
+            SdkLog( ( "[ERROR]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                              \
+            SdkLog( ( "\r\n" ) )
+        #define LogWarn( message )                                         \
+            SdkLog( ( "[WARN]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                             \
+            SdkLog( ( "\r\n" ) )
         #define LogInfo( message )
         #define LogDebug( message )
         #define LogVerbose( message )
 
     #elif LIBRARY_LOG_LEVEL == LOG_ERROR
-/* Only ERROR messages will be logged. */
-        #define LogError( message )    SdkLog( ( "[ERROR]"LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); SdkLog( message ); SdkLog( ( "\r\n" ) )
+        /* Only ERROR messages will be logged. */
+        #define LogError( message )                                         \
+            SdkLog( ( "[ERROR]" LOG_METADATA_FORMAT, LOG_METADATA_ARGS ) ); \
+            SdkLog( message );                                              \
+            SdkLog( ( "\r\n" ) )
         #define LogWarn( message )
         #define LogInfo( message )
         #define LogDebug( message )
@@ -117,7 +167,10 @@ extern "C" {
         #define LogVerbose( message )
 
     #endif /* if LIBRARY_LOG_LEVEL == LOG_ERROR */
-#endif /* if !defined( LIBRARY_LOG_LEVEL ) || ( ( LIBRARY_LOG_LEVEL != LOG_NONE ) && ( LIBRARY_LOG_LEVEL != LOG_ERROR ) && ( LIBRARY_LOG_LEVEL != LOG_WARN ) && ( LIBRARY_LOG_LEVEL != LOG_INFO ) && ( LIBRARY_LOG_LEVEL != LOG_DEBUG ) ) */
+#endif     /* if !defined( LIBRARY_LOG_LEVEL ) || ( ( LIBRARY_LOG_LEVEL !=         \
+              LOG_NONE ) && ( LIBRARY_LOG_LEVEL != LOG_ERROR ) && (                \
+              LIBRARY_LOG_LEVEL != LOG_WARN ) && ( LIBRARY_LOG_LEVEL != LOG_INFO ) \
+              && ( LIBRARY_LOG_LEVEL != LOG_DEBUG ) ) */
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

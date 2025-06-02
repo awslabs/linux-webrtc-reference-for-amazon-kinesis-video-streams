@@ -27,23 +27,23 @@
 #include "logging.h"
 
 /* Config parameters. TODO aggarg - need to move to a central config file. */
-#define HTTP_URI_HOST_BUFFER_LENGTH                 128
-#define WEBSOCKET_URI_HOST_BUFFER_LENGTH            128
-#define HTTP_URI_PATH_BUFFER_LENGTH                 256
-#define WEBSOCKET_URI_PATH_BUFFER_LENGTH            2048
-#define SIGV4_METADATA_BUFFER_LENGTH                4096
-#define SIGV4_AUTHORIZATION_HEADER_BUFFER_LENGTH    2048
-#define HTTP_RX_BUFFER_LENGTH                       2048
-#define WEBSOCKET_RX_BUFFER_LENGTH                  ( 12 * 1024 )
+#define HTTP_URI_HOST_BUFFER_LENGTH              128
+#define WEBSOCKET_URI_HOST_BUFFER_LENGTH         128
+#define HTTP_URI_PATH_BUFFER_LENGTH              256
+#define WEBSOCKET_URI_PATH_BUFFER_LENGTH         2048
+#define SIGV4_METADATA_BUFFER_LENGTH             4096
+#define SIGV4_AUTHORIZATION_HEADER_BUFFER_LENGTH 2048
+#define HTTP_RX_BUFFER_LENGTH                    2048
+#define WEBSOCKET_RX_BUFFER_LENGTH               ( 12 * 1024 )
 
 /*----------------------------------------------------------------------------*/
 
-#define ISO8601_TIME_LENGTH                 17
-#define REQUIRED_HEADER_USER_AGENT_IDX      0
-#define REQUIRED_HEADER_ISO8601_TIME_IDX    1
-#define REQUIRED_HEADER_SESSION_TOKEN_IDX   2
-#define REQUIRED_HEADER_AUTHORIZATION_IDX   3
-#define NUM_REQUIRED_HEADERS                4
+#define ISO8601_TIME_LENGTH                      17
+#define REQUIRED_HEADER_USER_AGENT_IDX           0
+#define REQUIRED_HEADER_ISO8601_TIME_IDX         1
+#define REQUIRED_HEADER_SESSION_TOKEN_IDX        2
+#define REQUIRED_HEADER_AUTHORIZATION_IDX        3
+#define NUM_REQUIRED_HEADERS                     4
 
 /*----------------------------------------------------------------------------*/
 
@@ -119,9 +119,8 @@ typedef struct HttpResponse
     size_t contentMaxCapacity;
 } HttpResponse_t;
 
-typedef int ( * WebsocketMessageReceivedCallback_t )( char * pMessage,
-                                                      size_t messageLength,
-                                                      void * pUserData );
+typedef int ( *WebsocketMessageReceivedCallback_t )(
+    char * pMessage, size_t messageLength, void * pUserData );
 typedef struct WebsocketConnectInfo
 {
     char * pUrl;
@@ -199,29 +198,30 @@ typedef struct NetworkingWebsocketContext
 
 /*----------------------------------------------------------------------------*/
 
-NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
-                                        const SSLCredentials_t * pCreds );
+NetworkingResult_t Networking_HttpInit(
+    NetworkingHttpContext_t * pHttpCtx, const SSLCredentials_t * pCreds );
 
-NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWebsocketCtx,
-                                             const SSLCredentials_t * pCreds );
+NetworkingResult_t Networking_WebsocketInit(
+    NetworkingWebsocketContext_t * pWebsocketCtx,
+    const SSLCredentials_t * pCreds );
 
 NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
-                                        HttpRequest_t * pRequest,
-                                        const AwsCredentials_t * pAwsCredentials,
-                                        const AwsConfig_t * pAwsConfig,
-                                        HttpResponse_t * pResponse );
+    HttpRequest_t * pRequest, const AwsCredentials_t * pAwsCredentials,
+    const AwsConfig_t * pAwsConfig, HttpResponse_t * pResponse );
 
-NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * pWebsocketCtx,
-                                                const WebsocketConnectInfo_t * pConnectInfo,
-                                                const AwsCredentials_t * pAwsCredentials,
-                                                const AwsConfig_t * pAwsConfig );
+NetworkingResult_t Networking_WebsocketConnect(
+    NetworkingWebsocketContext_t * pWebsocketCtx,
+    const WebsocketConnectInfo_t * pConnectInfo,
+    const AwsCredentials_t * pAwsCredentials, const AwsConfig_t * pAwsConfig );
 
-NetworkingResult_t Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx );
+NetworkingResult_t Networking_WebsocketDisconnect(
+    NetworkingWebsocketContext_t * pWebsocketCtx );
 
-NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWebsocketCtx,
-                                             const char * pMessage,
-                                             size_t messageLength );
+NetworkingResult_t Networking_WebsocketSend(
+    NetworkingWebsocketContext_t * pWebsocketCtx, const char * pMessage,
+    size_t messageLength );
 
-NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pWebsocketCtx );
+NetworkingResult_t Networking_WebsocketSignal(
+    NetworkingWebsocketContext_t * pWebsocketCtx );
 
 /*----------------------------------------------------------------------------*/

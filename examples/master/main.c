@@ -21,7 +21,7 @@
 AppContext_t appContext;
 AppMediaSourcesContext_t appMediaSourceContext;
 
-static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
+static int32_t InitTransceiver(void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
 static int32_t OnMediaSinkHook( void * pCustom,
                                 WebrtcFrame_t * pFrame );
 static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
@@ -46,7 +46,7 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
     else
     {
         /* Empty else marker. */
-    } 
+    }
 
     if( ret == 0 )
     {
@@ -64,7 +64,7 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
                 LogError( ( "Invalid track kind: %d", trackKind ) );
                 ret = -3;
                 break;
-        } 
+        }
     }
 
     return ret;
