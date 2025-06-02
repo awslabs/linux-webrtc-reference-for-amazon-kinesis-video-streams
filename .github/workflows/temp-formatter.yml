@@ -53,14 +53,18 @@ jobs:
           if [ $FAILED -ne 0 ]; then
             echo "::error::Formatting check failed. Please run clang-format before committing."
             echo "A patch file has been generated with all the required changes."
+            # Set output variable for GitHub Actions
+            echo "has_formatting_issues=true" >> $GITHUB_OUTPUT
             exit 1
           else
             echo "All files passed formatting check!"
-            echo "No formatting changes required." > $PATCH_FILE
+            rm -f $PATCH_FILE
           fi
+        id: format-check
 
       - name: Upload patch file
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
+        if: steps.format-check.outputs.has_formatting_issues == 'true'
         with:
           name: clang-format-patch
           path: clang-format-changes.patch
