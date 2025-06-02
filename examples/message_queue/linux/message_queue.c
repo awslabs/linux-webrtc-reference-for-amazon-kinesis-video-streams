@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include "message_queue.h"
-#include "logging.h"
-#include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
+#include "logging.h"
+#include "message_queue.h"
 
 void MessageQueue_Destroy( MessageQueueHandler_t * pMessageQueueHandler,
-    const char * pQueueName )
+                           const char * pQueueName )
 {
     if( pMessageQueueHandler != NULL )
     {
@@ -44,9 +44,9 @@ void MessageQueue_Destroy( MessageQueueHandler_t * pMessageQueueHandler,
 }
 
 MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t * pMessageQueueHandler,
-    const char * pQueueName,
-    size_t messageMaxLength,
-    size_t messageQueueMaxNum )
+                                          const char * pQueueName,
+                                          size_t messageMaxLength,
+                                          size_t messageQueueMaxNum )
 {
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
     struct mq_attr attr;
@@ -78,8 +78,8 @@ MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t * pMessageQueueH
 }
 
 MessageQueueResult_t MessageQueue_Send( MessageQueueHandler_t * pMessageQueueHandler,
-    void * pMessage,
-    size_t messageLength )
+                                        void * pMessage,
+                                        size_t messageLength )
 {
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
 
@@ -101,8 +101,8 @@ MessageQueueResult_t MessageQueue_Send( MessageQueueHandler_t * pMessageQueueHan
 }
 
 MessageQueueResult_t MessageQueue_Recv( MessageQueueHandler_t * pMessageQueueHandler,
-    void * pMessage,
-    size_t * pMessageLength )
+                                        void * pMessage,
+                                        size_t * pMessageLength )
 {
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
     int32_t recvLength;
@@ -184,8 +184,8 @@ MessageQueueResult_t MessageQueue_IsFull( MessageQueueHandler_t * pMessageQueueH
 }
 
 MessageQueueResult_t MessageQueue_AttachPoll( MessageQueueHandler_t * pMessageQueueHandler,
-    struct pollfd * pPollFd,
-    uint32_t PollEvents )
+                                              struct pollfd * pPollFd,
+                                              uint32_t PollEvents )
 {
     MessageQueueResult_t ret = MESSAGE_QUEUE_RESULT_OK;
 

@@ -9,8 +9,8 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include <stdint.h>
 #include <stdio.h>
+#include <stdint.h>
 
 typedef enum Base64Result
 {
@@ -20,10 +20,14 @@ typedef enum Base64Result
     BASE64_RESULT_BUFFER_TOO_SMALL,
 } Base64Result_t;
 
-Base64Result_t Base64_Decode( const char * pInputData, size_t inputDataLength,
-    char * pOutputData, size_t * pOutputDataLength );
-Base64Result_t Base64_Encode( const char * pInputData, size_t inputDataLength,
-    char * pOutputData, size_t * pOutputDataLength );
+Base64Result_t Base64_Decode( const char * pInputData,
+                              size_t inputDataLength,
+                              char * pOutputData,
+                              size_t * pOutputDataLength );
+Base64Result_t Base64_Encode( const char * pInputData,
+                              size_t inputDataLength,
+                              char * pOutputData,
+                              size_t * pOutputDataLength );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

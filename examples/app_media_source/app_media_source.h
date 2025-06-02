@@ -25,22 +25,21 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
+#include <stdio.h>
 #include "message_queue.h"
 #include "peer_connection.h"
-#include <stdio.h>
 
-typedef struct
-{
+typedef struct {
     uint8_t * pData;
     uint32_t size;
     uint64_t timestampUs;
     TransceiverTrackKind_t trackKind;
-    uint8_t freeData; /* indicate user need to free pData after using it */
+    uint8_t freeData;  /* indicate user need to free pData after using it */
 } WebrtcFrame_t;
 
 typedef struct AppMediaSourcesContext AppMediaSourcesContext_t;
-typedef int32_t ( *AppMediaSourceOnMediaSinkHook )(
-    void * pCustom, WebrtcFrame_t * pFrame );
+typedef int32_t (* AppMediaSourceOnMediaSinkHook)( void * pCustom,
+                                                   WebrtcFrame_t * pFrame );
 
 typedef struct AppMediaSourceContext
 {
@@ -54,8 +53,7 @@ typedef struct AppMediaSourceContext
 
 typedef struct AppMediaSourcesContext
 {
-    /* Mutex to protect numReadyPeer because we might receive multiple
-     * ready/close message from different tasks. */
+    /* Mutex to protect numReadyPeer because we might receive multiple ready/close message from different tasks. */
     pthread_mutex_t mediaMutex;
 
     AppMediaSourceContext_t videoContext;
@@ -66,12 +64,12 @@ typedef struct AppMediaSourcesContext
 } AppMediaSourcesContext_t;
 
 int32_t AppMediaSource_Init( AppMediaSourcesContext_t * pCtx,
-    AppMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
-    void * pOnMediaSinkHookCustom );
-int32_t AppMediaSource_InitVideoTransceiver(
-    AppMediaSourcesContext_t * pCtx, Transceiver_t * pVideoTranceiver );
-int32_t AppMediaSource_InitAudioTransceiver(
-    AppMediaSourcesContext_t * pCtx, Transceiver_t * pAudioTranceiver );
+                             AppMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
+                             void * pOnMediaSinkHookCustom );
+int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
+                                             Transceiver_t * pVideoTranceiver );
+int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
+                                             Transceiver_t * pAudioTranceiver );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

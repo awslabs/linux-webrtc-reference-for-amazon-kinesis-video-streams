@@ -26,12 +26,12 @@ extern "C" {
 /* *INDENT-ON* */
 
 /* Standard includes. */
-#include "transceiver_data_types.h"
 #include <stdint.h>
+#include "transceiver_data_types.h"
 
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT     ( 2 )
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT   ( 2 )
-#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT         ( 255 )
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ( 255 )
 #define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ( 5 )
 
 typedef enum SdpControllerResult
@@ -134,17 +134,15 @@ typedef struct SdpControllerMediaDescription
     size_t mediaNameLength;
 
     // i=<session description>
-    // https://tools.ietf.org/html/rfc4566#section-5.4. Given these are
-    // free-form strings, the length could be anything. Although our SDK parses
-    // this information, the SDK does not use it. Leaving this attribute in if
-    // SDK uses it in the future
+    // https://tools.ietf.org/html/rfc4566#section-5.4. Given these are free-form strings, the length could be anything.
+    // Although our SDK parses this information, the SDK does not use it. Leaving this attribute in if SDK uses it in
+    // the future
     const char * pMediaTitle;
     size_t mediaTitleLength;
 
     SdpControllerConnectionInformation_t connectionInformation;
 
-    SdpControllerAttributes_t
-        attributes[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
+    SdpControllerAttributes_t attributes[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
 
     uint8_t mediaAttributesCount;
 } SdpControllerMediaDescription_t;
@@ -209,18 +207,15 @@ typedef struct SdpControllerSdpOffer
 
     SdpControllerTiming_t timingDescription;
 
-    SdpControllerAttributes_t
-        attributes[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
+    SdpControllerAttributes_t attributes[ SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ];
 
-    SdpControllerMediaDescription_t
-        mediaDescriptions[ SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ];
+    SdpControllerMediaDescription_t mediaDescriptions[ SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ];
 
     uint16_t sessionAttributesCount;
 
     uint16_t mediaCount;
 
-    /* Below is extra info to accerlate SDP creation and provide some info for
-     * peer connection creation. */
+    /* Below is extra info to accerlate SDP creation and provide some info for peer connection creation. */
     SdpControllerQuickAccess_t quickAccess;
 } SdpControllerSdpDescription_t;
 

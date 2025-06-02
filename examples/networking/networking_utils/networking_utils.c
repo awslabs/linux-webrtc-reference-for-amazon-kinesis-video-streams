@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "networking_utils.h"
-#include <string.h>
 #include <time.h>
+#include <string.h>
+#include "networking_utils.h"
 
 /* length of ISO8601 format (e.g. 2024-12-31T03:27:52Z). */
 #define NETWORKING_ISO8601_TIME_STRING_LENGTH ( 20 )
@@ -32,7 +32,7 @@
    Unix timestamps (what we're converting from) count seconds from January 1, 1970
    The offset (2208988800) is exactly the number of seconds between these two dates
  */
-#define NETWORKING_NTP_OFFSET                 2208988800ULL
+#define NETWORKING_NTP_OFFSET    2208988800ULL
 
 /*
    The scaling (NETWORKING_NTP_TIMESCALE = 2^32 = 4294967296) is used for handling fractional seconds in NTP's timestamp format. Here's why:
@@ -46,7 +46,7 @@
 
    1. 2^32 (4294967296) represents 1 full second
    2. Any value from 0 to 2^32-1 represents a fraction of a second */
-#define NETWORKING_NTP_TIMESCALE              4294967296ULL
+#define NETWORKING_NTP_TIMESCALE 4294967296ULL
 
 uint64_t NetworkingUtils_GetCurrentTimeSec( void * pTick )
 {
@@ -61,10 +61,10 @@ uint64_t NetworkingUtils_GetCurrentTimeUs( void * pTick )
 }
 
 uint64_t NetworkingUtils_GetTimeFromIso8601( const char * pDate,
-    size_t dateLength )
+                                             size_t dateLength )
 {
     uint64_t ret = 0;
-    char isoTimeBuffer[ NETWORKING_ISO8601_TIME_STRING_LENGTH + 1 ];
+    char isoTimeBuffer[NETWORKING_ISO8601_TIME_STRING_LENGTH + 1];
     struct tm tm;
     time_t t;
     int year, month, day, hour, minute, second;
@@ -72,7 +72,7 @@ uint64_t NetworkingUtils_GetTimeFromIso8601( const char * pDate,
     if( ( dateLength == NETWORKING_ISO8601_TIME_STRING_LENGTH ) && ( pDate != NULL ) )
     {
         memcpy( isoTimeBuffer, pDate, dateLength );
-        isoTimeBuffer[ dateLength ] = '\0';
+        isoTimeBuffer[dateLength] = '\0';
 
         sscanf( isoTimeBuffer, "%d-%d-%dT%d:%d:%dZ", &year, &month, &day, &hour, &minute, &second );
 
@@ -130,5 +130,5 @@ uint64_t NetworkingUtils_GetNTPTimeFromUnixTimeUs( uint64_t timeUs )
     uint64_t ntp_sec = sec + NETWORKING_NTP_OFFSET;
     uint64_t ntp_frac = ( usec * NETWORKING_NTP_TIMESCALE ) / 1000000ULL;
 
-    return ( ntp_sec << 32U | ntp_frac );
+    return( ntp_sec << 32U | ntp_frac );
 }

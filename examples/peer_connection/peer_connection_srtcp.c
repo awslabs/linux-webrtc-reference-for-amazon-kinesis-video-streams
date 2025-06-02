@@ -14,40 +14,40 @@
  * limitations under the License.
  */
 
-#include "peer_connection_srtcp.h"
+#include <stdlib.h>
 #include "logging.h"
 #include "peer_connection.h"
-#include "peer_connection_rolling_buffer.h"
+#include "peer_connection_srtcp.h"
 #include "peer_connection_srtp.h"
-#include <stdlib.h>
+#include "peer_connection_rolling_buffer.h"
 
 /* API includes. */
-#include "ice_controller.h"
-#include "networking_utils.h"
+#include "rtp_api.h"
 #include "rtcp_api.h"
 #include "rtcp_twcc_manager.h"
-#include "rtp_api.h"
+#include "ice_controller.h"
+#include "networking_utils.h"
 
 /*-----------------------------------------------------------*/
 
 /* https://datatracker.ietf.org/doc/html/rfc3550#section-6.4 */
-#define PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM ( 31 )
-#define PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM                    ( 128 )
-#define PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM                   ( 255 )
+#define PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM    ( 31 )
+#define PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM                       ( 128 )
+#define PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM                      ( 255 )
 
 /* https://datatracker.ietf.org/doc/html/rfc3550#section-6.4.1 */
-#define PEER_CONNECTION_SRTCP_DLSR_TIMESCALE                      65536
+#define PEER_CONNECTION_SRTCP_DLSR_TIMESCALE                         65536
 
 /* https://tools.ietf.org/html/rfc3550#section-4 */
 /* In some fields where a more compact representation is */
 /*   appropriate, only the middle 32 bits are used; that is, the low 16 */
 /*   bits of the integer part and the high 16 bits of the fractional part. */
-#define PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP )           ( uint32_t )( ( currentTimeNTP >> 16U ) & 0xffffffffULL )
+#define PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP )    ( uint32_t ) ( ( currentTimeNTP >> 16U ) & 0xffffffffULL )
 
 /*-----------------------------------------------------------*/
 
 static PeerConnectionResult_t PeerConnectionSrtcp_MatchRemoteBySsrc( PeerConnectionSession_t * pSession,
-    uint32_t ssrc )
+                                                                     uint32_t ssrc )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -70,9 +70,9 @@ static PeerConnectionResult_t PeerConnectionSrtcp_MatchRemoteBySsrc( PeerConnect
 }
 
 static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSession,
-    const Transceiver_t * pTransceiver,
-    uint16_t rtpSeq,
-    uint32_t ssrc )
+                                                const Transceiver_t * pTransceiver,
+                                                uint16_t rtpSeq,
+                                                uint32_t ssrc )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     PeerConnectionSrtpSender_t * pSrtpSender = NULL;
@@ -143,8 +143,8 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = PeerConnectionRollingBuffer_SearchRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-            rtpSeq,
-            &pRollingBufferPacket );
+                                                                   rtpSeq,
+                                                                   &pRollingBufferPacket );
 
         if( ( ret != PEER_CONNECTION_RESULT_OK ) || ( pRollingBufferPacket == NULL ) )
         {
@@ -153,11 +153,11 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         else
         {
             LogDebug( ( "Found target buffer, pRollingBufferPacket: %p, packetBufferLength: %lu, pPacketBuffer: %p",
-                pRollingBufferPacket,
-                pRollingBufferPacket->packetBufferLength,
-                pRollingBufferPacket->pPacketBuffer ) );
+                        pRollingBufferPacket,
+                        pRollingBufferPacket->packetBufferLength,
+                        pRollingBufferPacket->pPacketBuffer ) );
             LogDebug( ( "Found target buffer, sequence in buffer: %u, target sequence: %u",
-                pRollingBufferPacket->rtpPacket.header.sequenceNumber, rtpSeq ) );
+                        pRollingBufferPacket->rtpPacket.header.sequenceNumber, rtpSeq ) );
         }
     }
 
@@ -183,9 +183,9 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
 
             /* ConstructSrtpPacket() serializes RTP packet and encrypt it. */
             ret = PeerConnectionSrtp_ConstructSrtpPacket( pSession,
-                &pRollingBufferPacket->rtpPacket,
-                pSrtpPacket,
-                &srtpPacketLength );
+                                                          &pRollingBufferPacket->rtpPacket,
+                                                          pSrtpPacket,
+                                                          &srtpPacketLength );
         }
         else
         {
@@ -197,8 +197,8 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
-            pSrtpPacket,
-            srtpPacketLength );
+                                                              pSrtpPacket,
+                                                              srtpPacketLength );
 
         if( resultIceController != ICE_CONTROLLER_RESULT_OK )
         {
@@ -220,7 +220,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
 }
 
 static PeerConnectionResult_t OnRtcpFirEvent( PeerConnectionSession_t * pSession,
-    RtcpPacket_t * pRtcpPacket )
+                                              RtcpPacket_t * pRtcpPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     RtcpResult_t resultRtcp;
@@ -236,11 +236,11 @@ static PeerConnectionResult_t OnRtcpFirEvent( PeerConnectionSession_t * pSession
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &firPacket,
-            0,
-            sizeof( RtcpFirPacket_t ) );
+                0,
+                sizeof( RtcpFirPacket_t ) );
         resultRtcp = Rtcp_ParseFirPacket( &pSession->pCtx->rtcpContext,
-            pRtcpPacket,
-            &firPacket );
+                                          pRtcpPacket,
+                                          &firPacket );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -252,8 +252,8 @@ static PeerConnectionResult_t OnRtcpFirEvent( PeerConnectionSession_t * pSession
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = PeerConnection_MatchTransceiverBySsrc( pSession,
-            firPacket.senderSsrc,
-            &pTransceiver );
+                                                     firPacket.senderSsrc,
+                                                     &pTransceiver );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -275,7 +275,7 @@ static PeerConnectionResult_t OnRtcpFirEvent( PeerConnectionSession_t * pSession
 }
 
 static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSession,
-    RtcpPacket_t * pRtcpPacket )
+                                               RtcpPacket_t * pRtcpPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     RtcpResult_t resultRtcp;
@@ -297,8 +297,8 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
         nackPacket.pSeqNumList = seqNumList;
         nackPacket.seqNumListLength = PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM;
         resultRtcp = Rtcp_ParseNackPacket( &pSession->pCtx->rtcpContext,
-            pRtcpPacket,
-            &nackPacket );
+                                           pRtcpPacket,
+                                           &nackPacket );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -310,8 +310,8 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = PeerConnection_MatchTransceiverBySsrc( pSession,
-            nackPacket.mediaSourceSsrc,
-            &pTransceiver );
+                                                     nackPacket.mediaSourceSsrc,
+                                                     &pTransceiver );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -320,9 +320,9 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
         {
             /* Retransmit matching sequence number one by one. */
             ret = ResendSrtpPacket( pSession,
-                pTransceiver,
-                nackPacket.pSeqNumList[ i ],
-                nackPacket.senderSsrc );
+                                    pTransceiver,
+                                    nackPacket.pSeqNumList[ i ],
+                                    nackPacket.senderSsrc );
 
             if( ret != PEER_CONNECTION_RESULT_OK )
             {
@@ -334,91 +334,92 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
     return ret;
 }
 #if ENABLE_TWCC_SUPPORT
-static PeerConnectionResult_t OnRtcpTwccEvent( PeerConnectionSession_t * pSession,
-    RtcpPacket_t * pRtcpPacket )
-{
-    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-    RtcpResult_t resultRtcp;
-    RtcpTwccManagerResult_t resultRtcpTwccManager = RTCP_TWCC_MANAGER_RESULT_OK;
-    RtcpTwccPacket_t twccPacket;
-    TwccPacketInfo_t * pTwccPacketInfo;
-    TwccBandwidthInfo_t twccBandwidthInfo;
-    PacketArrivalInfo_t packetArrivalInfo[ PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY ];
-    int i;
-
-    if( ( pSession == NULL ) || ( pRtcpPacket == NULL ) )
+    static PeerConnectionResult_t OnRtcpTwccEvent( PeerConnectionSession_t * pSession,
+                                                   RtcpPacket_t * pRtcpPacket )
     {
-        LogError( ( "Invalid input, pSession: %p, pRtcpPacket: %p", pSession, pRtcpPacket ) );
-        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
+        PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+        RtcpResult_t resultRtcp;
+        RtcpTwccManagerResult_t resultRtcpTwccManager = RTCP_TWCC_MANAGER_RESULT_OK;
+        RtcpTwccPacket_t twccPacket;
+        TwccPacketInfo_t * pTwccPacketInfo;
+        TwccBandwidthInfo_t twccBandwidthInfo;
+        PacketArrivalInfo_t packetArrivalInfo[ PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY ];
+        int i;
 
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        memset( &twccPacket,
-            0,
-            sizeof( RtcpTwccPacket_t ) );
-        memset( &packetArrivalInfo[ 0 ],
-            0,
-            sizeof( PacketArrivalInfo_t ) * PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
-        twccPacket.pArrivalInfoList = packetArrivalInfo;
-        twccPacket.arrivalInfoListLength = PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY;
-        resultRtcp = Rtcp_ParseTwccPacket( &pSession->pCtx->rtcpContext,
-            pRtcpPacket,
-            &twccPacket );
 
-        if( resultRtcp != RTCP_RESULT_OK )
+        if( ( pSession == NULL ) || ( pRtcpPacket == NULL ) )
         {
-            LogError( ( "Fail to parse RTCP TWCC packet, result: %d", resultRtcp ) );
-            ret = PEER_CONNECTION_RESULT_FAIL_RTCP_PARSE_TWCC;
+            LogError( ( "Invalid input, pSession: %p, pRtcpPacket: %p", pSession, pRtcpPacket ) );
+            ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
         }
-    }
 
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        for( i = 0; i < twccPacket.arrivalInfoListLength; i++ )
+        if( ret == PEER_CONNECTION_RESULT_OK )
         {
-            /* Checks if the seq number already exists. */
-            resultRtcpTwccManager = RtcpTwccManager_FindPacketInfo( &pSession->pCtx->rtcpTwccManager,
-                twccPacket.pArrivalInfoList[ i ].seqNum,
-                &pTwccPacketInfo );
+            memset( &twccPacket,
+                    0,
+                    sizeof( RtcpTwccPacket_t ) );
+            memset( &packetArrivalInfo[ 0 ],
+                    0,
+                    sizeof( PacketArrivalInfo_t ) * PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
+            twccPacket.pArrivalInfoList = packetArrivalInfo;
+            twccPacket.arrivalInfoListLength = PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY;
+            resultRtcp = Rtcp_ParseTwccPacket( &pSession->pCtx->rtcpContext,
+                                               pRtcpPacket,
+                                               &twccPacket );
 
-            if( resultRtcpTwccManager == RTCP_TWCC_MANAGER_RESULT_OK )
+            if( resultRtcp != RTCP_RESULT_OK )
             {
-                pTwccPacketInfo->localSentTime = twccPacket.pArrivalInfoList[ i ].remoteArrivalTime;
+                LogError( ( "Fail to parse RTCP TWCC packet, result: %d", resultRtcp ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_PARSE_TWCC;
             }
         }
-    }
 
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        resultRtcpTwccManager = RtcpTwccManager_HandleTwccPacket( &pSession->pCtx->rtcpTwccManager,
-            &twccPacket,
-            &twccBandwidthInfo );
-
-        if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
+        if( ret == PEER_CONNECTION_RESULT_OK )
         {
-            LogError( ( "Fail to handle RTCP TWCC packet, result: %d", resultRtcpTwccManager ) );
-            ret = PEER_CONNECTION_RESULT_FAIL_RTCP_HANDLE_TWCC;
-        }
-    }
+            for( i = 0; i < twccPacket.arrivalInfoListLength; i++ )
+            {
+                /* Checks if the seq number already exists. */
+                resultRtcpTwccManager = RtcpTwccManager_FindPacketInfo( &pSession->pCtx->rtcpTwccManager,
+                                                                        twccPacket.pArrivalInfoList[ i ].seqNum,
+                                                                        &pTwccPacketInfo );
 
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        if( ( twccBandwidthInfo.duration > 0 ) && ( pSession->pCtx->onBandwidthEstimationCallback != NULL ) )
-        {
-            /* Call the bandwidth estimation callback */
-            pSession->pCtx->onBandwidthEstimationCallback( pSession->pCtx->pOnBandwidthEstimationCallbackContext,
-                &twccBandwidthInfo );
+                if( resultRtcpTwccManager == RTCP_TWCC_MANAGER_RESULT_OK )
+                {
+                    pTwccPacketInfo->localSentTime = twccPacket.pArrivalInfoList[ i ].remoteArrivalTime;
+                }
+            }
         }
 
-        LogDebug( ( "TWCC Bandwidth Info : SentBytes - %lu, ReceivedBytes - %lu, SentPackets - %lu, ReceivedPackets - %lu, Duration - %ld", twccBandwidthInfo.sentBytes, twccBandwidthInfo.receivedBytes, twccBandwidthInfo.sentPackets, twccBandwidthInfo.receivedPackets, twccBandwidthInfo.duration ) );
-    }
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            resultRtcpTwccManager = RtcpTwccManager_HandleTwccPacket( &pSession->pCtx->rtcpTwccManager,
+                                                                      &twccPacket,
+                                                                      &twccBandwidthInfo );
 
-    return ret;
-}
+            if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
+            {
+                LogError( ( "Fail to handle RTCP TWCC packet, result: %d", resultRtcpTwccManager ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_HANDLE_TWCC;
+            }
+        }
+
+        if( ret == PEER_CONNECTION_RESULT_OK )
+        {
+            if( ( twccBandwidthInfo.duration > 0 ) && ( pSession->pCtx->onBandwidthEstimationCallback != NULL ) )
+            {
+                /* Call the bandwidth estimation callback */
+                pSession->pCtx->onBandwidthEstimationCallback( pSession->pCtx->pOnBandwidthEstimationCallbackContext,
+                                                               &twccBandwidthInfo );
+            }
+
+            LogDebug( ( "TWCC Bandwidth Info : SentBytes - %lu, ReceivedBytes - %lu, SentPackets - %lu, ReceivedPackets - %lu, Duration - %ld", twccBandwidthInfo.sentBytes, twccBandwidthInfo.receivedBytes, twccBandwidthInfo.sentPackets, twccBandwidthInfo.receivedPackets, twccBandwidthInfo.duration ) );
+        }
+
+        return ret;
+    }
 #endif /* if ENABLE_TWCC_SUPPORT */
 static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession,
-    RtcpPacket_t * pRtcpPacket )
+                                              RtcpPacket_t * pRtcpPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     RtcpResult_t resultRtcp;
@@ -434,11 +435,11 @@ static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &pliPacket,
-            0,
-            sizeof( RtcpPliPacket_t ) );
+                0,
+                sizeof( RtcpPliPacket_t ) );
         resultRtcp = Rtcp_ParsePliPacket( &pSession->pCtx->rtcpContext,
-            pRtcpPacket,
-            &pliPacket );
+                                          pRtcpPacket,
+                                          &pliPacket );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -450,8 +451,8 @@ static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = PeerConnection_MatchTransceiverBySsrc( pSession,
-            pliPacket.mediaSourceSsrc,
-            &pTransceiver );
+                                                     pliPacket.mediaSourceSsrc,
+                                                     &pTransceiver );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -460,7 +461,7 @@ static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession
         if( pSession->onPictureLossIndicationCallback != NULL )
         {
             pSession->onPictureLossIndicationCallback( pSession->pPictureLossIndicationUserContext,
-                &pliPacket );
+                                                       &pliPacket );
         }
     }
     else if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
@@ -477,7 +478,7 @@ static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession
 
 /* TODO handle SLI packet https://tools.ietf.org/html/rfc4585#section-6.3.2 */
 static PeerConnectionResult_t OnRtcpSliEvent( PeerConnectionSession_t * pSession,
-    RtcpPacket_t * pRtcpPacket )
+                                              RtcpPacket_t * pRtcpPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     RtcpResult_t resultRtcp;
@@ -493,11 +494,11 @@ static PeerConnectionResult_t OnRtcpSliEvent( PeerConnectionSession_t * pSession
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &sliPacket,
-            0,
-            sizeof( RtcpSliPacket_t ) );
+                0,
+                sizeof( RtcpSliPacket_t ) );
         resultRtcp = Rtcp_ParseSliPacket( &pSession->pCtx->rtcpContext,
-            pRtcpPacket,
-            &sliPacket );
+                                          pRtcpPacket,
+                                          &sliPacket );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -509,8 +510,8 @@ static PeerConnectionResult_t OnRtcpSliEvent( PeerConnectionSession_t * pSession
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = PeerConnection_MatchTransceiverBySsrc( pSession,
-            sliPacket.mediaSourceSsrc,
-            &pTransceiver );
+                                                     sliPacket.mediaSourceSsrc,
+                                                     &pTransceiver );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -531,7 +532,7 @@ static PeerConnectionResult_t OnRtcpSliEvent( PeerConnectionSession_t * pSession
 }
 
 static PeerConnectionResult_t OnRtcpRembEvent( PeerConnectionSession_t * pSession,
-    RtcpPacket_t * pRtcpPacket )
+                                               RtcpPacket_t * pRtcpPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     RtcpResult_t resultRtcp;
@@ -553,8 +554,8 @@ static PeerConnectionResult_t OnRtcpRembEvent( PeerConnectionSession_t * pSessio
         rembPacket.pSsrcList = ssrcList;
         rembPacket.ssrcListLength = PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM;
         resultRtcp = Rtcp_ParseRembPacket( &pSession->pCtx->rtcpContext,
-            pRtcpPacket,
-            &rembPacket );
+                                           pRtcpPacket,
+                                           &rembPacket );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -568,8 +569,8 @@ static PeerConnectionResult_t OnRtcpRembEvent( PeerConnectionSession_t * pSessio
         for( i = 0; i < rembPacket.ssrcListLength; i++ )
         {
             ret = PeerConnection_MatchTransceiverBySsrc( pSession,
-                rembPacket.pSsrcList[ i ],
-                &pTransceiver );
+                                                         rembPacket.pSsrcList[ i ],
+                                                         &pTransceiver );
 
             if( ret == PEER_CONNECTION_RESULT_OK )
             {
@@ -591,7 +592,7 @@ static PeerConnectionResult_t OnRtcpRembEvent( PeerConnectionSession_t * pSessio
 
 /* TODO better sender report handling https://tools.ietf.org/html/rfc3550#section-6.4.1 */
 static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t * pSession,
-    RtcpPacket_t * pRtcpPacket )
+                                                       RtcpPacket_t * pRtcpPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     RtcpResult_t resultRtcp;
@@ -606,11 +607,11 @@ static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t *
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &senderReport,
-            0,
-            sizeof( RtcpSenderReport_t ) );
+                0,
+                sizeof( RtcpSenderReport_t ) );
         resultRtcp = Rtcp_ParseSenderReport( &pSession->pCtx->rtcpContext,
-            pRtcpPacket,
-            &senderReport );
+                                             pRtcpPacket,
+                                             &senderReport );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -635,14 +636,14 @@ static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t *
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = PeerConnectionSrtcp_MatchRemoteBySsrc( pSession,
-            senderReport.senderSsrc );
+                                                     senderReport.senderSsrc );
 
         LogVerbose( ( "RTCP_PACKET_SENDER_REPORT, SSRC: %u, NTP Time %lu  RTP Time: %u, PacketCount: %u, OctetCount: %u",
-            senderReport.senderSsrc,
-            senderReport.senderInfo.ntpTime,
-            senderReport.senderInfo.rtpTime,
-            senderReport.senderInfo.packetCount,
-            senderReport.senderInfo.octetCount ) );
+                      senderReport.senderSsrc,
+                      senderReport.senderInfo.ntpTime,
+                      senderReport.senderInfo.rtpTime,
+                      senderReport.senderInfo.packetCount,
+                      senderReport.senderInfo.octetCount ) );
 
         if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
         {
@@ -655,7 +656,7 @@ static PeerConnectionResult_t OnRtcpSenderReportEvent( PeerConnectionSession_t *
 }
 
 static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t * pSession,
-    RtcpPacket_t * pRtcpPacket )
+                                                         RtcpPacket_t * pRtcpPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     RtcpResult_t resultRtcp;
@@ -675,18 +676,18 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &receiverReport,
-            0,
-            sizeof( RtcpReceiverReport_t ) );
+                0,
+                sizeof( RtcpReceiverReport_t ) );
         memset( &receptionReport[ 0 ],
-            0,
-            sizeof( RtcpReceptionReport_t ) * PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM );
+                0,
+                sizeof( RtcpReceptionReport_t ) * PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM );
 
         receiverReport.pReceptionReports = receptionReport;
         receiverReport.numReceptionReports = PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM;
 
         resultRtcp = Rtcp_ParseReceiverReport( &pSession->pCtx->rtcpContext,
-            pRtcpPacket,
-            &receiverReport );
+                                               pRtcpPacket,
+                                               &receiverReport );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -711,18 +712,18 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
         for( i = 0; i < receiverReport.numReceptionReports; i++ )
         {
             ret = PeerConnection_MatchTransceiverBySsrc( pSession,
-                receiverReport.pReceptionReports[ 0 ].sourceSsrc,
-                &pTransceiver );
+                                                         receiverReport.pReceptionReports[ 0 ].sourceSsrc,
+                                                         &pTransceiver );
 
             LogDebug( ( "RTCP_PACKET_TYPE_RECEIVER_REPORT, sender SSRC: %u, source SSRC: %u, fraction loss: %u, cumulative loss: %u, highest seq: %u, jit: %u, lsr: %u, dlsr: %u",
-                receiverReport.senderSsrc,
-                receiverReport.pReceptionReports[ 0 ].sourceSsrc,
-                receiverReport.pReceptionReports[ 0 ].fractionLost,
-                receiverReport.pReceptionReports[ 0 ].cumulativePacketsLost,
-                receiverReport.pReceptionReports[ 0 ].extendedHighestSeqNumReceived,
-                receiverReport.pReceptionReports[ 0 ].interArrivalJitter,
-                receiverReport.pReceptionReports[ 0 ].lastSR,
-                receiverReport.pReceptionReports[ 0 ].delaySinceLastSR ) );
+                        receiverReport.senderSsrc,
+                        receiverReport.pReceptionReports[ 0 ].sourceSsrc,
+                        receiverReport.pReceptionReports[ 0 ].fractionLost,
+                        receiverReport.pReceptionReports[ 0 ].cumulativePacketsLost,
+                        receiverReport.pReceptionReports[ 0 ].extendedHighestSeqNumReceived,
+                        receiverReport.pReceptionReports[ 0 ].interArrivalJitter,
+                        receiverReport.pReceptionReports[ 0 ].lastSR,
+                        receiverReport.pReceptionReports[ 0 ].delaySinceLastSR ) );
 
             if( ret == PEER_CONNECTION_RESULT_UNKNOWN_SSRC )
             {
@@ -742,7 +743,7 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
                 currentTimeNTP = NetworkingUtils_GetNTPTimeFromUnixTimeUs( NetworkingUtils_GetCurrentTimeUs( NULL ) );
                 currentTimeNTP = PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP );
                 roundTripPropagationDelay = currentTimeNTP - receiverReport.pReceptionReports[ 0 ].lastSR - receiverReport.pReceptionReports[ 0 ].delaySinceLastSR;
-                roundTripPropagationDelay = ( roundTripPropagationDelay * 1000 ) / PEER_CONNECTION_SRTCP_DLSR_TIMESCALE; /* The Round Trip Propogation Delay is in ms unit. */
+                roundTripPropagationDelay = ( roundTripPropagationDelay * 1000 ) / PEER_CONNECTION_SRTCP_DLSR_TIMESCALE;                             /* The Round Trip Propogation Delay is in ms unit. */
 
                 if( pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
                 {
@@ -762,9 +763,9 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
 }
 
 PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConnectionSession_t * pSession,
-    RtcpSenderReport_t * pSenderReport,
-    uint8_t * pOutputSrtcpPacket,
-    size_t * pOutputSrtcpPacketLength )
+                                                                        RtcpSenderReport_t * pSenderReport,
+                                                                        uint8_t * pOutputSrtcpPacket,
+                                                                        size_t * pOutputSrtcpPacketLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     RtcpResult_t resultRtcp;
@@ -778,10 +779,10 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
         ( pOutputSrtcpPacketLength == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pSenderReport: %p, pOutputSrtcpPacket: %p, pOutputSrtcpPacketLength: %p",
-            pSession,
-            pSenderReport,
-            pOutputSrtcpPacket,
-            pOutputSrtcpPacketLength ) );
+                    pSession,
+                    pSenderReport,
+                    pOutputSrtcpPacket,
+                    pOutputSrtcpPacketLength ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -795,9 +796,9 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultRtcp = Rtcp_SerializeSenderReport( &pSession->pCtx->rtcpContext,
-            pSenderReport,
-            pOutputSrtcpPacket,
-            &rtcpBufferLength );
+                                                 pSenderReport,
+                                                 pOutputSrtcpPacket,
+                                                 &rtcpBufferLength );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -825,11 +826,11 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
         if( pSession->srtpTransmitSession != NULL )
         {
             errorStatus = srtp_protect_rtcp( pSession->srtpTransmitSession,
-                pOutputSrtcpPacket,
-                rtcpBufferLength,
-                pOutputSrtcpPacket,
-                pOutputSrtcpPacketLength,
-                0 );
+                                             pOutputSrtcpPacket,
+                                             rtcpBufferLength,
+                                             pOutputSrtcpPacket,
+                                             pOutputSrtcpPacketLength,
+                                             0 );
             if( errorStatus != srtp_err_status_ok )
             {
                 LogError( ( "Fail to encrypt Tx SRTCP packet, errorStatus: %d", errorStatus ) );
@@ -852,8 +853,8 @@ PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConn
 }
 
 PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSession_t * pSession,
-    uint8_t * pBuffer,
-    size_t bufferLength )
+                                                             uint8_t * pBuffer,
+                                                             size_t bufferLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     srtp_err_status_t errorStatus;
@@ -891,10 +892,10 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
         if( pSession->srtpReceiveSession != NULL )
         {
             errorStatus = srtp_unprotect_rtcp( pSession->srtpReceiveSession,
-                pBuffer,
-                bufferLength,
-                rtcpBuffer,
-                &rtcpBufferLength );
+                                               pBuffer,
+                                               bufferLength,
+                                               rtcpBuffer,
+                                               &rtcpBufferLength );
             if( errorStatus != srtp_err_status_ok )
             {
                 LogError( ( "Fail to decrypt Rx SRTCP packet, errorStatus: %d", errorStatus ) );
@@ -918,13 +919,14 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
         pthread_mutex_unlock( &( pSession->srtpSessionMutex ) );
     }
 
+
     while( ( remainingLength >= RTCP_HEADER_LENGTH ) &&
            ( ret == PEER_CONNECTION_RESULT_OK ) )
     {
         resultRtcp = Rtcp_DeserializePacket( &pSession->pCtx->rtcpContext,
-            currentPacket,
-            remainingLength,
-            &rtcpPacket );
+                                             currentPacket,
+                                             remainingLength,
+                                             &rtcpPacket );
 
         if( resultRtcp != RTCP_RESULT_OK )
         {
@@ -943,44 +945,44 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
             {
                 case RTCP_PACKET_FIR:
                     ret = OnRtcpFirEvent( pSession,
-                        &rtcpPacket );
+                                          &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_TRANSPORT_FEEDBACK_NACK:
                     ret = OnRtcpNackEvent( pSession,
-                        &rtcpPacket );
+                                           &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_TRANSPORT_FEEDBACK_TWCC:
-#if ENABLE_TWCC_SUPPORT
-                    ret = OnRtcpTwccEvent( pSession,
-                        &rtcpPacket );
-#endif
+                    #if ENABLE_TWCC_SUPPORT
+                        ret = OnRtcpTwccEvent( pSession,
+                                               &rtcpPacket );
+                    #endif
                     break;
 
                 case RTCP_PACKET_PAYLOAD_FEEDBACK_PLI:
                     ret = OnRtcpPliEvent( pSession,
-                        &rtcpPacket );
+                                          &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_PAYLOAD_FEEDBACK_SLI:
                     ret = OnRtcpSliEvent( pSession,
-                        &rtcpPacket );
+                                          &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_PAYLOAD_FEEDBACK_REMB:
                     ret = OnRtcpRembEvent( pSession,
-                        &rtcpPacket );
+                                           &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_SENDER_REPORT:
                     ret = OnRtcpSenderReportEvent( pSession,
-                        &rtcpPacket );
+                                                   &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_RECEIVER_REPORT:
                     ret = OnRtcpReceiverReportEvent( pSession,
-                        &rtcpPacket );
+                                                     &rtcpPacket );
                     break;
 
                 case RTCP_PACKET_SOURCE_DESCRIPTION:

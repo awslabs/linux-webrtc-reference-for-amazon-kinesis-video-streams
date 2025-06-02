@@ -15,14 +15,14 @@
  */
 
 #include "logging.h"
-#include <stdint.h>
 #include <time.h>
+#include <stdint.h>
 
 char * Logging_GetTime()
 {
-    static char timebuffer[ 32 ] = { 0 };
+    static char timebuffer[32] = {0};
     struct tm * tmval = NULL;
-    struct timespec curtime = { 0 };
+    struct timespec curtime = {0};
     char * ret = timebuffer;
     uint32_t ms;
     size_t timeStringLength;

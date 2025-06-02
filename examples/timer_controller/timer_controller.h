@@ -25,8 +25,8 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include <stdint.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <time.h>
 
@@ -41,7 +41,7 @@ typedef enum TimerControllerResult
     TIMER_CONTROLLER_RESULT_FAIL_GETTIME,
 } TimerControllerResult_t;
 
-typedef void ( *TimerControllerTimerExpireCallback )( void * pUserContext );
+typedef void (* TimerControllerTimerExpireCallback)( void * pUserContext );
 
 typedef struct TimerHandler
 {
@@ -51,14 +51,14 @@ typedef struct TimerHandler
 } TimerHandler_t;
 
 TimerControllerResult_t TimerController_Create( TimerHandler_t * pTimerHandler,
-    TimerControllerTimerExpireCallback onTimerExpire, void * pUserContext );
-TimerControllerResult_t TimerController_SetTimer(
-    TimerHandler_t * pTimerHandler, uint32_t initialTimeMs,
-    uint32_t repeatTimeMs );
+                                                TimerControllerTimerExpireCallback onTimerExpire,
+                                                void * pUserContext );
+TimerControllerResult_t TimerController_SetTimer( TimerHandler_t * pTimerHandler,
+                                                  uint32_t initialTimeMs,
+                                                  uint32_t repeatTimeMs );
 void TimerController_Reset( TimerHandler_t * pTimerHandler );
 void TimerController_Delete( TimerHandler_t * pTimerHandler );
-TimerControllerResult_t TimerController_IsTimerSet(
-    TimerHandler_t * pTimerHandler );
+TimerControllerResult_t TimerController_IsTimerSet( TimerHandler_t * pTimerHandler );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

@@ -18,20 +18,20 @@
 #include "logging.h"
 
 /* Standard includes. */
+#include <string.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
 
 /* FreeRTOS includes. */
 //#include "FreeRTOS.h"
 
 /* LWIP includes */
-#include <arpa/inet.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 /* TCP Sockets Wrapper include.*/
 #include "tcp_sockets_wrapper.h"
@@ -53,15 +53,15 @@
  * @return Non-zero value on error, 0 on success.
  */
 int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
-    const char * pHostName,
-    uint16_t port,
-    uint32_t receiveTimeoutMs,
-    uint32_t sendTimeoutMs )
+                             const char * pHostName,
+                             uint16_t port,
+                             uint32_t receiveTimeoutMs,
+                             uint32_t sendTimeoutMs )
 {
     int xFd = -1;
     int32_t xRet = TCP_SOCKETS_ERRNO_NONE;
-    struct addrinfo xHints, *pxAddrList, *pxCur;
-    char xPortStr[ 6 ];
+    struct addrinfo xHints, * pxAddrList, * pxCur;
+    char xPortStr[6];
     int fcntlFlags = 0;
 
     memset( &xHints, 0, sizeof( xHints ) );
@@ -72,7 +72,7 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
     if( getaddrinfo( pHostName, xPortStr, &xHints, &pxAddrList ) != 0 )
     {
         LogError( ( "Failed to connect to server: DNS resolution failed: Hostname=%s.",
-            pHostName ) );
+                    pHostName ) );
         return TCP_SOCKETS_ERRNO_ERROR;
     }
 
@@ -81,7 +81,7 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
     for( pxCur = pxAddrList; pxCur != NULL; pxCur = pxCur->ai_next )
     {
         xFd = socket( pxCur->ai_family, pxCur->ai_socktype,
-            pxCur->ai_protocol );
+                      pxCur->ai_protocol );
         if( xFd < 0 )
         {
             LogError( ( "Failed to create new socket." ) );
@@ -108,7 +108,7 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
         if( *pTcpSocket == NULL )
         {
             LogError( ( "Failed to allow new socket context." ) );
-            ( void ) close( xFd );
+            ( void )close( xFd );
             xRet = TCP_SOCKETS_ERRNO_ENOMEM;
         }
         else
@@ -155,8 +155,8 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
  */
 void TCP_Sockets_Disconnect( Socket_t tcpSocket )
 {
-    ( void ) shutdown( tcpSocket->xFd, SHUT_RDWR );
-    ( void ) close( tcpSocket->xFd );
+    ( void )shutdown( tcpSocket->xFd, SHUT_RDWR );
+    ( void )close( tcpSocket->xFd );
     free( tcpSocket );
 }
 
@@ -174,8 +174,8 @@ void TCP_Sockets_Disconnect( Socket_t tcpSocket )
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t TCP_Sockets_Send( Socket_t xSocket,
-    const void * pvBuffer,
-    size_t xBufferLength )
+                          const void * pvBuffer,
+                          size_t xBufferLength )
 {
     int xWriteRet;
     int xReturnStatus;
@@ -228,8 +228,8 @@ int32_t TCP_Sockets_Send( Socket_t xSocket,
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t TCP_Sockets_Recv( Socket_t xSocket,
-    void * pvBuffer,
-    size_t xBufferLength )
+                          void * pvBuffer,
+                          size_t xBufferLength )
 {
     int xReadRet;
     int xReturnStatus;

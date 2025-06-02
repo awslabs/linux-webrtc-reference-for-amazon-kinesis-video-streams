@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "opus_depacketizer.h"
-#include "opus_packetizer.h"
 #include "peer_connection_codec_helper.h"
+#include "opus_packetizer.h"
+#include "opus_depacketizer.h"
 
 PeerConnectionResult_t GetOpusPacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
-    uint8_t * pIsStartPacket )
+                                              uint8_t * pIsStartPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     OpusResult_t resultOpus;
@@ -35,8 +35,8 @@ PeerConnectionResult_t GetOpusPacketProperty( PeerConnectionJitterBufferPacket_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultOpus = OpusDepacketizer_GetPacketProperties( pPacket->pPacketBuffer,
-            pPacket->packetBufferLength,
-            &properties );
+                                                           pPacket->packetBufferLength,
+                                                           &properties );
 
         if( resultOpus != OPUS_RESULT_OK )
         {
@@ -58,11 +58,11 @@ PeerConnectionResult_t GetOpusPacketProperty( PeerConnectionJitterBufferPacket_t
 }
 
 PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuffer,
-    uint16_t rtpSeqStart,
-    uint16_t rtpSeqEnd,
-    uint8_t * pOutBuffer,
-    size_t * pOutBufferLength,
-    uint32_t * pRtpTimestamp )
+                                      uint16_t rtpSeqStart,
+                                      uint16_t rtpSeqEnd,
+                                      uint8_t * pOutBuffer,
+                                      size_t * pOutBufferLength,
+                                      uint32_t * pRtpTimestamp )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     uint16_t i, index;
@@ -86,8 +86,8 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultOpus = OpusDepacketizer_Init( &opusDepacketizerContext,
-            opusPackets,
-            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+                                            opusPackets,
+                                            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
         if( resultOpus != OPUS_RESULT_OK )
         {
             LogError( ( "Fail to initialize OPUS depacketizer, result: %d", resultOpus ) );
@@ -107,7 +107,7 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
             LogDebug( ( "Adding packet seq: %u, length: %lu, timestamp: %u", i, opusPacket.packetDataLength, rtpTimestamp ) );
 
             resultOpus = OpusDepacketizer_AddPacket( &opusDepacketizerContext,
-                &opusPacket );
+                                                     &opusPacket );
             if( resultOpus != OPUS_RESULT_OK )
             {
                 LogError( ( "Fail to add OPUS depacketizer packet, result: %d", resultOpus ) );
@@ -122,12 +122,13 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
         frame.pFrameData = pOutBuffer;
         frame.frameDataLength = *pOutBufferLength;
         resultOpus = OpusDepacketizer_GetFrame( &opusDepacketizerContext,
-            &frame );
+                                                &frame );
         if( resultOpus != OPUS_RESULT_OK )
         {
             LogError( ( "Fail to get OPUS depacketizer frame, result: %d", resultOpus ) );
             ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
         }
+
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -140,8 +141,8 @@ PeerConnectionResult_t FillFrameOpus( PeerConnectionJitterBuffer_t * pJitterBuff
 }
 
 PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_t * pSession,
-    Transceiver_t * pTransceiver,
-    const PeerConnectionFrame_t * pFrame )
+                                                          Transceiver_t * pTransceiver,
+                                                          const PeerConnectionFrame_t * pFrame )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     OpusPacketizerContext_t opusPacketizerContext;
@@ -161,18 +162,18 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
     uint32_t * pSsrc = NULL;
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
-    uint32_t randomRtpTimeoffset = 0; // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
-#if ENABLE_TWCC_SUPPORT
+    uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+    #if ENABLE_TWCC_SUPPORT
     /* Add TWCC packet tracking */
     TwccPacketInfo_t packetInfo;
-#endif /* ENABLE_TWCC_SUPPORT */
+    #endif /* ENABLE_TWCC_SUPPORT */
 
     if( ( pSession == NULL ) ||
         ( pTransceiver == NULL ) ||
         ( pFrame == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pTransceiver: %p, pFrame: %p",
-            pSession, pTransceiver, pFrame ) );
+                    pSession, pTransceiver, pFrame ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -187,7 +188,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         opusFrame.pFrameData = pFrame->pData;
         opusFrame.frameDataLength = pFrame->dataLength;
         resultOpus = OpusPacketizer_Init( &opusPacketizerContext,
-            &opusFrame );
+                                          &opusFrame );
         if( resultOpus != OPUS_RESULT_OK )
         {
             LogError( ( "Fail to init Opus packetizer, result: %d", resultOpus ) );
@@ -226,8 +227,8 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
          * If the bufferAfterEncrypt = 1, we store the encrypted SRTP packet to the buffer. */
         pRollingBufferPacket = NULL;
         ret = PeerConnectionRollingBuffer_GetRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-            *pRtpSeq,
-            &pRollingBufferPacket );
+                                                                *pRtpSeq,
+                                                                &pRollingBufferPacket );
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "Fail to get RTP buffer for seq: %u", *pRtpSeq ) );
@@ -255,11 +256,11 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
         }
 
         resultOpus = OpusPacketizer_GetPacket( &opusPacketizerContext,
-            &packetOpus );
+                                               &packetOpus );
         if( resultOpus == OPUS_RESULT_NO_MORE_PACKETS )
         {
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-                pRollingBufferPacket );
+                                                                  pRollingBufferPacket );
             /* Eraly break because no packet available. */
             break;
         }
@@ -277,7 +278,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
             pRollingBufferPacket->rtpPacket.header.csrcCount = 0;
             pRollingBufferPacket->rtpPacket.header.pCsrc = NULL;
             pRollingBufferPacket->rtpPacket.header.timestamp = PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( PEER_CONNECTION_SRTP_OPUS_CLOCKRATE,
-                pFrame->presentationUs );
+                                                                                                                      pFrame->presentationUs );
 
             if( pSession->rtpConfig.twccId > 0 )
             {
@@ -285,19 +286,19 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
                 pRollingBufferPacket->rtpPacket.header.extension.extensionProfile = PEER_CONNECTION_SRTP_TWCC_EXT_PROFILE;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionPayloadLength = 1;
                 pRollingBufferPacket->twccExtensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId,
-                    pSession->rtpConfig.twccSequence );
+                                                                                                    pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &pRollingBufferPacket->twccExtensionPayload;
-
-#if ENABLE_TWCC_SUPPORT
+                
+                #if ENABLE_TWCC_SUPPORT
                 memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
                 packetInfo.packetSize = packetOpus.packetDataLength;
                 packetInfo.localSentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
                 packetInfo.packetSeqNum = pSession->rtpConfig.twccSequence;
 
                 RtcpTwccManager_AddPacketInfo( &pSession->pCtx->rtcpTwccManager,
-                    &packetInfo );
-#endif /* ENABLE_TWCC_SUPPORT */
-
+                                               &packetInfo );
+                #endif /* ENABLE_TWCC_SUPPORT */
+                
                 pSession->rtpConfig.twccSequence++;
             }
 
@@ -306,9 +307,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
 
             /* PeerConnectionSrtp_ConstructSrtpPacket() serializes RTP packet and encrypt it. */
             ret = PeerConnectionSrtp_ConstructSrtpPacket( pSession,
-                &pRollingBufferPacket->rtpPacket,
-                pSrtpPacket,
-                &srtpPacketLength );
+                                                          &pRollingBufferPacket->rtpPacket,
+                                                          pSrtpPacket,
+                                                          &srtpPacketLength );
         }
         else
         {
@@ -330,23 +331,23 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
 
             /* Udpate the packet into rolling buffer. */
             ret = PeerConnectionRollingBuffer_SetPacket( &pSrtpSender->txRollingBuffer,
-                ( *pRtpSeq )++,
-                pRollingBufferPacket );
+                                                         ( *pRtpSeq )++,
+                                                         pRollingBufferPacket );
         }
 
         if( ( ret != PEER_CONNECTION_RESULT_OK ) && ( pRollingBufferPacket != NULL ) )
         {
             /* If any failure, release the allocated RTP buffer. */
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-                pRollingBufferPacket );
+                                                                  pRollingBufferPacket );
         }
 
         /* Write the constructed RTP packets through network. */
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
-                pSrtpPacket,
-                srtpPacketLength );
+                                                                  pSrtpPacket,
+                                                                  srtpPacketLength );
             if( resultIceController != ICE_CONTROLLER_RESULT_OK )
             {
                 LogWarn( ( "Fail to send RTP packet, ret: %d", resultIceController ) );
@@ -360,30 +361,27 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteOpusFrame( PeerConnectionSession_
             bytesSent += pRollingBufferPacket->rtpPacket.payloadLength;
         }
 
-#if METRIC_PRINT_ENABLED
+        #if METRIC_PRINT_ENABLED
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             Metric_EndEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
         }
-#endif
-    }
-
-    if( packetSent != 0 )
-    {
-        if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
-        {
-            pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
-            pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
-        }
-
-        pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
-        pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
+        #endif
     }
 
     if( isLocked )
     {
         pthread_mutex_unlock( &( pSrtpSender->senderMutex ) );
     }
+
+    if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
+    {
+        pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
+        pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
+    }
+
+    pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
+    pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
 
     return ret;
 }

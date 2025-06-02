@@ -14,23 +14,23 @@
  * limitations under the License.
  */
 
+#include "demo_config.h"
 #include "app_common.h"
 #include "app_media_source.h"
-#include "demo_config.h"
 
 AppContext_t appContext;
 AppMediaSourcesContext_t appMediaSourceContext;
 
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
 static int32_t OnMediaSinkHook( void * pCustom,
-    WebrtcFrame_t * pFrame );
+                                WebrtcFrame_t * pFrame );
 static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
-    AppMediaSourcesContext_t * pAppMediaSourceContext );
+                                         AppMediaSourcesContext_t * pAppMediaSourceContext );
 
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver )
 {
     int32_t ret = 0;
-    AppMediaSourcesContext_t * pMediaSourceContext = ( AppMediaSourcesContext_t * ) pMediaCtx;
+    AppMediaSourcesContext_t * pMediaSourceContext = ( AppMediaSourcesContext_t * )pMediaCtx;
 
     if( ( pMediaCtx == NULL ) || ( pTranceiver == NULL ) )
     {
@@ -46,7 +46,7 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
     else
     {
         /* Empty else marker. */
-    }
+    } 
 
     if( ret == 0 )
     {
@@ -54,24 +54,24 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
         {
             case TRANSCEIVER_TRACK_KIND_VIDEO:
                 ret = AppMediaSource_InitVideoTransceiver( pMediaSourceContext,
-                    pTranceiver );
+                                                           pTranceiver );
                 break;
             case TRANSCEIVER_TRACK_KIND_AUDIO:
                 ret = AppMediaSource_InitAudioTransceiver( pMediaSourceContext,
-                    pTranceiver );
+                                                           pTranceiver );
                 break;
             default:
                 LogError( ( "Invalid track kind: %d", trackKind ) );
                 ret = -3;
                 break;
-        }
+        } 
     }
 
     return ret;
 }
 
 static int32_t OnMediaSinkHook( void * pCustom,
-    WebrtcFrame_t * pFrame )
+                                WebrtcFrame_t * pFrame )
 {
     int32_t ret = 0;
     AppContext_t * pAppContext = ( AppContext_t * ) pCustom;
@@ -113,13 +113,13 @@ static int32_t OnMediaSinkHook( void * pCustom,
             if( pAppContext->appSessions[ i ].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
             {
                 peerConnectionResult = PeerConnection_WriteFrame( &pAppContext->appSessions[ i ].peerConnectionSession,
-                    pTransceiver,
-                    &peerConnectionFrame );
+                                                                  pTransceiver,
+                                                                  &peerConnectionFrame );
 
                 if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
                 {
                     LogError( ( "Fail to write %s frame, result: %d", ( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) ? "video" : "audio",
-                        peerConnectionResult ) );
+                                peerConnectionResult ) );
                     ret = -3;
                 }
             }
@@ -130,7 +130,7 @@ static int32_t OnMediaSinkHook( void * pCustom,
 }
 
 static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
-    AppMediaSourcesContext_t * pAppMediaSourceContext )
+                                         AppMediaSourcesContext_t * pAppMediaSourceContext )
 {
     int32_t ret = 0;
 
@@ -144,8 +144,8 @@ static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
     if( ret == 0 )
     {
         ret = AppMediaSource_Init( pAppMediaSourceContext,
-            OnMediaSinkHook,
-            pAppContext );
+                                   OnMediaSinkHook,
+                                   pAppContext );
     }
 
     return ret;

@@ -14,117 +14,117 @@
  * limitations under the License.
  */
 
+#include <stdlib.h>
+#include "logging.h"
 #include "sdp_controller.h"
 #include "core_json.h"
-#include "logging.h"
-#include "peer_connection.h"
 #include "sdp_deserializer.h"
 #include "sdp_serializer.h"
 #include "string_utils.h"
-#include <stdlib.h>
+#include "peer_connection.h"
 
-#define SDP_CONTROLLER_ORIGIN_DEFAULT_USER_NAME                                                             "-"
-#define SDP_CONTROLLER_ORIGIN_DEFAULT_SESSION_VERSION                                                       ( 2 )
-#define SDP_CONTROLLER_ORIGIN_DEFAULT_NET_TYPE                                                              "IN"
-#define SDP_CONTROLLER_ORIGIN_IPV4_TYPE                                                                     "IP4"
-#define SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS                                                            "127.0.0.1"
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_USER_NAME "-"
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_SESSION_VERSION ( 2 )
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_NET_TYPE "IN"
+#define SDP_CONTROLLER_ORIGIN_IPV4_TYPE "IP4"
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS "127.0.0.1"
 
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP                                                           "setup"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP_LENGTH                                                    ( 5 )
-#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE                                                               "active"
-#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH                                                        ( 6 )
-#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTPASS                                                              "actpass"
-#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTPASS_LENGTH                                                       ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID                                                            "msid"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID_LENGTH                                                     ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP                                                            "rtcp"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_LENGTH                                                     ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP                                                           "9 IN IP4 0.0.0.0"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_LENGTH                                                    ( 16 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG                                                       "ice-ufrag"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG_LENGTH                                                ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD                                                         "ice-pwd"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD_LENGTH                                                  ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION                                                      "ice-options"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION_LENGTH                                               ( 11 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION                                                     "trickle"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION_LENGTH                                              ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT                                                     "fingerprint"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT_LENGTH                                              ( 11 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC                                                            "ssrc"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH                                                     ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP                                                      "ssrc-group"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP_LENGTH                                               ( 10 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID                                                             "mid"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID_LENGTH                                                      ( 3 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV                                                        "sendrecv"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH                                                 ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY                                                        "sendonly"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH                                                 ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY                                                        "recvonly"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH                                                 ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE                                                        "inactive"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH                                                 ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX                                                        "rtcp-mux"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX_LENGTH                                                 ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_RSIZE                                                      "rtcp-rsize"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_RSIZE_LENGTH                                               ( 10 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP                                                          "rtpmap"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH                                                   ( 6 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264                                                    "H264/90000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264_LENGTH                                             ( 10 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264                                                "rtx/90000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264_LENGTH                                         ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS                                                    "opus/48000/2"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS_LENGTH                                             ( 12 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8                                                     "VP8/90000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8_LENGTH                                              ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW                                                   "PCMU/8000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW_LENGTH                                            ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW                                                    "PCMA/8000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW_LENGTH                                             ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265                                                    "H265/90000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265_LENGTH                                             ( 10 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB                                                         "rtcp-fb"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH                                                  ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE                                                  "nack"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE_LENGTH                                           ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB                                              "goog-remb"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB_LENGTH                                       ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP                                                            "fmtp"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH                                                     ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP                                                          "extmap"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP_LENGTH                                                   ( 6 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL                                                   "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL_LENGTH                                            ( 73 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC                                           "transport-cc"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC_LENGTH                                    ( 12 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE                                                       "candidate"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH                                                ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH                                      ( 8 ) // the length of "sha-256 "
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP "setup"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP_LENGTH ( 5 )
+#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE "active"
+#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH ( 6 )
+#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTPASS "actpass"
+#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTPASS_LENGTH ( 7 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID "msid"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID_LENGTH ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP "rtcp"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_LENGTH ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP "9 IN IP4 0.0.0.0"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_LENGTH ( 16 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG "ice-ufrag"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG_LENGTH ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD "ice-pwd"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD_LENGTH ( 7 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION "ice-options"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION_LENGTH ( 11 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION "trickle"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION_LENGTH ( 7 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT "fingerprint"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT_LENGTH ( 11 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC "ssrc"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP "ssrc-group"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP_LENGTH ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID "mid"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID_LENGTH ( 3 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV "sendrecv"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY "sendonly"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY "recvonly"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE "inactive"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX "rtcp-mux"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX_LENGTH ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_RSIZE "rtcp-rsize"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_RSIZE_LENGTH ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP "rtpmap"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH ( 6 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264 "H264/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264_LENGTH ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264 "rtx/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264_LENGTH ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS "opus/48000/2"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS_LENGTH ( 12 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8 "VP8/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8_LENGTH ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW "PCMU/8000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW_LENGTH ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW "PCMA/8000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW_LENGTH ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265 "H265/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265_LENGTH ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB "rtcp-fb"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH ( 7 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE "nack"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE_LENGTH ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB "goog-remb"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB_LENGTH ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP "fmtp"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP "extmap"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP_LENGTH ( 6 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL_LENGTH ( 73 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC "transport-cc"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC_LENGTH ( 12 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE "candidate"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH ( 8 ) // the length of "sha-256 "
 
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS                                                      "minptime=10;useinbandfec=1"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265                                                      "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS "minptime=10;useinbandfec=1"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265 "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
                                                        "AIAAAAMAAAMAAAMAAAMAALUCQA==;sprop-sps=QgEBAIAAAAMAAAMAAAMAAAMAAKACgIAtH+W1kkbQzkkktySqSfKSyA==;sprop-pps=RAHBpVgeSA=="
 
-#define SDP_CONTROLLER_H264_PACKETIZATION_MODE                       "packetization-mode=1"
-#define SDP_CONTROLLER_H264_PACKETIZATION_MODE_LENGTH                ( 20 )
-#define SDP_CONTROLLER_H264_ASYMMETRY_ALLOWED                        "level-asymmetry-allowed=1"
-#define SDP_CONTROLLER_H264_ASYMMETRY_ALLOWED_LENGTH                 ( 25 )
-#define SDP_CONTROLLER_H264_PROFILE_LEVEL_ID                         "profile-level-id="
-#define SDP_CONTROLLER_H264_PROFILE_LEVEL_ID_LENGTH                  ( 17 )
+#define SDP_CONTROLLER_H264_PACKETIZATION_MODE "packetization-mode=1"
+#define SDP_CONTROLLER_H264_PACKETIZATION_MODE_LENGTH ( 20 )
+#define SDP_CONTROLLER_H264_ASYMMETRY_ALLOWED "level-asymmetry-allowed=1"
+#define SDP_CONTROLLER_H264_ASYMMETRY_ALLOWED_LENGTH ( 25 )
+#define SDP_CONTROLLER_H264_PROFILE_LEVEL_ID "profile-level-id="
+#define SDP_CONTROLLER_H264_PROFILE_LEVEL_ID_LENGTH ( 17 )
 
-#define SDP_CONTROLLER_MAX_FMTP_APT_NUM                              ( 64 )
+#define SDP_CONTROLLER_MAX_FMTP_APT_NUM ( 64 )
 
-#define SDP_CONTROLLER_GET_APT_CODEC_FROM_PAYLOAD( payload )         ( payload & 0xFF )
-#define SDP_CONTROLLER_GET_RTX_CODEC_FROM_PAYLOAD( payload )         ( payload >> 16 )
-#define SDP_CONTROLLER_SET_PAYLOAD( rtxPayload, aptPayload )         ( rtxPayload << 16 | aptPayload )
+#define SDP_CONTROLLER_GET_APT_CODEC_FROM_PAYLOAD( payload ) ( payload & 0xFF )
+#define SDP_CONTROLLER_GET_RTX_CODEC_FROM_PAYLOAD( payload ) ( payload >> 16 )
+#define SDP_CONTROLLER_SET_PAYLOAD( rtxPayload, aptPayload ) ( rtxPayload << 16 | aptPayload )
 
-#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME        "application 9 UDP/DTLS/SCTP webrtc-datachannel"
-#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT         "sctp-port"
-#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT_LENGTH  ( 9 )
-#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT        "5000"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME "application 9 UDP/DTLS/SCTP webrtc-datachannel"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT "sctp-port"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT_LENGTH ( 9 )
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT "5000"
 #define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT_LENGTH ( 4 )
 
 // profile-level-id:
@@ -139,126 +139,126 @@
 //   3) level_id.
 //
 // Reference: https://tools.ietf.org/html/rfc6184#section-8.1
-#define SDP_CONTROLLER_H264_PROFILE_42E01F                           0x42e01f
-#define SDP_CONTROLLER_H264_FMTP_SUBPROFILE_MASK                     0xFFFF00
-#define SDP_CONTROLLER_H264_FMTP_PROFILE_LEVEL_MASK                  0x0000FF
-#define SDP_CONTROLLER_H264_FMTP_MINIMUM_SCORE                       ( 10 )
-#define SDP_CONTROLLER_H264_FMTP_HIGHEST_SCORE                       ( 12 )
+#define SDP_CONTROLLER_H264_PROFILE_42E01F 0x42e01f
+#define SDP_CONTROLLER_H264_FMTP_SUBPROFILE_MASK 0xFFFF00
+#define SDP_CONTROLLER_H264_FMTP_PROFILE_LEVEL_MASK 0x0000FF
+#define SDP_CONTROLLER_H264_FMTP_MINIMUM_SCORE ( 10 )
+#define SDP_CONTROLLER_H264_FMTP_HIGHEST_SCORE ( 12 )
 
-#define SDP_CONTROLLER_CODEC_H264_VALUE                              "H264/90000"
-#define SDP_CONTROLLER_CODEC_H264_VALUE_LENGTH                       ( 10 )
-#define SDP_CONTROLLER_CODEC_H265_VALUE                              "H265/90000"
-#define SDP_CONTROLLER_CODEC_H265_VALUE_LENGTH                       ( 10 )
-#define SDP_CONTROLLER_CODEC_OPUS_VALUE                              "opus/48000/2"
-#define SDP_CONTROLLER_CODEC_OPUS_VALUE_LENGTH                       ( 12 )
-#define SDP_CONTROLLER_CODEC_VP8_VALUE                               "VP8/90000"
-#define SDP_CONTROLLER_CODEC_VP8_VALUE_LENGTH                        ( 9 )
-#define SDP_CONTROLLER_CODEC_MULAW_VALUE                             "PCMU/8000"
-#define SDP_CONTROLLER_CODEC_MULAW_VALUE_LENGTH                      ( 9 )
-#define SDP_CONTROLLER_CODEC_ALAW_VALUE                              "PCMA/8000"
-#define SDP_CONTROLLER_CODEC_ALAW_VALUE_LENGTH                       ( 9 )
-#define SDP_CONTROLLER_CODEC_RTX_VALUE                               "rtx/90000"
-#define SDP_CONTROLLER_CODEC_RTX_VALUE_LENGTH                        ( 9 )
-#define SDP_CONTROLLER_CODEC_APT_VALUE                               "apt="
-#define SDP_CONTROLLER_CODEC_APT_VALUE_LENGTH                        ( 4 )
+#define SDP_CONTROLLER_CODEC_H264_VALUE "H264/90000"
+#define SDP_CONTROLLER_CODEC_H264_VALUE_LENGTH ( 10 )
+#define SDP_CONTROLLER_CODEC_H265_VALUE "H265/90000"
+#define SDP_CONTROLLER_CODEC_H265_VALUE_LENGTH ( 10 )
+#define SDP_CONTROLLER_CODEC_OPUS_VALUE "opus/48000/2"
+#define SDP_CONTROLLER_CODEC_OPUS_VALUE_LENGTH ( 12 )
+#define SDP_CONTROLLER_CODEC_VP8_VALUE "VP8/90000"
+#define SDP_CONTROLLER_CODEC_VP8_VALUE_LENGTH ( 9 )
+#define SDP_CONTROLLER_CODEC_MULAW_VALUE "PCMU/8000"
+#define SDP_CONTROLLER_CODEC_MULAW_VALUE_LENGTH ( 9 )
+#define SDP_CONTROLLER_CODEC_ALAW_VALUE "PCMA/8000"
+#define SDP_CONTROLLER_CODEC_ALAW_VALUE_LENGTH ( 9 )
+#define SDP_CONTROLLER_CODEC_RTX_VALUE "rtx/90000"
+#define SDP_CONTROLLER_CODEC_RTX_VALUE_LENGTH ( 9 )
+#define SDP_CONTROLLER_CODEC_APT_VALUE "apt="
+#define SDP_CONTROLLER_CODEC_APT_VALUE_LENGTH ( 4 )
 
-#define SDP_CONTROLLER_CODEC_MULAW_DEFAULT_INDEX                     "0"
-#define SDP_CONTROLLER_CODEC_MULAW_DEFAULT_INDEX_LENGTH              ( 1 )
-#define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX                      "8"
-#define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX_LENGTH               ( 1 )
+#define SDP_CONTROLLER_CODEC_MULAW_DEFAULT_INDEX "0"
+#define SDP_CONTROLLER_CODEC_MULAW_DEFAULT_INDEX_LENGTH ( 1 )
+#define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX "8"
+#define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX_LENGTH ( 1 )
 
 static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t * pOffer,
-    SdpAttribute_t * pAttribute );
+                                                   SdpAttribute_t * pAttribute );
 static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t * pOffer,
-    const char * pAttributeBuffer,
-    size_t attributeBufferLength );
+                                                   const char * pAttributeBuffer,
+                                                   size_t attributeBufferLength );
 static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpDescription_t * pOffer,
-    const char * pAttributeBuffer,
-    size_t attributeBufferLength );
+                                                     const char * pAttributeBuffer,
+                                                     size_t attributeBufferLength );
 static SdpControllerResult_t serializeOrigin( SdpSerializerContext_t * pCtx,
-    SdpControllerOrigin_t * pOrigin );
+                                              SdpControllerOrigin_t * pOrigin );
 static SdpControllerResult_t serializeTiming( SdpSerializerContext_t * pCtx,
-    SdpControllerTiming_t * pTiming );
+                                              SdpControllerTiming_t * pTiming );
 static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t * pCtx,
-    SdpControllerAttributes_t * pAttributes,
-    uint16_t attributeCount );
+                                                  SdpControllerAttributes_t * pAttributes,
+                                                  uint16_t attributeCount );
 static SdpControllerResult_t serializeConnectionInfo( SdpSerializerContext_t * pCtx,
-    SdpControllerConnectionInformation_t * pConnectionInfo );
+                                                      SdpControllerConnectionInformation_t * pConnectionInfo );
 static SdpControllerResult_t serializeMedias( SdpSerializerContext_t * pCtx,
-    SdpControllerMediaDescription_t * pMediaDescriptions,
-    uint16_t mediaCount );
+                                              SdpControllerMediaDescription_t * pMediaDescriptions,
+                                              uint16_t mediaCount );
 static SdpControllerResult_t serializeSdpMessage( SdpControllerSdpDescription_t * pSdpDescription,
-    char * pOutputBuffer,
-    size_t * pOutputBufferSize );
+                                                  char * pOutputBuffer,
+                                                  size_t * pOutputBufferSize );
 static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription,
-    const Transceiver_t * pTransceiver,
-    const char * pCname,
-    size_t cnameLength,
-    uint32_t containRtx );
+                                                      size_t * pBufferLength,
+                                                      SdpControllerMediaDescription_t * pLocalMediaDescription,
+                                                      const Transceiver_t * pTransceiver,
+                                                      const char * pCname,
+                                                      size_t cnameLength,
+                                                      uint32_t containRtx );
 static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
-    uint16_t twccExtId,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription );
+                                             uint16_t twccExtId,
+                                             char ** ppBuffer,
+                                             size_t * pBufferLength,
+                                             SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription );
+                                                                                                         const Transceiver_t * pTransceiver,
+                                                                                                         uint32_t payload,
+                                                                                                         uint32_t rtxPayload,
+                                                                                                         char ** ppBuffer,
+                                                                                                         size_t * pBufferLength,
+                                                                                                         SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription );
+                                                          const Transceiver_t * pTransceiver,
+                                                          uint32_t payload,
+                                                          uint32_t rtxPayload,
+                                                          char ** ppBuffer,
+                                                          size_t * pBufferLength,
+                                                          SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription );
+                                                         const Transceiver_t * pTransceiver,
+                                                         uint32_t payload,
+                                                         uint32_t rtxPayload,
+                                                         char ** ppBuffer,
+                                                         size_t * pBufferLength,
+                                                         SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription );
+                                                           const Transceiver_t * pTransceiver,
+                                                           uint32_t payload,
+                                                           uint32_t rtxPayload,
+                                                           char ** ppBuffer,
+                                                           size_t * pBufferLength,
+                                                           SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription );
+                                                          const Transceiver_t * pTransceiver,
+                                                          uint32_t payload,
+                                                          uint32_t rtxPayload,
+                                                          char ** ppBuffer,
+                                                          size_t * pBufferLength,
+                                                          SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription );
+                                                          const Transceiver_t * pTransceiver,
+                                                          uint32_t payload,
+                                                          uint32_t rtxPayload,
+                                                          char ** ppBuffer,
+                                                          size_t * pBufferLength,
+                                                          SdpControllerMediaDescription_t * pLocalMediaDescription );
 static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    SdpControllerPopulateMediaConfiguration_t populateConfiguration,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription );
+                                                      SdpControllerPopulateMediaConfiguration_t populateConfiguration,
+                                                      char ** ppBuffer,
+                                                      size_t * pBufferLength,
+                                                      SdpControllerMediaDescription_t * pLocalMediaDescription );
 static const SdpControllerAttributes_t * FindAttributeName( const SdpControllerAttributes_t * pAttributes,
-    size_t attributeCount,
-    char * pPattern,
-    size_t patternLength );
+                                                            size_t attributeCount,
+                                                            char * pPattern,
+                                                            size_t patternLength );
 static const SdpControllerAttributes_t * FindFmtpBasedOnCodec( const SdpControllerAttributes_t * pAttributes,
-    size_t attributeCount,
-    uint32_t codec );
+                                                               size_t attributeCount,
+                                                               uint32_t codec );
 
 static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t * pOffer,
-    SdpAttribute_t * pAttribute )
+                                                   SdpAttribute_t * pAttribute )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     StringUtilsResult_t stringResult;
@@ -328,9 +328,9 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
                     LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
-                        stringResult,
-                        ( int ) length, pAttribute->pAttributeValue,
-                        pOffer->quickAccess.twccExtId ) );
+                                stringResult,
+                                ( int ) length, pAttribute->pAttributeValue,
+                                pOffer->quickAccess.twccExtId ) );
                     ret = SDP_CONTROLLER_RESULT_SDP_INVALID_TWCC_ID;
                 }
                 else
@@ -360,8 +360,8 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
 }
 
 static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t * pOffer,
-    const char * pAttributeBuffer,
-    size_t attributeBufferLength )
+                                                   const char * pAttributeBuffer,
+                                                   size_t attributeBufferLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -402,8 +402,8 @@ static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t
 }
 
 static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpDescription_t * pOffer,
-    const char * pAttributeBuffer,
-    size_t attributeBufferLength )
+                                                     const char * pAttributeBuffer,
+                                                     size_t attributeBufferLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -442,7 +442,7 @@ static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpDescription
 }
 
 static SdpControllerResult_t serializeOrigin( SdpSerializerContext_t * pCtx,
-    SdpControllerOrigin_t * pOrigin )
+                                              SdpControllerOrigin_t * pOrigin )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -469,7 +469,7 @@ static SdpControllerResult_t serializeOrigin( SdpSerializerContext_t * pCtx,
 }
 
 static SdpControllerResult_t serializeTiming( SdpSerializerContext_t * pCtx,
-    SdpControllerTiming_t * pTiming )
+                                              SdpControllerTiming_t * pTiming )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -490,8 +490,8 @@ static SdpControllerResult_t serializeTiming( SdpSerializerContext_t * pCtx,
 }
 
 static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t * pCtx,
-    SdpControllerAttributes_t * pAttributes,
-    uint16_t attributeCount )
+                                                  SdpControllerAttributes_t * pAttributes,
+                                                  uint16_t attributeCount )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -510,9 +510,9 @@ static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t * pCtx,
         if( sdpResult != SDP_RESULT_OK )
         {
             LogError( ( "Serialize SDP attribute failure, result: %x, attribute name: %.*s, value: %.*s",
-                sdpResult,
-                ( int ) attribute.attributeNameLength, attribute.pAttributeName,
-                ( int ) attribute.attributeValueLength, attribute.pAttributeValue ) );
+                        sdpResult,
+                        ( int ) attribute.attributeNameLength, attribute.pAttributeName,
+                        ( int ) attribute.attributeValueLength, attribute.pAttributeValue ) );
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SERIALIZER_ADD;
         }
     }
@@ -521,7 +521,7 @@ static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t * pCtx,
 }
 
 static SdpControllerResult_t serializeConnectionInfo( SdpSerializerContext_t * pCtx,
-    SdpControllerConnectionInformation_t * pConnectionInfo )
+                                                      SdpControllerConnectionInformation_t * pConnectionInfo )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -543,8 +543,8 @@ static SdpControllerResult_t serializeConnectionInfo( SdpSerializerContext_t * p
 }
 
 static SdpControllerResult_t serializeMedias( SdpSerializerContext_t * pCtx,
-    SdpControllerMediaDescription_t * pMediaDescriptions,
-    uint16_t mediaCount )
+                                              SdpControllerMediaDescription_t * pMediaDescriptions,
+                                              uint16_t mediaCount )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -595,8 +595,8 @@ static SdpControllerResult_t serializeMedias( SdpSerializerContext_t * pCtx,
 }
 
 static SdpControllerResult_t serializeSdpMessage( SdpControllerSdpDescription_t * pSdpDescription,
-    char * pOutputBuffer,
-    size_t * pOutputBufferSize )
+                                                  char * pOutputBuffer,
+                                                  size_t * pOutputBufferSize )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -670,12 +670,12 @@ static SdpControllerResult_t serializeSdpMessage( SdpControllerSdpDescription_t 
 }
 
 static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription,
-    const Transceiver_t * pTransceiver,
-    const char * pCname,
-    size_t cnameLength,
-    uint32_t containRtx )
+                                                      size_t * pBufferLength,
+                                                      SdpControllerMediaDescription_t * pLocalMediaDescription,
+                                                      const Transceiver_t * pTransceiver,
+                                                      const char * pCname,
+                                                      size_t cnameLength,
+                                                      uint32_t containRtx )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpControllerAttributes_t * pTargetAttribute = NULL;
@@ -691,11 +691,11 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         ( pCname == NULL ) )
     {
         LogError( ( "Invalid input, ppBuffer: %p, pBufferLength: %p, pLocalMediaDescription: %p, pTransceiver: %p, pCname: %p",
-            ppBuffer,
-            pBufferLength,
-            pLocalMediaDescription,
-            pTransceiver,
-            pCname ) );
+                    ppBuffer,
+                    pBufferLength,
+                    pLocalMediaDescription,
+                    pTransceiver,
+                    pCname ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
     else
@@ -714,8 +714,8 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u cname:%.*s",
-            pTransceiver->ssrc,
-            ( int ) cnameLength, pCname );
+                            pTransceiver->ssrc,
+                            ( int ) cnameLength, pCname );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -745,9 +745,9 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u msid:%.*s %.*s",
-            pTransceiver->ssrc,
-            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId,
-            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
+                            pTransceiver->ssrc,
+                            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId,
+                            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -777,8 +777,8 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u mslabel:%.*s",
-            pTransceiver->ssrc,
-            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId );
+                            pTransceiver->ssrc,
+                            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -808,8 +808,8 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u label:%.*s",
-            pTransceiver->ssrc,
-            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
+                            pTransceiver->ssrc,
+                            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -839,8 +839,8 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u cname:%.*s",
-            pTransceiver->rtxSsrc,
-            ( int ) cnameLength, pCname );
+                            pTransceiver->rtxSsrc,
+                            ( int ) cnameLength, pCname );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -870,9 +870,9 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u msid:%.*s %.*sRTX",
-            pTransceiver->rtxSsrc,
-            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId,
-            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
+                            pTransceiver->rtxSsrc,
+                            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId,
+                            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -902,8 +902,8 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u mslabel:%.*sRTX",
-            pTransceiver->rtxSsrc,
-            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId );
+                            pTransceiver->rtxSsrc,
+                            ( int ) pTransceiver->streamIdLength, pTransceiver->streamId );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -933,8 +933,8 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u label:%.*sRTX",
-            pTransceiver->rtxSsrc,
-            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
+                            pTransceiver->rtxSsrc,
+                            ( int ) pTransceiver->trackIdLength, pTransceiver->trackId );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -966,10 +966,10 @@ static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
 }
 
 static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
-    uint16_t twccExtId,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription )
+                                             uint16_t twccExtId,
+                                             char ** ppBuffer,
+                                             size_t * pBufferLength,
+                                             SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpControllerAttributes_t * pTargetAttribute = NULL;
@@ -983,9 +983,9 @@ static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
         ( pLocalMediaDescription == NULL ) )
     {
         LogError( ( "Invalid input, ppBuffer: %p, pBufferLength: %p, pLocalMediaDescription: %p",
-            ppBuffer,
-            pBufferLength,
-            pLocalMediaDescription ) );
+                    ppBuffer,
+                    pBufferLength,
+                    pLocalMediaDescription ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -1000,8 +1000,8 @@ static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
-            payload,
-            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB );
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1031,8 +1031,8 @@ static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
-            payload,
-            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC );
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1064,12 +1064,12 @@ static SdpControllerResult_t PopulateRtcpFb( uint32_t payload,
 }
 
 static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription )
+                                                                                                         const Transceiver_t * pTransceiver,
+                                                                                                         uint32_t payload,
+                                                                                                         uint32_t rtxPayload,
+                                                                                                         char ** ppBuffer,
+                                                                                                         size_t * pBufferLength,
+                                                                                                         SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     uint8_t isOffer = pRemoteMediaDescription ? 0 : 1;
@@ -1090,8 +1090,8 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
     written = snprintf( pCurBuffer, remainSize, "%u %s",
-        payload,
-        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264 );
+                        payload,
+                        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264 );
     if( written < 0 )
     {
         ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1120,8 +1120,8 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
-            payload,
-            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1150,8 +1150,8 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
         {
             /* If creating SDP answer, try find fmtp from the remote description. */
             pSourceAttribute = FindFmtpBasedOnCodec( pRemoteMediaDescription->attributes,
-                pRemoteMediaDescription->mediaAttributesCount,
-                payload );
+                                                     pRemoteMediaDescription->mediaAttributesCount,
+                                                     payload );
         }
 
         /* Set fmtp only if:
@@ -1166,13 +1166,13 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
             if( isOffer )
             {
                 written = snprintf( pCurBuffer, remainSize, "%u %s",
-                    payload,
-                    SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION );
+                                    payload,
+                                    SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION );
             }
             else
             {
                 written = snprintf( pCurBuffer, remainSize, "%.*s",
-                    ( int ) pSourceAttribute->attributeValueLength, pSourceAttribute->pAttributeValue );
+                                    ( int ) pSourceAttribute->attributeValueLength, pSourceAttribute->pAttributeValue );
             }
 
             if( written < 0 )
@@ -1207,8 +1207,8 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
             pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
             written = snprintf( pCurBuffer, remainSize, "%u %s",
-                rtxPayload,
-                SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264 );
+                                rtxPayload,
+                                SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264 );
             if( written < 0 )
             {
                 ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1241,8 +1241,8 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
             pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH;
 
             written = snprintf( pCurBuffer, remainSize, "%u apt=%u",
-                rtxPayload,
-                payload );
+                                rtxPayload,
+                                payload );
 
             if( written < 0 )
             {
@@ -1276,12 +1276,12 @@ static SdpControllerResult_t PopulateCodecAttributesH264Profile42E01FLevelAsymme
 }
 
 static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription )
+                                                          const Transceiver_t * pTransceiver,
+                                                          uint32_t payload,
+                                                          uint32_t rtxPayload,
+                                                          char ** ppBuffer,
+                                                          size_t * pBufferLength,
+                                                          SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     uint8_t isOffer = pRemoteMediaDescription ? 0 : 1;
@@ -1302,8 +1302,8 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
     written = snprintf( pCurBuffer, remainSize, "%u %s",
-        payload,
-        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS );
+                        payload,
+                        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS );
     if( written < 0 )
     {
         ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1340,8 +1340,8 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
         {
             /* If creating SDP answer, try find fmtp from the remote description. */
             pSourceAttribute = FindFmtpBasedOnCodec( pRemoteMediaDescription->attributes,
-                pRemoteMediaDescription->mediaAttributesCount,
-                payload );
+                                                     pRemoteMediaDescription->mediaAttributesCount,
+                                                     payload );
         }
 
         /* Set fmtp only if:
@@ -1356,13 +1356,13 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
             if( isOffer )
             {
                 written = snprintf( pCurBuffer, remainSize, "%u %s",
-                    payload,
-                    SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS );
+                                    payload,
+                                    SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS );
             }
             else
             {
                 written = snprintf( pCurBuffer, remainSize, "%.*s",
-                    ( int ) pSourceAttribute->attributeValueLength, pSourceAttribute->pAttributeValue );
+                                    ( int ) pSourceAttribute->attributeValueLength, pSourceAttribute->pAttributeValue );
             }
 
             if( written < 0 )
@@ -1395,8 +1395,8 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
-            payload,
-            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1428,12 +1428,12 @@ static SdpControllerResult_t PopulateCodecAttributesOpus( SdpControllerMediaDesc
 }
 
 static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription )
+                                                         const Transceiver_t * pTransceiver,
+                                                         uint32_t payload,
+                                                         uint32_t rtxPayload,
+                                                         char ** ppBuffer,
+                                                         size_t * pBufferLength,
+                                                         SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpControllerAttributes_t * pTargetAttribute = NULL;
@@ -1452,8 +1452,8 @@ static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescr
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
     written = snprintf( pCurBuffer, remainSize, "%u %s",
-        payload,
-        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8 );
+                        payload,
+                        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8 );
     if( written < 0 )
     {
         ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1493,12 +1493,12 @@ static SdpControllerResult_t PopulateCodecAttributesVp8( SdpControllerMediaDescr
 }
 
 static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription )
+                                                           const Transceiver_t * pTransceiver,
+                                                           uint32_t payload,
+                                                           uint32_t rtxPayload,
+                                                           char ** ppBuffer,
+                                                           size_t * pBufferLength,
+                                                           SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpControllerAttributes_t * pTargetAttribute = NULL;
@@ -1517,8 +1517,8 @@ static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDes
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
     written = snprintf( pCurBuffer, remainSize, "%u %s",
-        payload,
-        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW );
+                        payload,
+                        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW );
     if( written < 0 )
     {
         ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1556,8 +1556,8 @@ static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDes
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
-            payload,
-            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1589,12 +1589,12 @@ static SdpControllerResult_t PopulateCodecAttributesMulaw( SdpControllerMediaDes
 }
 
 static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription )
+                                                          const Transceiver_t * pTransceiver,
+                                                          uint32_t payload,
+                                                          uint32_t rtxPayload,
+                                                          char ** ppBuffer,
+                                                          size_t * pBufferLength,
+                                                          SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpControllerAttributes_t * pTargetAttribute = NULL;
@@ -1613,8 +1613,8 @@ static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDesc
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
     written = snprintf( pCurBuffer, remainSize, "%u %s",
-        payload,
-        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW );
+                        payload,
+                        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW );
     if( written < 0 )
     {
         ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1652,8 +1652,8 @@ static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDesc
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
-            payload,
-            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1685,12 +1685,12 @@ static SdpControllerResult_t PopulateCodecAttributesAlaw( SdpControllerMediaDesc
 }
 
 static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    const Transceiver_t * pTransceiver,
-    uint32_t payload,
-    uint32_t rtxPayload,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription )
+                                                          const Transceiver_t * pTransceiver,
+                                                          uint32_t payload,
+                                                          uint32_t rtxPayload,
+                                                          char ** ppBuffer,
+                                                          size_t * pBufferLength,
+                                                          SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     uint8_t isOffer = pRemoteMediaDescription ? 0 : 1;
@@ -1711,8 +1711,8 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
     pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH;
 
     written = snprintf( pCurBuffer, remainSize, "%u %s",
-        payload,
-        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265 );
+                        payload,
+                        SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265 );
     if( written < 0 )
     {
         ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1741,8 +1741,8 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "%u %s",
-            payload,
-            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
+                            payload,
+                            SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE );
         if( written < 0 )
         {
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_SNPRINTF;
@@ -1771,8 +1771,8 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
         {
             /* If creating SDP answer, try find fmtp from the remote description. */
             pSourceAttribute = FindFmtpBasedOnCodec( pRemoteMediaDescription->attributes,
-                pRemoteMediaDescription->mediaAttributesCount,
-                payload );
+                                                     pRemoteMediaDescription->mediaAttributesCount,
+                                                     payload );
         }
 
         /* Set fmtp only if:
@@ -1787,13 +1787,13 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
             if( isOffer )
             {
                 written = snprintf( pCurBuffer, remainSize, "%u %s",
-                    payload,
-                    SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265 );
+                                    payload,
+                                    SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265 );
             }
             else
             {
                 written = snprintf( pCurBuffer, remainSize, "%.*s",
-                    ( int ) pSourceAttribute->attributeValueLength, pSourceAttribute->pAttributeValue );
+                                    ( int ) pSourceAttribute->attributeValueLength, pSourceAttribute->pAttributeValue );
             }
 
             if( written < 0 )
@@ -1828,10 +1828,10 @@ static SdpControllerResult_t PopulateCodecAttributesH265( SdpControllerMediaDesc
 }
 
 static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    SdpControllerPopulateMediaConfiguration_t populateConfiguration,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerMediaDescription_t * pLocalMediaDescription )
+                                                      SdpControllerPopulateMediaConfiguration_t populateConfiguration,
+                                                      char ** ppBuffer,
+                                                      size_t * pBufferLength,
+                                                      SdpControllerMediaDescription_t * pLocalMediaDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     const Transceiver_t * pTransceiver = populateConfiguration.pTransceiver;
@@ -1845,37 +1845,37 @@ static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescript
     {
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
         LogError( ( "Invalid input, ppBuffer: %p, pBufferLength: %p, pLocalMediaDescription: %p, pTransceiver: %p",
-            ppBuffer,
-            pBufferLength,
-            pLocalMediaDescription,
-            pTransceiver ) );
+                    ppBuffer,
+                    pBufferLength,
+                    pLocalMediaDescription,
+                    pTransceiver ) );
     }
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
         {
-            ret = PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
         {
-            ret = PopulateCodecAttributesOpus( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesOpus( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {
-            ret = PopulateCodecAttributesVp8( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesVp8( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
         {
-            ret = PopulateCodecAttributesMulaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesMulaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
         {
-            ret = PopulateCodecAttributesAlaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesAlaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
-            ret = PopulateCodecAttributesH265( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesH265( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else
         {
@@ -1896,9 +1896,9 @@ static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescript
 }
 
 static const SdpControllerAttributes_t * FindAttributeName( const SdpControllerAttributes_t * pAttributes,
-    size_t attributeCount,
-    char * pPattern,
-    size_t patternLength )
+                                                            size_t attributeCount,
+                                                            char * pPattern,
+                                                            size_t patternLength )
 {
     const SdpControllerAttributes_t * pRet = NULL;
     int i;
@@ -1912,9 +1912,9 @@ static const SdpControllerAttributes_t * FindAttributeName( const SdpControllerA
     {
         for( i = 0; i < attributeCount; i++ )
         {
-            if( ( pAttributes[ i ].attributeNameLength == patternLength ) && ( strncmp( pAttributes[ i ].pAttributeName, pPattern, patternLength ) == 0 ) )
+            if( ( pAttributes[i].attributeNameLength == patternLength ) && ( strncmp( pAttributes[i].pAttributeName, pPattern, patternLength ) == 0 ) )
             {
-                pRet = &pAttributes[ i ];
+                pRet = &pAttributes[i];
                 break;
             }
         }
@@ -1924,8 +1924,8 @@ static const SdpControllerAttributes_t * FindAttributeName( const SdpControllerA
 }
 
 static const SdpControllerAttributes_t * FindFmtpBasedOnCodec( const SdpControllerAttributes_t * pAttributes,
-    size_t attributeCount,
-    uint32_t codec )
+                                                               size_t attributeCount,
+                                                               uint32_t codec )
 {
     const SdpControllerAttributes_t * pRet = NULL;
     char codecString[ TRANSCEIVER_CODEC_STRING_MAX_LENGTH + 1 ];
@@ -1950,12 +1950,12 @@ static const SdpControllerAttributes_t * FindFmtpBasedOnCodec( const SdpControll
         {
             for( i = 0; i < attributeCount; i++ )
             {
-                if( ( pAttributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) &&
-                    ( strncmp( pAttributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) == 0 ) &&
-                    ( pAttributes[ i ].attributeValueLength >= written ) &&
-                    ( strncmp( pAttributes[ i ].pAttributeValue, codecString, written ) == 0 ) )
+                if( ( pAttributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) &&
+                    ( strncmp( pAttributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) == 0 ) &&
+                    ( pAttributes[i].attributeValueLength >= written ) &&
+                    ( strncmp( pAttributes[i].pAttributeValue, codecString, written ) == 0 ) )
                 {
-                    pRet = &pAttributes[ i ];
+                    pRet = &pAttributes[i];
                     break;
                 }
             }
@@ -1966,9 +1966,9 @@ static const SdpControllerAttributes_t * FindFmtpBasedOnCodec( const SdpControll
 }
 
 static SdpControllerAttributes_t * MatchAttributesValuePrefix( SdpControllerAttributes_t * pAttributes,
-    size_t attributeNum,
-    const char * pPattern,
-    size_t patternLength )
+                                                               size_t attributeNum,
+                                                               const char * pPattern,
+                                                               size_t patternLength )
 {
     SdpControllerAttributes_t * pFound = NULL;
     int i;
@@ -1993,9 +1993,9 @@ static SdpControllerAttributes_t * MatchAttributesValuePrefix( SdpControllerAttr
 }
 
 static int AddSessionAttributeGroup( char * pBuffer,
-    size_t remainSize,
-    SdpControllerSdpDescription_t * pLocalSdpDescription,
-    SdpControllerSdpDescription_t * pRemoteSdpDescription )
+                                     size_t remainSize,
+                                     SdpControllerSdpDescription_t * pLocalSdpDescription,
+                                     SdpControllerSdpDescription_t * pRemoteSdpDescription )
 {
     int totalWritten = 0;
     int written = 0;
@@ -2047,8 +2047,8 @@ static int AddSessionAttributeGroup( char * pBuffer,
         if( pRemoteAttribute != NULL )
         {
             written = snprintf( pCurBuffer, remainSize, "%.*s",
-                ( int ) pRemoteAttribute->attributeValueLength,
-                pRemoteAttribute->pAttributeValue );
+                                ( int ) pRemoteAttribute->attributeValueLength,
+                                pRemoteAttribute->pAttributeValue );
             if( written < 0 )
             {
                 totalWritten = -1;
@@ -2127,9 +2127,9 @@ static int AddSessionAttributeGroup( char * pBuffer,
 }
 
 static int AddSessionAttributeIceOptions( char * pBuffer,
-    size_t remainSize,
-    SdpControllerSdpDescription_t * pLocalSdpDescription,
-    SdpControllerSdpDescription_t * pRemoteSdpDescription )
+                                          size_t remainSize,
+                                          SdpControllerSdpDescription_t * pLocalSdpDescription,
+                                          SdpControllerSdpDescription_t * pRemoteSdpDescription )
 {
     int totalWritten = 0;
     int written = 0;
@@ -2195,9 +2195,9 @@ static int AddSessionAttributeIceOptions( char * pBuffer,
 }
 
 static int AddSessionAttributeMsidSemantic( char * pBuffer,
-    size_t remainSize,
-    SdpControllerSdpDescription_t * pLocalSdpDescription,
-    SdpControllerSdpDescription_t * pRemoteSdpDescription )
+                                            size_t remainSize,
+                                            SdpControllerSdpDescription_t * pLocalSdpDescription,
+                                            SdpControllerSdpDescription_t * pRemoteSdpDescription )
 {
     int totalWritten = 0;
     int written = 0;
@@ -2263,10 +2263,10 @@ static int AddSessionAttributeMsidSemantic( char * pBuffer,
 }
 
 static SdpControllerResult_t PopulateSessionAttributes( SdpControllerSdpDescription_t * pRemoteSdpDescription,
-    SdpControllerPopulateSessionConfiguration_t populateConfiguration,
-    SdpControllerSdpDescription_t * pLocalSdpDescription,
-    char ** ppBuffer,
-    size_t * pBufferLength )
+                                                        SdpControllerPopulateSessionConfiguration_t populateConfiguration,
+                                                        SdpControllerSdpDescription_t * pLocalSdpDescription,
+                                                        char ** ppBuffer,
+                                                        size_t * pBufferLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     int written;
@@ -2279,9 +2279,9 @@ static SdpControllerResult_t PopulateSessionAttributes( SdpControllerSdpDescript
         ( pLocalSdpDescription == NULL ) )
     {
         LogError( ( "Invalid input, ppBuffer: %p, pBufferLength: %p, pLocalSdpDescription: %p",
-            ppBuffer,
-            pBufferLength,
-            pLocalSdpDescription ) );
+                    ppBuffer,
+                    pBufferLength,
+                    pLocalSdpDescription ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -2349,8 +2349,8 @@ static SdpControllerResult_t PopulateSessionAttributes( SdpControllerSdpDescript
 }
 
 SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferContent,
-    size_t sdpOfferContentLength,
-    SdpControllerSdpDescription_t * pOffer )
+                                                         size_t sdpOfferContentLength,
+                                                         SdpControllerSdpDescription_t * pOffer )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -2453,9 +2453,9 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferC
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
                     LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %u",
-                        stringResult,
-                        ( int ) valueLength, pValue,
-                        pOffer->version ) );
+                                stringResult,
+                                ( int ) valueLength, pValue,
+                                pOffer->version ) );
                     ret = SDP_CONTROLLER_RESULT_SDP_INVALID_VERSION;
                     break;
                 }
@@ -2506,9 +2506,9 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferC
 }
 
 SdpControllerResult_t SdpController_SerializeSdpMessageByDescription( SdpControllerMessageType_t messageType,
-    SdpControllerSdpDescription_t * pSdpDescription,
-    char * pOutputSerializedSdpMessage,
-    size_t * pOutputSerializedSdpMessageLength )
+                                                                      SdpControllerSdpDescription_t * pSdpDescription,
+                                                                      char * pOutputSerializedSdpMessage,
+                                                                      size_t * pOutputSerializedSdpMessageLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     int written;
@@ -2518,9 +2518,9 @@ SdpControllerResult_t SdpController_SerializeSdpMessageByDescription( SdpControl
     if( ( pSdpDescription == NULL ) || ( pOutputSerializedSdpMessage == NULL ) || ( pOutputSerializedSdpMessageLength == NULL ) )
     {
         LogError( ( "Invalid input, pSdpDescription: %p, pOutputSerializedSdpMessage: %p, pOutputSerializedSdpMessageLength: %p",
-            pSdpDescription,
-            pOutputSerializedSdpMessage,
-            pOutputSerializedSdpMessageLength ) );
+                    pSdpDescription,
+                    pOutputSerializedSdpMessage,
+                    pOutputSerializedSdpMessageLength ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -2590,8 +2590,8 @@ SdpControllerResult_t SdpController_SerializeSdpMessageByDescription( SdpControl
 }
 
 static SdpControllerResult_t PopulateSessionOrigin( char ** ppBuffer,
-    size_t * pBufferLength,
-    SdpControllerOrigin_t * pOrigin )
+                                                    size_t * pBufferLength,
+                                                    SdpControllerOrigin_t * pOrigin )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
 
@@ -2610,12 +2610,12 @@ static SdpControllerResult_t PopulateSessionOrigin( char ** ppBuffer,
 }
 
 SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescription_t * pRemoteMediaDescription,
-    SdpControllerPopulateMediaConfiguration_t populateConfiguration,
-    SdpControllerMediaDescription_t * pLocalMediaDescription,
-    uint32_t currentMediaIdx,
-    char ** ppBuffer,
-    size_t * pBufferLength,
-    TransceiverTrackKind_t trackKind )
+                                                         SdpControllerPopulateMediaConfiguration_t populateConfiguration,
+                                                         SdpControllerMediaDescription_t * pLocalMediaDescription,
+                                                         uint32_t currentMediaIdx,
+                                                         char ** ppBuffer,
+                                                         size_t * pBufferLength,
+                                                         TransceiverTrackKind_t trackKind )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     char * pCurBuffer = NULL;
@@ -2631,9 +2631,9 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         ( pBufferLength == NULL ) )
     {
         LogError( ( "Invalid input, pLocalMediaDescription: %p, ppBuffer: %p, pBufferLength: %p",
-            pLocalMediaDescription,
-            ppBuffer,
-            pBufferLength ) );
+                    pLocalMediaDescription,
+                    ppBuffer,
+                    pBufferLength ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
     else if( ( populateConfiguration.pCname == NULL ) ||
@@ -2645,12 +2645,12 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
              ( populateConfiguration.pUserName == NULL ) )
     {
         LogError( ( "Invalid input, pCname: %p, pLocalFingerprint: %p, pPassword: %p, pTransceiver: %p, pUserName: %p, trackKind: %d",
-            populateConfiguration.pCname,
-            populateConfiguration.pLocalFingerprint,
-            populateConfiguration.pPassword,
-            populateConfiguration.pTransceiver,
-            populateConfiguration.pUserName,
-            trackKind ) );
+                    populateConfiguration.pCname,
+                    populateConfiguration.pLocalFingerprint,
+                    populateConfiguration.pPassword,
+                    populateConfiguration.pTransceiver,
+                    populateConfiguration.pUserName,
+                    trackKind ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
     else
@@ -2752,14 +2752,14 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         if( populateConfiguration.rtxPayloadType == 0 )
         {
             written = snprintf( pCurBuffer, remainSize, "%.*s %.*s",
-                ( int ) populateConfiguration.pTransceiver->streamIdLength, populateConfiguration.pTransceiver->streamId,
-                ( int ) populateConfiguration.pTransceiver->trackIdLength, populateConfiguration.pTransceiver->trackId );
+                                ( int ) populateConfiguration.pTransceiver->streamIdLength, populateConfiguration.pTransceiver->streamId,
+                                ( int ) populateConfiguration.pTransceiver->trackIdLength, populateConfiguration.pTransceiver->trackId );
         }
         else
         {
             written = snprintf( pCurBuffer, remainSize, "%.*s %.*sRTX",
-                ( int ) populateConfiguration.pTransceiver->streamIdLength, populateConfiguration.pTransceiver->streamId,
-                ( int ) populateConfiguration.pTransceiver->trackIdLength, populateConfiguration.pTransceiver->trackId );
+                                ( int ) populateConfiguration.pTransceiver->streamIdLength, populateConfiguration.pTransceiver->streamId,
+                                ( int ) populateConfiguration.pTransceiver->trackIdLength, populateConfiguration.pTransceiver->trackId );
         }
 
         if( written < 0 )
@@ -2792,8 +2792,8 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "FID %u %u",
-            populateConfiguration.pTransceiver->ssrc,
-            populateConfiguration.pTransceiver->rtxSsrc );
+                            populateConfiguration.pTransceiver->ssrc,
+                            populateConfiguration.pTransceiver->rtxSsrc );
 
         if( written < 0 )
         {
@@ -2867,7 +2867,7 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         pTargetAttribute->attributeNameLength = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT_LENGTH;
 
         written = snprintf( pCurBuffer, remainSize, "sha-256 %.*s",
-            ( int ) populateConfiguration.localFingerprintLength, populateConfiguration.pLocalFingerprint );
+                            ( int ) populateConfiguration.localFingerprintLength, populateConfiguration.pLocalFingerprint );
 
         if( written < 0 )
         {
@@ -2919,9 +2919,9 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
         {
             /* Try to match the mid number in the remote media description. */
             pSourceAttribute = FindAttributeName( pRemoteMediaDescription->attributes,
-                pRemoteMediaDescription->mediaAttributesCount,
-                SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID,
-                SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID_LENGTH );
+                                                  pRemoteMediaDescription->mediaAttributesCount,
+                                                  SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID,
+                                                  SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID_LENGTH );
         }
         pTargetAttribute = &pLocalMediaDescription->attributes[ *pTargetAttributeCount ];
         pTargetAttribute->pAttributeName = SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID;
@@ -2984,26 +2984,26 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
             {
                 for( i = 0; i < pRemoteMediaDescription->mediaAttributesCount; i++ )
                 {
-                    if( ( pRemoteMediaDescription->attributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ) &&
-                        ( strncmp( pRemoteMediaDescription->attributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ) == 0 ) )
+                    if( ( pRemoteMediaDescription->attributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ) &&
+                        ( strncmp( pRemoteMediaDescription->attributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ) == 0 ) )
                     {
                         targetDirection = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
                         break;
                     }
-                    else if( ( pRemoteMediaDescription->attributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ) &&
-                             ( strncmp( pRemoteMediaDescription->attributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ) == 0 ) )
+                    else if( ( pRemoteMediaDescription->attributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ) &&
+                             ( strncmp( pRemoteMediaDescription->attributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ) == 0 ) )
                     {
                         targetDirection = TRANSCEIVER_TRACK_DIRECTION_RECVONLY;
                         break;
                     }
-                    else if( ( pRemoteMediaDescription->attributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ) &&
-                             ( strncmp( pRemoteMediaDescription->attributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ) == 0 ) )
+                    else if( ( pRemoteMediaDescription->attributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ) &&
+                             ( strncmp( pRemoteMediaDescription->attributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ) == 0 ) )
                     {
                         targetDirection = TRANSCEIVER_TRACK_DIRECTION_SENDONLY;
                         break;
                     }
-                    else if( ( pRemoteMediaDescription->attributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ) &&
-                             ( strncmp( pRemoteMediaDescription->attributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ) == 0 ) )
+                    else if( ( pRemoteMediaDescription->attributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ) &&
+                             ( strncmp( pRemoteMediaDescription->attributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ) == 0 ) )
                     {
                         targetDirection = TRANSCEIVER_TRACK_DIRECTION_INACTIVE;
                         break;
@@ -3061,10 +3061,10 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     if( ( ret == SDP_CONTROLLER_RESULT_OK ) && ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) )
     {
         ret = PopulateCodecAttributes( pRemoteMediaDescription,
-            populateConfiguration,
-            &pCurBuffer,
-            &remainSize,
-            pLocalMediaDescription );
+                                       populateConfiguration,
+                                       &pCurBuffer,
+                                       &remainSize,
+                                       pLocalMediaDescription );
     }
 
     /* sctp port */
@@ -3088,10 +3088,10 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
 }
 
 SdpControllerResult_t SdpController_PopulateSessionDescription( SdpControllerSdpDescription_t * pRemoteSessionDescription,
-    SdpControllerPopulateSessionConfiguration_t populateConfiguration,
-    SdpControllerSdpDescription_t * pLocalSessionDescription,
-    char ** ppBuffer,
-    size_t * pBufferLength )
+                                                                SdpControllerPopulateSessionConfiguration_t populateConfiguration,
+                                                                SdpControllerSdpDescription_t * pLocalSessionDescription,
+                                                                char ** ppBuffer,
+                                                                size_t * pBufferLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
 
@@ -3100,9 +3100,9 @@ SdpControllerResult_t SdpController_PopulateSessionDescription( SdpControllerSdp
         ( pBufferLength == NULL ) )
     {
         LogError( ( "Invalid input, pLocalSessionDescription: %p, ppBuffer: %p, pBufferLength: %p",
-            pLocalSessionDescription,
-            ppBuffer,
-            pBufferLength ) );
+                    pLocalSessionDescription,
+                    ppBuffer,
+                    pBufferLength ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 

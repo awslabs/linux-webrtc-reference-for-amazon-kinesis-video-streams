@@ -26,14 +26,14 @@ extern "C" {
 /* *INDENT-ON* */
 
 /* Standard includes. */
+#include <stdint.h>
 #include "demo_config.h"
 #include "ice_data_types.h"
 #include "timer_controller.h"
-#include "transport_dtls_mbedtls.h"
-#include "transport_mbedtls.h"
-#include <arpa/inet.h>
-#include <stdint.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
+#include "transport_mbedtls.h"
+#include "transport_dtls_mbedtls.h"
 
 /* FreeRTOS includes. */
 #include <pthread.h>
@@ -42,45 +42,45 @@ extern "C" {
  * Set default maximum Ice server count to 7.
  * Note that the first Ice server is the default STUN server.
  */
-#define ICE_CONTROLLER_MAX_ICE_SERVER_COUNT               ( 7 )
+#define ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ( 7 )
 
-#define ICE_CONTROLLER_IP_ADDR_STRING_BUFFER_LENGTH       ( 39 )
-#define ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE           ( 1024 )
+#define ICE_CONTROLLER_IP_ADDR_STRING_BUFFER_LENGTH ( 39 )
+#define ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ( 1024 )
 
 /**
  * Maximum allowed ICE URI length
  */
-#define ICE_CONTROLLER_ICE_SERVER_URL_MAX_LENGTH          ( 256 )
+#define ICE_CONTROLLER_ICE_SERVER_URL_MAX_LENGTH ( 256 )
 
 /**
  * Maximum allowed ICE configuration user name length
  * https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_AWSAcuitySignalingService_GetIceServerConfig.html#API_AWSAcuitySignalingService_GetIceServerConfig_RequestSyntax
  */
-#define ICE_CONTROLLER_ICE_SERVER_USERNAME_MAX_LENGTH     ( 256 )
+#define ICE_CONTROLLER_ICE_SERVER_USERNAME_MAX_LENGTH ( 256 )
 
 /**
  * Maximum allowed ICE configuration password length
  * https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_AWSAcuitySignalingService_IceServer.html#KinesisVideo-Type-AWSAcuitySignalingService_IceServer-Password
  */
-#define ICE_CONTROLLER_ICE_SERVER_PASSWORD_MAX_LENGTH     ( 256 )
+#define ICE_CONTROLLER_ICE_SERVER_PASSWORD_MAX_LENGTH ( 256 )
 
-#define ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT           ( 1024 )
-#define ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT          ( 100 )
-#define ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT         ( 100 )
+#define ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT       ( 1024 )
+#define ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT      ( 100 )
+#define ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT     ( 100 )
 
 #define ICE_CONTROLLER_PRINT_CONNECTIVITY_CHECK_PERIOD_MS ( 10000 )
 
-#define ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS     ( 100 )
-#define ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS         ( 1000 )
-#define ICE_CONTROLLER_CLOSING_INTERVAL_MS                ( 100 )
+#define ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS ( 100 )
+#define ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS ( 1000 )
+#define ICE_CONTROLLER_CLOSING_INTERVAL_MS ( 100 )
 
 /* Expiration timeout in mili-seconds. */
-#define ICE_CONTROLLER_CONNECTIVITY_CHECK_TIMEOUT_MS      ( 12000 )
+#define ICE_CONTROLLER_CONNECTIVITY_CHECK_TIMEOUT_MS ( 12000 )
 
-#define ICE_CONTROLLER_MAX_PATH_LENGTH                    ( 2048 )
-#define ICE_CONTROLLER_MAX_PEM_LENGTH                     ( 2048 )
+#define ICE_CONTROLLER_MAX_PATH_LENGTH ( 2048 )
+#define ICE_CONTROLLER_MAX_PEM_LENGTH ( 2048 )
 
-#define ICE_CONTROLLER_MAX_MTU                            ( 1500 )
+#define ICE_CONTROLLER_MAX_MTU ( 1500 )
 
 typedef enum IceControllerSocketType
 {
@@ -114,21 +114,20 @@ typedef struct IceControllerCallbackContent
 {
     union
     {
-        IceControllerLocalCandidateReadyMsg_t
-            localCandidateReadyMsg; /* ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY
-                                     */
+        IceControllerLocalCandidateReadyMsg_t localCandidateReadyMsg; /* ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY */
         /* NULL for ICE_CONTROLLER_CB_EVENT_PROCESS_ICE_CANDIDATES_AND_PAIRS */
         /* NULL for ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND */
         /* NULL for ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK */
     } iceControllerCallbackContent;
 } IceControllerCallbackContent_t;
 
-typedef int32_t ( *OnIceEventCallback_t )( void * pCustomContext,
-    IceControllerCallbackEvent_t event,
-    IceControllerCallbackContent_t * pEventMsg );
+typedef int32_t (* OnIceEventCallback_t)( void * pCustomContext,
+                                          IceControllerCallbackEvent_t event,
+                                          IceControllerCallbackContent_t * pEventMsg );
 
-typedef int32_t ( *OnRecvNonStunPacketCallback_t )(
-    void * pCustomContext, uint8_t * pBuffer, size_t bufferLength );
+typedef int32_t (* OnRecvNonStunPacketCallback_t)( void * pCustomContext,
+                                                   uint8_t * pBuffer,
+                                                   size_t bufferLength );
 
 typedef enum IceControllerResult
 {
@@ -249,12 +248,12 @@ typedef struct IceControllerIceServer
     IceControllerIceServerType_t serverType; /* STUN or TURN */
     char url[ ICE_CONTROLLER_ICE_SERVER_URL_MAX_LENGTH ];
     size_t urlLength;
-    IceEndpoint_t iceEndpoint;                                      // IP address
-    char userName[ ICE_CONTROLLER_ICE_SERVER_USERNAME_MAX_LENGTH ]; // user name
+    IceEndpoint_t iceEndpoint; //IP address
+    char userName[ ICE_CONTROLLER_ICE_SERVER_USERNAME_MAX_LENGTH ]; //user name
     size_t userNameLength;
-    char password[ ICE_CONTROLLER_ICE_SERVER_PASSWORD_MAX_LENGTH ]; // password
+    char password[ ICE_CONTROLLER_ICE_SERVER_PASSWORD_MAX_LENGTH ]; //password
     size_t passwordLength;
-    IceSocketProtocol_t protocol; // tcp or udp
+    IceSocketProtocol_t protocol; //tcp or udp
 } IceControllerIceServer_t;
 
 typedef struct IceControllerSocketContext
@@ -282,11 +281,11 @@ typedef struct IceControllerIceServerConfig
 
 typedef struct IceControllerStunMsgHeader
 {
-    uint16_t msgType; // StunMessageType_t
-    uint8_t contentLength[ 2 ];
+    uint16_t msgType; //StunMessageType_t
+    uint8_t contentLength[2];
     uint8_t magicCookie[ STUN_HEADER_MAGIC_COOKIE_OFFSET ];
     uint8_t transactionId[ STUN_HEADER_TRANSACTION_ID_LENGTH ];
-    uint8_t pStunAttributes[ 0 ];
+    uint8_t pStunAttributes[0];
 } IceControllerStunMsgHeader_t;
 
 typedef struct IceControllerSocketListenerContext
@@ -335,10 +334,7 @@ typedef struct IceControllerContext
     IceContext_t iceContext;
 
     IceControllerNatTraversalConfig_t natTraversalConfigBitmap;
-    IceControllerIceServer_t
-        iceServers[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ]; /* Reserve 1 space
-                                                              for default STUN
-                                                              server. */
+    IceControllerIceServer_t iceServers[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ]; /* Reserve 1 space for default STUN server. */
     size_t iceServersCount;
     char rootCaPath[ ICE_CONTROLLER_MAX_PATH_LENGTH + 1 ];
     size_t rootCaPathLength;
@@ -353,8 +349,7 @@ typedef struct IceControllerContext
     IceControllerSocketListenerContext_t socketListenerContext;
 
     /* Original remote info. */
-    IceControllerSocketContext_t
-        socketsContexts[ ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT ];
+    IceControllerSocketContext_t socketsContexts[ ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT ];
     size_t socketsContextsCount;
     IceControllerSocketContext_t * pNominatedSocketContext;
 
@@ -362,28 +357,22 @@ typedef struct IceControllerContext
     IceEndpoint_t localEndpoints[ ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT ];
     size_t localIceEndpointsCount;
     size_t candidateFoundationCounter;
-    IceCandidate_t
-        localCandidatesBuffer[ ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT ];
-    IceCandidate_t
-        remoteCandidatesBuffer[ ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT ];
-    IceCandidatePair_t
-        candidatePairsBuffer[ ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT ];
+    IceCandidate_t localCandidatesBuffer[ ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT ];
+    IceCandidate_t remoteCandidatesBuffer[ ICE_CONTROLLER_MAX_REMOTE_CANDIDATE_COUNT ];
+    IceCandidatePair_t candidatePairsBuffer[ ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT ];
     IceTurnServer_t turnServersBuffer[ ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ];
     TransactionIdStore_t transactionIdStore;
-    TransactionIdSlot_t
-        transactionIdsBuffer[ ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT ];
+    TransactionIdSlot_t transactionIdsBuffer[ ICE_CONTROLLER_MAX_CANDIDATE_PAIR_COUNT ];
 
     OnIceEventCallback_t onIceEventCallbackFunc;
     void * pOnIceEventCustomContext;
 
-    /* Mutex to protect global variables shared between Ice controller and
-     * socket listener. */
+    /* Mutex to protect global variables shared between Ice controller and socket listener. */
     pthread_mutex_t socketMutex;
     /* Mutex to ice context while invoking APIs of ICE library. */
     pthread_mutex_t iceMutex;
 
     uint64_t connectivityCheckTimeoutMs;
-    uint8_t addLocalCandidates;
 } IceControllerContext_t;
 
 /* *INDENT-OFF* */
