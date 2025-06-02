@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  setup:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +41,30 @@ jobs:
           else
             podman load < ~/podman-x86-64-image.tar
           fi
+
+  build:
+    needs: setup
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        log_level: [LOG_NONE, LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG, LOG_VERBOSE]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Load cached Podman image
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/podman-x86-64-image.tar
+          key:
+            ${{ runner.os }}-podman-${{ hashFiles('misc/buildtestcontainer/*')
+            }}
+
+      - name: Load container image
+        run: podman load < ~/podman-x86-64-image.tar
 
       - name: Run build in container
         shell: bash
