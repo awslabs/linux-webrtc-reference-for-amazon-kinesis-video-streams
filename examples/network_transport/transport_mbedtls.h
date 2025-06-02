@@ -32,7 +32,7 @@
 #include "tcp_sockets_wrapper.h"
 
 /* Flags to be used in TLS_FreeRTOS_Connect. */
-#define TLS_CONNECT_NON_BLOCKING_HANDSHAKE   ( 1 << 0 )
+#define TLS_CONNECT_NON_BLOCKING_HANDSHAKE (1 << 0)
 
 /**
  * @brief Secured connection context.
@@ -61,7 +61,7 @@ typedef struct TlsTransportParams
 
 typedef struct TlsNetworkContext
 {
-    TlsTransportParams_t * pParams;
+    TlsTransportParams_t* pParams;
 } TlsNetworkContext_t;
 
 /**
@@ -77,21 +77,21 @@ typedef struct NetworkCredentials
      * (https://aws.amazon.com/blogs/iot/mqtt-with-tls-client-authentication-on-port-443-why-it-is-useful-and-how-it-works/)
      * for more information.
      */
-    const char ** pAlpnProtos;
+    const char** pAlpnProtos;
 
     /**
      * @brief Disable server name indication (SNI) for a TLS session.
      */
     int32_t disableSni;
 
-    const uint8_t * pRootCa;     /**< @brief String representing a trusted server root certificate. */
-    size_t rootCaSize;           /**< @brief Size associated with #NetworkCredentials.pRootCa. */
-    const uint8_t * pRootCaPath; /**< @brief String representing a trusted server root certificate path. */
-    size_t rootCaPathLength;     /**< @brief Length associated with #NetworkCredentials.pRootCaPath. */
-    const uint8_t * pClientCert; /**< @brief String representing the client certificate. */
-    size_t clientCertSize;       /**< @brief Size associated with #NetworkCredentials.pClientCert. */
-    const uint8_t * pPrivateKey; /**< @brief String representing the client certificate's private key. */
-    size_t privateKeySize;       /**< @brief Size associated with #NetworkCredentials.pPrivateKey. */
+    const uint8_t* pRootCa;     /**< @brief String representing a trusted server root certificate. */
+    size_t rootCaSize;          /**< @brief Size associated with #NetworkCredentials.pRootCa. */
+    const uint8_t* pRootCaPath; /**< @brief String representing a trusted server root certificate path. */
+    size_t rootCaPathLength;    /**< @brief Length associated with #NetworkCredentials.pRootCaPath. */
+    const uint8_t* pClientCert; /**< @brief String representing the client certificate. */
+    size_t clientCertSize;      /**< @brief Size associated with #NetworkCredentials.pClientCert. */
+    const uint8_t* pPrivateKey; /**< @brief String representing the client certificate's private key. */
+    size_t privateKeySize;      /**< @brief Size associated with #NetworkCredentials.pPrivateKey. */
 } NetworkCredentials_t;
 
 typedef struct TlsSession
@@ -105,14 +105,14 @@ typedef struct TlsSession
  */
 typedef enum TlsTransportStatus
 {
-    TLS_TRANSPORT_SUCCESS = 0,              /**< Function successfully completed. */
-    TLS_TRANSPORT_INVALID_PARAMETER,        /**< At least one parameter was invalid. */
-    TLS_TRANSPORT_INSUFFICIENT_MEMORY,      /**< Insufficient memory required to establish connection. */
-    TLS_TRANSPORT_INVALID_CREDENTIALS,      /**< Provided credentials were invalid. */
-    TLS_TRANSPORT_HANDSHAKE_FAILED,         /**< Performing TLS handshake with server failed. */
-    TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS,    /**< TLS handshake with server is in-progress. */
-    TLS_TRANSPORT_INTERNAL_ERROR,           /**< A call to a system API resulted in an internal error. */
-    TLS_TRANSPORT_CONNECT_FAILURE           /**< Initial connection to the server failed. */
+    TLS_TRANSPORT_SUCCESS = 0,           /**< Function successfully completed. */
+    TLS_TRANSPORT_INVALID_PARAMETER,     /**< At least one parameter was invalid. */
+    TLS_TRANSPORT_INSUFFICIENT_MEMORY,   /**< Insufficient memory required to establish connection. */
+    TLS_TRANSPORT_INVALID_CREDENTIALS,   /**< Provided credentials were invalid. */
+    TLS_TRANSPORT_HANDSHAKE_FAILED,      /**< Performing TLS handshake with server failed. */
+    TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS, /**< TLS handshake with server is in-progress. */
+    TLS_TRANSPORT_INTERNAL_ERROR,        /**< A call to a system API resulted in an internal error. */
+    TLS_TRANSPORT_CONNECT_FAILURE        /**< Initial connection to the server failed. */
 } TlsTransportStatus_t;
 
 /**
@@ -123,7 +123,7 @@ typedef enum TlsTransportStatus
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_INVALID_PARAMETER,
  * #TLS_TRANSPORT_HANDSHAKE_FAILED, or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
  */
-TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( TlsNetworkContext_t * pTlsNetworkContext );
+TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake(TlsNetworkContext_t* pTlsNetworkContext);
 
 /**
  * @brief Create a TLS connection with FreeRTOS sockets.
@@ -140,20 +140,20 @@ TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( TlsNetworkContext_t * pTlsN
  * #TLS_TRANSPORT_HANDSHAKE_FAILED, #TLS_TRANSPORT_INTERNAL_ERROR, #TLS_TRANSPORT_CONNECT_FAILURE,
  * or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
  */
-TlsTransportStatus_t TLS_FreeRTOS_Connect( TlsNetworkContext_t * pTlsNetworkContext,
-                                           const char * pHostName,
-                                           uint16_t port,
-                                           const NetworkCredentials_t * pNetworkCredentials,
-                                           uint32_t receiveTimeoutMs,
-                                           uint32_t sendTimeoutMs,
-                                           uint32_t flags );
+TlsTransportStatus_t TLS_FreeRTOS_Connect(TlsNetworkContext_t* pTlsNetworkContext,
+                                          const char* pHostName,
+                                          uint16_t port,
+                                          const NetworkCredentials_t* pNetworkCredentials,
+                                          uint32_t receiveTimeoutMs,
+                                          uint32_t sendTimeoutMs,
+                                          uint32_t flags);
 
 /**
  * @brief Gracefully disconnect an established TLS connection.
  *
  * @param[in] pTlsNetworkContext Network context.
  */
-TlsTransportStatus_t TLS_FreeRTOS_Disconnect( TlsNetworkContext_t * pTlsNetworkContext );
+TlsTransportStatus_t TLS_FreeRTOS_Disconnect(TlsNetworkContext_t* pTlsNetworkContext);
 
 /**
  * @brief Receives data from an established TLS connection.
@@ -169,9 +169,9 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( TlsNetworkContext_t * pTlsNetworkC
  * 0 if the socket times out without reading any bytes;
  * negative value on error.
  */
-int32_t TLS_FreeRTOS_recv( TlsNetworkContext_t * pNetworkContext,
-                           void * pBuffer,
-                           size_t bytesToRecv );
+int32_t TLS_FreeRTOS_recv(TlsNetworkContext_t* pNetworkContext,
+                          void* pBuffer,
+                          size_t bytesToRecv);
 
 /**
  * @brief Sends data over an established TLS connection.
@@ -187,9 +187,9 @@ int32_t TLS_FreeRTOS_recv( TlsNetworkContext_t * pNetworkContext,
  * 0 if the socket times out without sending any bytes;
  * else a negative value to represent error.
  */
-int32_t TLS_FreeRTOS_send( TlsNetworkContext_t * pTlsNetworkContext,
-                           const void * pBuffer,
-                           size_t bytesToSend );
+int32_t TLS_FreeRTOS_send(TlsNetworkContext_t* pTlsNetworkContext,
+                          const void* pBuffer,
+                          size_t bytesToSend);
 
 /**
  * @brief Get the socket FD for this network context.
@@ -198,7 +198,7 @@ int32_t TLS_FreeRTOS_send( TlsNetworkContext_t * pTlsNetworkContext,
  *
  * @return The socket descriptor if value >= 0. It returns -1 when failure.
  */
-int32_t TLS_FreeRTOS_GetSocketFd( TlsNetworkContext_t * pTlsNetworkContext );
+int32_t TLS_FreeRTOS_GetSocketFd(TlsNetworkContext_t* pTlsNetworkContext);
 
 #ifdef MBEDTLS_DEBUG_C
 
@@ -213,11 +213,11 @@ int32_t TLS_FreeRTOS_GetSocketFd( TlsNetworkContext_t * pTlsNetworkContext );
  *
  * @return void
  */
-    void mbedtls_string_printf( void * sslContext,
-                                int level,
-                                const char * file,
-                                int line,
-                                const char * str );
+void mbedtls_string_printf(void* sslContext,
+                           int level,
+                           const char* file,
+                           int line,
+                           const char* str);
 #endif /* MBEDTLS_DEBUG_C */
 
 #endif /* ifndef USING_MBEDTLS */

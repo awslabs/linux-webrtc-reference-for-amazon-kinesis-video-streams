@@ -26,9 +26,9 @@
  *
  * @return Number of bytes sent on success; else a negative value.
  */
-int xMbedTLSBioTCPSocketsWrapperSend( void * ctx,
-                                      const unsigned char * buf,
-                                      size_t len );
+int xMbedTLSBioTCPSocketsWrapperSend(void* ctx,
+                                     const unsigned char* buf,
+                                     size_t len);
 
 /**
  * @brief Receives data from TCP socket.
@@ -39,9 +39,9 @@ int xMbedTLSBioTCPSocketsWrapperSend( void * ctx,
  *
  * @return Number of bytes received if successful; Negative value on error.
  */
-int xMbedTLSBioTCPSocketsWrapperRecv( void * ctx,
-                                      unsigned char * buf,
-                                      size_t len );
+int xMbedTLSBioTCPSocketsWrapperRecv(void* ctx,
+                                     unsigned char* buf,
+                                     size_t len);
 
 
 #endif /* MBEDTLS_BIO_TCP_SOCKETS_WRAPPER */
