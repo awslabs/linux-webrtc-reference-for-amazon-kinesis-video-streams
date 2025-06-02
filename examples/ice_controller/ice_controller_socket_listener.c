@@ -176,7 +176,7 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceCandidatePair_t * pOriginalCandidatePair = NULL;
     #if LIBRARY_LOG_LEVEL >= LOG_INFO
-    char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET_ADDRSTRLEN ];
     #endif
 
     /* Find valid candidate pair pointer for current packet.
@@ -449,7 +449,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 
     if( readBytes < 0 )
     {
-        /* 
+        /*
          * Socket read error detected (readBytes < 0).
          * This typically indicates the remote peer closed the connection.
          * Action required: Close the local socket to properly terminate the connection.

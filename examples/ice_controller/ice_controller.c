@@ -91,8 +91,8 @@ static void OnTimerExpire( void * pContext )
                 break;
             case ICE_CONTROLLER_STATE_READY:
                 result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK,
-                                              NULL );
+                                                       ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK,
+                                                       NULL );
                 if( result != 0 )
                 {
                     LogDebug( ( "Failed to process ICE periodic connection check event, result: %d.", result ) );
@@ -102,8 +102,8 @@ static void OnTimerExpire( void * pContext )
                 break;
             case ICE_CONTROLLER_STATE_CLOSING:
                 result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
-                                              NULL );
+                                                       ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
+                                                       NULL );
                 if( result != 0 )
                 {
                     LogDebug( ( "Failed to process ICE closing event, result: %d.", result ) );
@@ -113,8 +113,8 @@ static void OnTimerExpire( void * pContext )
                 break;
             case ICE_CONTROLLER_STATE_CLOSED:
                 result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
-                                              NULL );
+                                                       ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
+                                                       NULL );
                 if( result != 0 )
                 {
                     LogDebug( ( "Failed to process ICE closed event, result: %d.", result ) );
@@ -367,9 +367,9 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
                 if( iceResult == ICE_RESULT_NO_NEXT_ACTION )
                 {
                     /*
-                    * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
-                    * has no pending operations and can be skipped for this iteration
-                    */
+                     * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
+                     * has no pending operations and can be skipped for this iteration
+                     */
                     LogVerbose( ( "No next action for local candidate ID: 0x%04x, idx: %d", pSocketContext->pLocalCandidate->candidateId, i ) );
                     continue;
                 }
@@ -550,7 +550,7 @@ static void ProcessCandidatePairs( IceControllerContext_t * pCtx )
         {
             pCtx->metrics.isFirstConnectivityRequest = 0;
             #if METRIC_PRINT_ENABLED
-            Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+                Metric_StartEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
             #endif
         }
 
@@ -895,6 +895,15 @@ IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerC
     {
         LogError( ( "Invalid input, pCtx: %p", pCtx ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        if( pCtx->addLocalCandidates != 0U )
+        {
+            pCtx->addLocalCandidates = 0U;
+            IceControllerNet_AddLocalCandidates( pCtx );
+        }
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -1541,7 +1550,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        IceControllerNet_AddLocalCandidates( pCtx );
+        pCtx->addLocalCandidates = 1U;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -1679,8 +1688,7 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
                                                         IceControllerIceServerConfig_t * pIceServersConfig )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    IceControllerResult_t dnsResult;
-    int i;
+    int validIceServerCount = 0;
 
     if( ( pCtx == NULL ) ||
         ( pIceServersConfig == NULL ) )
@@ -1726,30 +1734,19 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        memset( pCtx->iceServers,
-                0,
-                sizeof( pCtx->iceServers ) );
-        pCtx->iceServersCount = 0;
-
-        for( i = 0; i < pIceServersConfig->iceServersCount; i++ )
+        if( pIceServersConfig->iceServersCount > ICE_CONTROLLER_MAX_ICE_SERVER_COUNT )
         {
-            if( pCtx->iceServersCount >= ICE_CONTROLLER_MAX_ICE_SERVER_COUNT )
-            {
-                LogInfo( ( "No more space to store extra Ice server." ) );
-                break;
-            }
-
-            memcpy( &pCtx->iceServers[ pCtx->iceServersCount ],
-                    &pIceServersConfig->pIceServers[i],
-                    sizeof( IceControllerIceServer_t ) );
-            dnsResult = IceControllerNet_DnsLookUp( pCtx->iceServers[ pCtx->iceServersCount ].url,
-                                                    &pCtx->iceServers[ pCtx->iceServersCount ].iceEndpoint.transportAddress );
-            if( dnsResult == ICE_CONTROLLER_RESULT_OK )
-            {
-                /* Use the server configuration only if the IP address is successfully resolved. */
-                pCtx->iceServersCount++;
-            }
+            validIceServerCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
+            LogInfo( ( "Ice Controller supports a maximum of %d Ice servers. The additional %lu servers will be dropped",
+                       ICE_CONTROLLER_MAX_ICE_SERVER_COUNT,
+                       pIceServersConfig->iceServersCount - ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ) );
         }
+        else
+        {
+            validIceServerCount = pIceServersConfig->iceServersCount;
+        }
+        memcpy( &( pCtx->iceServers[ 0 ] ), pIceServersConfig->pIceServers, validIceServerCount * sizeof( IceControllerIceServer_t ) );
+        pCtx->iceServersCount = validIceServerCount;
     }
 
     return ret;

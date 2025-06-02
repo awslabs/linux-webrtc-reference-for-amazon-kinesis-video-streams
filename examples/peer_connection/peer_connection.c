@@ -591,7 +591,7 @@ static int32_t OnIceEventClosing( PeerConnectionSession_t * pSession )
     {
         result = SendPeerConnectionEvent( pSession,
                                           PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING,
-                                          NULL ,
+                                          NULL,
                                           0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
@@ -2230,8 +2230,8 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
                                                TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
-            ret = PeerConnectionSrtp_WriteH265Frame( pSession, 
-                                                     pTransceiver, 
+            ret = PeerConnectionSrtp_WriteH265Frame( pSession,
+                                                     pTransceiver,
                                                      pFrame );
         }
         else
