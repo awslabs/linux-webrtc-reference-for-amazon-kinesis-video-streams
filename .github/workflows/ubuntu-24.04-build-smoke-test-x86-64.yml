@@ -48,7 +48,6 @@ jobs:
     strategy:
       matrix:
         log_level: [LOG_NONE, LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG, LOG_VERBOSE]
-      fail-fast: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,6 +72,5 @@ jobs:
             cd linux-webrtc-reference-for-amazon-kinesis-video-streams && \
             rm -rf build/ && \
             cmake -B build \
-            -DLIBRARY_LOG_LEVEL=LOG_VERBOSE && \
-            make -C build -j$(nproc) \
-            "
+            -DLIBRARY_LOG_LEVEL=${{ matrix.log_level }} && \
+            make -C build -j$(nproc)"
