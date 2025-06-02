@@ -13,17 +13,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Generate (dummy) demo_config.h
-        run: |
-             cp examples/demo_config/demo_config_template.h examples/demo_config/demo_config.h
-             sed -i '/^#if defined( AWS_ACCESS_KEY_ID ) && defined( AWS_IOT_THING_ROLE_ALIAS )/i\
-             #define AWS_CREDENTIALS_ENDPOINT ""\
-             #define AWS_IOT_THING_NAME ""\
-             #define AWS_IOT_THING_ROLE_ALIAS ""\
-             #define AWS_IOT_THING_CERT_PATH "certificate.pem"\
-             #define AWS_IOT_THING_PRIVATE_KEY_PATH "private.key"\
-             ' examples/demo_config/demo_config.h
-
       - name: Cache Podman image
         uses: actions/cache@v4
         with:
@@ -52,6 +41,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Generate (dummy) demo_config.h
+        run: |
+             cp examples/demo_config/demo_config_template.h examples/demo_config/demo_config.h
+             sed -i '/^#if defined( AWS_ACCESS_KEY_ID ) && defined( AWS_IOT_THING_ROLE_ALIAS )/i\
+             #define AWS_CREDENTIALS_ENDPOINT ""\
+             #define AWS_IOT_THING_NAME ""\
+             #define AWS_IOT_THING_ROLE_ALIAS ""\
+             #define AWS_IOT_THING_CERT_PATH "certificate.pem"\
+             #define AWS_IOT_THING_PRIVATE_KEY_PATH "private.key"\
+             ' examples/demo_config/demo_config.h
 
       - name: Load cached Podman image
         uses: actions/cache/restore@v4
