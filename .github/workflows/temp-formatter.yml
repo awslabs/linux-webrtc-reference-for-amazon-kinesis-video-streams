@@ -1,0 +1,52 @@
+name: Temporary Clang Format Check
+
+permissions:
+  contents: read
+
+on:
+  push:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  test-clang-format:
+    name: Test ClangFormat
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.1.1
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Run clang-format check
+        run: |
+          # Find all C/C++ files excluding samples directories
+          FILES=$(find examples/ -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) -not -path "*/samples/*")
+
+          # Create a temporary directory for formatted files
+          mkdir -p /tmp/formatted
+
+          # Check formatting
+          FAILED=0
+          for FILE in $FILES; do
+            FORMATTED="/tmp/formatted/$(basename "$FILE")"
+            clang-format -style=file "$FILE" > "$FORMATTED"
+
+            # Check if files are different
+            if ! diff -u "$FILE" "$FORMATTED" > /dev/null; then
+              echo "::error file=$FILE::Formatting issues found"
+              diff -u "$FILE" "$FORMATTED" | head -n 50
+              FAILED=1
+            fi
+          done
+
+          # Report results
+          if [ $FAILED -ne 0 ]; then
+            echo "::error::Formatting check failed. Please run clang-format before committing."
+            exit 1
+          else
+            echo "All files passed formatting check!"
+          fi
