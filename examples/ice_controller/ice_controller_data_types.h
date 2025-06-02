@@ -109,9 +109,8 @@ typedef struct IceControllerLocalCandidateReadyMsg {
 
 typedef struct IceControllerCallbackContent {
   union {
-    IceControllerLocalCandidateReadyMsg_t
-        localCandidateReadyMsg; /* ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY
-                                 */
+    IceControllerLocalCandidateReadyMsg_t localCandidateReadyMsg; /* ICE_CONTROLLER_CB_EVENT_LOCAL_CANDIDATE_READY
+                                                                   */
     /* NULL for ICE_CONTROLLER_CB_EVENT_PROCESS_ICE_CANDIDATES_AND_PAIRS */
     /* NULL for ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND */
     /* NULL for ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK */

@@ -298,13 +298,11 @@ typedef struct PeerConnectionSessionRequestMessage {
 
   /* Decode the request message based on request type. */
   union {
-    IceControllerCandidate_t
-        remoteCandidate; /* PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE
-                          */
+    IceControllerCandidate_t remoteCandidate; /* PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE
+                                               */
     struct {
-      uint64_t
-          currentTimeUs; /* PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT
-                          */
+      uint64_t currentTimeUs; /* PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT
+                               */
       const Transceiver_t *pTransceiver;
     } rtcpContent;
   } peerConnectionSessionRequestContent;
