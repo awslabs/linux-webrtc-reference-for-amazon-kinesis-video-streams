@@ -16,5 +16,4 @@ jobs:
     - name: Check Formatting
       uses: FreeRTOS/CI-CD-Github-Actions/clang-formatting@main
       with:
-        path: examples/
-        exclude-dirs: 'examples/app_media_source/samples'
+        exclude-dirs: examples/app_media_source/samples
