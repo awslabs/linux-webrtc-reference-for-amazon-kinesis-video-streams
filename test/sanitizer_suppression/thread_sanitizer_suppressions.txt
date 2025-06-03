@@ -10,7 +10,7 @@
 #     #7 Networking_WebsocketSignal /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/networking/networking.c:1785 (WebRTCLinuxApplicationMaster+0x1d272) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
 #     #8 SignalingController_StartListening /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/signaling_controller/signaling_controller.c:1003 (WebRTCLinuxApplicationMaster+0x15bce) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
 #     #9 main /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/master/main.c:1425 (WebRTCLinuxApplicationMaster+0x22902) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
-# 
+#
 # SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x1f86c9) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b) in EVP_CIPHER_CTX_reset
 # ==================
 # ==================
@@ -25,8 +25,8 @@
 #     #7 Networking_WebsocketSignal /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/networking/networking.c:1785 (WebRTCLinuxApplicationMaster+0x1d272) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
 #     #8 SignalingController_StartListening /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/signaling_controller/signaling_controller.c:1003 (WebRTCLinuxApplicationMaster+0x15bce) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
 #     #9 main /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/master/main.c:1425 (WebRTCLinuxApplicationMaster+0x22902) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
-# 
-# SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x3d1c87) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b) 
+#
+# SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x3d1c87) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
 # ==================
 # ==================
 # WARNING: ThreadSanitizer: signal-unsafe call inside of a signal (pid=437567)
@@ -40,7 +40,7 @@
 #     #7 Networking_WebsocketSignal /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/networking/networking.c:1785 (WebRTCLinuxApplicationMaster+0x1d272) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
 #     #8 SignalingController_StartListening /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/signaling_controller/signaling_controller.c:1003 (WebRTCLinuxApplicationMaster+0x15bce) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
 #     #9 main /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/master/main.c:1425 (WebRTCLinuxApplicationMaster+0x22902) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
-# 
+#
 # SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x1f86c9) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b) in EVP_CIPHER_CTX_reset
 # ==================
 # ==================
@@ -55,8 +55,8 @@
 #     #7 Networking_WebsocketSignal /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/networking/networking.c:1785 (WebRTCLinuxApplicationMaster+0x1d272) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
 #     #8 SignalingController_StartListening /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/signaling_controller/signaling_controller.c:1003 (WebRTCLinuxApplicationMaster+0x15bce) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
 #     #9 main /home/ubuntu/linux-webrtc-reference-for-amazon-kinesis-video-streams/examples/master/main.c:1425 (WebRTCLinuxApplicationMaster+0x22902) (BuildId: d866a015e1aab645f8b766e1e770466bfddba4fe)
-# 
-# SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x3d1c91) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b) 
+#
+# SUMMARY: ThreadSanitizer: signal-unsafe call inside of a signal (/lib/x86_64-linux-gnu/libcrypto.so.3+0x3d1c91) (BuildId: cfe5771bbb528a123a2eac8ab2ebdc492abc030b)
 # ==================
 
 # Suppress all signal-unsafe calls in libcrypto
