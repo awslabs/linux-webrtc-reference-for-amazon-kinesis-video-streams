@@ -290,8 +290,8 @@ static int32_t OnPcEventRemotePeerClosed( AppMediaSourceContext_t * pMediaSource
 }
 
 static int32_t HandlePcEventCallback( void * pCustomContext,
-    TransceiverCallbackEvent_t event,
-    TransceiverCallbackContent_t * pEventMsg )
+                                      TransceiverCallbackEvent_t event,
+                                      TransceiverCallbackContent_t * pEventMsg )
 {
     int32_t ret = 0;
     AppMediaSourceContext_t * pMediaSource = ( AppMediaSourceContext_t * ) pCustomContext;
@@ -332,9 +332,9 @@ static int32_t InitializeVideoSource( AppMediaSourceContext_t * pVideoSource )
     if( ret == 0 )
     {
         retMessageQueue = MessageQueue_Create( &pVideoSource->dataQueue,
-            DEMO_TRANSCEIVER_VIDEO_DATA_QUEUE_NAME,
-            sizeof( WebrtcFrame_t ),
-            DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
+                                               DEMO_TRANSCEIVER_VIDEO_DATA_QUEUE_NAME,
+                                               sizeof( WebrtcFrame_t ),
+                                               DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to open video transceiver data queue." ) );
@@ -352,9 +352,9 @@ static int32_t InitializeVideoSource( AppMediaSourceContext_t * pVideoSource )
         pthread_t tid;
         /* Create task for video Tx. */
         pthread_create( &tid,
-            NULL,
-            VideoTx_Task,
-            pVideoSource );
+                        NULL,
+                        VideoTx_Task,
+                        pVideoSource );
         // if( xTaskCreate( VideoTx_Task, ( ( const char * )"VideoTask" ), 2048, pVideoSource, tskIDLE_PRIORITY + 1, NULL ) != pdPASS )
         // {
         //     LogError( ( "xTaskCreate(VideoTask) failed" ) );
@@ -379,9 +379,9 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
     if( ret == 0 )
     {
         retMessageQueue = MessageQueue_Create( &pAudioSource->dataQueue,
-            DEMO_TRANSCEIVER_AUDIO_DATA_QUEUE_NAME,
-            sizeof( WebrtcFrame_t ),
-            DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
+                                               DEMO_TRANSCEIVER_AUDIO_DATA_QUEUE_NAME,
+                                               sizeof( WebrtcFrame_t ),
+                                               DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to open audio transceiver data queue." ) );
@@ -399,9 +399,9 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
         pthread_t tid;
         /* Create task for audio Tx. */
         pthread_create( &tid,
-            NULL,
-            AudioTx_Task,
-            pAudioSource );
+                        NULL,
+                        AudioTx_Task,
+                        pAudioSource );
 
         // if( xTaskCreate( AudioTx_Task, ( ( const char * )"AudioTask" ), 2048, pAudioSource, tskIDLE_PRIORITY + 1, NULL ) != pdPASS )
         // {
@@ -414,8 +414,8 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
 }
 
 int32_t AppMediaSource_Init( AppMediaSourcesContext_t * pCtx,
-    AppMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
-    void * pOnMediaSinkHookCustom )
+                             AppMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
+                             void * pOnMediaSinkHookCustom )
 {
     int32_t ret = 0;
 
@@ -431,7 +431,7 @@ int32_t AppMediaSource_Init( AppMediaSourcesContext_t * pCtx,
 
         /* Mutex can only be created in executing scheduler. */
         if( pthread_mutex_init( &( pCtx->mediaMutex ),
-                NULL ) != 0 )
+                                NULL ) != 0 )
         {
             LogError( ( "Fail to create mutex for media source." ) );
             ret = -1;
@@ -460,7 +460,7 @@ int32_t AppMediaSource_Init( AppMediaSourcesContext_t * pCtx,
 }
 
 int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
-    Transceiver_t * pVideoTranceiver )
+                                             Transceiver_t * pVideoTranceiver )
 {
     int32_t ret = 0;
 
@@ -500,7 +500,7 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
 }
 
 int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
-    Transceiver_t * pAudioTranceiver )
+                                             Transceiver_t * pAudioTranceiver )
 {
     int32_t ret = 0;
 

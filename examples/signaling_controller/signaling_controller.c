@@ -32,31 +32,31 @@
 /*----------------------------------------------------------------------------*/
 
 static int OnWssMessageReceived( char * pMessage,
-    size_t messageLength,
-    void * pUserData );
+                                 size_t messageLength,
+                                 void * pUserData );
 
 static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx,
-    HttpRequest_t * pRequest,
-    HttpResponse_t * pResponse );
+                                             HttpRequest_t * pRequest,
+                                             HttpResponse_t * pResponse );
 
 static uint8_t AreCredentialsExpired( SignalingControllerContext_t * pCtx,
-    const SignalingControllerConnectInfo_t * pConnectInfo );
+                                      const SignalingControllerConnectInfo_t * pConnectInfo );
 
 static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControllerContext_t * pCtx,
-    const AwsIotCredentials_t * pAwsIotCredentials );
+                                                              const AwsIotCredentials_t * pAwsIotCredentials );
 
 static SignalingControllerResult_t DescribeSignalingChannel( SignalingControllerContext_t * pCtx,
-    const SignalingChannelName_t * pChannelName );
+                                                             const SignalingChannelName_t * pChannelName );
 
 static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingControllerContext_t * pCtx,
-    uint8_t enableSessionStorage );
+                                                                 uint8_t enableSessionStorage );
 
 static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerContext_t * pCtx );
 
 static SignalingControllerResult_t ConnectToWssEndpoint( SignalingControllerContext_t * pCtx );
 
 static SignalingControllerResult_t ConnectToSignalingService( SignalingControllerContext_t * pCtx,
-    const SignalingControllerConnectInfo_t * pConnectInfo );
+                                                              const SignalingControllerConnectInfo_t * pConnectInfo );
 
 static void LogSignalingInfo( SignalingControllerContext_t * pCtx );
 
@@ -65,8 +65,8 @@ static SignalingControllerResult_t JoinStorageSession( SignalingControllerContex
 /*----------------------------------------------------------------------------*/
 
 static int OnWssMessageReceived( char * pMessage,
-    size_t messageLength,
-    void * pUserData )
+                                 size_t messageLength,
+                                 void * pUserData )
 {
     int ret = 0;
     SignalingResult_t signalingResult;
@@ -86,9 +86,9 @@ static int OnWssMessageReceived( char * pMessage,
     {
         pCtx->signalingRxMessageLength = SIGNALING_CONTROLLER_MESSAGE_BUFFER_LENGTH;
         base64Result = Base64_Decode( wssRecvMessage.pBase64EncodedPayload,
-            wssRecvMessage.base64EncodedPayloadLength,
-            &( pCtx->signalingRxMessageBuffer[ 0 ] ),
-            &( pCtx->signalingRxMessageLength ) );
+                                      wssRecvMessage.base64EncodedPayloadLength,
+                                      &( pCtx->signalingRxMessageBuffer[ 0 ] ),
+                                      &( pCtx->signalingRxMessageLength ) );
 
         if( base64Result != BASE64_RESULT_OK )
         {
@@ -113,14 +113,14 @@ static int OnWssMessageReceived( char * pMessage,
                 if( strcmp( wssRecvMessage.statusResponse.pStatusCode, "200" ) != 0 )
                 {
                     LogWarn( ( "Failed to deliver message. Correlation ID: %.*s, Error Type: %.*s, Error Code: %.*s, Description: %.*s!",
-                        ( int ) wssRecvMessage.statusResponse.correlationIdLength,
-                        wssRecvMessage.statusResponse.pCorrelationId,
-                        ( int ) wssRecvMessage.statusResponse.errorTypeLength,
-                        wssRecvMessage.statusResponse.pErrorType,
-                        ( int ) wssRecvMessage.statusResponse.statusCodeLength,
-                        wssRecvMessage.statusResponse.pStatusCode,
-                        ( int ) wssRecvMessage.statusResponse.descriptionLength,
-                        wssRecvMessage.statusResponse.pDescription ) );
+                               ( int ) wssRecvMessage.statusResponse.correlationIdLength,
+                               wssRecvMessage.statusResponse.pCorrelationId,
+                               ( int ) wssRecvMessage.statusResponse.errorTypeLength,
+                               wssRecvMessage.statusResponse.pErrorType,
+                               ( int ) wssRecvMessage.statusResponse.statusCodeLength,
+                               wssRecvMessage.statusResponse.pStatusCode,
+                               ( int ) wssRecvMessage.statusResponse.descriptionLength,
+                               wssRecvMessage.statusResponse.pDescription ) );
                 }
             }
             break;
@@ -143,7 +143,7 @@ static int OnWssMessageReceived( char * pMessage,
         signalingMessage.messageLength = pCtx->signalingRxMessageLength;
 
         pCtx->messageReceivedCallback( &( signalingMessage ),
-            pCtx->pMessageReceivedCallbackData );
+                                       pCtx->pMessageReceivedCallbackData );
     }
 
     return ret;
@@ -152,8 +152,8 @@ static int OnWssMessageReceived( char * pMessage,
 /*----------------------------------------------------------------------------*/
 
 static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx,
-    HttpRequest_t * pRequest,
-    HttpResponse_t * pResponse )
+                                             HttpRequest_t * pRequest,
+                                             HttpResponse_t * pResponse )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     NetworkingResult_t networkingResult;
@@ -176,10 +176,10 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
     for( i = 0; i < SIGNALING_CONTROLLER_HTTP_NUM_RETRIES; i++ )
     {
         networkingResult = Networking_HttpSend( &( pCtx->httpContext ),
-            pRequest,
-            &( awsCreds ),
-            &( pCtx->awsConfig ),
-            pResponse );
+                                                pRequest,
+                                                &( awsCreds ),
+                                                &( pCtx->awsConfig ),
+                                                pResponse );
 
         if( networkingResult == NETWORKING_RESULT_OK )
         {
@@ -199,7 +199,7 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
 /*----------------------------------------------------------------------------*/
 
 static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControllerContext_t * pCtx,
-    const AwsIotCredentials_t * pAwsIotCredentials )
+                                                              const AwsIotCredentials_t * pAwsIotCredentials )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t signalingResult;
@@ -213,10 +213,10 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
     signalingRequest.urlLength = SIGNALING_CONTROLLER_HTTP_URL_BUFFER_LENGTH;
 
     signalingResult = Signaling_ConstructFetchTempCredsRequestForAwsIot( pAwsIotCredentials->pIotCredentialsEndpoint,
-        pAwsIotCredentials->iotCredentialsEndpointLength,
-        pAwsIotCredentials->pRoleAlias,
-        pAwsIotCredentials->roleAliasLength,
-        &( signalingRequest ) );
+                                                                         pAwsIotCredentials->iotCredentialsEndpointLength,
+                                                                         pAwsIotCredentials->pRoleAlias,
+                                                                         pAwsIotCredentials->roleAliasLength,
+                                                                         &( signalingRequest ) );
 
     if( signalingResult != SIGNALING_RESULT_OK )
     {
@@ -244,10 +244,10 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
         httpResponse.contentMaxCapacity = SIGNALING_CONTROLLER_HTTP_RESPONSE_BUFFER_LENGTH;
 
         if( Networking_HttpSend( &( pCtx->httpContext ),
-                &( httpRequest ),
-                NULL,
-                &( pCtx->awsConfig ),
-                &( httpResponse ) ) != NETWORKING_RESULT_OK )
+                                 &( httpRequest ),
+                                 NULL,
+                                 &( pCtx->awsConfig ),
+                                 &( httpResponse ) ) != NETWORKING_RESULT_OK )
         {
             LogError( ( "Failed to fetch temporary credentials!" ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
@@ -257,33 +257,33 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         signalingResult = Signaling_ParseFetchTempCredsResponseFromAwsIot( httpResponse.pContent,
-            httpResponse.contentLength,
-            &( signalingCredentials ) );
+                                                                           httpResponse.contentLength,
+                                                                           &( signalingCredentials ) );
 
         if( signalingResult != SIGNALING_RESULT_OK )
         {
             LogError( ( "Fail to parse fetch credentials response, return=0x%x, response(%lu): %.*s",
-                signalingResult,
-                httpResponse.contentLength,
-                ( int ) httpResponse.contentLength, httpResponse.pContent ) );
+                        signalingResult,
+                        httpResponse.contentLength,
+                        ( int ) httpResponse.contentLength, httpResponse.pContent ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
         }
         else
         {
             LogDebug( ( "Access Key ID: %.*s \n\n Secret Access Key ID : %.*s \n\n"
                         "Session Token: %.*s \n \n Expiration: %.*s",
-                ( int ) signalingCredentials.accessKeyIdLength, signalingCredentials.pAccessKeyId,
-                ( int ) signalingCredentials.secretAccessKeyLength, signalingCredentials.pSecretAccessKey,
-                ( int ) signalingCredentials.sessionTokenLength, signalingCredentials.pSessionToken,
-                ( int ) signalingCredentials.expirationLength, ( char * ) signalingCredentials.pExpiration ) );
+                        ( int ) signalingCredentials.accessKeyIdLength, signalingCredentials.pAccessKeyId,
+                        ( int ) signalingCredentials.secretAccessKeyLength, signalingCredentials.pSecretAccessKey,
+                        ( int ) signalingCredentials.sessionTokenLength, signalingCredentials.pSessionToken,
+                        ( int ) signalingCredentials.expirationLength, ( char * ) signalingCredentials.pExpiration ) );
         }
     }
 
     if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( signalingCredentials.pAccessKeyId != NULL ) )
     {
         memcpy( &( pCtx->accessKeyId[ 0 ] ),
-            signalingCredentials.pAccessKeyId,
-            signalingCredentials.accessKeyIdLength );
+                signalingCredentials.pAccessKeyId,
+                signalingCredentials.accessKeyIdLength );
         pCtx->accessKeyIdLength = signalingCredentials.accessKeyIdLength;
         pCtx->accessKeyId[ signalingCredentials.accessKeyIdLength ] = '\0';
     }
@@ -291,8 +291,8 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
     if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( signalingCredentials.pSecretAccessKey != NULL ) )
     {
         memcpy( &( pCtx->secretAccessKey[ 0 ] ),
-            signalingCredentials.pSecretAccessKey,
-            signalingCredentials.secretAccessKeyLength );
+                signalingCredentials.pSecretAccessKey,
+                signalingCredentials.secretAccessKeyLength );
         pCtx->secretAccessKeyLength = signalingCredentials.secretAccessKeyLength;
         pCtx->secretAccessKey[ signalingCredentials.secretAccessKeyLength ] = '\0';
     }
@@ -300,8 +300,8 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
     if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( signalingCredentials.pSessionToken != NULL ) )
     {
         memcpy( &( pCtx->sessionToken[ 0 ] ),
-            signalingCredentials.pSessionToken,
-            signalingCredentials.sessionTokenLength );
+                signalingCredentials.pSessionToken,
+                signalingCredentials.sessionTokenLength );
         pCtx->sessionTokenLength = signalingCredentials.sessionTokenLength;
         pCtx->sessionToken[ signalingCredentials.sessionTokenLength ] = '\0';
     }
@@ -309,7 +309,7 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
     if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( signalingCredentials.pExpiration != NULL ) )
     {
         pCtx->expirationSeconds = NetworkingUtils_GetTimeFromIso8601( signalingCredentials.pExpiration,
-            signalingCredentials.expirationLength );
+                                                                      signalingCredentials.expirationLength );
     }
 
     return ret;
@@ -318,7 +318,7 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
 /*----------------------------------------------------------------------------*/
 
 static SignalingControllerResult_t DescribeSignalingChannel( SignalingControllerContext_t * pCtx,
-    const SignalingChannelName_t * pChannelName )
+                                                             const SignalingChannelName_t * pChannelName )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t signalingResult;
@@ -338,8 +338,8 @@ static SignalingControllerResult_t DescribeSignalingChannel( SignalingController
     signalingRequest.bodyLength = SIGNALING_CONTROLLER_HTTP_BODY_BUFFER_LENGTH;
 
     signalingResult = Signaling_ConstructDescribeSignalingChannelRequest( &( awsRegion ),
-        ( SignalingChannelName_t * ) pChannelName,
-        &( signalingRequest ) );
+                                                                          ( SignalingChannelName_t * ) pChannelName,
+                                                                          &( signalingRequest ) );
 
     if( signalingResult != SIGNALING_RESULT_OK )
     {
@@ -366,15 +366,15 @@ static SignalingControllerResult_t DescribeSignalingChannel( SignalingController
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         signalingResult = Signaling_ParseDescribeSignalingChannelResponse( httpResponse.pContent,
-            httpResponse.contentLength,
-            &( signalingChannelInfo ) );
+                                                                           httpResponse.contentLength,
+                                                                           &( signalingChannelInfo ) );
 
         if( signalingResult != SIGNALING_RESULT_OK )
         {
             LogError( ( "Fail to parse describe signaling channel response, return=0x%x, response(%lu): %.*s",
-                signalingResult,
-                httpResponse.contentLength,
-                ( int ) httpResponse.contentLength, httpResponse.pContent ) );
+                        signalingResult,
+                        httpResponse.contentLength,
+                        ( int ) httpResponse.contentLength, httpResponse.pContent ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
         }
     }
@@ -392,8 +392,8 @@ static SignalingControllerResult_t DescribeSignalingChannel( SignalingController
     if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( signalingChannelInfo.channelArn.pChannelArn != NULL ) )
     {
         strncpy( &( pCtx->signalingChannelArn[ 0 ] ),
-            signalingChannelInfo.channelArn.pChannelArn,
-            signalingChannelInfo.channelArn.channelArnLength );
+                 signalingChannelInfo.channelArn.pChannelArn,
+                 signalingChannelInfo.channelArn.channelArnLength );
         pCtx->signalingChannelArn[ signalingChannelInfo.channelArn.channelArnLength ] = '\0';
         pCtx->signalingChannelArnLength = signalingChannelInfo.channelArn.channelArnLength;
     }
@@ -404,7 +404,7 @@ static SignalingControllerResult_t DescribeSignalingChannel( SignalingController
 /*----------------------------------------------------------------------------*/
 
 static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingControllerContext_t * pCtx,
-    uint8_t enableSessionStorage )
+                                                                 uint8_t enableSessionStorage )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t signalingResult;
@@ -435,8 +435,8 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
     endpointRequestInfo.role = SIGNALING_ROLE_MASTER;
 
     signalingResult = Signaling_ConstructGetSignalingChannelEndpointRequest( &( awsRegion ),
-        &( endpointRequestInfo ),
-        &( signalingRequest ) );
+                                                                             &( endpointRequestInfo ),
+                                                                             &( signalingRequest ) );
 
     if( signalingResult != SIGNALING_RESULT_OK )
     {
@@ -463,8 +463,8 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         signalingResult = Signaling_ParseGetSignalingChannelEndpointResponse( httpResponse.pContent,
-            httpResponse.contentLength,
-            &( signalingEndpoints ) );
+                                                                              httpResponse.contentLength,
+                                                                              &( signalingEndpoints ) );
 
         if( signalingResult != SIGNALING_RESULT_OK )
         {
@@ -483,8 +483,8 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
         else
         {
             strncpy( &( pCtx->httpsEndpoint[ 0 ] ),
-                signalingEndpoints.httpsEndpoint.pEndpoint,
-                signalingEndpoints.httpsEndpoint.endpointLength );
+                     signalingEndpoints.httpsEndpoint.pEndpoint,
+                     signalingEndpoints.httpsEndpoint.endpointLength );
             pCtx->httpsEndpoint[ signalingEndpoints.httpsEndpoint.endpointLength ] = '\0';
             pCtx->httpsEndpointLength = signalingEndpoints.httpsEndpoint.endpointLength;
         }
@@ -500,8 +500,8 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
         else
         {
             strncpy( &( pCtx->wssEndpoint[ 0 ] ),
-                signalingEndpoints.wssEndpoint.pEndpoint,
-                signalingEndpoints.wssEndpoint.endpointLength );
+                     signalingEndpoints.wssEndpoint.pEndpoint,
+                     signalingEndpoints.wssEndpoint.endpointLength );
             pCtx->wssEndpoint[ signalingEndpoints.wssEndpoint.endpointLength ] = '\0';
             pCtx->wssEndpointLength = signalingEndpoints.wssEndpoint.endpointLength;
         }
@@ -517,8 +517,8 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
         else
         {
             strncpy( &( pCtx->webrtcEndpoint[ 0 ] ),
-                signalingEndpoints.webrtcEndpoint.pEndpoint,
-                signalingEndpoints.webrtcEndpoint.endpointLength );
+                     signalingEndpoints.webrtcEndpoint.pEndpoint,
+                     signalingEndpoints.webrtcEndpoint.endpointLength );
             pCtx->webrtcEndpoint[ signalingEndpoints.webrtcEndpoint.endpointLength ] = '\0';
             pCtx->webrtcEndpointLength = signalingEndpoints.webrtcEndpoint.endpointLength;
         }
@@ -555,8 +555,8 @@ static SignalingControllerResult_t JoinStorageSession( SignalingControllerContex
     webrtcEndpoint.endpointLength = pCtx->webrtcEndpointLength;
 
     signalingResult = Signaling_ConstructJoinStorageSessionRequest( &( webrtcEndpoint ),
-        &( joinSessionRequestInfo ),
-        &( signalingRequest ) );
+                                                                    &( joinSessionRequestInfo ),
+                                                                    &( signalingRequest ) );
 
     if( signalingResult != SIGNALING_RESULT_OK )
     {
@@ -619,8 +619,8 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
     getIceServerConfigRequestInfo.clientIdLength = strlen( "ProducerMaster" );
 
     signalingResult = Signaling_ConstructGetIceServerConfigRequest( &( signalingChannelHttpEndpoint ),
-        &( getIceServerConfigRequestInfo ),
-        &( signalingRequest ) );
+                                                                    &( getIceServerConfigRequestInfo ),
+                                                                    &( signalingRequest ) );
 
     if( signalingResult != SIGNALING_RESULT_OK )
     {
@@ -647,9 +647,9 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         signalingResult = Signaling_ParseGetIceServerConfigResponse( httpResponse.pContent,
-            httpResponse.contentLength,
-            &( iceServers[ 0 ] ),
-            &( iceServersCount ) );
+                                                                     httpResponse.contentLength,
+                                                                     &( iceServers[ 0 ] ),
+                                                                     &( iceServersCount ) );
 
         if( signalingResult != SIGNALING_RESULT_OK )
         {
@@ -683,13 +683,13 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
             }
 
             memcpy( &( pCtx->iceServerConfigs[ i ].userName[ 0 ] ),
-                iceServers[ i ].pUserName,
-                iceServers[ i ].userNameLength );
+                    iceServers[ i ].pUserName,
+                    iceServers[ i ].userNameLength );
             pCtx->iceServerConfigs[ i ].userNameLength = iceServers[ i ].userNameLength;
 
             memcpy( &( pCtx->iceServerConfigs[ i ].password[ 0 ] ),
-                iceServers[ i ].pPassword,
-                iceServers[ i ].passwordLength );
+                    iceServers[ i ].pPassword,
+                    iceServers[ i ].passwordLength );
             pCtx->iceServerConfigs[ i ].passwordLength = iceServers[ i ].passwordLength;
             pCtx->iceServerConfigs[ i ].ttlSeconds = iceServers[ i ].messageTtlSeconds;
 
@@ -711,8 +711,8 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
                 }
 
                 memcpy( &( pCtx->iceServerConfigs[ i ].iceServerUris[ j ].uri[ 0 ] ),
-                    iceServers[ i ].pUris[ j ],
-                    iceServers[ i ].urisLength[ j ] );
+                        iceServers[ i ].pUris[ j ],
+                        iceServers[ i ].urisLength[ j ] );
                 pCtx->iceServerConfigs[ i ].iceServerUris[ j ].uriLength = iceServers[ i ].urisLength[ j ];
             }
 
@@ -776,8 +776,8 @@ static SignalingControllerResult_t ConnectToWssEndpoint( SignalingControllerCont
     wssEndpointRequestInfo.role = SIGNALING_ROLE_MASTER;
 
     signalingResult = Signaling_ConstructConnectWssEndpointRequest( &( wssEndpoint ),
-        &( wssEndpointRequestInfo ),
-        &( signalingRequest ) );
+                                                                    &( wssEndpointRequestInfo ),
+                                                                    &( signalingRequest ) );
 
     if( signalingResult != SIGNALING_RESULT_OK )
     {
@@ -804,9 +804,9 @@ static SignalingControllerResult_t ConnectToWssEndpoint( SignalingControllerCont
         awsCreds.expirationSeconds = pCtx->expirationSeconds;
 
         networkingResult = Networking_WebsocketConnect( &( pCtx->websocketContext ),
-            &( wssConnectInfo ),
-            &( awsCreds ),
-            &( pCtx->awsConfig ) );
+                                                        &( wssConnectInfo ),
+                                                        &( awsCreds ),
+                                                        &( pCtx->awsConfig ) );
 
         if( networkingResult != NETWORKING_RESULT_OK )
         {
@@ -821,7 +821,7 @@ static SignalingControllerResult_t ConnectToWssEndpoint( SignalingControllerCont
 /*----------------------------------------------------------------------------*/
 
 static SignalingControllerResult_t ConnectToSignalingService( SignalingControllerContext_t * pCtx,
-    const SignalingControllerConnectInfo_t * pConnectInfo )
+                                                              const SignalingControllerConnectInfo_t * pConnectInfo )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
 
@@ -839,7 +839,7 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
         Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
 #endif
         ret = FetchTemporaryCredentials( pCtx,
-            &( pConnectInfo->awsIotCreds ) );
+                                         &( pConnectInfo->awsIotCreds ) );
 #if METRIC_PRINT_ENABLED
         Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
 #endif
@@ -848,18 +848,18 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     {
         /* The application must have supplied AWS credentials. */
         memcpy( &( pCtx->accessKeyId[ 0 ] ),
-            pConnectInfo->awsCreds.pAccessKeyId,
-            pConnectInfo->awsCreds.accessKeyIdLen );
+                pConnectInfo->awsCreds.pAccessKeyId,
+                pConnectInfo->awsCreds.accessKeyIdLen );
         pCtx->accessKeyIdLength = pConnectInfo->awsCreds.accessKeyIdLen;
 
         memcpy( &( pCtx->secretAccessKey[ 0 ] ),
-            pConnectInfo->awsCreds.pSecretAccessKey,
-            pConnectInfo->awsCreds.secretAccessKeyLen );
+                pConnectInfo->awsCreds.pSecretAccessKey,
+                pConnectInfo->awsCreds.secretAccessKeyLen );
         pCtx->secretAccessKeyLength = pConnectInfo->awsCreds.secretAccessKeyLen;
 
         memcpy( &( pCtx->sessionToken[ 0 ] ),
-            pConnectInfo->awsCreds.pSessionToken,
-            pConnectInfo->awsCreds.sessionTokenLength );
+                pConnectInfo->awsCreds.pSessionToken,
+                pConnectInfo->awsCreds.sessionTokenLength );
         pCtx->sessionTokenLength = pConnectInfo->awsCreds.sessionTokenLength;
 
         pCtx->expirationSeconds = pConnectInfo->awsCreds.expirationSeconds;
@@ -933,7 +933,7 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
 /*----------------------------------------------------------------------------*/
 
 static uint8_t AreCredentialsExpired( SignalingControllerContext_t * pCtx,
-    const SignalingControllerConnectInfo_t * pConnectInfo )
+                                      const SignalingControllerConnectInfo_t * pConnectInfo )
 {
     uint8_t credentialsExpired = 0U;
     uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
@@ -987,7 +987,7 @@ static void LogSignalingInfo( SignalingControllerContext_t * pCtx )
 /*----------------------------------------------------------------------------*/
 
 SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx,
-    const SSLCredentials_t * pSslCreds )
+                                                      const SSLCredentials_t * pSslCreds )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     NetworkingResult_t networkingResult;
@@ -1011,7 +1011,7 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         networkingResult = Networking_HttpInit( &( pCtx->httpContext ),
-            pSslCreds );
+                                                pSslCreds );
 
         if( networkingResult != NETWORKING_RESULT_OK )
         {
@@ -1023,7 +1023,7 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         networkingResult = Networking_WebsocketInit( &( pCtx->websocketContext ),
-            pSslCreds );
+                                                     pSslCreds );
 
         if( networkingResult != NETWORKING_RESULT_OK )
         {
@@ -1038,7 +1038,7 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
 /*----------------------------------------------------------------------------*/
 
 SignalingControllerResult_t SignalingController_StartListening( SignalingControllerContext_t * pCtx,
-    const SignalingControllerConnectInfo_t * pConnectInfo )
+                                                                const SignalingControllerConnectInfo_t * pConnectInfo )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     NetworkingResult_t networkingResult;
@@ -1067,7 +1067,7 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
                         ( AreCredentialsExpired( pCtx, pConnectInfo ) != 0U ) )
                     {
                         ret = FetchTemporaryCredentials( pCtx,
-                            &( pConnectInfo->awsIotCreds ) );
+                                                         &( pConnectInfo->awsIotCreds ) );
                         if( ret != SIGNALING_CONTROLLER_RESULT_OK )
                         {
                             LogWarn( ( "Fail to fetch temporary credentials, reconnecting." ) );
@@ -1089,7 +1089,7 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
 /*----------------------------------------------------------------------------*/
 
 SignalingControllerResult_t SignalingController_SendMessage( SignalingControllerContext_t * pCtx,
-    const SignalingMessage_t * pSignalingMessage )
+                                                             const SignalingMessage_t * pSignalingMessage )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     Base64Result_t base64Result;
@@ -1109,15 +1109,15 @@ SignalingControllerResult_t SignalingController_SendMessage( SignalingController
         pthread_mutex_lock( &( pCtx->signalingTxMutex ) );
         {
             LogDebug( ( "Sending signaling message(%lu): %.*s",
-                pSignalingMessage->messageLength,
-                ( int ) pSignalingMessage->messageLength,
-                pSignalingMessage->pMessage ) );
+                        pSignalingMessage->messageLength,
+                        ( int ) pSignalingMessage->messageLength,
+                        pSignalingMessage->pMessage ) );
 
             pCtx->signalingIntermediateMessageLength = SIGNALING_CONTROLLER_MESSAGE_BUFFER_LENGTH;
             base64Result = Base64_Encode( pSignalingMessage->pMessage,
-                pSignalingMessage->messageLength,
-                &( pCtx->signalingIntermediateMessageBuffer[ 0 ] ),
-                &( pCtx->signalingIntermediateMessageLength ) );
+                                          pSignalingMessage->messageLength,
+                                          &( pCtx->signalingIntermediateMessageBuffer[ 0 ] ),
+                                          &( pCtx->signalingIntermediateMessageLength ) );
 
             if( base64Result != BASE64_RESULT_OK )
             {
@@ -1139,8 +1139,8 @@ SignalingControllerResult_t SignalingController_SendMessage( SignalingController
 
                 pCtx->signalingTxMessageLength = SIGNALING_CONTROLLER_MESSAGE_BUFFER_LENGTH;
                 signalingResult = Signaling_ConstructWssMessage( &( wssSendMessage ),
-                    &( pCtx->signalingTxMessageBuffer[ 0 ] ),
-                    &( pCtx->signalingTxMessageLength ) );
+                                                                 &( pCtx->signalingTxMessageBuffer[ 0 ] ),
+                                                                 &( pCtx->signalingTxMessageLength ) );
 
                 if( signalingResult != SIGNALING_RESULT_OK )
                 {
@@ -1152,13 +1152,13 @@ SignalingControllerResult_t SignalingController_SendMessage( SignalingController
             if( ret == SIGNALING_CONTROLLER_RESULT_OK )
             {
                 LogVerbose( ( "Constructed signaling WSS message (%lu): \n%.*s",
-                    pCtx->signalingTxMessageLength,
-                    ( int ) pCtx->signalingTxMessageLength,
-                    &( pCtx->signalingTxMessageBuffer[ 0 ] ) ) );
+                              pCtx->signalingTxMessageLength,
+                              ( int ) pCtx->signalingTxMessageLength,
+                              &( pCtx->signalingTxMessageBuffer[ 0 ] ) ) );
 
                 networkingResult = Networking_WebsocketSend( &( pCtx->websocketContext ),
-                    &( pCtx->signalingTxMessageBuffer[ 0 ] ),
-                    pCtx->signalingTxMessageLength );
+                                                             &( pCtx->signalingTxMessageBuffer[ 0 ] ),
+                                                             pCtx->signalingTxMessageLength );
 
                 if( networkingResult != NETWORKING_RESULT_OK )
                 {
@@ -1176,8 +1176,8 @@ SignalingControllerResult_t SignalingController_SendMessage( SignalingController
 /*----------------------------------------------------------------------------*/
 
 SignalingControllerResult_t SignalingController_QueryIceServerConfigs( SignalingControllerContext_t * pCtx,
-    IceServerConfig_t ** ppIceServerConfigs,
-    size_t * pIceServerConfigsCount )
+                                                                       IceServerConfig_t ** ppIceServerConfigs,
+                                                                       size_t * pIceServerConfigsCount )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     uint64_t currentTimeSec;
@@ -1236,9 +1236,9 @@ SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( Signali
 /*----------------------------------------------------------------------------*/
 
 SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMessage( const char * pSignalingMessage,
-    size_t signalingMessageLength,
-    const char ** ppSdpMessage,
-    size_t * pSdpMessageLength )
+                                                                                     size_t signalingMessageLength,
+                                                                                     const char ** ppSdpMessage,
+                                                                                     size_t * pSdpMessageLength )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     JSONStatus_t jsonResult;
@@ -1261,10 +1261,10 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
         if( jsonResult != JSONSuccess )
         {
             LogError( ( "Signaling message is not valid JSON. Result: %d, message(%lu): %.*s!",
-                jsonResult,
-                signalingMessageLength,
-                ( int ) signalingMessageLength,
-                pSignalingMessage ) );
+                        jsonResult,
+                        signalingMessageLength,
+                        ( int ) signalingMessageLength,
+                        pSignalingMessage ) );
             ret = SIGNALING_CONTROLLER_RESULT_FAIL;
         }
     }
@@ -1279,8 +1279,8 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
                 ( strncmp( pair.value, "offer", pair.valueLength ) != 0 ) )
             {
                 LogError( ( "Message type \"%.*s\" is not SDP offer!",
-                    ( int ) pair.valueLength,
-                    pair.value ) );
+                            ( int ) pair.valueLength,
+                            pair.value ) );
 
                 ret = SIGNALING_CONTROLLER_RESULT_FAIL;
 
@@ -1306,9 +1306,9 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
     if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( sdpOfferFound == 0 ) )
     {
         LogError( ( "SDP offer not found in signaling message(%lu): %.*s",
-            signalingMessageLength,
-            ( int ) signalingMessageLength,
-            pSignalingMessage ) );
+                    signalingMessageLength,
+                    ( int ) signalingMessageLength,
+                    pSignalingMessage ) );
 
         ret = SIGNALING_CONTROLLER_RESULT_FAIL;
     }
@@ -1319,9 +1319,9 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
 /*----------------------------------------------------------------------------*/
 
 SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( const char * pSdpMessage,
-    size_t sdpMessageLength,
-    char * pFormalSdpMessage,
-    size_t * pFormalSdpMessageLength )
+                                                                              size_t sdpMessageLength,
+                                                                              char * pFormalSdpMessage,
+                                                                              size_t * pFormalSdpMessageLength )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     const char *pCurSdp = pSdpMessage, *pNext = NULL;
@@ -1353,10 +1353,10 @@ SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( co
             if( *pFormalSdpMessageLength < outputLength + lineLength + 2 )
             {
                 LogError( ( "Buffer space is not enough to store formal SDP message, buffer size: %lu, SDP message(%lu): %.*s",
-                    *pFormalSdpMessageLength,
-                    sdpMessageLength,
-                    ( int ) sdpMessageLength,
-                    pSdpMessage ) );
+                            *pFormalSdpMessageLength,
+                            sdpMessageLength,
+                            ( int ) sdpMessageLength,
+                            pSdpMessage ) );
 
                 ret = SIGNALING_CONTROLLER_RESULT_FAIL;
                 break;
@@ -1383,9 +1383,9 @@ SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( co
 /*----------------------------------------------------------------------------*/
 
 SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( const char * pSdpMessage,
-    size_t sdpMessageLength,
-    char * pEventSdpMessage,
-    size_t * pEventSdpMessageLength )
+                                                                            size_t sdpMessageLength,
+                                                                            char * pEventSdpMessage,
+                                                                            size_t * pEventSdpMessageLength )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     const char *pCurSdp = pSdpMessage, *pNext, *pTail;
@@ -1418,8 +1418,8 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
             if( *pEventSdpMessageLength < outputLength + lineLength + 4 )
             {
                 LogError( ( "The output buffer length(%lu) is too small to store serialized %lu bytes message.",
-                    *pEventSdpMessageLength,
-                    sdpMessageLength ) );
+                            *pEventSdpMessageLength,
+                            sdpMessageLength ) );
 
                 ret = SIGNALING_CONTROLLER_RESULT_FAIL;
 
@@ -1427,8 +1427,8 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
             }
 
             writtenLength = snprintf( pCurOutput, *pEventSdpMessageLength - outputLength, "%.*s\\r\\n",
-                ( int ) lineLength,
-                pCurSdp );
+                                      ( int ) lineLength,
+                                      pCurSdp );
 
             if( writtenLength < 0 )
             {

@@ -181,15 +181,15 @@ typedef struct PeerConnectionBufferSessionDescription
 typedef IceControllerLocalCandidateReadyMsg_t PeerConnectionIceLocalCandidate_t;
 
 typedef void ( *OnIceCandidateReadyCallback_t )( void * pCustomContext,
-    PeerConnectionIceLocalCandidate_t * pIceLocalCandidate );
+                                                 PeerConnectionIceLocalCandidate_t * pIceLocalCandidate );
 
 #if ENABLE_TWCC_SUPPORT
 typedef void ( *OnBandwidthEstimationCallback_t )( void * pCustomContext,
-    TwccBandwidthInfo_t * pTwccBandwidthInfo );
+                                                   TwccBandwidthInfo_t * pTwccBandwidthInfo );
 #endif
 
 typedef void ( *OnPictureLossIndicationCallback_t )( void * pCustomContext,
-    RtcpPliPacket_t * pRtcpPliPacket );
+                                                     RtcpPliPacket_t * pRtcpPliPacket );
 
 /*
  * Media relates data structures.
@@ -206,21 +206,21 @@ typedef struct PeerConnectionJitterBufferPacket PeerConnectionJitterBufferPacket
 typedef struct PeerConnectionJitterBuffer PeerConnectionJitterBuffer_t;
 
 typedef PeerConnectionResult_t ( *OnFrameReadyCallback_t )( void * pCustomContext,
-    PeerConnectionFrame_t * pFrame );
+                                                            PeerConnectionFrame_t * pFrame );
 typedef PeerConnectionResult_t ( *OnJitterBufferFrameReadyCallback_t )( void * pCustomContext,
-    uint16_t startSequence,
-    uint16_t endSequence );
+                                                                        uint16_t startSequence,
+                                                                        uint16_t endSequence );
 typedef PeerConnectionResult_t ( *OnJitterBufferFrameDropCallback_t )( void * pCustomContext,
-    uint16_t startSequence,
-    uint16_t endSequence );
+                                                                       uint16_t startSequence,
+                                                                       uint16_t endSequence );
 typedef PeerConnectionResult_t ( *GetPacketPropertyFunc_t )( PeerConnectionJitterBufferPacket_t * pPacket,
-    uint8_t * pIsStartPacket );
+                                                             uint8_t * pIsStartPacket );
 typedef PeerConnectionResult_t ( *FillFrameFunc_t )( PeerConnectionJitterBuffer_t * pJitterBuffer,
-    uint16_t rtpSeqStart,
-    uint16_t rtpSeqEnd,
-    uint8_t * pOutBuffer,
-    size_t * pOutBufferLength,
-    uint32_t * pRtpTimestamp );
+                                                     uint16_t rtpSeqStart,
+                                                     uint16_t rtpSeqEnd,
+                                                     uint8_t * pOutBuffer,
+                                                     size_t * pOutBufferLength,
+                                                     uint32_t * pRtpTimestamp );
 
 typedef struct PeerConnectionRollingBufferPacket
 {
@@ -371,9 +371,9 @@ typedef struct PeerConnectionSession PeerConnectionSession_t;
 typedef struct PeerConnectionDataChannel PeerConnectionDataChannel_t;
 
 typedef void ( *OnDataChannelMessageReceived_t )( PeerConnectionDataChannel_t * pDataChannel,
-    uint8_t isBinary,
-    uint8_t * pMessage,
-    uint32_t pMessageLen );
+                                                  uint8_t isBinary,
+                                                  uint8_t * pMessage,
+                                                  uint32_t pMessageLen );
 
 #if ENABLE_SCTP_DATA_CHANNEL
 typedef struct PeerConnectionDataChannel

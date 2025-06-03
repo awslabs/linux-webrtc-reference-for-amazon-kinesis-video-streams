@@ -51,22 +51,22 @@ typedef struct MessageQueueHandler
 } MessageQueueHandler_t;
 
 MessageQueueResult_t MessageQueue_Create( MessageQueueHandler_t * pMessageQueueHandler,
-    const char * pQueueName,
-    size_t messageMaxLength,
-    size_t messageQueueMaxNum );
+                                          const char * pQueueName,
+                                          size_t messageMaxLength,
+                                          size_t messageQueueMaxNum );
 void MessageQueue_Destroy( MessageQueueHandler_t * pMessageQueueHandler,
-    const char * pQueueName );
+                           const char * pQueueName );
 MessageQueueResult_t MessageQueue_Send( MessageQueueHandler_t * pMessageQueueHandler,
-    void * pMessage,
-    size_t messageLength );
+                                        void * pMessage,
+                                        size_t messageLength );
 MessageQueueResult_t MessageQueue_Recv( MessageQueueHandler_t * pMessageQueueHandler,
-    void * pMessage,
-    size_t * pMessageLength );
+                                        void * pMessage,
+                                        size_t * pMessageLength );
 MessageQueueResult_t MessageQueue_IsEmpty( MessageQueueHandler_t * pMessageQueueHandler );
 MessageQueueResult_t MessageQueue_IsFull( MessageQueueHandler_t * pMessageQueueHandler );
 MessageQueueResult_t MessageQueue_AttachPoll( MessageQueueHandler_t * pMessageQueueHandler,
-    struct pollfd * pPollFd,
-    uint32_t PollEvents );
+                                              struct pollfd * pPollFd,
+                                              uint32_t PollEvents );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

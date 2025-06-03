@@ -28,19 +28,19 @@ static int uKVSDataChannelCount = 0;
 /*-----------------------------------------------------------*/
 
 static void OnSCTPSessionOutboundPacket( void * customData,
-    uint8_t * pPacket,
-    uint32_t packetLen );
+                                         uint8_t * pPacket,
+                                         uint32_t packetLen );
 static void OnSCTPSessionDataChannelOpen( void * customData,
-    uint16_t channelId,
-    const uint8_t * pName,
-    uint16_t nameLen );
+                                          uint16_t channelId,
+                                          const uint8_t * pName,
+                                          uint16_t nameLen );
 static void OnSCTPSessionDataChannelMessage( void * customData,
-    uint16_t channelId,
-    uint8_t isBinary,
-    uint8_t * pMessage,
-    uint32_t pMessageLen );
+                                             uint16_t channelId,
+                                             uint8_t isBinary,
+                                             uint8_t * pMessage,
+                                             uint32_t pMessageLen );
 static SctpUtilsResult_t OnSCTPSessionDataChannelAckOpen( void * customData,
-    uint16_t channelId );
+                                                          uint16_t channelId );
 
 /*-----------------------------------------------------------*/
 
@@ -94,9 +94,9 @@ PeerConnectionResult_t PeerConnectionSCTP_DeallocateDataChannel( PeerConnectionD
 /* Create and configure a data channel that will be established once
  * SCTP session is active. */
 PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSession_t * pSession,
-    char * pcDataChannelName,
-    SctpDataChannelInitInfo_t * pDataChannelInitInfo,
-    PeerConnectionDataChannel_t ** ppChannel )
+                                                             char * pcDataChannelName,
+                                                             SctpDataChannelInitInfo_t * pDataChannelInitInfo,
+                                                             PeerConnectionDataChannel_t ** ppChannel )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     PeerConnectionDataChannel_t * pChannel;
@@ -180,9 +180,9 @@ PeerConnectionResult_t PeerConnectionSCTP_CreateDataChannel( PeerConnectionSessi
 
 /* Send string data to remote through a given data channel */
 PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataChannel_t * pChannel,
-    uint8_t isBinary,
-    uint8_t * pMessage,
-    uint32_t pMessageLen )
+                                                           uint8_t isBinary,
+                                                           uint8_t * pMessage,
+                                                           uint32_t pMessageLen )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     SctpSession_t * pSctpSession;
@@ -211,9 +211,9 @@ PeerConnectionResult_t PeerConnectionSCTP_DataChannelSend( PeerConnectionDataCha
 
 /* Default on data channel message callback */
 static void OnDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
-    uint8_t isBinary,
-    uint8_t * pMessage,
-    uint32_t pMessageLen )
+                                  uint8_t isBinary,
+                                  uint8_t * pMessage,
+                                  uint32_t pMessageLen )
 {
     char ucSendMessage[ DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE ];
     PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
@@ -270,8 +270,8 @@ PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t 
             pxIterator->dataChannelInitInfo.channelNameLen = strlen( pxIterator->ucDataChannelName );
 
             if( Sctp_OpenDataChannel( &( pSession->sctpSession ),
-                    &( pxIterator->dataChannelInitInfo ),
-                    &( pxIterator->dataChannel ) ) != SCTP_UTILS_RESULT_OK )
+                                      &( pxIterator->dataChannelInitInfo ),
+                                      &( pxIterator->dataChannel ) ) != SCTP_UTILS_RESULT_OK )
             {
                 LogError( ( "Error creating data channel." ) );
                 ulChannelsCreateFailed = 1;
@@ -305,8 +305,8 @@ PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t 
 
 /* Decrypt the incoming DTLS packet and feed it to the SCTP stack. */
 void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
-    uint8_t * receiveBuffer,
-    int readBytes )
+                                         uint8_t * receiveBuffer,
+                                         int readBytes )
 {
     if( Sctp_ProcessMessage( &( pSession->sctpSession ), receiveBuffer, readBytes ) != SCTP_UTILS_RESULT_OK )
     {
@@ -317,7 +317,7 @@ void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
 
 /* Get data channel that matches the given channel ID */
 PeerConnectionDataChannel_t * pxGetDataChannelWithID( PeerConnectionSession_t * pSession,
-    uint32_t channelId )
+                                                      uint32_t channelId )
 {
     PeerConnectionDataChannel_t * pxIterator;
 
@@ -340,8 +340,8 @@ PeerConnectionDataChannel_t * pxGetDataChannelWithID( PeerConnectionSession_t * 
  * This API uses underlying crypto library to encrypt the packet before sending
  * it on the network. */
 static void OnSCTPSessionOutboundPacket( void * customData,
-    uint8_t * pPacket,
-    uint32_t packetLen )
+                                         uint8_t * pPacket,
+                                         uint32_t packetLen )
 {
     PeerConnectionSession_t * pPeerConnectionSession = NULL;
     if( customData == NULL )
@@ -363,10 +363,10 @@ static void OnSCTPSessionOutboundPacket( void * customData,
  * to which its destined to and call the target application provided callback
  * of the channel with the incoming data. */
 static void OnSCTPSessionDataChannelMessage( void * customData,
-    uint16_t channelId,
-    uint8_t isBinary,
-    uint8_t * pMessage,
-    uint32_t pMessageLen )
+                                             uint16_t channelId,
+                                             uint8_t isBinary,
+                                             uint8_t * pMessage,
+                                             uint32_t pMessageLen )
 {
     PeerConnectionSession_t * pPeerConnectionSession = ( PeerConnectionSession_t * ) customData;
     PeerConnectionDataChannel_t * pChannel = NULL;
@@ -393,7 +393,7 @@ static void OnSCTPSessionDataChannelMessage( void * customData,
 /* Callback function sets data channel to open when there is a valid
  * incoming DCEP DATA_CHANNEL_ACK Message from the remote. */
 static SctpUtilsResult_t OnSCTPSessionDataChannelAckOpen( void * customData,
-    uint16_t channelId )
+                                                          uint16_t channelId )
 {
     SctpUtilsResult_t ret = SCTP_UTILS_RESULT_OK;
     PeerConnectionSession_t * pPeerConnectionSession = ( PeerConnectionSession_t * ) customData;
@@ -417,9 +417,9 @@ static SctpUtilsResult_t OnSCTPSessionDataChannelAckOpen( void * customData,
 /* Callback to allocate and initialise a data channel when there is a valid
  * incoming DCEP DATA_CHANNEL_OPEN Message from the remote. */
 static void OnSCTPSessionDataChannelOpen( void * customData,
-    uint16_t channelId,
-    const uint8_t * pName,
-    uint16_t nameLen )
+                                          uint16_t channelId,
+                                          const uint8_t * pName,
+                                          uint16_t nameLen )
 {
     PeerConnectionSession_t * pPeerConnectionSession = ( PeerConnectionSession_t * ) customData;
     PeerConnectionDataChannel_t * pChannel = NULL;

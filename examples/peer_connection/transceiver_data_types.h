@@ -57,8 +57,8 @@ typedef struct TransceiverCallbackContent
 } TransceiverCallbackContent_t;
 
 typedef int32_t ( *OnPcEventCallback_t )( void * pCustomContext,
-    TransceiverCallbackEvent_t event,
-    TransceiverCallbackContent_t * pEventMsg );
+                                          TransceiverCallbackEvent_t event,
+                                          TransceiverCallbackContent_t * pEventMsg );
 
 typedef enum TransceiverDefaultRtcCodec
 {

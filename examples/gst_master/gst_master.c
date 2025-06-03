@@ -25,9 +25,9 @@ GstMediaSourcesContext_t gstMediaSourceContext;
 static void SignalHandler( int signum );
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
 static int32_t OnMediaSinkHook( void * pCustom,
-    WebrtcFrame_t * pFrame );
+                                WebrtcFrame_t * pFrame );
 static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
-    GstMediaSourcesContext_t * pGstMediaSourceContext );
+                                         GstMediaSourcesContext_t * pGstMediaSourceContext );
 
 static void SignalHandler( int signum )
 {
@@ -78,11 +78,11 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
         {
             case TRANSCEIVER_TRACK_KIND_VIDEO:
                 ret = GstMediaSource_InitVideoTransceiver( pMediaSourceContext,
-                    pTranceiver );
+                                                           pTranceiver );
                 break;
             case TRANSCEIVER_TRACK_KIND_AUDIO:
                 ret = GstMediaSource_InitAudioTransceiver( pMediaSourceContext,
-                    pTranceiver );
+                                                           pTranceiver );
                 break;
             default:
                 LogError( ( "Invalid track kind: %d", trackKind ) );
@@ -95,7 +95,7 @@ static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKi
 }
 
 static int32_t OnMediaSinkHook( void * pCustom,
-    WebrtcFrame_t * pFrame )
+                                WebrtcFrame_t * pFrame )
 {
     int32_t ret = 0;
     AppContext_t * pAppContext = ( AppContext_t * ) pCustom;
@@ -137,13 +137,13 @@ static int32_t OnMediaSinkHook( void * pCustom,
             if( pAppContext->appSessions[ i ].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
             {
                 peerConnectionResult = PeerConnection_WriteFrame( &pAppContext->appSessions[ i ].peerConnectionSession,
-                    pTransceiver,
-                    &peerConnectionFrame );
+                                                                  pTransceiver,
+                                                                  &peerConnectionFrame );
 
                 if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
                 {
                     LogError( ( "Fail to write %s frame, result: %d", ( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) ? "video" : "audio",
-                        peerConnectionResult ) );
+                                peerConnectionResult ) );
                     ret = -3;
                 }
             }
@@ -154,7 +154,7 @@ static int32_t OnMediaSinkHook( void * pCustom,
 }
 
 static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
-    GstMediaSourcesContext_t * pGstMediaSourceContext )
+                                         GstMediaSourcesContext_t * pGstMediaSourceContext )
 {
     int32_t ret = 0;
 
@@ -168,8 +168,8 @@ static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
     if( ret == 0 )
     {
         ret = GstMediaSource_Init( pGstMediaSourceContext,
-            OnMediaSinkHook,
-            pAppContext );
+                                   OnMediaSinkHook,
+                                   pAppContext );
     }
 
     return ret;

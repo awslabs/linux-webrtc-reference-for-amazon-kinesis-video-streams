@@ -37,8 +37,8 @@
     {                                                                                   \
         char _error_string[ MBEDTLS_ERROR_STRING_BUFFER_SIZE ];                         \
         mbedtls_strerror( err,                                                          \
-            _error_string,                                                              \
-            sizeof( _error_string ) );                                                  \
+                          _error_string,                                                \
+                          sizeof( _error_string ) );                                    \
         LogError( ( "Error 0x%04x: %s\n", ( unsigned int ) -( err ), _error_string ) ); \
     } while( 0 )
 
@@ -53,8 +53,8 @@
 #define MAX_DTLS_MASTER_KEY_LEN        48
 
 typedef int32_t ( *OnTransportDtlsSendHook_t )( void * pCustomContext,
-    const uint8_t * pInputBuffer,
-    size_t inputBufferLength );
+                                                const uint8_t * pInputBuffer,
+                                                size_t inputBufferLength );
 
 /*
  * For code readability use a typedef for DTLS-SRTP profiles
@@ -104,8 +104,8 @@ typedef struct DtlsSSLContext
 } DtlsSSLContext_t;
 
 typedef void ( *mbedtls_set_delay_fptr )( void *,
-    uint32_t,
-    uint32_t );
+                                          uint32_t,
+                                          uint32_t );
 typedef int ( *mbedtls_get_delay_fptr )( void * );
 
 typedef struct DtlsSessionTimer
@@ -281,8 +281,8 @@ typedef enum DtlsTransportStatus
  *         - Other specific error codes in case of failure
  */
 DtlsTransportStatus_t DTLS_Init( DtlsNetworkContext_t * pNetworkContext,
-    DtlsNetworkCredentials_t * pNetworkCredentials,
-    uint8_t isServer );
+                                 DtlsNetworkCredentials_t * pNetworkCredentials,
+                                 uint8_t isServer );
 
 /**
  * @brief Gracefully disconnect an established DTLS connection.
@@ -306,8 +306,8 @@ void DTLS_Disconnect( DtlsNetworkContext_t * pNetworkContext );
  * else a negative value to represent error.
  */
 int32_t DTLS_Send( DtlsNetworkContext_t * pNetworkContext,
-    const void * pBuffer,
-    size_t bytesToSend );
+                   const void * pBuffer,
+                   size_t bytesToSend );
 
 /**
  * @brief Get the socket FD for this network context.
@@ -334,10 +334,10 @@ int32_t DTLS_GetSocketFd( DtlsNetworkContext_t * pNetworkContext );
  *         - Other specific error codes in case of failure
  */
 DtlsTransportStatus_t DTLS_ProcessPacket( DtlsNetworkContext_t * pNetworkContext,
-    void * pDtlsPacket,
-    size_t dtlsPacketLength,
-    uint8_t * readBuffer,
-    size_t * pReadBufferSize );
+                                          void * pDtlsPacket,
+                                          size_t dtlsPacketLength,
+                                          uint8_t * readBuffer,
+                                          size_t * pReadBufferSize );
 
 /**
  * @brief Execute DTLS handshaking.
@@ -369,9 +369,9 @@ DtlsTransportStatus_t DTLS_ExecuteHandshake( DtlsNetworkContext_t * pNetworkCont
  *         - Other specific error codes in case of failure
  */
 int32_t DTLS_CreateCertificateAndKey( int32_t certificateBits,
-    int generateRSACertificate,
-    mbedtls_x509_crt * pCert,
-    mbedtls_pk_context * pKey );
+                                      int generateRSACertificate,
+                                      mbedtls_x509_crt * pCert,
+                                      mbedtls_pk_context * pKey );
 
 /**
  * @brief Free certificate and key
@@ -384,7 +384,7 @@ int32_t DTLS_CreateCertificateAndKey( int32_t certificateBits,
  *         - Other specific error codes in case of failure
  */
 int32_t DTLS_FreeCertificateAndKey( mbedtls_x509_crt * pCert,
-    mbedtls_pk_context * pKey );
+                                    mbedtls_pk_context * pKey );
 
 /**
  * @brief Generates a fingerprint of the certificate.
@@ -398,8 +398,8 @@ int32_t DTLS_FreeCertificateAndKey( mbedtls_x509_crt * pCert,
  *         - Other specific error codes in case of failure
  */
 int32_t DTLS_CreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
-    char * pBuff,
-    const size_t bufLen );
+                                           char * pBuff,
+                                           const size_t bufLen );
 
 /**
  * @brief Verify the fingerprint of certificate.
@@ -413,8 +413,8 @@ int32_t DTLS_CreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
  *         - Other specific error codes in case of failure
  */
 int32_t DTLS_VerifyRemoteCertificateFingerprint( DtlsSSLContext_t * pSslContext,
-    char * pExpectedFingerprint,
-    const size_t fingerprintMaxLen );
+                                                 char * pExpectedFingerprint,
+                                                 const size_t fingerprintMaxLen );
 
 /**
  * @brief Populate key material of DTLS session.
@@ -427,6 +427,6 @@ int32_t DTLS_VerifyRemoteCertificateFingerprint( DtlsSSLContext_t * pSslContext,
  *         - Other specific error codes in case of failure
  */
 int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
-    pDtlsKeyingMaterial_t pDtlsKeyingMaterial );
+                                     pDtlsKeyingMaterial_t pDtlsKeyingMaterial );
 
 #endif /* ifndef TRANSPORT_DTLS_MBEDTLS_H */

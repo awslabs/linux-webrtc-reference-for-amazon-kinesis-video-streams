@@ -19,7 +19,7 @@
 #include "peer_connection_codec_helper.h"
 
 PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
-    uint8_t * pIsStartPacket )
+                                              uint8_t * pIsStartPacket )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     H264Result_t resultH264;
@@ -35,8 +35,8 @@ PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferPacket_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultH264 = H264Depacketizer_GetPacketProperties( pPacket->pPacketBuffer,
-            pPacket->packetBufferLength,
-            &properties );
+                                                           pPacket->packetBufferLength,
+                                                           &properties );
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to get H264 packet properties, result: %d", resultH264 ) );
@@ -57,11 +57,11 @@ PeerConnectionResult_t GetH264PacketProperty( PeerConnectionJitterBufferPacket_t
 }
 
 PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuffer,
-    uint16_t rtpSeqStart,
-    uint16_t rtpSeqEnd,
-    uint8_t * pOutBuffer,
-    size_t * pOutBufferLength,
-    uint32_t * pRtpTimestamp )
+                                      uint16_t rtpSeqStart,
+                                      uint16_t rtpSeqEnd,
+                                      uint8_t * pOutBuffer,
+                                      size_t * pOutBufferLength,
+                                      uint32_t * pRtpTimestamp )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     uint16_t i, index;
@@ -85,8 +85,8 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultH264 = H264Depacketizer_Init( &h264DepacketizerContext,
-            h264Packets,
-            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
+                                            h264Packets,
+                                            PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME );
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to initialize H264 depacketizer, result: %d", resultH264 ) );
@@ -106,7 +106,7 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
             LogDebug( ( "Adding packet seq: %u, length: %lu, timestamp: %u", i, h264Packet.packetDataLength, rtpTimestamp ) );
 
             resultH264 = H264Depacketizer_AddPacket( &h264DepacketizerContext,
-                &h264Packet );
+                                                     &h264Packet );
             if( resultH264 != H264_RESULT_OK )
             {
                 LogError( ( "Fail to add H264 depacketizer packet, result: %d", resultH264 ) );
@@ -121,7 +121,7 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
         frame.pFrameData = pOutBuffer;
         frame.frameDataLength = *pOutBufferLength;
         resultH264 = H264Depacketizer_GetFrame( &h264DepacketizerContext,
-            &frame );
+                                                &frame );
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to get H264 depacketizer frame, result: %d", resultH264 ) );
@@ -139,8 +139,8 @@ PeerConnectionResult_t FillFrameH264( PeerConnectionJitterBuffer_t * pJitterBuff
 }
 
 PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_t * pSession,
-    Transceiver_t * pTransceiver,
-    const PeerConnectionFrame_t * pFrame )
+                                                          Transceiver_t * pTransceiver,
+                                                          const PeerConnectionFrame_t * pFrame )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     H264PacketizerContext_t h264PacketizerContext;
@@ -172,7 +172,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
         ( pFrame == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pTransceiver: %p, pFrame: %p",
-            pSession, pTransceiver, pFrame ) );
+                    pSession, pTransceiver, pFrame ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -185,8 +185,8 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultH264 = H264Packetizer_Init( &h264PacketizerContext,
-            nalusArray,
-            PEER_CONNECTION_SRTP_H264_MAX_NALUS_IN_A_FRAME );
+                                          nalusArray,
+                                          PEER_CONNECTION_SRTP_H264_MAX_NALUS_IN_A_FRAME );
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to init H264 packetizer, result: %d", resultH264 ) );
@@ -199,7 +199,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
         h264Frame.pFrameData = pFrame->pData;
         h264Frame.frameDataLength = pFrame->dataLength;
         resultH264 = H264Packetizer_AddFrame( &h264PacketizerContext,
-            &h264Frame );
+                                              &h264Frame );
         if( resultH264 != H264_RESULT_OK )
         {
             LogError( ( "Fail to add H264 packetizer, result: %d", resultH264 ) );
@@ -238,8 +238,8 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
          * If the bufferAfterEncrypt = 1, we store the encrypted SRTP packet to the buffer. */
         pRollingBufferPacket = NULL;
         ret = PeerConnectionRollingBuffer_GetRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-            *pRtpSeq,
-            &pRollingBufferPacket );
+                                                                *pRtpSeq,
+                                                                &pRollingBufferPacket );
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "Fail to get RTP buffer for seq: %u", *pRtpSeq ) );
@@ -267,11 +267,11 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
         }
 
         resultH264 = H264Packetizer_GetPacket( &h264PacketizerContext,
-            &packetH264 );
+                                               &packetH264 );
         if( resultH264 == H264_RESULT_NO_MORE_PACKETS )
         {
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-                pRollingBufferPacket );
+                                                                  pRollingBufferPacket );
             /* Eraly break because no packet available. */
             break;
         }
@@ -307,7 +307,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
                 packetInfo.packetSeqNum = pSession->rtpConfig.twccSequence;
 
                 RtcpTwccManager_AddPacketInfo( &pSession->pCtx->rtcpTwccManager,
-                    &packetInfo );
+                                               &packetInfo );
 #endif /* ENABLE_TWCC_SUPPORT */
 
                 pSession->rtpConfig.twccSequence++;
@@ -318,9 +318,9 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
 
             /* PeerConnectionSrtp_ConstructSrtpPacket() serializes RTP packet and encrypt it. */
             ret = PeerConnectionSrtp_ConstructSrtpPacket( pSession,
-                &pRollingBufferPacket->rtpPacket,
-                pSrtpPacket,
-                &srtpPacketLength );
+                                                          &pRollingBufferPacket->rtpPacket,
+                                                          pSrtpPacket,
+                                                          &srtpPacketLength );
         }
         else
         {
@@ -342,23 +342,23 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteH264Frame( PeerConnectionSession_
 
             /* Udpate the packet into rolling buffer. */
             ret = PeerConnectionRollingBuffer_SetPacket( &pSrtpSender->txRollingBuffer,
-                ( *pRtpSeq )++,
-                pRollingBufferPacket );
+                                                         ( *pRtpSeq )++,
+                                                         pRollingBufferPacket );
         }
 
         if( ( ret != PEER_CONNECTION_RESULT_OK ) && ( pRollingBufferPacket != NULL ) )
         {
             /* If any failure, release the allocated RTP buffer. */
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
-                pRollingBufferPacket );
+                                                                  pRollingBufferPacket );
         }
 
         /* Write the constructed RTP packets through network. */
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
-                pSrtpPacket,
-                srtpPacketLength );
+                                                                  pSrtpPacket,
+                                                                  srtpPacketLength );
             if( resultIceController != ICE_CONTROLLER_RESULT_OK )
             {
                 LogWarn( ( "Fail to send RTP packet, ret: %d", resultIceController ) );

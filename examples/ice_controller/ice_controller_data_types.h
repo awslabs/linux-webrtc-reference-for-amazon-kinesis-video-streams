@@ -122,12 +122,12 @@ typedef struct IceControllerCallbackContent
 } IceControllerCallbackContent_t;
 
 typedef int32_t ( *OnIceEventCallback_t )( void * pCustomContext,
-    IceControllerCallbackEvent_t event,
-    IceControllerCallbackContent_t * pEventMsg );
+                                           IceControllerCallbackEvent_t event,
+                                           IceControllerCallbackContent_t * pEventMsg );
 
 typedef int32_t ( *OnRecvNonStunPacketCallback_t )( void * pCustomContext,
-    uint8_t * pBuffer,
-    size_t bufferLength );
+                                                    uint8_t * pBuffer,
+                                                    size_t bufferLength );
 
 typedef enum IceControllerResult
 {

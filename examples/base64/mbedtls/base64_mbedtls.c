@@ -37,9 +37,9 @@ static Base64Result_t Base64_InterpretReturnValue( int errorCode )
 }
 
 Base64Result_t Base64_Encode( const char * pInputData,
-    size_t inputDataLength,
-    char * pOutputData,
-    size_t * pOutputDataLength )
+                              size_t inputDataLength,
+                              char * pOutputData,
+                              size_t * pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
     size_t olen = 0;
@@ -60,9 +60,9 @@ Base64Result_t Base64_Encode( const char * pInputData,
 }
 
 Base64Result_t Base64_Decode( const char * pInputData,
-    size_t inputDataLength,
-    char * pOutputData,
-    size_t * pOutputDataLength )
+                              size_t inputDataLength,
+                              char * pOutputData,
+                              size_t * pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
     size_t olen = 0;

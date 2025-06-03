@@ -59,7 +59,7 @@ typedef struct SignalingMessage
 } SignalingMessage_t;
 
 typedef int ( *SignalingMessageReceivedCallback_t )( SignalingMessage_t * pSignalingMessage,
-    void * pUserData );
+                                                     void * pUserData );
 
 typedef struct AwsIotCredentials
 {
@@ -155,35 +155,35 @@ typedef struct SignalingControllerContext
 /*----------------------------------------------------------------------------*/
 
 SignalingControllerResult_t SignalingController_Init( SignalingControllerContext_t * pCtx,
-    const SSLCredentials_t * pSslCreds );
+                                                      const SSLCredentials_t * pSslCreds );
 
 /* Start listening for incoming SDP offers. */
 SignalingControllerResult_t SignalingController_StartListening( SignalingControllerContext_t * pCtx,
-    const SignalingControllerConnectInfo_t * pConnectInfo );
+                                                                const SignalingControllerConnectInfo_t * pConnectInfo );
 
 SignalingControllerResult_t SignalingController_SendMessage( SignalingControllerContext_t * pCtx,
-    const SignalingMessage_t * pSignalingMessage );
+                                                             const SignalingMessage_t * pSignalingMessage );
 
 SignalingControllerResult_t SignalingController_QueryIceServerConfigs( SignalingControllerContext_t * pCtx,
-    IceServerConfig_t ** ppIceServerConfigs,
-    size_t * pIceServerConfigsCount );
+                                                                       IceServerConfig_t ** ppIceServerConfigs,
+                                                                       size_t * pIceServerConfigsCount );
 
 SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( SignalingControllerContext_t * pCtx );
 
 SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMessage( const char * pSignalingMessage,
-    size_t signalingMessageLength,
-    const char ** ppSdpMessage,
-    size_t * pSdpMessageLength );
+                                                                                     size_t signalingMessageLength,
+                                                                                     const char ** ppSdpMessage,
+                                                                                     size_t * pSdpMessageLength );
 
 SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( const char * pSdpMessage,
-    size_t sdpMessageLength,
-    char * pFormalSdpMessage,
-    size_t * pFormalSdpMessageLength );
+                                                                              size_t sdpMessageLength,
+                                                                              char * pFormalSdpMessage,
+                                                                              size_t * pFormalSdpMessageLength );
 
 SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( const char * pSdpMessage,
-    size_t sdpMessageLength,
-    char * pEventSdpMessage,
-    size_t * pEventSdpMessageLength );
+                                                                            size_t sdpMessageLength,
+                                                                            char * pEventSdpMessage,
+                                                                            size_t * pEventSdpMessageLength );
 
 /*----------------------------------------------------------------------------*/
 

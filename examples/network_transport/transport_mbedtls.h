@@ -141,12 +141,12 @@ TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( TlsNetworkContext_t * pTlsN
  * or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
  */
 TlsTransportStatus_t TLS_FreeRTOS_Connect( TlsNetworkContext_t * pTlsNetworkContext,
-    const char * pHostName,
-    uint16_t port,
-    const NetworkCredentials_t * pNetworkCredentials,
-    uint32_t receiveTimeoutMs,
-    uint32_t sendTimeoutMs,
-    uint32_t flags );
+                                           const char * pHostName,
+                                           uint16_t port,
+                                           const NetworkCredentials_t * pNetworkCredentials,
+                                           uint32_t receiveTimeoutMs,
+                                           uint32_t sendTimeoutMs,
+                                           uint32_t flags );
 
 /**
  * @brief Gracefully disconnect an established TLS connection.
@@ -170,8 +170,8 @@ TlsTransportStatus_t TLS_FreeRTOS_Disconnect( TlsNetworkContext_t * pTlsNetworkC
  * negative value on error.
  */
 int32_t TLS_FreeRTOS_recv( TlsNetworkContext_t * pNetworkContext,
-    void * pBuffer,
-    size_t bytesToRecv );
+                           void * pBuffer,
+                           size_t bytesToRecv );
 
 /**
  * @brief Sends data over an established TLS connection.
@@ -188,8 +188,8 @@ int32_t TLS_FreeRTOS_recv( TlsNetworkContext_t * pNetworkContext,
  * else a negative value to represent error.
  */
 int32_t TLS_FreeRTOS_send( TlsNetworkContext_t * pTlsNetworkContext,
-    const void * pBuffer,
-    size_t bytesToSend );
+                           const void * pBuffer,
+                           size_t bytesToSend );
 
 /**
  * @brief Get the socket FD for this network context.
@@ -214,10 +214,10 @@ int32_t TLS_FreeRTOS_GetSocketFd( TlsNetworkContext_t * pTlsNetworkContext );
  * @return void
  */
 void mbedtls_string_printf( void * sslContext,
-    int level,
-    const char * file,
-    int line,
-    const char * str );
+                            int level,
+                            const char * file,
+                            int line,
+                            const char * str );
 #endif /* MBEDTLS_DEBUG_C */
 
 #endif /* ifndef USING_MBEDTLS */

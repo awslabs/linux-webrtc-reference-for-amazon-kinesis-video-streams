@@ -44,7 +44,7 @@ struct xSOCKET
 };
 
 int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
-    int assignFd )
+                                 int assignFd )
 {
     int xRet = UDP_SOCKETS_ERRNO_NONE;
 
@@ -85,10 +85,10 @@ int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
  * @return Non-zero value on error, 0 on success.
  */
 int UDP_Sockets_Connect( Socket_t * pUdpSocket,
-    const char * pHostName,
-    uint16_t port,
-    uint32_t receiveTimeoutMs,
-    uint32_t sendTimeoutMs )
+                         const char * pHostName,
+                         uint16_t port,
+                         uint32_t receiveTimeoutMs,
+                         uint32_t sendTimeoutMs )
 {
     int xFd = -1;
     int xRet = UDP_SOCKETS_ERRNO_NONE;
@@ -103,7 +103,7 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
     if( getaddrinfo( pHostName, xPortStr, &xHints, &pxAddrList ) != 0 )
     {
         LogError( ( "Failed to connect to server: DNS resolution failed: Hostname=%s.",
-            pHostName ) );
+                    pHostName ) );
         return UDP_SOCKETS_ERRNO_ERROR;
     }
 
@@ -185,8 +185,8 @@ void UDP_Sockets_Disconnect( Socket_t udpSocket )
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t UDP_Sockets_Send( Socket_t xSocket,
-    const void * pvBuffer,
-    size_t xBufferLength )
+                          const void * pvBuffer,
+                          size_t xBufferLength )
 {
     int xWriteRet;
     int xReturnStatus;
@@ -233,8 +233,8 @@ int32_t UDP_Sockets_Send( Socket_t xSocket,
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t UDP_Sockets_Recv( Socket_t xSocket,
-    void * pvBuffer,
-    size_t xBufferLength )
+                          void * pvBuffer,
+                          size_t xBufferLength )
 {
     int xReadRet;
     int xReturnStatus;

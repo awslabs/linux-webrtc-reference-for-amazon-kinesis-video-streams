@@ -53,9 +53,9 @@ uint8_t base64DecodeAlpha[ 256 ] =
 // clang-format on
 
 Base64Result_t base64Encode( const char * pInputData,
-    size_t inputDataLength,
-    char * pOutputData,
-    size_t * pOutputDataLength )
+                             size_t inputDataLength,
+                             char * pOutputData,
+                             size_t * pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
     uint32_t padding, i;
@@ -127,9 +127,9 @@ Base64Result_t base64Encode( const char * pInputData,
 }
 
 Base64Result_t base64Decode( const char * pInputData,
-    size_t inputDataLength,
-    char * pOutputData,
-    size_t * pOutputDataLength )
+                             size_t inputDataLength,
+                             char * pOutputData,
+                             size_t * pOutputDataLength )
 {
     Base64Result_t ret = BASE64_RESULT_OK;
     const unsigned char * pInput = ( const unsigned char * ) pInputData;

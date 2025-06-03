@@ -34,12 +34,12 @@ extern "C" {
 #define PEER_CONNECTION_SRTCP_RTCP_PACKET_MIN_LENGTH ( 42 )
 
 PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSession_t * pSession,
-    uint8_t * pBuffer,
-    size_t bufferLength );
+                                                             uint8_t * pBuffer,
+                                                             size_t bufferLength );
 PeerConnectionResult_t PeerConnectionSrtcp_ConstructSenderReportPacket( PeerConnectionSession_t * pSession,
-    RtcpSenderReport_t * pSenderReport,
-    uint8_t * pOutputSrtcpPacket,
-    size_t * pOutputSrtcpPacketLength );
+                                                                        RtcpSenderReport_t * pSenderReport,
+                                                                        uint8_t * pOutputSrtcpPacket,
+                                                                        size_t * pOutputSrtcpPacketLength );
 
 #ifdef __cplusplus
 }

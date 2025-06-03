@@ -35,7 +35,7 @@ typedef struct
 
 typedef struct GstMediaSourcesContext GstMediaSourcesContext_t;
 typedef int32_t ( *GstMediaSourceOnMediaSinkHook )( void * pCustom,
-    WebrtcFrame_t * pFrame );
+                                                    WebrtcFrame_t * pFrame );
 
 typedef struct GstMediaSourceContext
 {
@@ -63,20 +63,20 @@ typedef struct GstMediaSourcesContext
  * @brief Initialize media source context
  */
 int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
-    GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
-    void * pOnMediaSinkHookCustom );
+                             GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
+                             void * pOnMediaSinkHookCustom );
 
 /**
  * @brief Initialize video transceiver
  */
 int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
-    Transceiver_t * pVideoTranceiver );
+                                             Transceiver_t * pVideoTranceiver );
 
 /**
  * @brief Initialize audio transceiver
  */
 int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
-    Transceiver_t * pAudioTranceiver );
+                                             Transceiver_t * pAudioTranceiver );
 
 /**
  * @brief Cleanup media source context

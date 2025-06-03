@@ -33,7 +33,7 @@
 #define DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID                 "myAudioTrack"
 
 static int32_t OnNewVideoSample( GstElement * sink,
-    gpointer user_data )
+                                 gpointer user_data )
 {
     int32_t ret = 0;
 
@@ -77,8 +77,8 @@ static int32_t OnNewVideoSample( GstElement * sink,
         pBuffer = gst_sample_get_buffer( pSample );
 
         if( gst_buffer_map( pBuffer,
-                &map,
-                GST_MAP_READ ) )
+                            &map,
+                            GST_MAP_READ ) )
         {
             frame.pData = map.data;
             frame.size = map.size;
@@ -89,14 +89,14 @@ static int32_t OnNewVideoSample( GstElement * sink,
             if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
             {
                 LogVerbose( ( "Sending video frame: size=%u, ts=%lu",
-                    frame.size, frame.timestampUs ) );
+                              frame.size, frame.timestampUs ) );
                 ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc(
                     pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
                     &frame );
             }
 
             gst_buffer_unmap( pBuffer,
-                &map );
+                              &map );
         }
         gst_sample_unref( pSample );
     }
@@ -121,9 +121,9 @@ static void * VideoTx_Task( void * pParameter )
     {
         // Connect to new-sample signal
         g_signal_connect( pVideoContext->pAppsink,
-            "new-sample",
-            G_CALLBACK( OnNewVideoSample ),
-            pVideoContext );
+                          "new-sample",
+                          G_CALLBACK( OnNewVideoSample ),
+                          pVideoContext );
 
         pVideoContext->pMainLoop = pLoop;
 
@@ -138,7 +138,7 @@ static void * VideoTx_Task( void * pParameter )
 }
 
 static int32_t OnNewAudioSample( GstElement * sink,
-    gpointer user_data )
+                                 gpointer user_data )
 {
     int32_t ret = 0;
 
@@ -177,8 +177,8 @@ static int32_t OnNewAudioSample( GstElement * sink,
         pBuffer = gst_sample_get_buffer( pSample );
 
         if( gst_buffer_map( pBuffer,
-                &map,
-                GST_MAP_READ ) )
+                            &map,
+                            GST_MAP_READ ) )
         {
             frame.pData = map.data;
             frame.size = map.size;
@@ -189,14 +189,14 @@ static int32_t OnNewAudioSample( GstElement * sink,
             if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
             {
                 LogVerbose( ( "Sending audio frame: size=%u, ts=%lu",
-                    frame.size, frame.timestampUs ) );
+                              frame.size, frame.timestampUs ) );
                 ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc(
                     pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
                     &frame );
             }
 
             gst_buffer_unmap( pBuffer,
-                &map );
+                              &map );
         }
         gst_sample_unref( pSample );
     }
@@ -221,13 +221,13 @@ static void * AudioTx_Task( void * pParameter )
     {
         // Connect to new-sample signal
         g_signal_connect( pAudioContext->pAppsink,
-            "new-sample",
-            G_CALLBACK( OnNewAudioSample ),
-            pAudioContext );
+                          "new-sample",
+                          G_CALLBACK( OnNewAudioSample ),
+                          pAudioContext );
 
         // Create main loop
         GMainLoop * pLoop = g_main_loop_new( NULL,
-            FALSE );
+                                             FALSE );
         pAudioContext->pMainLoop = pLoop;
 
         // Run the main loop
@@ -241,8 +241,8 @@ static void * AudioTx_Task( void * pParameter )
 }
 
 static int32_t HandlePcEventCallback( void * pCustomContext,
-    TransceiverCallbackEvent_t event,
-    TransceiverCallbackContent_t * pEventMsg )
+                                      TransceiverCallbackEvent_t event,
+                                      TransceiverCallbackContent_t * pEventMsg )
 {
     GstMediaSourceContext_t * pMediaSource = ( GstMediaSourceContext_t * ) pCustomContext;
     int32_t ret = 0;
@@ -263,10 +263,10 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
                 pMediaSource->numReadyPeer++;
                 pthread_mutex_unlock( &pMediaSource->pSourcesContext->mediaMutex );
                 LogInfo( ( "Remote peer ready for track kind %d, peers: %d",
-                    pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
+                           pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
 
                 change_state_ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pPipeline,
-                    GST_STATE_PLAYING );
+                                                          GST_STATE_PLAYING );
                 if( change_state_ret == GST_STATE_CHANGE_FAILURE )
                 {
                     LogError( ( "Failed to set pipeline to PLAYING state" ) );
@@ -280,12 +280,12 @@ static int32_t HandlePcEventCallback( void * pCustomContext,
                     pMediaSource->numReadyPeer--;
                 pthread_mutex_unlock( &pMediaSource->pSourcesContext->mediaMutex );
                 LogInfo( ( "Remote peer closed for track kind %d, peers: %d",
-                    pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
+                           pMediaSource->trackKind, pMediaSource->numReadyPeer ) );
                 if( pMediaSource->numReadyPeer == 0 )
                 {
                     // Stop the pipeline if no peers are connected
                     change_state_ret = gst_element_set_state( pMediaSource->pSourcesContext->videoContext.pPipeline,
-                        GST_STATE_NULL );
+                                                              GST_STATE_NULL );
                     if( change_state_ret == GST_STATE_CHANGE_FAILURE )
                     {
                         LogError( ( "Failed to set pipeline to NULL state" ) );
@@ -332,7 +332,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
 
         GError * pError = NULL;
         pCtx->videoContext.pPipeline = gst_parse_launch( pPipeline_desc,
-            &pError );
+                                                         &pError );
         g_free( pPipeline_desc );
 
         if( pCtx->videoContext.pPipeline == NULL )
@@ -347,7 +347,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
     {
         // Get video sink
         pCtx->videoContext.pAppsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
-            "vsink" );
+                                                           "vsink" );
         if( pCtx->videoContext.pAppsink == NULL )
         {
             LogError( ( "Failed to get video appsink" ) );
@@ -359,7 +359,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
     {
         // Get audio sink
         pCtx->audioContext.pAppsink = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
-            "asink" );
+                                                           "asink" );
         if( pCtx->audioContext.pAppsink == NULL )
         {
             LogError( ( "Failed to get audio appsink" ) );
@@ -374,7 +374,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
 
         // Get encoder elements for bitrate control
         pCtx->audioContext.pEncoder = gst_bin_get_by_name( GST_BIN( pCtx->audioContext.pPipeline ),
-            "audioEncoder" );
+                                                           "audioEncoder" );
         if( pCtx->audioContext.pEncoder == NULL )
         {
             LogError( ( "Failed to get audio encoder element" ) );
@@ -386,7 +386,7 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
     {
         // Get encoder elements for bitrate control
         pCtx->videoContext.pEncoder = gst_bin_get_by_name( GST_BIN( pCtx->videoContext.pPipeline ),
-            "videoEncoder" );
+                                                           "videoEncoder" );
         if( pCtx->videoContext.pEncoder == NULL )
         {
             LogError( ( "Failed to get video encoder element" ) );
@@ -423,7 +423,7 @@ int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
         if( pCtx->videoContext.pPipeline )
         {
             gst_element_set_state( pCtx->videoContext.pPipeline,
-                GST_STATE_NULL );
+                                   GST_STATE_NULL );
             gst_object_unref( pCtx->videoContext.pPipeline );
         }
 
@@ -457,8 +457,8 @@ int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx )
 }
 
 int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
-    GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
-    void * pOnMediaSinkHookCustom )
+                             GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc,
+                             void * pOnMediaSinkHookCustom )
 {
     int32_t ret = 0;
     pthread_t videoTid, audioTid;
@@ -472,13 +472,13 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         gst_init( NULL,
-            NULL );
+                  NULL );
         memset( pCtx,
-            0,
-            sizeof( GstMediaSourcesContext_t ) );
+                0,
+                sizeof( GstMediaSourcesContext_t ) );
 
         if( pthread_mutex_init( &pCtx->mediaMutex,
-                NULL ) != 0 )
+                                NULL ) != 0 )
         {
             LogError( ( "Failed to create media mutex" ) );
             ret = -1;
@@ -506,9 +506,9 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         if( pthread_create( &videoTid,
-                NULL,
-                VideoTx_Task,
-                &pCtx->videoContext ) != 0 )
+                            NULL,
+                            VideoTx_Task,
+                            &pCtx->videoContext ) != 0 )
         {
             LogError( ( "Failed to create video task" ) );
             GstMediaSource_Cleanup( pCtx );
@@ -519,13 +519,13 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         if( pthread_create( &audioTid,
-                NULL,
-                AudioTx_Task,
-                &pCtx->audioContext ) != 0 )
+                            NULL,
+                            AudioTx_Task,
+                            &pCtx->audioContext ) != 0 )
         {
             LogError( ( "Failed to create audio task" ) );
             pthread_join( videoTid,
-                NULL );
+                          NULL );
             GstMediaSource_Cleanup( pCtx );
             ret = -1;
         }
@@ -537,7 +537,7 @@ int32_t GstMediaSource_Init( GstMediaSourcesContext_t * pCtx,
 }
 
 int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
-    Transceiver_t * pVideoTransceiver )
+                                             Transceiver_t * pVideoTransceiver )
 {
     int32_t ret = 0;
     u_int32_t bitrate;
@@ -551,32 +551,32 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         memset( pVideoTransceiver,
-            0,
-            sizeof( Transceiver_t ) );
+                0,
+                sizeof( Transceiver_t ) );
 
         pVideoTransceiver->trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
         pVideoTransceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDONLY;
 
         TRANSCEIVER_ENABLE_CODEC( pVideoTransceiver->codecBitMap,
-            TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
+                                  TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
 
         pVideoTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
 
         g_object_get( G_OBJECT( pCtx->videoContext.pEncoder ),
-            "bitrate",
-            &bitrate,
-            NULL );
+                      "bitrate",
+                      &bitrate,
+                      NULL );
         // Convert from kbps to bps
         pVideoTransceiver->rollingbufferBitRate = bitrate * 1000;
 
         strncpy( pVideoTransceiver->streamId,
-            DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
-            sizeof( pVideoTransceiver->streamId ) - 1 );
+                 DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
+                 sizeof( pVideoTransceiver->streamId ) - 1 );
         pVideoTransceiver->streamIdLength = strlen( pVideoTransceiver->streamId );
 
         strncpy( pVideoTransceiver->trackId,
-            DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID,
-            sizeof( pVideoTransceiver->trackId ) - 1 );
+                 DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID,
+                 sizeof( pVideoTransceiver->trackId ) - 1 );
         pVideoTransceiver->trackIdLength = strlen( pVideoTransceiver->trackId );
 
         pVideoTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
@@ -587,7 +587,7 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
 }
 
 int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
-    Transceiver_t * pAudioTransceiver )
+                                             Transceiver_t * pAudioTransceiver )
 {
     int32_t ret = 0;
     uint32_t bitrate;
@@ -601,30 +601,30 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
     if( ret == 0 )
     {
         memset( pAudioTransceiver,
-            0,
-            sizeof( Transceiver_t ) );
+                0,
+                sizeof( Transceiver_t ) );
 
         pAudioTransceiver->trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
         pAudioTransceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDONLY;
 
         TRANSCEIVER_ENABLE_CODEC( pAudioTransceiver->codecBitMap,
-            TRANSCEIVER_RTC_CODEC_OPUS_BIT );
+                                  TRANSCEIVER_RTC_CODEC_OPUS_BIT );
 
         pAudioTransceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURATION_SECOND;
 
         g_object_get( G_OBJECT( pCtx->audioContext.pEncoder ),
-            "bitrate",
-            &bitrate,
-            NULL );
+                      "bitrate",
+                      &bitrate,
+                      NULL );
         pAudioTransceiver->rollingbufferBitRate = bitrate;
 
         strncpy( pAudioTransceiver->streamId,
-            DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
-            sizeof( pAudioTransceiver->streamId ) - 1 );
+                 DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
+                 sizeof( pAudioTransceiver->streamId ) - 1 );
         pAudioTransceiver->streamIdLength = strlen( pAudioTransceiver->streamId );
         strncpy( pAudioTransceiver->trackId,
-            DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID,
-            sizeof( pAudioTransceiver->trackId ) - 1 );
+                 DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID,
+                 sizeof( pAudioTransceiver->trackId ) - 1 );
         pAudioTransceiver->trackIdLength = strlen( pAudioTransceiver->trackId );
         pAudioTransceiver->onPcEventCallbackFunc = HandlePcEventCallback;
         pAudioTransceiver->pOnPcEventCustomContext = &pCtx->audioContext;

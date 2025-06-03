@@ -59,22 +59,22 @@ extern void * IceControllerSocketListener_Task( void * pParameter );
 static void * PeerConnection_SessionTask( void * pParameter );
 static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession );
 static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestType_t requestType,
-    void * pRequestContent,
-    size_t contentLength );
+                                                       PeerConnectionSessionRequestType_t requestType,
+                                                       void * pRequestContent,
+                                                       size_t contentLength );
 static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
-    MessageQueueHandler_t * pRequestQueue );
+                                             MessageQueueHandler_t * pRequestQueue );
 static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage );
+                                                               PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t HandleProcessIceCandidatesAndPairs( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage );
+                                                                  PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t HandlePeriodConnectionCheck( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage );
+                                                           PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t HandleIceClosing( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage );
+                                                PeerConnectionSessionRequestMessage_t * pRequestMessage );
 
 static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage );
+                                                                         PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession );
@@ -90,8 +90,8 @@ static void * PeerConnection_SessionTask( void * pParameter )
     {
         LogDebug( ( "Waiting start up barrier." ) );
         retRead = read( pSession->startupBarrier,
-            &barrierResult,
-            sizeof( barrierResult ) );
+                        &barrierResult,
+                        sizeof( barrierResult ) );
         if( retRead != sizeof( uint64_t ) )
         {
             LogError( ( "Unexpected return value from start up barrier, retRead: %ld", retRead ) );
@@ -119,7 +119,7 @@ static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession )
     for( ; !skipProcess; )
     {
         result = HandleRequest( pSession,
-            &pSession->requestQueue );
+                                &pSession->requestQueue );
         if( ( result != PEER_CONNECTION_RESULT_OK ) &&
             ( result != PEER_CONNECTION_RESULT_CLOSING ) )
         {
@@ -140,7 +140,7 @@ static void SessionProcessEndlessLoop( PeerConnectionSession_t * pSession )
             ( ( NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 ) > pSession->inactiveConnectionTimeoutMs ) )
         {
             LogInfo( ( "Detect inactive connection, closing peer connection session: %s.",
-                pSession->combinedName ) );
+                       pSession->combinedName ) );
             PeerConnection_CloseSession( pSession );
         }
     }
@@ -165,17 +165,17 @@ static void EmptyMessageQueue( MessageQueueHandler_t * pMessageQueue )
             {
                 requestMsgLength = sizeof( PeerConnectionSessionRequestMessage_t );
                 ( void ) MessageQueue_Recv( pMessageQueue,
-                    &requestMsg,
-                    &requestMsgLength );
+                                            &requestMsg,
+                                            &requestMsgLength );
             }
         } while( result == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE );
     }
 }
 
 static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestType_t requestType,
-    void * pRequestContent,
-    size_t contentLength )
+                                                       PeerConnectionSessionRequestType_t requestType,
+                                                       void * pRequestContent,
+                                                       size_t contentLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     MessageQueueResult_t retMessageQueue;
@@ -195,8 +195,8 @@ static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t *
         if( retMessageQueue == MESSAGE_QUEUE_RESULT_MQ_IS_FULL )
         {
             LogWarn( ( "The message queue in peer connection session: %p is full, dropping request type: %d",
-                pSession,
-                requestType ) );
+                       pSession,
+                       requestType ) );
             ret = PEER_CONNECTION_RESULT_FAIL_MQ_SEND;
         }
     }
@@ -206,13 +206,13 @@ static PeerConnectionResult_t SendPeerConnectionEvent( PeerConnectionSession_t *
         if( pRequestContent != NULL )
         {
             memcpy( &requestMessage.peerConnectionSessionRequestContent,
-                pRequestContent,
-                contentLength );
+                    pRequestContent,
+                    contentLength );
         }
 
         retMessageQueue = MessageQueue_Send( &pSession->requestQueue,
-            &requestMessage,
-            sizeof( PeerConnectionSessionRequestMessage_t ) );
+                                             &requestMessage,
+                                             sizeof( PeerConnectionSessionRequestMessage_t ) );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to send message queue, error: %d", retMessageQueue ) );
@@ -238,9 +238,9 @@ static void OnRtcpSenderReportAudioTimerExpire( void * pParameter )
             requestMessage.peerConnectionSessionRequestContent.rtcpContent.pTransceiver = pSession->pTransceivers[ i ];
 
             ( void ) SendPeerConnectionEvent( pSession,
-                PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
-                &requestMessage.peerConnectionSessionRequestContent.rtcpContent,
-                sizeof( requestMessage.peerConnectionSessionRequestContent.rtcpContent ) );
+                                              PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
+                                              &requestMessage.peerConnectionSessionRequestContent.rtcpContent,
+                                              sizeof( requestMessage.peerConnectionSessionRequestContent.rtcpContent ) );
             break;
         }
     }
@@ -263,9 +263,9 @@ static void OnRtcpSenderReportVideoTimerExpire( void * pParameter )
             requestMessage.peerConnectionSessionRequestContent.rtcpContent.pTransceiver = pSession->pTransceivers[ i ];
 
             ( void ) SendPeerConnectionEvent( pSession,
-                PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
-                &requestMessage.peerConnectionSessionRequestContent.rtcpContent,
-                sizeof( requestMessage.peerConnectionSessionRequestContent.rtcpContent ) );
+                                              PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT,
+                                              &requestMessage.peerConnectionSessionRequestContent.rtcpContent,
+                                              sizeof( requestMessage.peerConnectionSessionRequestContent.rtcpContent ) );
             break;
         }
     }
@@ -284,14 +284,14 @@ static void OnCloseSessionTimerExpire( void * pParameter )
         EmptyMessageQueue( &pSession->requestQueue );
 
         ( void ) SendPeerConnectionEvent( pSession,
-            PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
-            NULL,
-            0U );
+                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
+                                          NULL,
+                                          0U );
 
         /* Wake peer connection session to free resources. */
         retWrite = write( pSession->startupBarrier,
-            &signalStartUpBarrier,
-            sizeof( signalStartUpBarrier ) );
+                          &signalStartUpBarrier,
+                          sizeof( signalStartUpBarrier ) );
         if( retWrite != sizeof( uint64_t ) )
         {
             LogError( ( "Fail to signal start up barrier, errno(%d): %s.", errno, strerror( errno ) ) );
@@ -311,8 +311,8 @@ static void OnClosePeerConnection( PeerConnectionSession_t * pSession )
         pSession->transceiverCount = 0;
         pSession->mLinesTransceiverCount = 0;
         memset( pSession->pTransceivers,
-            0,
-            sizeof( pSession->pTransceivers ) );
+                0,
+                sizeof( pSession->pTransceivers ) );
 
         /* Reset the state to inited for user to re-use. */
         pSession->state = PEER_CONNECTION_SESSION_STATE_INITED;
@@ -320,7 +320,7 @@ static void OnClosePeerConnection( PeerConnectionSession_t * pSession )
 }
 
 static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
-    MessageQueueHandler_t * pRequestQueue )
+                                             MessageQueueHandler_t * pRequestQueue )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     MessageQueueResult_t retMessageQueue;
@@ -330,8 +330,8 @@ static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
     /* Handle event. */
     requestMsgLength = sizeof( PeerConnectionSessionRequestMessage_t );
     retMessageQueue = MessageQueue_Recv( pRequestQueue,
-        &requestMsg,
-        &requestMsgLength );
+                                         &requestMsg,
+                                         &requestMsgLength );
     if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
     {
         /* Received message, process it. */
@@ -340,15 +340,15 @@ static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
         {
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE:
                 ( void ) HandleAddRemoteCandidateRequest( pSession,
-                    &requestMsg );
+                                                          &requestMsg );
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_PROCESS_ICE_CANDIDATES_AND_PAIRS:
                 ( void ) HandleProcessIceCandidatesAndPairs( pSession,
-                    &requestMsg );
+                                                             &requestMsg );
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK:
                 ( void ) HandlePeriodConnectionCheck( pSession,
-                    &requestMsg );
+                                                      &requestMsg );
 
                 /* If a P2P connection is found and DTLS handshaking is in progress,
                  * invoke the handshake here to retry and prevent packet loss in transit. */
@@ -359,7 +359,7 @@ static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING:
                 ( void ) HandleIceClosing( pSession,
-                    &requestMsg );
+                                           &requestMsg );
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSED:
                 OnClosePeerConnection( pSession );
@@ -367,7 +367,7 @@ static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_RTCP_SENDER_REPORT:
                 ( void ) PeerConnection_OnRtcpSenderReportCallback( pSession,
-                    &requestMsg );
+                                                                    &requestMsg );
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE:
                 PeerConnection_CloseSession( pSession );
@@ -386,7 +386,7 @@ static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
 }
 
 static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage )
+                                                               PeerConnectionSessionRequestMessage_t * pRequestMessage )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -404,7 +404,7 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
             remoteCandidateInfo.remoteProtocol = pRemoteCandidate->protocol;
 
             iceControllerResult = IceController_AddRemoteCandidate( &pSession->iceControllerContext,
-                &remoteCandidateInfo );
+                                                                    &remoteCandidateInfo );
             if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
             {
                 /* Skip unsupported candidate types (e.g. IPv6 or TCP candidates) - this is expected behavior. */
@@ -415,8 +415,8 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
         else
         {
             LogDebug( ( "Cannot process candidate | Type=%d | Connection State=%d | Reason=Invalid connection state",
-                pRemoteCandidate->candidateType,
-                pSession->state ) );
+                        pRemoteCandidate->candidateType,
+                        pSession->state ) );
         }
     }
 
@@ -424,7 +424,7 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
 }
 
 static PeerConnectionResult_t HandleProcessIceCandidatesAndPairs( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage )
+                                                                  PeerConnectionSessionRequestMessage_t * pRequestMessage )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -445,7 +445,7 @@ static PeerConnectionResult_t HandleProcessIceCandidatesAndPairs( PeerConnection
 }
 
 static PeerConnectionResult_t HandlePeriodConnectionCheck( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage )
+                                                           PeerConnectionSessionRequestMessage_t * pRequestMessage )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -466,7 +466,7 @@ static PeerConnectionResult_t HandlePeriodConnectionCheck( PeerConnectionSession
 }
 
 static PeerConnectionResult_t HandleIceClosing( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage )
+                                                PeerConnectionSessionRequestMessage_t * pRequestMessage )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -487,7 +487,7 @@ static PeerConnectionResult_t HandleIceClosing( PeerConnectionSession_t * pSessi
 }
 
 static PeerConnectionResult_t SendRemoteCandidateRequest( PeerConnectionSession_t * pSession,
-    IceControllerCandidate_t * pRemoteCandidate )
+                                                          IceControllerCandidate_t * pRemoteCandidate )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     TimerControllerResult_t retTimer;
@@ -507,8 +507,8 @@ static PeerConnectionResult_t SendRemoteCandidateRequest( PeerConnectionSession_
             if( retTimer == TIMER_CONTROLLER_RESULT_NOT_SET )
             {
                 TimerController_SetTimer( &pSession->closeSessionTimer,
-                    PEER_CONNECTION_WAIT_SDP_MESSAGE_TIMEOUT_MS,
-                    0U );
+                                          PEER_CONNECTION_WAIT_SDP_MESSAGE_TIMEOUT_MS,
+                                          0U );
             }
         }
     }
@@ -516,9 +516,9 @@ static PeerConnectionResult_t SendRemoteCandidateRequest( PeerConnectionSession_
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = SendPeerConnectionEvent( pSession,
-            PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE,
-            pRemoteCandidate,
-            sizeof( IceControllerCandidate_t ) );
+                                       PEER_CONNECTION_SESSION_REQUEST_TYPE_ADD_REMOTE_CANDIDATE,
+                                       pRemoteCandidate,
+                                       sizeof( IceControllerCandidate_t ) );
     }
 
     return ret;
@@ -538,9 +538,9 @@ static int32_t OnIceEventProcessIceCandidatesAndPairs( PeerConnectionSession_t *
     if( ret == 0 )
     {
         result = SendPeerConnectionEvent( pSession,
-            PEER_CONNECTION_SESSION_REQUEST_TYPE_PROCESS_ICE_CANDIDATES_AND_PAIRS,
-            NULL,
-            0U );
+                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_PROCESS_ICE_CANDIDATES_AND_PAIRS,
+                                          NULL,
+                                          0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
             ret = -11;
@@ -564,9 +564,9 @@ static int32_t OnIceEventPeriodicConnectionCheck( PeerConnectionSession_t * pSes
     if( ret == 0 )
     {
         result = SendPeerConnectionEvent( pSession,
-            PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK,
-            NULL,
-            0U );
+                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_PERIOD_CONNECTION_CHECK,
+                                          NULL,
+                                          0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
             ret = -11;
@@ -590,9 +590,9 @@ static int32_t OnIceEventClosing( PeerConnectionSession_t * pSession )
     if( ret == 0 )
     {
         result = SendPeerConnectionEvent( pSession,
-            PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING,
-            NULL,
-            0U );
+                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSING,
+                                          NULL,
+                                          0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
             ret = -11;
@@ -616,9 +616,9 @@ static int32_t OnIceEventClosed( PeerConnectionSession_t * pSession )
     if( ret == 0 )
     {
         result = SendPeerConnectionEvent( pSession,
-            PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSED,
-            NULL,
-            0U );
+                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_ICE_CLOSED,
+                                          NULL,
+                                          0U );
         if( result != PEER_CONNECTION_RESULT_OK )
         {
             ret = -11;
@@ -650,16 +650,16 @@ static int32_t HandleDtlsTermination( PeerConnectionSession_t * pSession )
 }
 
 static int32_t OnDtlsSendHook( void * pCustomContext,
-    const uint8_t * pBuffer,
-    size_t bufferLength )
+                               const uint8_t * pBuffer,
+                               size_t bufferLength )
 {
     int32_t ret = 0;
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
     IceControllerResult_t resultIceController = ICE_CONTROLLER_RESULT_OK;
 
     resultIceController = IceController_SendToRemotePeer( &pSession->iceControllerContext,
-        pBuffer,
-        bufferLength );
+                                                          pBuffer,
+                                                          bufferLength );
     if( resultIceController != ICE_CONTROLLER_RESULT_OK )
     {
         LogWarn( ( "Fail to send DTLS packet, ret: %d", resultIceController ) );
@@ -674,8 +674,8 @@ static int32_t OnDtlsSendHook( void * pCustomContext,
 }
 
 static int32_t HandleIceEventCallback( void * pCustomContext,
-    IceControllerCallbackEvent_t event,
-    IceControllerCallbackContent_t * pEventMsg )
+                                       IceControllerCallbackEvent_t event,
+                                       IceControllerCallbackContent_t * pEventMsg )
 {
     int32_t ret = 0;
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
@@ -684,13 +684,13 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
     if( pCustomContext == NULL )
     {
         LogError( ( "Invalid input, pCustomContext: %p, pEventMsg: %p",
-            pCustomContext, pEventMsg ) );
+                    pCustomContext, pEventMsg ) );
         ret = -1;
     }
     else if( ( event == ICE_CONTROLLER_CB_EVENT_NONE ) || ( event >= ICE_CONTROLLER_CB_EVENT_MAX ) )
     {
         LogError( ( "Unknown event: %d",
-            event ) );
+                    event ) );
         ret = -2;
     }
     else
@@ -704,7 +704,7 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                     {
                         pLocalCandidateReadyMsg = ( PeerConnectionIceLocalCandidate_t * ) &pEventMsg->iceControllerCallbackContent.localCandidateReadyMsg;
                         pSession->onIceCandidateReadyCallbackFunc( pSession->pOnLocalCandidateReadyCallbackCustomContext,
-                            pLocalCandidateReadyMsg );
+                                                                   pLocalCandidateReadyMsg );
                     }
                     else
                     {
@@ -771,8 +771,8 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
 
         /* Assign transport send callback function/context for different connection types. */
         memset( &pDtlsSession->xDtlsTransportParams,
-            0,
-            sizeof( DtlsTransportParams_t ) );
+                0,
+                sizeof( DtlsTransportParams_t ) );
         pDtlsSession->xDtlsTransportParams.onDtlsSendHook = OnDtlsSendHook;
         pDtlsSession->xDtlsTransportParams.pOnDtlsSendCustomContext = ( void * ) pSession;
 
@@ -799,8 +799,8 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
 
             /* Attempt to create a DTLS connection. */
             xNetworkStatus = DTLS_Init( &pDtlsSession->xDtlsNetworkContext,
-                &pDtlsSession->xNetworkCredentials,
-                0U );
+                                        &pDtlsSession->xNetworkCredentials,
+                                        0U );
 
             if( xNetworkStatus != DTLS_SUCCESS )
             {
@@ -884,8 +884,8 @@ static void PeerConnection_SetTimer( PeerConnectionSession_t * pSession )
                 /* The timer is not set before, send the request immendiately and start rtcp audio Sender Report timer. */
                 LogDebug( ( "Trigger rtcp audio Sender Report timer." ) );
                 retTimer = TimerController_SetTimer( &pSession->rtcpAudioSenderReportTimer,
-                    PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ),
-                    PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ) );
+                                                     PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ),
+                                                     PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ) );
                 if( retTimer != TIMER_CONTROLLER_RESULT_OK )
                 {
                     LogError( ( "Fail to start RTCP Audio Sender Report timer, result: %d", retTimer ) );
@@ -900,8 +900,8 @@ static void PeerConnection_SetTimer( PeerConnectionSession_t * pSession )
                 /* The timer is not set before, send the request immendiately and start rtcp video Sender Report timer. */
                 LogDebug( ( "Trigger rtcp video Sender Report timer." ) );
                 retTimer = TimerController_SetTimer( &pSession->rtcpVideoSenderReportTimer,
-                    PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ),
-                    PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ) );
+                                                     PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ),
+                                                     PEER_CONNECTION_RTCP_REPORT_TIMER_INTERVAL_MS + ( rand() % 200 ) );
                 if( retTimer != TIMER_CONTROLLER_RESULT_OK )
                 {
                     LogError( ( "Fail to start RTCP Video Sender Report timer, result: %d", retTimer ) );
@@ -929,8 +929,8 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
 
     /* Verify remote fingerprint (if remote cert fingerprint is the expected one) */
     xNetworkStatus = DTLS_VerifyRemoteCertificateFingerprint( &pSession->dtlsSession.xDtlsNetworkContext.pParams->dtlsSslContext,
-        pSession->remoteCertFingerprint,
-        pSession->remoteCertFingerprintLength );
+                                                              pSession->remoteCertFingerprint,
+                                                              pSession->remoteCertFingerprintLength );
 
     if( xNetworkStatus != DTLS_SUCCESS )
     {
@@ -942,7 +942,7 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     {
         /* Retrieve key material into DTLS session. */
         xNetworkStatus = DTLS_PopulateKeyingMaterial( &pSession->dtlsSession.xDtlsNetworkContext.pParams->dtlsSslContext,
-            &pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial );
+                                                      &pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial );
 
         if( xNetworkStatus != DTLS_SUCCESS )
         {
@@ -996,8 +996,8 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
             if( pSession->pTransceivers[ i ]->onPcEventCallbackFunc )
             {
                 pSession->pTransceivers[ i ]->onPcEventCallbackFunc( pSession->pTransceivers[ i ]->pOnPcEventCustomContext,
-                    TRANSCEIVER_CB_EVENT_REMOTE_PEER_READY,
-                    NULL );
+                                                                     TRANSCEIVER_CB_EVENT_REMOTE_PEER_READY,
+                                                                     NULL );
             }
         }
     }
@@ -1005,7 +1005,7 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     if( ret == 0 )
     {
         IceController_HandleEvent( &pSession->iceControllerContext,
-            ICE_CONTROLLER_EVENT_DTLS_HANDSHAKE_DONE );
+                                   ICE_CONTROLLER_EVENT_DTLS_HANDSHAKE_DONE );
     }
 
     if( ret != 0 )
@@ -1017,8 +1017,8 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
 }
 
 static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
-    uint8_t * pDtlsEncryptData,
-    size_t dtlsEncryptDataLength )
+                                  uint8_t * pDtlsEncryptData,
+                                  size_t dtlsEncryptDataLength )
 {
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_SUCCESS;
@@ -1026,10 +1026,10 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
     size_t dtlsDecryptBufferLength = PEER_CONNECTION_MAX_DTLS_DECRYPTED_DATA_LENGTH;
 
     xNetworkStatus = DTLS_ProcessPacket( &pSession->dtlsSession.xDtlsNetworkContext,
-        pDtlsEncryptData,
-        dtlsEncryptDataLength,
-        dtlsDecryptBuffer,
-        &dtlsDecryptBufferLength );
+                                         pDtlsEncryptData,
+                                         dtlsEncryptDataLength,
+                                         dtlsDecryptBuffer,
+                                         &dtlsDecryptBufferLength );
 
     if( xNetworkStatus == DTLS_HANDSHAKE_COMPLETE )
     {
@@ -1042,8 +1042,8 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
             if( pSession->state == PEER_CONNECTION_SESSION_STATE_CONNECTION_READY )
             {
                 PeerConnectionSCTP_ProcessSCTPData( pSession,
-                    dtlsDecryptBuffer,
-                    dtlsDecryptBufferLength );
+                                                    dtlsDecryptBuffer,
+                                                    dtlsDecryptBufferLength );
             }
         }
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
@@ -1058,8 +1058,8 @@ static int32_t ProcessDtlsPacket( PeerConnectionSession_t * pSession,
 }
 
 static int32_t HandleNonStunPackets( void * pCustomContext,
-    uint8_t * pBuffer,
-    size_t bufferLength )
+                                     uint8_t * pBuffer,
+                                     size_t bufferLength )
 {
     int32_t ret = 0;
     PeerConnectionSession_t * pSession = ( PeerConnectionSession_t * ) pCustomContext;
@@ -1068,7 +1068,7 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
     if( ( pCustomContext == NULL ) || ( pBuffer == NULL ) )
     {
         LogWarn( ( "Invalid input, pCustomContext: %p, pBuffer: %p",
-            pCustomContext, pBuffer ) );
+                   pCustomContext, pBuffer ) );
         ret = -1;
     }
 
@@ -1085,8 +1085,8 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
             {
                 /* RTCP packet. */
                 resultPeerConnection = PeerConnectionSrtp_HandleSrtcpPacket( pSession,
-                    pBuffer,
-                    bufferLength );
+                                                                             pBuffer,
+                                                                             bufferLength );
                 if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
                 {
                     LogWarn( ( "Failed to handle SRTCP packets, result: %d", resultPeerConnection ) );
@@ -1101,8 +1101,8 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
             {
                 /* RTP packet */
                 resultPeerConnection = PeerConnectionSrtp_HandleSrtpPacket( pSession,
-                    pBuffer,
-                    bufferLength );
+                                                                            pBuffer,
+                                                                            bufferLength );
                 if( resultPeerConnection != PEER_CONNECTION_RESULT_OK )
                 {
                     LogWarn( ( "Failed to handle SRTP packets, result: %d", resultPeerConnection ) );
@@ -1120,14 +1120,14 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
              * and process incoming DTLS data by forwarding to respective
              * libraries to process. */
             ret = ProcessDtlsPacket( pSession,
-                pBuffer,
-                bufferLength );
+                                     pBuffer,
+                                     bufferLength );
         }
         else
         {
             LogWarn( ( "drop unknown DTLS packet, length=%lu, first byte=0x%02x",
-                bufferLength,
-                pBuffer[ 0 ] ) );
+                       bufferLength,
+                       pBuffer[ 0 ] ) );
         }
     }
 
@@ -1138,7 +1138,7 @@ static int32_t HandleNonStunPackets( void * pCustomContext,
  * need to be escaped when encoding in JSON
  */
 static void generateJSONValidString( char * pDst,
-    size_t length )
+                                     size_t length )
 {
     size_t i = 0;
     uint8_t skipProcess = 0;
@@ -1160,7 +1160,7 @@ static void generateJSONValidString( char * pDst,
 }
 
 static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionConfiguration_t * pSessionConfig )
+                                                       PeerConnectionSessionConfiguration_t * pSessionConfig )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -1170,22 +1170,22 @@ static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t *
     if( pSession == NULL )
     {
         LogError( ( "Invalid input, pSession: %p",
-            pSession ) );
+                    pSession ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &initConfig,
-            0,
-            sizeof( IceControllerInitConfig_t ) );
+                0,
+                sizeof( IceControllerInitConfig_t ) );
         initConfig.natTraversalConfigBitmap = pSessionConfig->natTraversalConfigBitmap;
         initConfig.onIceEventCallbackFunc = HandleIceEventCallback;
         initConfig.pOnIceEventCallbackContext = pSession;
         initConfig.onRecvNonStunPacketFunc = HandleNonStunPackets;
         initConfig.pOnRecvNonStunPacketCallbackContext = pSession;
         iceControllerResult = IceController_Init( &pSession->iceControllerContext,
-            &initConfig );
+                                                  &initConfig );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to initialize Ice Controller." ) );
@@ -1196,8 +1196,8 @@ static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t *
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &iceServerConfig,
-            0,
-            sizeof( IceControllerIceServerConfig_t ) );
+                0,
+                sizeof( IceControllerIceServerConfig_t ) );
         iceServerConfig.pIceServers = pSessionConfig->iceServers;
         iceServerConfig.iceServersCount = pSessionConfig->iceServersCount;
         iceServerConfig.pRootCaPath = pSessionConfig->pRootCaPath;
@@ -1205,7 +1205,7 @@ static PeerConnectionResult_t InitializeIceController( PeerConnectionSession_t *
         iceServerConfig.pRootCaPem = pSessionConfig->pRootCaPem;
         iceServerConfig.rootCaPemLength = pSessionConfig->rootCaPemLength;
         iceControllerResult = IceController_AddIceServerConfig( &pSession->iceControllerContext,
-            &iceServerConfig );
+                                                                &iceServerConfig );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to add Ice server config into Ice Controller." ) );
@@ -1313,7 +1313,7 @@ static PeerConnectionResult_t PeerConnection_ResetTimer( PeerConnectionSession_t
 }
 
 static PeerConnectionResult_t AllocateTransceiver( PeerConnectionSession_t * pSession,
-    Transceiver_t * pTransceiver )
+                                                   Transceiver_t * pTransceiver )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -1357,9 +1357,9 @@ static PeerConnectionResult_t InitializeDtlsContext( PeerConnectionDtlsContext_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         xNetworkStatus = DTLS_CreateCertificateAndKey( GENERATED_CERTIFICATE_BITS,
-            0,
-            &pDtlsContext->localCert,
-            &pDtlsContext->localKey );
+                                                       0,
+                                                       &pDtlsContext->localCert,
+                                                       &pDtlsContext->localKey );
         if( xNetworkStatus != DTLS_SUCCESS )
         {
             LogError( ( "Fail to DTLS_CreateCertificateAndKey, return %d", xNetworkStatus ) );
@@ -1371,8 +1371,8 @@ static PeerConnectionResult_t InitializeDtlsContext( PeerConnectionDtlsContext_t
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         xNetworkStatus = DTLS_CreateCertificateFingerprint( &pDtlsContext->localCert,
-            pDtlsContext->localCertFingerprint,
-            CERTIFICATE_FINGERPRINT_LENGTH );
+                                                            pDtlsContext->localCertFingerprint,
+                                                            CERTIFICATE_FINGERPRINT_LENGTH );
         if( xNetworkStatus != DTLS_SUCCESS )
         {
             LogError( ( "Fail to dtlsCertificateFingerprint answer cert, return %d", xNetworkStatus ) );
@@ -1389,37 +1389,37 @@ static PeerConnectionResult_t InitializeDtlsContext( PeerConnectionDtlsContext_t
 }
 
 static PeerConnectionResult_t GetDefaultCodec( uint32_t codecBitMap,
-    uint32_t * pOutputCodec )
+                                               uint32_t * pOutputCodec )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
     if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
-            TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
+                                      TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_H264;
     }
     else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
-                 TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
+                                           TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_OPUS;
     }
     else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
-                 TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
+                                           TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_VP8;
     }
     else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
-                 TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
+                                           TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_MULAW;
     }
     else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
-                 TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
+                                           TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_ALAW;
     }
     else if( TRANSCEIVER_IS_CODEC_ENABLED( codecBitMap,
-                 TRANSCEIVER_RTC_CODEC_H265_BIT ) )
+                                           TRANSCEIVER_RTC_CODEC_H265_BIT ) )
     {
         *pOutputCodec = TRANSCEIVER_RTC_CODEC_DEFAULT_PAYLOAD_H265;
     }
@@ -1439,7 +1439,7 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
     const Transceiver_t * pTransceiver = NULL;
 
     LogInfo( ( "Setting default payload types for session, transceiverCount: %u",
-        pSession->transceiverCount ) );
+               pSession->transceiverCount ) );
     for( i = 0; i < pSession->transceiverCount && ret == PEER_CONNECTION_RESULT_OK; i++ )
     {
         pTransceiver = pSession->pTransceivers[ i ];
@@ -1447,8 +1447,8 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
         if( pTransceiver == NULL )
         {
             LogError( ( "This is not expected, keep this condition here to avoid NULL accessing, transceiverCount: %u, current index: %d",
-                pSession->transceiverCount,
-                i ) );
+                        pSession->transceiverCount,
+                        i ) );
             ret = PEER_CONNECTION_RESULT_UNKNOWN_TRANSCEIVER;
             break;
         }
@@ -1459,7 +1459,7 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
             pSession->rtpConfig.videoRtxSequenceNumber = 0;
             pSession->rtpConfig.videoSequenceNumber = 0;
             ret = GetDefaultCodec( pTransceiver->codecBitMap,
-                &pSession->rtpConfig.videoCodecPayload );
+                                   &pSession->rtpConfig.videoCodecPayload );
         }
         else
         {
@@ -1468,7 +1468,7 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
             pSession->rtpConfig.audioRtxSequenceNumber = 0;
             pSession->rtpConfig.audioSequenceNumber = 0;
             ret = GetDefaultCodec( pTransceiver->codecBitMap,
-                &pSession->rtpConfig.audioCodecPayload );
+                                   &pSession->rtpConfig.audioCodecPayload );
         }
     }
 
@@ -1476,7 +1476,7 @@ static PeerConnectionResult_t SetDefaultPayloadTypes( PeerConnectionSession_t * 
 }
 
 PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionConfiguration_t * pSessionConfig )
+                                            PeerConnectionSessionConfiguration_t * pSessionConfig )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 #if ENABLE_TWCC_SUPPORT
@@ -1500,13 +1500,13 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
         peerConnectionContext.isInited = 1U;
 
         generateJSONValidString( peerConnectionContext.localUserName,
-            PEER_CONNECTION_USER_NAME_LENGTH );
+                                 PEER_CONNECTION_USER_NAME_LENGTH );
         peerConnectionContext.localUserName[ PEER_CONNECTION_USER_NAME_LENGTH ] = '\0';
         generateJSONValidString( peerConnectionContext.localPassword,
-            PEER_CONNECTION_PASSWORD_LENGTH );
+                                 PEER_CONNECTION_PASSWORD_LENGTH );
         peerConnectionContext.localPassword[ PEER_CONNECTION_PASSWORD_LENGTH ] = '\0';
         generateJSONValidString( peerConnectionContext.localCname,
-            PEER_CONNECTION_CNAME_LENGTH );
+                                 PEER_CONNECTION_CNAME_LENGTH );
         peerConnectionContext.localCname[ PEER_CONNECTION_CNAME_LENGTH ] = '\0';
 
         /* Generate answer cert in DER format */
@@ -1515,8 +1515,8 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
             /* Initialize DTLS session. */
             pDtlsSession = &pSession->dtlsSession;
             memset( pDtlsSession,
-                0,
-                sizeof( DtlsSession_t ) );
+                    0,
+                    sizeof( DtlsSession_t ) );
 
             /* pCtx->dtlsContext.isInitialized would be set to 1 in InitializeDtlsContext(). */
             ret = InitializeDtlsContext( &peerConnectionContext.dtlsContext );
@@ -1526,24 +1526,24 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( pSession,
-            0,
-            sizeof( PeerConnectionSession_t ) );
+                0,
+                sizeof( PeerConnectionSession_t ) );
 
         /* Initialize request queue. */
         ( void ) snprintf( tempName,
-            sizeof( tempName ),
-            "%s%02d",
-            PEER_CONNECTION_MESSAGE_QUEUE_NAME,
-            initSeq );
+                           sizeof( tempName ),
+                           "%s%02d",
+                           PEER_CONNECTION_MESSAGE_QUEUE_NAME,
+                           initSeq );
 
         /* Delete message queue from previous round. */
         MessageQueue_Destroy( NULL,
-            tempName );
+                              tempName );
 
         retMessageQueue = MessageQueue_Create( &pSession->requestQueue,
-            tempName,
-            sizeof( PeerConnectionSessionRequestMessage_t ),
-            PEER_CONNECTION_MAX_QUEUE_MSG_NUM );
+                                               tempName,
+                                               sizeof( PeerConnectionSessionRequestMessage_t ),
+                                               PEER_CONNECTION_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to open message queue" ) );
@@ -1563,7 +1563,7 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         pSession->startupBarrier = eventfd( 0,
-            0 );
+                                            0 );
         if( pSession->startupBarrier < 0 )
         {
             LogError( ( "eventfd failed" ) );
@@ -1575,15 +1575,15 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     {
         /* Initialize session task. */
         ( void ) snprintf( tempName,
-            sizeof( tempName ),
-            "%s%02d",
-            PEER_CONNECTION_SESSION_TASK_NAME,
-            initSeq );
+                           sizeof( tempName ),
+                           "%s%02d",
+                           PEER_CONNECTION_SESSION_TASK_NAME,
+                           initSeq );
 
         if( pthread_create( &( pSession->pTaskHandler ),
-                NULL,
-                PeerConnection_SessionTask,
-                pSession ) != 0 )
+                            NULL,
+                            PeerConnection_SessionTask,
+                            pSession ) != 0 )
         {
             LogError( ( "xTaskCreate(%s) failed", tempName ) );
             ret = PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_CONTROLLER;
@@ -1594,21 +1594,21 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     {
         /* Initialize other modules. */
         ret = InitializeIceController( pSession,
-            pSessionConfig );
+                                       pSessionConfig );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ( void ) snprintf( tempName,
-            sizeof( tempName ),
-            "%s%02d",
-            PEER_CONNECTION_SESSION_RX_TASK_NAME,
-            initSeq++ );
+                           sizeof( tempName ),
+                           "%s%02d",
+                           PEER_CONNECTION_SESSION_RX_TASK_NAME,
+                           initSeq++ );
 
         if( pthread_create( &( pSession->pSocketListener ),
-                NULL,
-                IceControllerSocketListener_Task,
-                &( pSession->iceControllerContext ) ) != 0 )
+                            NULL,
+                            IceControllerSocketListener_Task,
+                            &( pSession->iceControllerContext ) ) != 0 )
         {
             LogError( ( "xTaskCreate(%s) failed", tempName ) );
             ret = PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_SOCK_LISTENER;
@@ -1625,8 +1625,8 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         resultRtcpTwccManager = RtcpTwccManager_Init( &pSession->pCtx->rtcpTwccManager,
-            pSession->pCtx->twccPacketInfo,
-            PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
+                                                      pSession->pCtx->twccPacketInfo,
+                                                      PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
         if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
         {
             LogError( ( "Fail to Initialize RTCP TWCC Manager, result: %d", resultRtcpTwccManager ) );
@@ -1637,7 +1637,7 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         if( pthread_mutex_init( &( pSession->twccMetaData.twccBitrateMutex ),
-                NULL ) != 0 )
+                                NULL ) != 0 )
         {
             LogError( ( "Fail to create mutex for TWCC." ) );
             ret = PEER_CONNECTION_RESULT_FAIL_CREATE_TWCC_MUTEX;
@@ -1650,8 +1650,8 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         retTimer = TimerController_Create( &pSession->rtcpAudioSenderReportTimer,
-            OnRtcpSenderReportAudioTimerExpire,
-            pSession );
+                                           OnRtcpSenderReportAudioTimerExpire,
+                                           pSession );
         if( retTimer != TIMER_CONTROLLER_RESULT_OK )
         {
             LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
@@ -1663,8 +1663,8 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         retTimer = TimerController_Create( &pSession->rtcpVideoSenderReportTimer,
-            OnRtcpSenderReportVideoTimerExpire,
-            pSession );
+                                           OnRtcpSenderReportVideoTimerExpire,
+                                           pSession );
         if( retTimer != TIMER_CONTROLLER_RESULT_OK )
         {
             LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
@@ -1676,8 +1676,8 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         retTimer = TimerController_Create( &pSession->closeSessionTimer,
-            OnCloseSessionTimerExpire,
-            pSession );
+                                           OnCloseSessionTimerExpire,
+                                           pSession );
         if( retTimer != TIMER_CONTROLLER_RESULT_OK )
         {
             LogError( ( "TimerController_Create return fail, result: %d", retTimer ) );
@@ -1713,7 +1713,7 @@ PeerConnectionResult_t PeerConnection_Start( PeerConnectionSession_t * pSession 
 }
 
 PeerConnectionResult_t PeerConnection_SetLocalDescription( PeerConnectionSession_t * pSession,
-    const PeerConnectionBufferSessionDescription_t * pBufferSessionDescription )
+                                                           const PeerConnectionBufferSessionDescription_t * pBufferSessionDescription )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -1721,8 +1721,8 @@ PeerConnectionResult_t PeerConnection_SetLocalDescription( PeerConnectionSession
         ( pBufferSessionDescription == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pBufferSessionDescription: %p",
-            pSession,
-            pBufferSessionDescription ) );
+                    pSession,
+                    pBufferSessionDescription ) );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -1734,7 +1734,7 @@ PeerConnectionResult_t PeerConnection_SetLocalDescription( PeerConnectionSession
 }
 
 PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSession_t * pSession,
-    const PeerConnectionBufferSessionDescription_t * pBufferSessionDescription )
+                                                            const PeerConnectionBufferSessionDescription_t * pBufferSessionDescription )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -1755,7 +1755,7 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
              ( pBufferSessionDescription->sdpBufferLength > PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH ) )
     {
         LogError( ( "Invalid input, pBufferSessionDescription->pSdpBuffer: %p, pBufferSessionDescription->sdpBufferLength: %lu",
-            pBufferSessionDescription->pSdpBuffer, pBufferSessionDescription->sdpBufferLength ) );
+                    pBufferSessionDescription->pSdpBuffer, pBufferSessionDescription->sdpBufferLength ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
     else
@@ -1775,14 +1775,14 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     {
         pTargetRemoteSdp = &pSession->remoteSessionDescription;
         memset( pTargetRemoteSdp,
-            0,
-            sizeof( PeerConnectionBufferSessionDescription_t ) );
+                0,
+                sizeof( PeerConnectionBufferSessionDescription_t ) );
         pTargetRemoteSdp->pSdpBuffer = pSession->remoteSdpBuffer;
         pTargetRemoteSdp->sdpBufferLength = pBufferSessionDescription->sdpBufferLength;
         pTargetRemoteSdp->type = pBufferSessionDescription->type;
         memcpy( pTargetRemoteSdp->pSdpBuffer,
-            pBufferSessionDescription->pSdpBuffer,
-            pTargetRemoteSdp->sdpBufferLength );
+                pBufferSessionDescription->pSdpBuffer,
+                pTargetRemoteSdp->sdpBufferLength );
 
         ret = PeerConnectionSdp_DeserializeSdpMessage( pTargetRemoteSdp );
     }
@@ -1791,7 +1791,7 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     {
         /* Update codec information based on transceivers. */
         ret = PeerConnectionSdp_SetPayloadTypes( pSession,
-            pTargetRemoteSdp );
+                                                 pTargetRemoteSdp );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -1818,37 +1818,37 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memcpy( pSession->remoteUserName,
-            pTargetRemoteSdp->sdpDescription.quickAccess.pIceUfrag,
-            pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength );
+                pTargetRemoteSdp->sdpDescription.quickAccess.pIceUfrag,
+                pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength );
         pSession->remoteUserName[ pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength ] = '\0';
         memcpy( pSession->remotePassword,
-            pTargetRemoteSdp->sdpDescription.quickAccess.pIcePwd,
-            pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength );
+                pTargetRemoteSdp->sdpDescription.quickAccess.pIcePwd,
+                pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength );
         pSession->remotePassword[ pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength ] = '\0';
         snprintf( pSession->combinedName,
-            ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) + 2,
-            "%.*s:%.*s",
-            ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
-            pSession->remoteUserName,
-            PEER_CONNECTION_USER_NAME_LENGTH,
-            peerConnectionContext.localUserName );
+                  ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) + 2,
+                  "%.*s:%.*s",
+                  ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
+                  pSession->remoteUserName,
+                  PEER_CONNECTION_USER_NAME_LENGTH,
+                  peerConnectionContext.localUserName );
         memcpy( pSession->remoteCertFingerprint,
-            pTargetRemoteSdp->sdpDescription.quickAccess.pFingerprint,
-            pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength );
+                pTargetRemoteSdp->sdpDescription.quickAccess.pFingerprint,
+                pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength );
         pSession->remoteCertFingerprint[ pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength ] = '\0';
         pSession->remoteCertFingerprintLength = pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength;
 
         iceControllerResult = IceController_Start( &pSession->iceControllerContext,
-            peerConnectionContext.localUserName,
-            PEER_CONNECTION_USER_NAME_LENGTH,
-            peerConnectionContext.localPassword,
-            PEER_CONNECTION_PASSWORD_LENGTH,
-            pSession->remoteUserName,
-            pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
-            pSession->remotePassword,
-            pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength,
-            pSession->combinedName,
-            strlen( pSession->combinedName ) );
+                                                   peerConnectionContext.localUserName,
+                                                   PEER_CONNECTION_USER_NAME_LENGTH,
+                                                   peerConnectionContext.localPassword,
+                                                   PEER_CONNECTION_PASSWORD_LENGTH,
+                                                   pSession->remoteUserName,
+                                                   pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
+                                                   pSession->remotePassword,
+                                                   pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength,
+                                                   pSession->combinedName,
+                                                   strlen( pSession->combinedName ) );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogWarn( ( "IceController_Start fail, result: %d.", iceControllerResult ) );
@@ -1890,8 +1890,8 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
         pSession->state = PEER_CONNECTION_SESSION_STATE_FIND_CONNECTION;
 
         retWrite = write( pSession->startupBarrier,
-            &signalStartUpBarrier,
-            sizeof( signalStartUpBarrier ) );
+                          &signalStartUpBarrier,
+                          sizeof( signalStartUpBarrier ) );
         if( retWrite != sizeof( uint64_t ) )
         {
             LogError( ( "Fail to signal start up barrier, errno(%d): %s.", errno, strerror( errno ) ) );
@@ -1908,24 +1908,24 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
             for( i = 0; i < pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateCount; i++ )
             {
                 ret = PeerConnection_AddRemoteCandidate( pSession,
-                    pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ],
-                    pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ] );
+                                                         pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ],
+                                                         pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ] );
 
                 if( ret != PEER_CONNECTION_RESULT_OK )
                 {
                     LogError( ( "Fail to add remote candidate from SDP offer, ret: %d, candidate(%lu): %.*s",
-                        ret,
-                        pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
-                        ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
-                        pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ] ) );
+                                ret,
+                                pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
+                                ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
+                                pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ] ) );
                     ret = PEER_CONNECTION_RESULT_OK;
                 }
                 else
                 {
                     LogDebug( ( "Added remote candidate from SDP offer, candidate(%lu): %.*s",
-                        pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
-                        ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
-                        pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ] ) );
+                                pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
+                                ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.remoteCandidateLengths[ i ],
+                                pTargetRemoteSdp->sdpDescription.quickAccess.pRemoteCandidates[ i ] ) );
                 }
             }
         }
@@ -1935,8 +1935,8 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
 }
 
 PeerConnectionResult_t PeerConnection_SetVideoOnFrame( PeerConnectionSession_t * pSession,
-    OnFrameReadyCallback_t onFrameReadyCallbackFunc,
-    void * pOnFrameReadyCallbackCustomContext )
+                                                       OnFrameReadyCallback_t onFrameReadyCallbackFunc,
+                                                       void * pOnFrameReadyCallbackCustomContext )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -1955,8 +1955,8 @@ PeerConnectionResult_t PeerConnection_SetVideoOnFrame( PeerConnectionSession_t *
     return ret;
 }
 PeerConnectionResult_t PeerConnection_SetAudioOnFrame( PeerConnectionSession_t * pSession,
-    OnFrameReadyCallback_t onFrameReadyCallbackFunc,
-    void * pOnFrameReadyCallbackCustomContext )
+                                                       OnFrameReadyCallback_t onFrameReadyCallbackFunc,
+                                                       void * pOnFrameReadyCallbackCustomContext )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -1976,8 +1976,8 @@ PeerConnectionResult_t PeerConnection_SetAudioOnFrame( PeerConnectionSession_t *
 }
 
 PeerConnectionResult_t PeerConnection_AddRemoteCandidate( PeerConnectionSession_t * pSession,
-    const char * pDecodeMessage,
-    size_t decodeMessageLength )
+                                                          const char * pDecodeMessage,
+                                                          size_t decodeMessageLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -1987,7 +1987,7 @@ PeerConnectionResult_t PeerConnection_AddRemoteCandidate( PeerConnectionSession_
         ( pDecodeMessage == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pDecodeMessage: %p",
-            pSession, pDecodeMessage ) );
+                    pSession, pDecodeMessage ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -1995,8 +1995,8 @@ PeerConnectionResult_t PeerConnection_AddRemoteCandidate( PeerConnectionSession_
     {
         memset( &candidate, 0, sizeof( IceControllerCandidate_t ) );
         iceControllerResult = IceController_DeserializeIceCandidate( pDecodeMessage,
-            decodeMessageLength,
-            &candidate );
+                                                                     decodeMessageLength,
+                                                                     &candidate );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogWarn( ( "IceController_DeserializeIceCandidate fail, result: %d, dropping ICE candidate.", iceControllerResult ) );
@@ -2007,14 +2007,14 @@ PeerConnectionResult_t PeerConnection_AddRemoteCandidate( PeerConnectionSession_
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = SendRemoteCandidateRequest( pSession,
-            &candidate );
+                                          &candidate );
     }
 
     return ret;
 }
 
 PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * pSession,
-    Transceiver_t * pTransceiver )
+                                                      Transceiver_t * pTransceiver )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -2026,7 +2026,7 @@ PeerConnectionResult_t PeerConnection_AddTransceiver( PeerConnectionSession_t * 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = AllocateTransceiver( pSession,
-            pTransceiver );
+                                   pTransceiver );
     }
 
     return ret;
@@ -2042,8 +2042,8 @@ PeerConnectionResult_t PeerConnection_AddDataChannel( PeerConnectionSession_t * 
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 PeerConnectionResult_t PeerConnection_MatchTransceiverBySsrc( PeerConnectionSession_t * pSession,
-    uint32_t ssrc,
-    const Transceiver_t ** ppTransceiver )
+                                                              uint32_t ssrc,
+                                                              const Transceiver_t ** ppTransceiver )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     int i;
@@ -2106,8 +2106,8 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
                 if( pSession->pTransceivers[ i ]->onPcEventCallbackFunc )
                 {
                     pSession->pTransceivers[ i ]->onPcEventCallbackFunc( pSession->pTransceivers[ i ]->pOnPcEventCustomContext,
-                        TRANSCEIVER_CB_EVENT_REMOTE_PEER_CLOSED,
-                        NULL );
+                                                                         TRANSCEIVER_CB_EVENT_REMOTE_PEER_CLOSED,
+                                                                         NULL );
                 }
             }
         }
@@ -2172,8 +2172,8 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
 }
 
 PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSession,
-    Transceiver_t * pTransceiver,
-    const PeerConnectionFrame_t * pFrame )
+                                                  Transceiver_t * pTransceiver,
+                                                  const PeerConnectionFrame_t * pFrame )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -2182,7 +2182,7 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
         ( pFrame == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pTransceiver: %p, pFrame: %p",
-            pSession, pTransceiver, pFrame ) );
+                    pSession, pTransceiver, pFrame ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -2194,43 +2194,43 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
             LogInfo( ( "This session is not ready for sending frames, state: %d.", pSession->state ) );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
-                     TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
+                                               TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
         {
             ret = PeerConnectionSrtp_WriteH264Frame( pSession,
-                pTransceiver,
-                pFrame );
+                                                     pTransceiver,
+                                                     pFrame );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
-                     TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
+                                               TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
         {
             ret = PeerConnectionSrtp_WriteOpusFrame( pSession,
-                pTransceiver,
-                pFrame );
+                                                     pTransceiver,
+                                                     pFrame );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
-                     TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
+                                               TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
-                     TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
-        {
-            ret = PeerConnectionSrtp_WriteG711Frame( pSession,
-                pTransceiver,
-                pFrame );
-        }
-        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
-                     TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
+                                               TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
         {
             ret = PeerConnectionSrtp_WriteG711Frame( pSession,
-                pTransceiver,
-                pFrame );
+                                                     pTransceiver,
+                                                     pFrame );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
-                     TRANSCEIVER_RTC_CODEC_H265_BIT ) )
+                                               TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
+        {
+            ret = PeerConnectionSrtp_WriteG711Frame( pSession,
+                                                     pTransceiver,
+                                                     pFrame );
+        }
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
+                                               TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
             ret = PeerConnectionSrtp_WriteH265Frame( pSession,
-                pTransceiver,
-                pFrame );
+                                                     pTransceiver,
+                                                     pFrame );
         }
         else
         {
@@ -2244,9 +2244,9 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
 }
 
 PeerConnectionResult_t PeerConnection_CreateOffer( PeerConnectionSession_t * pSession,
-    PeerConnectionBufferSessionDescription_t * pOutputBufferSessionDescription,
-    char * pOutputSerializedSdpMessage,
-    size_t * pOutputSerializedSdpMessageLength )
+                                                   PeerConnectionBufferSessionDescription_t * pOutputBufferSessionDescription,
+                                                   char * pOutputSerializedSdpMessage,
+                                                   size_t * pOutputSerializedSdpMessageLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -2256,7 +2256,7 @@ PeerConnectionResult_t PeerConnection_CreateOffer( PeerConnectionSession_t * pSe
         ( pOutputSerializedSdpMessageLength == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pOutputBufferSessionDescription: %p, pOutputSerializedSdpMessage: %p, pOutputSerializedSdpMessageLength: %p",
-            pSession, pOutputBufferSessionDescription, pOutputSerializedSdpMessage, pOutputSerializedSdpMessageLength ) );
+                    pSession, pOutputBufferSessionDescription, pOutputSerializedSdpMessage, pOutputSerializedSdpMessageLength ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
     else if( pOutputBufferSessionDescription->pSdpBuffer == NULL )
@@ -2279,19 +2279,19 @@ PeerConnectionResult_t PeerConnection_CreateOffer( PeerConnectionSession_t * pSe
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = PeerConnectionSdp_PopulateSessionDescription( pSession,
-            NULL,
-            pOutputBufferSessionDescription,
-            pOutputSerializedSdpMessage,
-            pOutputSerializedSdpMessageLength );
+                                                            NULL,
+                                                            pOutputBufferSessionDescription,
+                                                            pOutputSerializedSdpMessage,
+                                                            pOutputSerializedSdpMessageLength );
     }
 
     return ret;
 }
 
 PeerConnectionResult_t PeerConnection_CreateAnswer( PeerConnectionSession_t * pSession,
-    PeerConnectionBufferSessionDescription_t * pOutputBufferSessionDescription,
-    char * pOutputSerializedSdpMessage,
-    size_t * pOutputSerializedSdpMessageLength )
+                                                    PeerConnectionBufferSessionDescription_t * pOutputBufferSessionDescription,
+                                                    char * pOutputSerializedSdpMessage,
+                                                    size_t * pOutputSerializedSdpMessageLength )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -2301,7 +2301,7 @@ PeerConnectionResult_t PeerConnection_CreateAnswer( PeerConnectionSession_t * pS
         ( pOutputSerializedSdpMessageLength == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pOutputBufferSessionDescription: %p, pOutputSerializedSdpMessage: %p, pOutputSerializedSdpMessageLength: %p",
-            pSession, pOutputBufferSessionDescription, pOutputSerializedSdpMessage, pOutputSerializedSdpMessageLength ) );
+                    pSession, pOutputBufferSessionDescription, pOutputSerializedSdpMessage, pOutputSerializedSdpMessageLength ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
     else if( pOutputBufferSessionDescription->pSdpBuffer == NULL )
@@ -2317,18 +2317,18 @@ PeerConnectionResult_t PeerConnection_CreateAnswer( PeerConnectionSession_t * pS
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         ret = PeerConnectionSdp_PopulateSessionDescription( pSession,
-            &pSession->remoteSessionDescription,
-            pOutputBufferSessionDescription,
-            pOutputSerializedSdpMessage,
-            pOutputSerializedSdpMessageLength );
+                                                            &pSession->remoteSessionDescription,
+                                                            pOutputBufferSessionDescription,
+                                                            pOutputSerializedSdpMessage,
+                                                            pOutputSerializedSdpMessageLength );
     }
 
     return ret;
 }
 
 PeerConnectionResult_t PeerConnection_SetOnLocalCandidateReady( PeerConnectionSession_t * pSession,
-    OnIceCandidateReadyCallback_t onLocalCandidateReadyCallbackFunc,
-    void * pOnLocalCandidateReadyCallbackCustomContext )
+                                                                OnIceCandidateReadyCallback_t onLocalCandidateReadyCallbackFunc,
+                                                                void * pOnLocalCandidateReadyCallbackCustomContext )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -2336,7 +2336,7 @@ PeerConnectionResult_t PeerConnection_SetOnLocalCandidateReady( PeerConnectionSe
         ( onLocalCandidateReadyCallbackFunc == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, onLocalCandidateReadyCallbackFunc: %p",
-            pSession, onLocalCandidateReadyCallbackFunc ) );
+                    pSession, onLocalCandidateReadyCallbackFunc ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -2350,7 +2350,7 @@ PeerConnectionResult_t PeerConnection_SetOnLocalCandidateReady( PeerConnectionSe
 }
 
 PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionConfiguration_t * pSessionConfig )
+                                                          PeerConnectionSessionConfiguration_t * pSessionConfig )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -2360,15 +2360,15 @@ PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_
         ( pSessionConfig == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pSessionConfig: %p",
-            pSession, pSessionConfig ) );
+                    pSession, pSessionConfig ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memset( &iceServerConfig,
-            0,
-            sizeof( IceControllerIceServerConfig_t ) );
+                0,
+                sizeof( IceControllerIceServerConfig_t ) );
         iceServerConfig.pIceServers = pSessionConfig->iceServers;
         iceServerConfig.iceServersCount = pSessionConfig->iceServersCount;
         iceServerConfig.pRootCaPath = pSessionConfig->pRootCaPath;
@@ -2376,7 +2376,7 @@ PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_
         iceServerConfig.pRootCaPem = pSessionConfig->pRootCaPem;
         iceServerConfig.rootCaPemLength = pSessionConfig->rootCaPemLength;
         iceControllerResult = IceController_AddIceServerConfig( &pSession->iceControllerContext,
-            &iceServerConfig );
+                                                                &iceServerConfig );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to add Ice server config into Ice Controller." ) );
@@ -2388,7 +2388,7 @@ PeerConnectionResult_t PeerConnection_AddIceServerConfig( PeerConnectionSession_
 }
 
 static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerConnectionSession_t * pSession,
-    PeerConnectionSessionRequestMessage_t * pRequestMessage )
+                                                                         PeerConnectionSessionRequestMessage_t * pRequestMessage )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     IceControllerResult_t iceControllerResult;
@@ -2403,7 +2403,7 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
         ( pTransceiver == NULL ) )
     {
         LogError( ( "Invalid input, pSession: %p, pTransceiver: %p",
-            pSession, pTransceiver ) );
+                    pSession, pTransceiver ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
 
@@ -2415,19 +2415,19 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
     if( !readyToSend )
     {
         LogVerbose( ( "Send Report No Frames are sent to SSRC :  %u",
-            pTransceiver->ssrc ) );
+                      pTransceiver->ssrc ) );
     }
     else
     {
         if( pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
         {
             rtcpSenderReport.senderInfo.rtpTime = pTransceiver->rtpSender.rtpTimeOffset + PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( pSession->audioSrtpReceiver.rxJitterBuffer.clockRate,
-                                                                                              currentTimeUs - pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs );
+                                                                                                                                                 currentTimeUs - pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs );
         }
         else
         {
             rtcpSenderReport.senderInfo.rtpTime = pTransceiver->rtpSender.rtpTimeOffset + PEER_CONNECTION_SRTP_CONVERT_TIME_US_TO_RTP_TIMESTAMP( pSession->videoSrtpReceiver.rxJitterBuffer.clockRate,
-                                                                                              currentTimeUs - pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs );
+                                                                                                                                                 currentTimeUs - pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs );
         }
         rtcpSenderReport.senderSsrc = pTransceiver->ssrc;
         rtcpSenderReport.senderInfo.ntpTime = NetworkingUtils_GetNTPTimeFromUnixTimeUs( currentTimeUs );
@@ -2439,9 +2439,9 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
         rtcpSenderReport.numReceptionReports = 0;
 
         ret = PeerConnectionSrtcp_ConstructSenderReportPacket( ( pSession ),
-            &( rtcpSenderReport ),
-            &( srtcpPacket[ 0 ] ),
-            &( srtcpPacketLength ) );
+                                                               &( rtcpSenderReport ),
+                                                               &( srtcpPacket[ 0 ] ),
+                                                               &( srtcpPacketLength ) );
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogError( ( "Fail to serialize and encrypt RTCP Sender Report." ) );
@@ -2452,8 +2452,8 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             iceControllerResult = IceController_SendToRemotePeer( &( pSession->iceControllerContext ),
-                ( srtcpPacket ),
-                srtcpPacketLength );
+                                                                  ( srtcpPacket ),
+                                                                  srtcpPacketLength );
 
             if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
             {
@@ -2463,7 +2463,7 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
             else
             {
                 LogDebug( ( "Send RTCP Sender Report with Status : %u  to SSRC :  %u, NTP Time :  %lu, RTP Time:  %u,  PacketCount : %u, OctetCount : %u", ret,
-                    rtcpSenderReport.senderSsrc, rtcpSenderReport.senderInfo.ntpTime, rtcpSenderReport.senderInfo.rtpTime, rtcpSenderReport.senderInfo.packetCount, rtcpSenderReport.senderInfo.octetCount ) );
+                            rtcpSenderReport.senderSsrc, rtcpSenderReport.senderInfo.ntpTime, rtcpSenderReport.senderInfo.rtpTime, rtcpSenderReport.senderInfo.packetCount, rtcpSenderReport.senderInfo.octetCount ) );
             }
         }
     }
@@ -2471,8 +2471,8 @@ static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerCon
     return ret;
 }
 PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConnectionSession_t * pSession,
-    OnPictureLossIndicationCallback_t onPictureLossIndicationCallback,
-    void * pUserContext )
+                                                                        OnPictureLossIndicationCallback_t onPictureLossIndicationCallback,
+                                                                        void * pUserContext )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 
@@ -2489,8 +2489,8 @@ PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConn
 
 #if ENABLE_TWCC_SUPPORT
 PeerConnectionResult_t PeerConnection_SetSenderBandwidthEstimationCallback( PeerConnectionSession_t * pSession,
-    OnBandwidthEstimationCallback_t onBandwidthEstimationCallback,
-    void * pUserContext )
+                                                                            OnBandwidthEstimationCallback_t onBandwidthEstimationCallback,
+                                                                            void * pUserContext )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
 

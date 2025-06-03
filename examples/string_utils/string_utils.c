@@ -17,8 +17,8 @@
 #include "string_utils.h"
 
 StringUtilsResult_t StringUtils_ConvertStringToUl( const char * pStr,
-    size_t strLength,
-    uint32_t * pOutUl )
+                                                   size_t strLength,
+                                                   uint32_t * pOutUl )
 {
     StringUtilsResult_t ret = STRING_UTILS_RESULT_OK;
     uint32_t i, result = 0;
@@ -57,8 +57,8 @@ StringUtilsResult_t StringUtils_ConvertStringToUl( const char * pStr,
 }
 
 StringUtilsResult_t StringUtils_ConvertStringToHex( const char * pStr,
-    size_t strLength,
-    uint32_t * pOutUl )
+                                                    size_t strLength,
+                                                    uint32_t * pOutUl )
 {
     StringUtilsResult_t ret = STRING_UTILS_RESULT_OK;
     int result;
@@ -81,9 +81,9 @@ StringUtilsResult_t StringUtils_ConvertStringToHex( const char * pStr,
 }
 
 const char * StringUtils_StrStr( const char * pStr,
-    size_t strLength,
-    const char * pPattern,
-    size_t patternLength )
+                                 size_t strLength,
+                                 const char * pPattern,
+                                 size_t patternLength )
 {
     const char * pRet = NULL;
     const char *pCurrentStr, *pCurrentPattern;

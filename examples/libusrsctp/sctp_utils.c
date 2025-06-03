@@ -44,26 +44,26 @@
 static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket );
 
 static int OnSctpOutboundPacket( void * pAddr,
-    void * pData,
-    size_t length,
-    uint8_t tos,
-    uint8_t setDf );
+                                 void * pData,
+                                 size_t length,
+                                 uint8_t tos,
+                                 uint8_t setDf );
 
 static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
-    uint16_t channelId,
-    uint8_t * pData,
-    size_t length );
+                                            uint16_t channelId,
+                                            uint8_t * pData,
+                                            size_t length );
 
 static int OnSctpInboundPacket( struct socket * pSocket,
-    union sctp_sockstore addr,
-    void * pData,
-    size_t length,
-    struct sctp_rcvinfo rcv,
-    int flags,
-    void * pUlpInfo );
+                                union sctp_sockstore addr,
+                                void * pData,
+                                size_t length,
+                                struct sctp_rcvinfo rcv,
+                                int flags,
+                                void * pUlpInfo );
 
 static SctpUtilsResult_t SendOpenDataChannelAck( SctpSession_t * pSctpSession,
-    uint16_t channelId );
+                                                 uint16_t channelId );
 /*-----------------------------------------------------------*/
 
 /* Configure the SCTP socket with default settings. */
@@ -76,11 +76,11 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
     uint32_t i;
     uint32_t valueOn = 1;
     uint16_t eventTypes[] = { SCTP_ASSOC_CHANGE,
-        SCTP_PEER_ADDR_CHANGE,
-        SCTP_REMOTE_ERROR,
-        SCTP_SHUTDOWN_EVENT,
-        SCTP_ADAPTATION_INDICATION,
-        SCTP_PARTIAL_DELIVERY_EVENT };
+                              SCTP_PEER_ADDR_CHANGE,
+                              SCTP_REMOTE_ERROR,
+                              SCTP_SHUTDOWN_EVENT,
+                              SCTP_ADAPTATION_INDICATION,
+                              SCTP_PARTIAL_DELIVERY_EVENT };
 
     if( usrsctp_set_non_blocking( pSocket, 1 ) != 0 )
     {
@@ -94,10 +94,10 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
         lingerOpts.l_onoff = 1;
         lingerOpts.l_linger = 0;
         if( usrsctp_setsockopt( pSocket,
-                SOL_SOCKET,
-                SO_LINGER,
-                &( lingerOpts ),
-                sizeof( lingerOpts ) ) != 0 )
+                                SOL_SOCKET,
+                                SO_LINGER,
+                                &( lingerOpts ),
+                                sizeof( lingerOpts ) ) != 0 )
         {
             LogError( ( "usrsctp_setsockopt failed: SOL_SOCKET, SO_LINGER!" ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -109,10 +109,10 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
         /* Packets are generally sent as soon as possible and no unnecessary
          * delays are introduced, at the cost of more packets in the network. */
         if( usrsctp_setsockopt( pSocket,
-                IPPROTO_SCTP,
-                SCTP_NODELAY,
-                &( valueOn ),
-                sizeof( valueOn ) ) != 0 )
+                                IPPROTO_SCTP,
+                                SCTP_NODELAY,
+                                &( valueOn ),
+                                sizeof( valueOn ) ) != 0 )
         {
             LogError( ( "usrsctp_setsockopt failed: IPPROTO_SCTP, SCTP_NODELAY!" ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -128,10 +128,10 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
         {
             event.se_type = eventTypes[ i ];
             if( usrsctp_setsockopt( pSocket,
-                    IPPROTO_SCTP,
-                    SCTP_EVENT,
-                    &( event ),
-                    sizeof( event ) ) != 0 )
+                                    IPPROTO_SCTP,
+                                    SCTP_EVENT,
+                                    &( event ),
+                                    sizeof( event ) ) != 0 )
             {
                 LogError( ( "usrsctp_setsockopt failed: IPPROTO_SCTP, SCTP_EVENT!" ) );
                 retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -147,10 +147,10 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
         initmsg.sinit_max_instreams = 300;
 
         if( usrsctp_setsockopt( pSocket,
-                IPPROTO_SCTP,
-                SCTP_INITMSG,
-                &( initmsg ),
-                sizeof( struct sctp_initmsg ) ) != 0 )
+                                IPPROTO_SCTP,
+                                SCTP_INITMSG,
+                                &( initmsg ),
+                                sizeof( struct sctp_initmsg ) ) != 0 )
         {
             LogError( ( "usrsctp_setsockopt failed: IPPROTO_SCTP, SCTP_INITMSG!" ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -164,10 +164,10 @@ static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket )
 /* Callback from the SCTP stack when an outbound packet is
  * ready for processing. */
 static int OnSctpOutboundPacket( void * pAddr,
-    void * pData,
-    size_t length,
-    uint8_t tos,
-    uint8_t setDf )
+                                 void * pData,
+                                 size_t length,
+                                 uint8_t tos,
+                                 uint8_t setDf )
 {
     ( void ) ( tos );
     ( void ) ( setDf );
@@ -188,8 +188,8 @@ static int OnSctpOutboundPacket( void * pAddr,
     /* Call the session and channel specific callback configured by the peer
      * connection. */
     pSctpSession->sctpSessionCallbacks.outboundPacketCallback( pSctpSession->sctpSessionCallbacks.pUserData,
-        pData,
-        length );
+                                                               pData,
+                                                               length );
 
     return 0;
 }
@@ -198,9 +198,9 @@ static int OnSctpOutboundPacket( void * pAddr,
 
 /* Handle an incoming DCEP message. */
 static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
-    uint16_t channelId,
-    uint8_t * pData,
-    size_t length )
+                                            uint16_t channelId,
+                                            uint8_t * pData,
+                                            size_t length )
 {
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
     DcepContext_t dcepCtx;
@@ -232,7 +232,7 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
             case DCEP_MESSAGE_DATA_CHANNEL_ACK:
             {
                 if( pSctpSession->sctpSessionCallbacks.dataChannelOpenAckCallback( pSctpSession->sctpSessionCallbacks.pUserData,
-                        channelId ) == SCTP_UTILS_RESULT_OK )
+                                                                                   channelId ) == SCTP_UTILS_RESULT_OK )
                 {
                     LogInfo( ( "Successfully opened data channel ID: %u", ( unsigned int ) channelId ) );
                 }
@@ -246,16 +246,16 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
             case DCEP_MESSAGE_DATA_CHANNEL_OPEN:
             {
                 dcepResult = Dcep_DeserializeChannelOpenMessage( &( dcepCtx ),
-                    pData,
-                    length,
-                    &( channelOpenMessage ) );
+                                                                 pData,
+                                                                 length,
+                                                                 &( channelOpenMessage ) );
 
                 if( dcepResult == DCEP_RESULT_OK )
                 {
                     pSctpSession->sctpSessionCallbacks.dataChannelOpenCallback( pSctpSession->sctpSessionCallbacks.pUserData,
-                        channelId,
-                        channelOpenMessage.pChannelName,
-                        channelOpenMessage.channelNameLength );
+                                                                                channelId,
+                                                                                channelOpenMessage.pChannelName,
+                                                                                channelOpenMessage.channelNameLength );
 
                     /* Send DATA_CHANNEL_ACK Message. */
                     if( SendOpenDataChannelAck( pSctpSession, channelId ) != SCTP_UTILS_RESULT_OK )
@@ -286,12 +286,12 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
 /* Process an incoming SCTP packet, this API is passed as a callback to the
  * SCTP stack to be called while there is a valid packet ready. */
 static int OnSctpInboundPacket( struct socket * pSocket,
-    union sctp_sockstore addr,
-    void * pData,
-    size_t length,
-    struct sctp_rcvinfo rcv,
-    int flags,
-    void * pUlpInfo )
+                                union sctp_sockstore addr,
+                                void * pData,
+                                size_t length,
+                                struct sctp_rcvinfo rcv,
+                                int flags,
+                                void * pUlpInfo )
 {
     int retStatus = 1;
     SctpSession_t * pSctpSession = ( SctpSession_t * ) pUlpInfo;
@@ -309,9 +309,9 @@ static int OnSctpInboundPacket( struct socket * pSocket,
         case SCTP_PPID_DCEP:
         {
             if( HandleDcepMessage( pSctpSession,
-                    rcv.rcv_sid,
-                    pData,
-                    length ) != SCTP_UTILS_RESULT_OK )
+                                   rcv.rcv_sid,
+                                   pData,
+                                   length ) != SCTP_UTILS_RESULT_OK )
             {
                 retStatus = 1;
             }
@@ -327,10 +327,10 @@ static int OnSctpInboundPacket( struct socket * pSocket,
         case SCTP_PPID_STRING_EMPTY:
         {
             pSctpSession->sctpSessionCallbacks.dataChannelMessageCallback( pSctpSession->sctpSessionCallbacks.pUserData,
-                rcv.rcv_sid,
-                isBinary,
-                pData,
-                length );
+                                                                           rcv.rcv_sid,
+                                                                           isBinary,
+                                                                           pData,
+                                                                           length );
         }
         break;
 
@@ -355,7 +355,7 @@ static int OnSctpInboundPacket( struct socket * pSocket,
 /*-----------------------------------------------------------*/
 
 static SctpUtilsResult_t SendOpenDataChannelAck( SctpSession_t * pSctpSession,
-    uint16_t channelId )
+                                                 uint16_t channelId )
 {
     DcepContext_t dcepCtx;
     DcepResult_t dcepResult = DCEP_RESULT_OK;
@@ -373,8 +373,8 @@ static SctpUtilsResult_t SendOpenDataChannelAck( SctpSession_t * pSctpSession,
     {
         pSctpSession->packetSize = sizeof( pSctpSession->packet );
         dcepResult = Dcep_SerializeChannelAckMessage( &( dcepCtx ),
-            &( pSctpSession->packet[ 0 ] ),
-            &( pSctpSession->packetSize ) );
+                                                      &( pSctpSession->packet[ 0 ] ),
+                                                      &( pSctpSession->packetSize ) );
 
         if( dcepResult != DCEP_RESULT_OK )
         {
@@ -391,14 +391,14 @@ static SctpUtilsResult_t SendOpenDataChannelAck( SctpSession_t * pSctpSession,
         pSctpSession->spa.sendv_sndinfo.snd_ppid = ntohl( SCTP_PPID_DCEP );
 
         if( usrsctp_sendv( pSctpSession->socket,
-                &( pSctpSession->packet[ 0 ] ),
-                pSctpSession->packetSize,
-                NULL,
-                0,
-                &( pSctpSession->spa ),
-                sizeof( pSctpSession->spa ),
-                SCTP_SENDV_SPA,
-                0 ) <= 0 )
+                           &( pSctpSession->packet[ 0 ] ),
+                           pSctpSession->packetSize,
+                           NULL,
+                           0,
+                           &( pSctpSession->spa ),
+                           sizeof( pSctpSession->spa ),
+                           SCTP_SENDV_SPA,
+                           0 ) <= 0 )
         {
             LogError( ( "usrsctp_sendv failed!" ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -436,7 +436,7 @@ void Sctp_DeInit( void )
 
 /* Create the SCTP session by connecting to the remote socket. */
 SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
-    uint8_t isServer )
+                                      uint8_t isServer )
 {
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
     struct sockaddr_conn localConn, remoteConn;
@@ -463,12 +463,12 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
         remoteConn.sconn_addr = pSctpSession;
 
         pSctpSession->socket = usrsctp_socket( AF_CONN,
-            SOCK_STREAM,
-            IPPROTO_SCTP,
-            &OnSctpInboundPacket,
-            NULL,
-            0,
-            pSctpSession );
+                                               SOCK_STREAM,
+                                               IPPROTO_SCTP,
+                                               &OnSctpInboundPacket,
+                                               NULL,
+                                               0,
+                                               pSctpSession );
         if( pSctpSession->socket == NULL )
         {
             LogError( ( "usrsctp_socket failed to create socket!" ) );
@@ -488,8 +488,8 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
         if( usrsctp_bind( pSctpSession->socket,
-                ( struct sockaddr * ) &( localConn ),
-                sizeof( localConn ) ) != 0 )
+                          ( struct sockaddr * ) &( localConn ),
+                          sizeof( localConn ) ) != 0 )
         {
             LogError( ( "usrsctp_bind failed!" ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -499,8 +499,8 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {
         connectStatus = usrsctp_connect( pSctpSession->socket,
-            ( struct sockaddr * ) &( remoteConn ),
-            sizeof( remoteConn ) );
+                                         ( struct sockaddr * ) &( remoteConn ),
+                                         sizeof( remoteConn ) );
         if( !( ( connectStatus >= 0 ) || ( errno == EINPROGRESS ) ) )
         {
             LogError( ( "usrsctp_connect failed!" ) );
@@ -514,10 +514,10 @@ SctpUtilsResult_t Sctp_CreateSession( SctpSession_t * pSctpSession,
         params.spp_flags = SPP_PMTUD_DISABLE;
         params.spp_pathmtu = SCTP_MTU;
         if( usrsctp_setsockopt( pSctpSession->socket,
-                IPPROTO_SCTP,
-                SCTP_PEER_ADDR_PARAMS,
-                &( params ),
-                sizeof( params ) ) != 0 )
+                                IPPROTO_SCTP,
+                                SCTP_PEER_ADDR_PARAMS,
+                                &( params ),
+                                sizeof( params ) ) != 0 )
         {
             LogError( ( "usrsctp_setsockopt failed: IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS!" ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -592,8 +592,8 @@ SctpUtilsResult_t Sctp_FreeSession( SctpSession_t * pSctpSession )
 /* Pass a decrypted DTLS packet to the SCTP stack for further processing
  * of SCTP specific stuff. */
 SctpUtilsResult_t Sctp_ProcessMessage( SctpSession_t * pSctpSession,
-    uint8_t * pBuf,
-    uint32_t bufLen )
+                                       uint8_t * pBuf,
+                                       uint32_t bufLen )
 {
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
 
@@ -613,8 +613,8 @@ SctpUtilsResult_t Sctp_ProcessMessage( SctpSession_t * pSctpSession,
 /*-----------------------------------------------------------*/
 
 SctpUtilsResult_t Sctp_OpenDataChannel( SctpSession_t * pSctpSession,
-    const SctpDataChannelInitInfo_t * pDataChannelInitInfo,
-    SctpDataChannel_t * pDataChannel )
+                                        const SctpDataChannelInitInfo_t * pDataChannelInitInfo,
+                                        SctpDataChannel_t * pDataChannel )
 {
     DcepContext_t dcepCtx;
     DcepResult_t dcepResult = DCEP_RESULT_OK;
@@ -658,9 +658,9 @@ SctpUtilsResult_t Sctp_OpenDataChannel( SctpSession_t * pSctpSession,
         pSctpSession->packetSize = sizeof( pSctpSession->packet );
 
         dcepResult = Dcep_SerializeChannelOpenMessage( &( dcepCtx ),
-            &( dcepChannelOpenMessage ),
-            &( pSctpSession->packet[ 0 ] ),
-            &( pSctpSession->packetSize ) );
+                                                       &( dcepChannelOpenMessage ),
+                                                       &( pSctpSession->packet[ 0 ] ),
+                                                       &( pSctpSession->packetSize ) );
 
         if( dcepResult != DCEP_RESULT_OK )
         {
@@ -680,14 +680,14 @@ SctpUtilsResult_t Sctp_OpenDataChannel( SctpSession_t * pSctpSession,
         pSctpSession->spa.sendv_sndinfo.snd_ppid = htonl( SCTP_PPID_DCEP );
 
         if( usrsctp_sendv( pSctpSession->socket,
-                &( pSctpSession->packet[ 0 ] ),
-                pSctpSession->packetSize,
-                NULL,
-                0,
-                &( pSctpSession->spa ),
-                sizeof( pSctpSession->spa ),
-                SCTP_SENDV_SPA,
-                0 ) <= 0 )
+                           &( pSctpSession->packet[ 0 ] ),
+                           pSctpSession->packetSize,
+                           NULL,
+                           0,
+                           &( pSctpSession->spa ),
+                           sizeof( pSctpSession->spa ),
+                           SCTP_SENDV_SPA,
+                           0 ) <= 0 )
         {
             LogError( ( "usrsctp_sendv failed!" ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -708,10 +708,10 @@ SctpUtilsResult_t Sctp_OpenDataChannel( SctpSession_t * pSctpSession,
 
 /* Write SCTP message to the given session and stream. */
 SctpUtilsResult_t Sctp_SendMessage( SctpSession_t * pSctpSession,
-    const SctpDataChannel_t * pDataChannel,
-    uint8_t isBinary,
-    uint8_t * pMessage,
-    uint32_t messageLen )
+                                    const SctpDataChannel_t * pDataChannel,
+                                    uint8_t isBinary,
+                                    uint8_t * pMessage,
+                                    uint32_t messageLen )
 {
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
 
@@ -753,14 +753,14 @@ SctpUtilsResult_t Sctp_SendMessage( SctpSession_t * pSctpSession,
         pSctpSession->spa.sendv_sndinfo.snd_ppid = isBinary ? ntohl( SCTP_PPID_BINARY ) : ntohl( SCTP_PPID_STRING );
 
         if( usrsctp_sendv( pSctpSession->socket,
-                pMessage,
-                messageLen,
-                NULL,
-                0,
-                &( pSctpSession->spa ),
-                sizeof( pSctpSession->spa ),
-                SCTP_SENDV_SPA,
-                0 ) <= 0 )
+                           pMessage,
+                           messageLen,
+                           NULL,
+                           0,
+                           &( pSctpSession->spa ),
+                           sizeof( pSctpSession->spa ),
+                           SCTP_SENDV_SPA,
+                           0 ) <= 0 )
         {
             LogError( ( "usrsctp_sendv failed!" ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
@@ -772,7 +772,7 @@ SctpUtilsResult_t Sctp_SendMessage( SctpSession_t * pSctpSession,
 /*-----------------------------------------------------------*/
 
 SctpUtilsResult_t Sctp_CloseDataChannel( SctpSession_t * pSctpSession,
-    const SctpDataChannel_t * pDataChannel )
+                                         const SctpDataChannel_t * pDataChannel )
 {
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
     struct sctp_reset_streams * pSrs;
@@ -795,10 +795,10 @@ SctpUtilsResult_t Sctp_CloseDataChannel( SctpSession_t * pSctpSession,
         pSrs->srs_stream_list[ 0 ] = pDataChannel->channelId;
 
         if( usrsctp_setsockopt( pSctpSession->socket,
-                IPPROTO_SCTP,
-                SCTP_RESET_STREAMS,
-                pSrs,
-                ( socklen_t ) len ) < 0 )
+                                IPPROTO_SCTP,
+                                SCTP_RESET_STREAMS,
+                                pSrs,
+                                ( socklen_t ) len ) < 0 )
         {
             LogDebug( ( "Failed to reset SCTP streams - this is expected if viewer was already closed." ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;

@@ -1,6 +1,6 @@
 ---
 Language: Cpp
-AlignAfterOpenBracket: DontAlign
+AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: None
 AlignConsecutiveBitFields: AcrossEmptyLinesAndComments
 AlignConsecutiveDeclarations: None
@@ -48,7 +48,6 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
 BreakStringLiterals: true
-# ColumnLimit: 80
 ColumnLimit: 0
 CompactNamespaces: false
 ContinuationIndentWidth: 4

@@ -120,8 +120,8 @@ typedef struct HttpResponse
 } HttpResponse_t;
 
 typedef int ( *WebsocketMessageReceivedCallback_t )( char * pMessage,
-    size_t messageLength,
-    void * pUserData );
+                                                     size_t messageLength,
+                                                     void * pUserData );
 typedef struct WebsocketConnectInfo
 {
     char * pUrl;
@@ -200,27 +200,27 @@ typedef struct NetworkingWebsocketContext
 /*----------------------------------------------------------------------------*/
 
 NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
-    const SSLCredentials_t * pCreds );
+                                        const SSLCredentials_t * pCreds );
 
 NetworkingResult_t Networking_WebsocketInit( NetworkingWebsocketContext_t * pWebsocketCtx,
-    const SSLCredentials_t * pCreds );
+                                             const SSLCredentials_t * pCreds );
 
 NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
-    HttpRequest_t * pRequest,
-    const AwsCredentials_t * pAwsCredentials,
-    const AwsConfig_t * pAwsConfig,
-    HttpResponse_t * pResponse );
+                                        HttpRequest_t * pRequest,
+                                        const AwsCredentials_t * pAwsCredentials,
+                                        const AwsConfig_t * pAwsConfig,
+                                        HttpResponse_t * pResponse );
 
 NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * pWebsocketCtx,
-    const WebsocketConnectInfo_t * pConnectInfo,
-    const AwsCredentials_t * pAwsCredentials,
-    const AwsConfig_t * pAwsConfig );
+                                                const WebsocketConnectInfo_t * pConnectInfo,
+                                                const AwsCredentials_t * pAwsCredentials,
+                                                const AwsConfig_t * pAwsConfig );
 
 NetworkingResult_t Networking_WebsocketDisconnect( NetworkingWebsocketContext_t * pWebsocketCtx );
 
 NetworkingResult_t Networking_WebsocketSend( NetworkingWebsocketContext_t * pWebsocketCtx,
-    const char * pMessage,
-    size_t messageLength );
+                                             const char * pMessage,
+                                             size_t messageLength );
 
 NetworkingResult_t Networking_WebsocketSignal( NetworkingWebsocketContext_t * pWebsocketCtx );
 

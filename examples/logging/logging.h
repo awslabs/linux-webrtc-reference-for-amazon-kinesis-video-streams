@@ -59,13 +59,13 @@ extern "C" {
  * to avoid conflict with documentation of macros at the end of the file.
  */
 /* Check that LIBRARY_LOG_LEVEL is defined and has a valid value. */
-#if !defined( LIBRARY_LOG_LEVEL ) ||          \
-    ( ( LIBRARY_LOG_LEVEL != LOG_NONE ) &&    \
-        ( LIBRARY_LOG_LEVEL != LOG_ERROR ) && \
-        ( LIBRARY_LOG_LEVEL != LOG_WARN ) &&  \
-        ( LIBRARY_LOG_LEVEL != LOG_INFO ) &&  \
-        ( LIBRARY_LOG_LEVEL != LOG_DEBUG ) && \
-        ( LIBRARY_LOG_LEVEL != LOG_VERBOSE ) )
+#if !defined( LIBRARY_LOG_LEVEL ) ||        \
+    ( ( LIBRARY_LOG_LEVEL != LOG_NONE ) &&  \
+      ( LIBRARY_LOG_LEVEL != LOG_ERROR ) && \
+      ( LIBRARY_LOG_LEVEL != LOG_WARN ) &&  \
+      ( LIBRARY_LOG_LEVEL != LOG_INFO ) &&  \
+      ( LIBRARY_LOG_LEVEL != LOG_DEBUG ) && \
+      ( LIBRARY_LOG_LEVEL != LOG_VERBOSE ) )
     #error "Please define LIBRARY_LOG_LEVEL as either LOG_NONE, LOG_ERROR, LOG_WARN, LOG_INFO, or LOG_DEBUG."
 #else
     #if LIBRARY_LOG_LEVEL == LOG_VERBOSE

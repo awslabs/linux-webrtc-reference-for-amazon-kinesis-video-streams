@@ -61,10 +61,10 @@ typedef struct xSOCKET * Socket_t; /**< @brief Socket handle data type. */
  * @return Non-zero value on error, 0 on success.
  */
 int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
-    const char * pHostName,
-    uint16_t port,
-    uint32_t receiveTimeoutMs,
-    uint32_t sendTimeoutMs );
+                             const char * pHostName,
+                             uint16_t port,
+                             uint32_t receiveTimeoutMs,
+                             uint32_t sendTimeoutMs );
 
 /**
  * @brief End connection to server.
@@ -87,8 +87,8 @@ void TCP_Sockets_Disconnect( Socket_t tcpSocket );
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t TCP_Sockets_Send( Socket_t xSocket,
-    const void * pvBuffer,
-    size_t xDataLength );
+                          const void * pvBuffer,
+                          size_t xDataLength );
 
 /**
  * @brief Receive data from a TCP socket.
@@ -108,8 +108,8 @@ int32_t TCP_Sockets_Send( Socket_t xSocket,
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t TCP_Sockets_Recv( Socket_t xSocket,
-    void * pvBuffer,
-    size_t xBufferLength );
+                          void * pvBuffer,
+                          size_t xBufferLength );
 
 /**
  * @brief Get socket descriptor from Socket_t structure.

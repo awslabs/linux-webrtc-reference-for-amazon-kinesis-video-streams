@@ -48,7 +48,7 @@ typedef struct xSOCKET * Socket_t; /**< @brief Socket handle data type. */
  * @return Non-zero value on error, 0 on success.
  */
 int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
-    int assignFd );
+                                 int assignFd );
 
 /**
  * @brief Establish a connection to server.
@@ -64,10 +64,10 @@ int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
  * @return Non-zero value on error, 0 on success.
  */
 int UDP_Sockets_Connect( Socket_t * pUdpSocket,
-    const char * pHostName,
-    uint16_t port,
-    uint32_t receiveTimeoutMs,
-    uint32_t sendTimeoutMs );
+                         const char * pHostName,
+                         uint16_t port,
+                         uint32_t receiveTimeoutMs,
+                         uint32_t sendTimeoutMs );
 
 /**
  * @brief End connection to server.
@@ -90,8 +90,8 @@ void UDP_Sockets_Disconnect( Socket_t udpSocket );
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t UDP_Sockets_Send( Socket_t xSocket,
-    const void * pvBuffer,
-    size_t xDataLength );
+                          const void * pvBuffer,
+                          size_t xDataLength );
 
 /**
  * @brief Receive data from a UDP socket.
@@ -111,8 +111,8 @@ int32_t UDP_Sockets_Send( Socket_t xSocket,
  * * If an error occurred, a negative value is returned. @ref SocketsErrors
  */
 int32_t UDP_Sockets_Recv( Socket_t xSocket,
-    void * pvBuffer,
-    size_t xBufferLength );
+                          void * pvBuffer,
+                          size_t xBufferLength );
 
 /**
  * @brief Get socket descriptor from Socket_t structure.
