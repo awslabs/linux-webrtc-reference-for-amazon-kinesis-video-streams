@@ -29,6 +29,8 @@
 #define MIN( a,b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
+#define SIGNALING_CONTROLLER_RETRY_CONNECT_TIMEOUT_MS ( 2000 )
+
 /*----------------------------------------------------------------------------*/
 
 static int OnWssMessageReceived( char * pMessage,
@@ -1057,7 +1059,12 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
 
             ret = ConnectToSignalingService( pCtx, pConnectInfo );
 
-            if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+            if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+            {
+                LogError( ( "Failed to connect to signaling service. Result: %d!", ret ) );
+                usleep( SIGNALING_CONTROLLER_RETRY_CONNECT_TIMEOUT_MS * 1000 );
+            }
+            else
             {
                 while( networkingResult == NETWORKING_RESULT_OK )
                 {
@@ -1076,10 +1083,6 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
                     }
 
                 }
-            }
-            else
-            {
-                LogError( ( "Failed to connect to signaling service. Result: %d!", ret ) );
             }
         }
     }
