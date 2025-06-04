@@ -1062,7 +1062,7 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
             if( ret != SIGNALING_CONTROLLER_RESULT_OK )
             {
                 LogError( ( "Failed to connect to signaling service. Result: %d!", ret ) );
-                usleep( SIGNALING_CONTROLLER_RETRY_CONNECT_TIMEOUT_MS );
+                usleep( SIGNALING_CONTROLLER_RETRY_CONNECT_TIMEOUT_MS * 1000 );
             }
             else
             {
