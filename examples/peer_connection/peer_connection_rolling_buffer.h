@@ -36,8 +36,8 @@ extern "C" {
 #define PEER_CONNECTION_ROLLING_BUFFER_DURATION_IN_SECONDS ( 3 )
 
 PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRollingBuffer_t * pRollingBuffer,
-                                                           uint32_t rollingbufferBitRate,  // bps
-                                                           uint32_t rollingbufferDurationSec,  // duration in seconds
+                                                           uint32_t rollingbufferBitRate,     // bps
+                                                           uint32_t rollingbufferDurationSec, // duration in seconds
                                                            size_t maxSizePerPacket );
 
 void PeerConnectionRollingBuffer_Free( PeerConnectionRollingBuffer_t * pRollingBuffer );

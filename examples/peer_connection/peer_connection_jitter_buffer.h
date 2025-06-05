@@ -38,7 +38,7 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
                                                           void * pOnFrameReadyCallbackContext,
                                                           OnJitterBufferFrameDropCallback_t onFrameDropCallbackFunc,
                                                           void * pOnFrameDropCallbackContext,
-                                                          uint32_t tolerenceBufferSec,  // buffer time in seconds
+                                                          uint32_t tolerenceBufferSec, // buffer time in seconds
                                                           uint32_t codec,
                                                           uint32_t clockRate );
 

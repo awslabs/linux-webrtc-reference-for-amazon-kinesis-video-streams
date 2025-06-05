@@ -9,8 +9,8 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 typedef enum Base64Result
 {

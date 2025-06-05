@@ -14,35 +14,35 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
+#include "peer_connection_srtcp.h"
 #include "logging.h"
 #include "peer_connection.h"
-#include "peer_connection_srtcp.h"
-#include "peer_connection_srtp.h"
 #include "peer_connection_rolling_buffer.h"
+#include "peer_connection_srtp.h"
+#include <stdlib.h>
 
 /* API includes. */
-#include "rtp_api.h"
-#include "rtcp_api.h"
-#include "rtcp_twcc_manager.h"
 #include "ice_controller.h"
 #include "networking_utils.h"
+#include "rtcp_api.h"
+#include "rtcp_twcc_manager.h"
+#include "rtp_api.h"
 
 /*-----------------------------------------------------------*/
 
 /* https://datatracker.ietf.org/doc/html/rfc3550#section-6.4 */
-#define PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM    ( 31 )
-#define PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM                       ( 128 )
-#define PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM                      ( 255 )
+#define PEER_CONNECTION_RTCP_RECEIVER_REPORT_RECEPTION_REPORT_NUM ( 31 )
+#define PEER_CONNECTION_SRTCP_NACK_MAX_SEQ_NUM                    ( 128 )
+#define PEER_CONNECTION_SRTCP_REMB_MAX_SSRC_NUM                   ( 255 )
 
 /* https://datatracker.ietf.org/doc/html/rfc3550#section-6.4.1 */
-#define PEER_CONNECTION_SRTCP_DLSR_TIMESCALE                         65536
+#define PEER_CONNECTION_SRTCP_DLSR_TIMESCALE                      65536
 
 /* https://tools.ietf.org/html/rfc3550#section-4 */
 /* In some fields where a more compact representation is */
 /*   appropriate, only the middle 32 bits are used; that is, the low 16 */
 /*   bits of the integer part and the high 16 bits of the fractional part. */
-#define PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP )    ( uint32_t ) ( ( currentTimeNTP >> 16U ) & 0xffffffffULL )
+#define PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP )           ( uint32_t )( ( currentTimeNTP >> 16U ) & 0xffffffffULL )
 
 /*-----------------------------------------------------------*/
 
@@ -334,89 +334,88 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
     return ret;
 }
 #if ENABLE_TWCC_SUPPORT
-    static PeerConnectionResult_t OnRtcpTwccEvent( PeerConnectionSession_t * pSession,
-                                                   RtcpPacket_t * pRtcpPacket )
+static PeerConnectionResult_t OnRtcpTwccEvent( PeerConnectionSession_t * pSession,
+                                               RtcpPacket_t * pRtcpPacket )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    RtcpResult_t resultRtcp;
+    RtcpTwccManagerResult_t resultRtcpTwccManager = RTCP_TWCC_MANAGER_RESULT_OK;
+    RtcpTwccPacket_t twccPacket;
+    TwccPacketInfo_t * pTwccPacketInfo;
+    TwccBandwidthInfo_t twccBandwidthInfo;
+    PacketArrivalInfo_t packetArrivalInfo[ PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY ];
+    int i;
+
+    if( ( pSession == NULL ) || ( pRtcpPacket == NULL ) )
     {
-        PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-        RtcpResult_t resultRtcp;
-        RtcpTwccManagerResult_t resultRtcpTwccManager = RTCP_TWCC_MANAGER_RESULT_OK;
-        RtcpTwccPacket_t twccPacket;
-        TwccPacketInfo_t * pTwccPacketInfo;
-        TwccBandwidthInfo_t twccBandwidthInfo;
-        PacketArrivalInfo_t packetArrivalInfo[ PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY ];
-        int i;
-
-
-        if( ( pSession == NULL ) || ( pRtcpPacket == NULL ) )
-        {
-            LogError( ( "Invalid input, pSession: %p, pRtcpPacket: %p", pSession, pRtcpPacket ) );
-            ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-        }
-
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            memset( &twccPacket,
-                    0,
-                    sizeof( RtcpTwccPacket_t ) );
-            memset( &packetArrivalInfo[ 0 ],
-                    0,
-                    sizeof( PacketArrivalInfo_t ) * PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
-            twccPacket.pArrivalInfoList = packetArrivalInfo;
-            twccPacket.arrivalInfoListLength = PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY;
-            resultRtcp = Rtcp_ParseTwccPacket( &pSession->pCtx->rtcpContext,
-                                               pRtcpPacket,
-                                               &twccPacket );
-
-            if( resultRtcp != RTCP_RESULT_OK )
-            {
-                LogError( ( "Fail to parse RTCP TWCC packet, result: %d", resultRtcp ) );
-                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_PARSE_TWCC;
-            }
-        }
-
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            for( i = 0; i < twccPacket.arrivalInfoListLength; i++ )
-            {
-                /* Checks if the seq number already exists. */
-                resultRtcpTwccManager = RtcpTwccManager_FindPacketInfo( &pSession->pCtx->rtcpTwccManager,
-                                                                        twccPacket.pArrivalInfoList[ i ].seqNum,
-                                                                        &pTwccPacketInfo );
-
-                if( resultRtcpTwccManager == RTCP_TWCC_MANAGER_RESULT_OK )
-                {
-                    pTwccPacketInfo->localSentTime = twccPacket.pArrivalInfoList[ i ].remoteArrivalTime;
-                }
-            }
-        }
-
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            resultRtcpTwccManager = RtcpTwccManager_HandleTwccPacket( &pSession->pCtx->rtcpTwccManager,
-                                                                      &twccPacket,
-                                                                      &twccBandwidthInfo );
-
-            if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
-            {
-                LogError( ( "Fail to handle RTCP TWCC packet, result: %d", resultRtcpTwccManager ) );
-                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_HANDLE_TWCC;
-            }
-        }
-
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            if( ( twccBandwidthInfo.duration > 0 ) && ( pSession->pCtx->onBandwidthEstimationCallback != NULL ) )
-            {
-                /* Call the bandwidth estimation callback */
-                pSession->pCtx->onBandwidthEstimationCallback( pSession->pCtx->pOnBandwidthEstimationCallbackContext,
-                                                               &twccBandwidthInfo );
-            }
-
-            LogDebug( ( "TWCC Bandwidth Info : SentBytes - %lu, ReceivedBytes - %lu, SentPackets - %lu, ReceivedPackets - %lu, Duration - %ld", twccBandwidthInfo.sentBytes, twccBandwidthInfo.receivedBytes, twccBandwidthInfo.sentPackets, twccBandwidthInfo.receivedPackets, twccBandwidthInfo.duration ) );
-        }
-
-        return ret;
+        LogError( ( "Invalid input, pSession: %p, pRtcpPacket: %p", pSession, pRtcpPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        memset( &twccPacket,
+                0,
+                sizeof( RtcpTwccPacket_t ) );
+        memset( &packetArrivalInfo[ 0 ],
+                0,
+                sizeof( PacketArrivalInfo_t ) * PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
+        twccPacket.pArrivalInfoList = packetArrivalInfo;
+        twccPacket.arrivalInfoListLength = PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY;
+        resultRtcp = Rtcp_ParseTwccPacket( &pSession->pCtx->rtcpContext,
+                                           pRtcpPacket,
+                                           &twccPacket );
+
+        if( resultRtcp != RTCP_RESULT_OK )
+        {
+            LogError( ( "Fail to parse RTCP TWCC packet, result: %d", resultRtcp ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_RTCP_PARSE_TWCC;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        for( i = 0; i < twccPacket.arrivalInfoListLength; i++ )
+        {
+            /* Checks if the seq number already exists. */
+            resultRtcpTwccManager = RtcpTwccManager_FindPacketInfo( &pSession->pCtx->rtcpTwccManager,
+                                                                    twccPacket.pArrivalInfoList[ i ].seqNum,
+                                                                    &pTwccPacketInfo );
+
+            if( resultRtcpTwccManager == RTCP_TWCC_MANAGER_RESULT_OK )
+            {
+                pTwccPacketInfo->localSentTime = twccPacket.pArrivalInfoList[ i ].remoteArrivalTime;
+            }
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        resultRtcpTwccManager = RtcpTwccManager_HandleTwccPacket( &pSession->pCtx->rtcpTwccManager,
+                                                                  &twccPacket,
+                                                                  &twccBandwidthInfo );
+
+        if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
+        {
+            LogError( ( "Fail to handle RTCP TWCC packet, result: %d", resultRtcpTwccManager ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_RTCP_HANDLE_TWCC;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( ( twccBandwidthInfo.duration > 0 ) && ( pSession->pCtx->onBandwidthEstimationCallback != NULL ) )
+        {
+            /* Call the bandwidth estimation callback */
+            pSession->pCtx->onBandwidthEstimationCallback( pSession->pCtx->pOnBandwidthEstimationCallbackContext,
+                                                           &twccBandwidthInfo );
+        }
+
+        LogDebug( ( "TWCC Bandwidth Info : SentBytes - %lu, ReceivedBytes - %lu, SentPackets - %lu, ReceivedPackets - %lu, Duration - %ld", twccBandwidthInfo.sentBytes, twccBandwidthInfo.receivedBytes, twccBandwidthInfo.sentPackets, twccBandwidthInfo.receivedPackets, twccBandwidthInfo.duration ) );
+    }
+
+    return ret;
+}
 #endif /* if ENABLE_TWCC_SUPPORT */
 static PeerConnectionResult_t OnRtcpPliEvent( PeerConnectionSession_t * pSession,
                                               RtcpPacket_t * pRtcpPacket )
@@ -743,7 +742,7 @@ static PeerConnectionResult_t OnRtcpReceiverReportEvent( PeerConnectionSession_t
                 currentTimeNTP = NetworkingUtils_GetNTPTimeFromUnixTimeUs( NetworkingUtils_GetCurrentTimeUs( NULL ) );
                 currentTimeNTP = PEER_CONNECTION_SRTCP_MID_NTP( currentTimeNTP );
                 roundTripPropagationDelay = currentTimeNTP - receiverReport.pReceptionReports[ 0 ].lastSR - receiverReport.pReceptionReports[ 0 ].delaySinceLastSR;
-                roundTripPropagationDelay = ( roundTripPropagationDelay * 1000 ) / PEER_CONNECTION_SRTCP_DLSR_TIMESCALE;                             /* The Round Trip Propogation Delay is in ms unit. */
+                roundTripPropagationDelay = ( roundTripPropagationDelay * 1000 ) / PEER_CONNECTION_SRTCP_DLSR_TIMESCALE; /* The Round Trip Propogation Delay is in ms unit. */
 
                 if( pTransceiver->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
                 {
@@ -919,7 +918,6 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
         pthread_mutex_unlock( &( pSession->srtpSessionMutex ) );
     }
 
-
     while( ( remainingLength >= RTCP_HEADER_LENGTH ) &&
            ( ret == PEER_CONNECTION_RESULT_OK ) )
     {
@@ -954,10 +952,10 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
                     break;
 
                 case RTCP_PACKET_TRANSPORT_FEEDBACK_TWCC:
-                    #if ENABLE_TWCC_SUPPORT
-                        ret = OnRtcpTwccEvent( pSession,
-                                               &rtcpPacket );
-                    #endif
+#if ENABLE_TWCC_SUPPORT
+                    ret = OnRtcpTwccEvent( pSession,
+                                           &rtcpPacket );
+#endif
                     break;
 
                 case RTCP_PACKET_PAYLOAD_FEEDBACK_PLI:

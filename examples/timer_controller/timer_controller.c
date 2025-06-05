@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
+#include "timer_controller.h"
+#include "logging.h"
+#include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <errno.h>
-#include "logging.h"
-#include "timer_controller.h"
 
 static void generalTimerCallback( union sigval sv )
 {

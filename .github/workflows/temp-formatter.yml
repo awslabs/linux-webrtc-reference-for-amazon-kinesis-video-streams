@@ -1,0 +1,71 @@
+name: Temporary Clang Format Check
+
+permissions:
+  contents: read
+
+on:
+  push:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  test-clang-format:
+    name: Test ClangFormat
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.1.1
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Run clang-format check and generate patch
+        run: |
+          # Find all C/C++ files excluding samples directories
+          FILES=$(find examples/ -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) -not -path "*/samples/*")
+
+          # Create a temporary directory for formatted files
+          mkdir -p /tmp/formatted
+
+          # Create a patch file
+          PATCH_FILE="clang-format-changes.patch"
+          > $PATCH_FILE
+
+          # Check formatting
+          FAILED=0
+          for FILE in $FILES; do
+            FORMATTED="/tmp/formatted/$(basename "$FILE")"
+            clang-format -style=file "$FILE" > "$FORMATTED"
+
+            # Check if files are different and add to patch file
+            if ! diff -u "$FILE" "$FORMATTED" > /dev/null; then
+              echo "::error file=$FILE::Formatting issues found"
+              diff -u "$FILE" "$FORMATTED" | head -n 50
+              # Add the complete diff to the patch file
+              diff -u "$FILE" "$FORMATTED" >> $PATCH_FILE
+              FAILED=1
+            fi
+          done
+
+          # Report results
+          if [ $FAILED -ne 0 ]; then
+            echo "::error::Formatting check failed. Please run clang-format before committing."
+            echo "A patch file has been generated with all the required changes."
+            # Set output variable for GitHub Actions
+            echo "has_formatting_issues=true" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "All files passed formatting check!"
+            rm -f $PATCH_FILE
+          fi
+        id: format-check
+
+      - name: Upload patch file
+        uses: actions/upload-artifact@v4
+        if: steps.format-check.outputs.has_formatting_issues == 'true'
+        with:
+          name: clang-format-patch
+          path: clang-format-changes.patch
+          retention-days: 7

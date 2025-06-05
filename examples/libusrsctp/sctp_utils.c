@@ -16,30 +16,29 @@
 
 #if ENABLE_SCTP_DATA_CHANNEL
 
-/* Standard includes. */
-#include <stdio.h>
-#include <unistd.h>
+    /* Standard includes. */
+    #include <stdio.h>
+    #include <unistd.h>
 
-/* Application includes. */
-#include "peer_connection.h"
-#include "networking_utils.h"
-#include "peer_connection_sctp.h"
+    /* Application includes. */
+    #include "networking_utils.h"
+    #include "peer_connection.h"
+    #include "peer_connection_sctp.h"
 
+    #define SCTP_MTU                        1188
+    #define SCTP_ASSOCIATION_DEFAULT_PORT   5000
 
-#define SCTP_MTU                        1188
-#define SCTP_ASSOCIATION_DEFAULT_PORT   5000
+    #define SCTP_SESSION_SHUTDOWN_INITIATED 0
+    #define SCTP_SESSION_ACTIVE             1
+    #define SCTP_SESSION_SHUTDOWN_COMPLETED 2
 
-#define SCTP_SESSION_SHUTDOWN_INITIATED 0
-#define SCTP_SESSION_ACTIVE             1
-#define SCTP_SESSION_SHUTDOWN_COMPLETED 2
+    #define SECONDS_TO_USEC( x )            ( ( x ) *1000000 )
 
-#define SECONDS_TO_USEC( x )            ( ( x ) * 1000000 )
-
-#define SCTP_PPID_DCEP                  50
-#define SCTP_PPID_STRING                51
-#define SCTP_PPID_BINARY                53
-#define SCTP_PPID_STRING_EMPTY          56
-#define SCTP_PPID_BINARY_EMPTY          57
+    #define SCTP_PPID_DCEP                  50
+    #define SCTP_PPID_STRING                51
+    #define SCTP_PPID_BINARY                53
+    #define SCTP_PPID_STRING_EMPTY          56
+    #define SCTP_PPID_BINARY_EMPTY          57
 /*-----------------------------------------------------------*/
 
 static SctpUtilsResult_t ConfigureSctpSocket( struct socket * pSocket );
@@ -195,7 +194,6 @@ static int OnSctpOutboundPacket( void * pAddr,
     return 0;
 }
 
-
 /*-----------------------------------------------------------*/
 
 /* Handle an incoming DCEP message. */
@@ -204,7 +202,6 @@ static SctpUtilsResult_t HandleDcepMessage( SctpSession_t * pSctpSession,
                                             uint8_t * pData,
                                             size_t length )
 {
-
     SctpUtilsResult_t retStatus = SCTP_UTILS_RESULT_OK;
     DcepContext_t dcepCtx;
     DcepResult_t dcepResult = DCEP_RESULT_OK;
@@ -300,9 +297,9 @@ static int OnSctpInboundPacket( struct socket * pSocket,
     SctpSession_t * pSctpSession = ( SctpSession_t * ) pUlpInfo;
     uint8_t isBinary = 0U;
 
-    ( void )( pSocket );
-    ( void )( addr );
-    ( void )( flags );
+    ( void ) ( pSocket );
+    ( void ) ( addr );
+    ( void ) ( flags );
 
     rcv.rcv_ppid = ntohl( rcv.rcv_ppid );
 
@@ -329,7 +326,6 @@ static int OnSctpInboundPacket( struct socket * pSocket,
         case SCTP_PPID_STRING:
         case SCTP_PPID_STRING_EMPTY:
         {
-
             pSctpSession->sctpSessionCallbacks.dataChannelMessageCallback( pSctpSession->sctpSessionCallbacks.pUserData,
                                                                            rcv.rcv_sid,
                                                                            isBinary,
@@ -566,19 +562,19 @@ SctpUtilsResult_t Sctp_FreeSession( SctpSession_t * pSctpSession )
         if( pSctpSession->shutdownStatus == SCTP_SESSION_ACTIVE )
         {
             usrsctp_deregister_address( pSctpSession );
-    
+
             /* handle issue mentioned here: https://github.com/sctplab/usrsctp/issues/147
              * the change in shutdownStatus will trigger OnSctpOutboundPacket to
              * return -1. */
             pSctpSession->shutdownStatus = SCTP_SESSION_SHUTDOWN_INITIATED;
-    
+
             if( pSctpSession->socket != NULL )
             {
                 usrsctp_set_ulpinfo( pSctpSession->socket, NULL );
                 usrsctp_shutdown( pSctpSession->socket, SHUT_RDWR );
                 usrsctp_close( pSctpSession->socket );
             }
-    
+
             shutdownTimeout = NetworkingUtils_GetCurrentTimeUs( NULL ) +
                               SECONDS_TO_USEC( SCTP_SHUTDOWN_TIMEOUT_SEC );
             while( ( pSctpSession->shutdownStatus != SCTP_SESSION_SHUTDOWN_COMPLETED ) &&
@@ -725,7 +721,6 @@ SctpUtilsResult_t Sctp_SendMessage( SctpSession_t * pSctpSession,
     {
         retStatus = SCTP_UTILS_RESULT_BAD_PARAM;
     }
-
 
     if( retStatus == SCTP_UTILS_RESULT_OK )
     {

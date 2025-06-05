@@ -43,5 +43,4 @@ int xMbedTLSBioTCPSocketsWrapperRecv( void * ctx,
                                       unsigned char * buf,
                                       size_t len );
 
-
 #endif /* MBEDTLS_BIO_TCP_SOCKETS_WRAPPER */

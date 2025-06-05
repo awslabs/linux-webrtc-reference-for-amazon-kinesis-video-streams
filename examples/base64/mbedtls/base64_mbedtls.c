@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "logging.h"
 #include "base64.h"
+#include "logging.h"
 #include "mbedtls/base64.h"
 
 static Base64Result_t Base64_InterpretReturnValue( int errorCode )

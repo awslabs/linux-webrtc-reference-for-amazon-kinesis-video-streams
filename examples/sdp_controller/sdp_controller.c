@@ -14,117 +14,117 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-#include "logging.h"
 #include "sdp_controller.h"
 #include "core_json.h"
+#include "logging.h"
+#include "peer_connection.h"
 #include "sdp_deserializer.h"
 #include "sdp_serializer.h"
 #include "string_utils.h"
-#include "peer_connection.h"
+#include <stdlib.h>
 
-#define SDP_CONTROLLER_ORIGIN_DEFAULT_USER_NAME "-"
-#define SDP_CONTROLLER_ORIGIN_DEFAULT_SESSION_VERSION ( 2 )
-#define SDP_CONTROLLER_ORIGIN_DEFAULT_NET_TYPE "IN"
-#define SDP_CONTROLLER_ORIGIN_IPV4_TYPE "IP4"
-#define SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS "127.0.0.1"
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_USER_NAME                                                             "-"
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_SESSION_VERSION                                                       ( 2 )
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_NET_TYPE                                                              "IN"
+#define SDP_CONTROLLER_ORIGIN_IPV4_TYPE                                                                     "IP4"
+#define SDP_CONTROLLER_ORIGIN_DEFAULT_IP_ADDRESS                                                            "127.0.0.1"
 
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP "setup"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP_LENGTH ( 5 )
-#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE "active"
-#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH ( 6 )
-#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTPASS "actpass"
-#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTPASS_LENGTH ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID "msid"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID_LENGTH ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP "rtcp"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_LENGTH ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP "9 IN IP4 0.0.0.0"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_LENGTH ( 16 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG "ice-ufrag"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG_LENGTH ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD "ice-pwd"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD_LENGTH ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION "ice-options"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION_LENGTH ( 11 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION "trickle"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION_LENGTH ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT "fingerprint"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT_LENGTH ( 11 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC "ssrc"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP "ssrc-group"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP_LENGTH ( 10 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID "mid"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID_LENGTH ( 3 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV "sendrecv"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY "sendonly"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY "recvonly"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE "inactive"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX "rtcp-mux"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX_LENGTH ( 8 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_RSIZE "rtcp-rsize"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_RSIZE_LENGTH ( 10 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP "rtpmap"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH ( 6 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264 "H264/90000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264_LENGTH ( 10 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264 "rtx/90000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264_LENGTH ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS "opus/48000/2"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS_LENGTH ( 12 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8 "VP8/90000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8_LENGTH ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW "PCMU/8000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW_LENGTH ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW "PCMA/8000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW_LENGTH ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265 "H265/90000"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265_LENGTH ( 10 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB "rtcp-fb"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH ( 7 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE "nack"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE_LENGTH ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB "goog-remb"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB_LENGTH ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP "fmtp"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ( 4 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP "extmap"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP_LENGTH ( 6 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL_LENGTH ( 73 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC "transport-cc"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC_LENGTH ( 12 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE "candidate"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH ( 9 )
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH ( 8 ) // the length of "sha-256 "
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP                                                           "setup"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP_LENGTH                                                    ( 5 )
+#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE                                                               "active"
+#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH                                                        ( 6 )
+#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTPASS                                                              "actpass"
+#define SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTPASS_LENGTH                                                       ( 7 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID                                                            "msid"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MSID_LENGTH                                                     ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP                                                            "rtcp"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_LENGTH                                                     ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP                                                           "9 IN IP4 0.0.0.0"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_LENGTH                                                    ( 16 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG                                                       "ice-ufrag"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG_LENGTH                                                ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD                                                         "ice-pwd"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD_LENGTH                                                  ( 7 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION                                                      "ice-options"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION_LENGTH                                               ( 11 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION                                                     "trickle"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION_LENGTH                                              ( 7 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT                                                     "fingerprint"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FINGERPRINT_LENGTH                                              ( 11 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC                                                            "ssrc"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_LENGTH                                                     ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP                                                      "ssrc-group"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SSRC_GROUP_LENGTH                                               ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID                                                             "mid"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_MID_LENGTH                                                      ( 3 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV                                                        "sendrecv"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH                                                 ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY                                                        "sendonly"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH                                                 ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY                                                        "recvonly"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH                                                 ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE                                                        "inactive"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH                                                 ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX                                                        "rtcp-mux"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_MUX_LENGTH                                                 ( 8 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_RSIZE                                                      "rtcp-rsize"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_RSIZE_LENGTH                                               ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP                                                          "rtpmap"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTPMAP_LENGTH                                                   ( 6 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264                                                    "H264/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H264_LENGTH                                             ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264                                                "rtx/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_RTX_H264_LENGTH                                         ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS                                                    "opus/48000/2"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_OPUS_LENGTH                                             ( 12 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8                                                     "VP8/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_VP8_LENGTH                                              ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW                                                   "PCMU/8000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_MULAW_LENGTH                                            ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW                                                    "PCMA/8000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_ALAW_LENGTH                                             ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265                                                    "H265/90000"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTPMAP_H265_LENGTH                                             ( 10 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB                                                         "rtcp-fb"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RTCP_FB_LENGTH                                                  ( 7 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE                                                  "nack"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_VALUE_LENGTH                                           ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB                                              "goog-remb"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_GOOG_REMB_LENGTH                                       ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP                                                            "fmtp"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH                                                     ( 4 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP                                                          "extmap"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP_LENGTH                                                   ( 6 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL                                                   "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL_LENGTH                                            ( 73 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC                                           "transport-cc"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_RTCP_FB_TRANSPORT_CC_LENGTH                                    ( 12 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE                                                       "candidate"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH                                                ( 9 )
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH                                      ( 8 ) // the length of "sha-256 "
 
 #define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS "minptime=10;useinbandfec=1"
-#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265 "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_OPUS                                                      "minptime=10;useinbandfec=1"
+#define SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FMTP_H265                                                      "profile-space=0;profile-id=0;tier-flag=0;level-id=0;interop-constraints=000000000000;sprop-vps=QAEMAf//" \
                                                        "AIAAAAMAAAMAAAMAAAMAALUCQA==;sprop-sps=QgEBAIAAAAMAAAMAAAMAAAMAAKACgIAtH+W1kkbQzkkktySqSfKSyA==;sprop-pps=RAHBpVgeSA=="
 
-#define SDP_CONTROLLER_H264_PACKETIZATION_MODE "packetization-mode=1"
-#define SDP_CONTROLLER_H264_PACKETIZATION_MODE_LENGTH ( 20 )
-#define SDP_CONTROLLER_H264_ASYMMETRY_ALLOWED "level-asymmetry-allowed=1"
-#define SDP_CONTROLLER_H264_ASYMMETRY_ALLOWED_LENGTH ( 25 )
-#define SDP_CONTROLLER_H264_PROFILE_LEVEL_ID "profile-level-id="
-#define SDP_CONTROLLER_H264_PROFILE_LEVEL_ID_LENGTH ( 17 )
+#define SDP_CONTROLLER_H264_PACKETIZATION_MODE                       "packetization-mode=1"
+#define SDP_CONTROLLER_H264_PACKETIZATION_MODE_LENGTH                ( 20 )
+#define SDP_CONTROLLER_H264_ASYMMETRY_ALLOWED                        "level-asymmetry-allowed=1"
+#define SDP_CONTROLLER_H264_ASYMMETRY_ALLOWED_LENGTH                 ( 25 )
+#define SDP_CONTROLLER_H264_PROFILE_LEVEL_ID                         "profile-level-id="
+#define SDP_CONTROLLER_H264_PROFILE_LEVEL_ID_LENGTH                  ( 17 )
 
-#define SDP_CONTROLLER_MAX_FMTP_APT_NUM ( 64 )
+#define SDP_CONTROLLER_MAX_FMTP_APT_NUM                              ( 64 )
 
-#define SDP_CONTROLLER_GET_APT_CODEC_FROM_PAYLOAD( payload ) ( payload & 0xFF )
-#define SDP_CONTROLLER_GET_RTX_CODEC_FROM_PAYLOAD( payload ) ( payload >> 16 )
-#define SDP_CONTROLLER_SET_PAYLOAD( rtxPayload, aptPayload ) ( rtxPayload << 16 | aptPayload )
+#define SDP_CONTROLLER_GET_APT_CODEC_FROM_PAYLOAD( payload )         ( payload & 0xFF )
+#define SDP_CONTROLLER_GET_RTX_CODEC_FROM_PAYLOAD( payload )         ( payload >> 16 )
+#define SDP_CONTROLLER_SET_PAYLOAD( rtxPayload, aptPayload )         ( rtxPayload << 16 | aptPayload )
 
-#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME "application 9 UDP/DTLS/SCTP webrtc-datachannel"
-#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT "sctp-port"
-#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT_LENGTH ( 9 )
-#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT "5000"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME        "application 9 UDP/DTLS/SCTP webrtc-datachannel"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT         "sctp-port"
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_SCTP_PORT_LENGTH  ( 9 )
+#define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT        "5000"
 #define SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_VALUE_SCTP_PORT_LENGTH ( 4 )
 
 // profile-level-id:
@@ -139,33 +139,33 @@
 //   3) level_id.
 //
 // Reference: https://tools.ietf.org/html/rfc6184#section-8.1
-#define SDP_CONTROLLER_H264_PROFILE_42E01F 0x42e01f
-#define SDP_CONTROLLER_H264_FMTP_SUBPROFILE_MASK 0xFFFF00
-#define SDP_CONTROLLER_H264_FMTP_PROFILE_LEVEL_MASK 0x0000FF
-#define SDP_CONTROLLER_H264_FMTP_MINIMUM_SCORE ( 10 )
-#define SDP_CONTROLLER_H264_FMTP_HIGHEST_SCORE ( 12 )
+#define SDP_CONTROLLER_H264_PROFILE_42E01F                           0x42e01f
+#define SDP_CONTROLLER_H264_FMTP_SUBPROFILE_MASK                     0xFFFF00
+#define SDP_CONTROLLER_H264_FMTP_PROFILE_LEVEL_MASK                  0x0000FF
+#define SDP_CONTROLLER_H264_FMTP_MINIMUM_SCORE                       ( 10 )
+#define SDP_CONTROLLER_H264_FMTP_HIGHEST_SCORE                       ( 12 )
 
-#define SDP_CONTROLLER_CODEC_H264_VALUE "H264/90000"
-#define SDP_CONTROLLER_CODEC_H264_VALUE_LENGTH ( 10 )
-#define SDP_CONTROLLER_CODEC_H265_VALUE "H265/90000"
-#define SDP_CONTROLLER_CODEC_H265_VALUE_LENGTH ( 10 )
-#define SDP_CONTROLLER_CODEC_OPUS_VALUE "opus/48000/2"
-#define SDP_CONTROLLER_CODEC_OPUS_VALUE_LENGTH ( 12 )
-#define SDP_CONTROLLER_CODEC_VP8_VALUE "VP8/90000"
-#define SDP_CONTROLLER_CODEC_VP8_VALUE_LENGTH ( 9 )
-#define SDP_CONTROLLER_CODEC_MULAW_VALUE "PCMU/8000"
-#define SDP_CONTROLLER_CODEC_MULAW_VALUE_LENGTH ( 9 )
-#define SDP_CONTROLLER_CODEC_ALAW_VALUE "PCMA/8000"
-#define SDP_CONTROLLER_CODEC_ALAW_VALUE_LENGTH ( 9 )
-#define SDP_CONTROLLER_CODEC_RTX_VALUE "rtx/90000"
-#define SDP_CONTROLLER_CODEC_RTX_VALUE_LENGTH ( 9 )
-#define SDP_CONTROLLER_CODEC_APT_VALUE "apt="
-#define SDP_CONTROLLER_CODEC_APT_VALUE_LENGTH ( 4 )
+#define SDP_CONTROLLER_CODEC_H264_VALUE                              "H264/90000"
+#define SDP_CONTROLLER_CODEC_H264_VALUE_LENGTH                       ( 10 )
+#define SDP_CONTROLLER_CODEC_H265_VALUE                              "H265/90000"
+#define SDP_CONTROLLER_CODEC_H265_VALUE_LENGTH                       ( 10 )
+#define SDP_CONTROLLER_CODEC_OPUS_VALUE                              "opus/48000/2"
+#define SDP_CONTROLLER_CODEC_OPUS_VALUE_LENGTH                       ( 12 )
+#define SDP_CONTROLLER_CODEC_VP8_VALUE                               "VP8/90000"
+#define SDP_CONTROLLER_CODEC_VP8_VALUE_LENGTH                        ( 9 )
+#define SDP_CONTROLLER_CODEC_MULAW_VALUE                             "PCMU/8000"
+#define SDP_CONTROLLER_CODEC_MULAW_VALUE_LENGTH                      ( 9 )
+#define SDP_CONTROLLER_CODEC_ALAW_VALUE                              "PCMA/8000"
+#define SDP_CONTROLLER_CODEC_ALAW_VALUE_LENGTH                       ( 9 )
+#define SDP_CONTROLLER_CODEC_RTX_VALUE                               "rtx/90000"
+#define SDP_CONTROLLER_CODEC_RTX_VALUE_LENGTH                        ( 9 )
+#define SDP_CONTROLLER_CODEC_APT_VALUE                               "apt="
+#define SDP_CONTROLLER_CODEC_APT_VALUE_LENGTH                        ( 4 )
 
-#define SDP_CONTROLLER_CODEC_MULAW_DEFAULT_INDEX "0"
-#define SDP_CONTROLLER_CODEC_MULAW_DEFAULT_INDEX_LENGTH ( 1 )
-#define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX "8"
-#define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX_LENGTH ( 1 )
+#define SDP_CONTROLLER_CODEC_MULAW_DEFAULT_INDEX                     "0"
+#define SDP_CONTROLLER_CODEC_MULAW_DEFAULT_INDEX_LENGTH              ( 1 )
+#define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX                      "8"
+#define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX_LENGTH               ( 1 )
 
 static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t * pOffer,
                                                    SdpAttribute_t * pAttribute );
@@ -1855,27 +1855,27 @@ static SdpControllerResult_t PopulateCodecAttributes( SdpControllerMediaDescript
     {
         if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT ) )
         {
-            ret = PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesH264Profile42E01FLevelAsymmetryAllowedPacketization( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_OPUS_BIT ) )
         {
-            ret = PopulateCodecAttributesOpus( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesOpus( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {
-            ret = PopulateCodecAttributesVp8( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesVp8( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
         {
-            ret = PopulateCodecAttributesMulaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesMulaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
         {
-            ret = PopulateCodecAttributesAlaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesAlaw( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap, TRANSCEIVER_RTC_CODEC_H265_BIT ) )
         {
-            ret = PopulateCodecAttributesH265( pRemoteMediaDescription, pTransceiver, payload, rtxPayload,ppBuffer, pBufferLength, pLocalMediaDescription );
+            ret = PopulateCodecAttributesH265( pRemoteMediaDescription, pTransceiver, payload, rtxPayload, ppBuffer, pBufferLength, pLocalMediaDescription );
         }
         else
         {
@@ -1912,9 +1912,9 @@ static const SdpControllerAttributes_t * FindAttributeName( const SdpControllerA
     {
         for( i = 0; i < attributeCount; i++ )
         {
-            if( ( pAttributes[i].attributeNameLength == patternLength ) && ( strncmp( pAttributes[i].pAttributeName, pPattern, patternLength ) == 0 ) )
+            if( ( pAttributes[ i ].attributeNameLength == patternLength ) && ( strncmp( pAttributes[ i ].pAttributeName, pPattern, patternLength ) == 0 ) )
             {
-                pRet = &pAttributes[i];
+                pRet = &pAttributes[ i ];
                 break;
             }
         }
@@ -1950,12 +1950,12 @@ static const SdpControllerAttributes_t * FindFmtpBasedOnCodec( const SdpControll
         {
             for( i = 0; i < attributeCount; i++ )
             {
-                if( ( pAttributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) &&
-                    ( strncmp( pAttributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) == 0 ) &&
-                    ( pAttributes[i].attributeValueLength >= written ) &&
-                    ( strncmp( pAttributes[i].pAttributeValue, codecString, written ) == 0 ) )
+                if( ( pAttributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) &&
+                    ( strncmp( pAttributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_FMTP_LENGTH ) == 0 ) &&
+                    ( pAttributes[ i ].attributeValueLength >= written ) &&
+                    ( strncmp( pAttributes[ i ].pAttributeValue, codecString, written ) == 0 ) )
                 {
-                    pRet = &pAttributes[i];
+                    pRet = &pAttributes[ i ];
                     break;
                 }
             }
@@ -2984,26 +2984,26 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
             {
                 for( i = 0; i < pRemoteMediaDescription->mediaAttributesCount; i++ )
                 {
-                    if( ( pRemoteMediaDescription->attributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ) &&
-                        ( strncmp( pRemoteMediaDescription->attributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ) == 0 ) )
+                    if( ( pRemoteMediaDescription->attributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ) &&
+                        ( strncmp( pRemoteMediaDescription->attributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDRECV_LENGTH ) == 0 ) )
                     {
                         targetDirection = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
                         break;
                     }
-                    else if( ( pRemoteMediaDescription->attributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ) &&
-                             ( strncmp( pRemoteMediaDescription->attributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ) == 0 ) )
+                    else if( ( pRemoteMediaDescription->attributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ) &&
+                             ( strncmp( pRemoteMediaDescription->attributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SENDONLY_LENGTH ) == 0 ) )
                     {
                         targetDirection = TRANSCEIVER_TRACK_DIRECTION_RECVONLY;
                         break;
                     }
-                    else if( ( pRemoteMediaDescription->attributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ) &&
-                             ( strncmp( pRemoteMediaDescription->attributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ) == 0 ) )
+                    else if( ( pRemoteMediaDescription->attributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ) &&
+                             ( strncmp( pRemoteMediaDescription->attributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_RECVONLY_LENGTH ) == 0 ) )
                     {
                         targetDirection = TRANSCEIVER_TRACK_DIRECTION_SENDONLY;
                         break;
                     }
-                    else if( ( pRemoteMediaDescription->attributes[i].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ) &&
-                             ( strncmp( pRemoteMediaDescription->attributes[i].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ) == 0 ) )
+                    else if( ( pRemoteMediaDescription->attributes[ i ].attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ) &&
+                             ( strncmp( pRemoteMediaDescription->attributes[ i ].pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_INACTIVE_LENGTH ) == 0 ) )
                     {
                         targetDirection = TRANSCEIVER_TRACK_DIRECTION_INACTIVE;
                         break;

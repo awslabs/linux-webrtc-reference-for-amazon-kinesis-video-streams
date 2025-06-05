@@ -18,20 +18,20 @@
 #include "logging.h"
 
 /* Standard includes. */
-#include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* FreeRTOS includes. */
 //#include "FreeRTOS.h"
 
 /* LWIP includes */
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <errno.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 /* TCP Sockets Wrapper include.*/
 #include "tcp_sockets_wrapper.h"
@@ -60,8 +60,8 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
 {
     int xFd = -1;
     int32_t xRet = TCP_SOCKETS_ERRNO_NONE;
-    struct addrinfo xHints, * pxAddrList, * pxCur;
-    char xPortStr[6];
+    struct addrinfo xHints, *pxAddrList, *pxCur;
+    char xPortStr[ 6 ];
     int fcntlFlags = 0;
 
     memset( &xHints, 0, sizeof( xHints ) );
@@ -108,7 +108,7 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
         if( *pTcpSocket == NULL )
         {
             LogError( ( "Failed to allow new socket context." ) );
-            ( void )close( xFd );
+            ( void ) close( xFd );
             xRet = TCP_SOCKETS_ERRNO_ENOMEM;
         }
         else
@@ -155,8 +155,8 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
  */
 void TCP_Sockets_Disconnect( Socket_t tcpSocket )
 {
-    ( void )shutdown( tcpSocket->xFd, SHUT_RDWR );
-    ( void )close( tcpSocket->xFd );
+    ( void ) shutdown( tcpSocket->xFd, SHUT_RDWR );
+    ( void ) close( tcpSocket->xFd );
     free( tcpSocket );
 }
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "demo_config.h"
 #include "app_common.h"
+#include "demo_config.h"
 #include "gst_media_source.h"
 #include <signal.h>
 
@@ -28,7 +28,6 @@ static int32_t OnMediaSinkHook( void * pCustom,
                                 WebrtcFrame_t * pFrame );
 static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
                                          GstMediaSourcesContext_t * pGstMediaSourceContext );
-
 
 static void SignalHandler( int signum )
 {
@@ -55,7 +54,7 @@ static void SignalHandler( int signum )
 static int32_t InitTransceiver( void * pMediaCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver )
 {
     int32_t ret = 0;
-    GstMediaSourcesContext_t * pMediaSourceContext = ( GstMediaSourcesContext_t * )pMediaCtx;
+    GstMediaSourcesContext_t * pMediaSourceContext = ( GstMediaSourcesContext_t * ) pMediaCtx;
 
     if( ( pMediaCtx == NULL ) || ( pTranceiver == NULL ) )
     {
@@ -166,7 +165,7 @@ static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
         ret = -1;
     }
 
-    if (ret == 0)
+    if( ret == 0 )
     {
         ret = GstMediaSource_Init( pGstMediaSourceContext,
                                    OnMediaSinkHook,
@@ -185,7 +184,7 @@ int main( void )
     sa.sa_handler = SignalHandler;
     sigemptyset( &sa.sa_mask );
     sa.sa_flags = 0;
-    if ( sigaction( SIGINT, &sa, NULL ) == -1 )
+    if( sigaction( SIGINT, &sa, NULL ) == -1 )
     {
         LogError( ( "Failed to set up signal handler" ) );
         ret = -1;

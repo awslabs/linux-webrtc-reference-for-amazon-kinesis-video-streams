@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "peer_connection_codec_helper.h"
-#include "g711_packetizer.h"
 #include "g711_depacketizer.h"
+#include "g711_packetizer.h"
+#include "peer_connection_codec_helper.h"
 
 PeerConnectionResult_t GetG711PacketProperty( PeerConnectionJitterBufferPacket_t * pPacket,
                                               uint8_t * pIsStartPacket )
@@ -127,7 +127,6 @@ PeerConnectionResult_t FillFrameG711( PeerConnectionJitterBuffer_t * pJitterBuff
             LogError( ( "Fail to get G711 depacketizer frame, result: %d", resultG711 ) );
             ret = PEER_CONNECTION_RESULT_FAIL_DEPACKETIZER_GET_FRAME;
         }
-
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -161,11 +160,11 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
     uint32_t * pSsrc = NULL;
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
-    uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
-    #if ENABLE_TWCC_SUPPORT
+    uint32_t randomRtpTimeoffset = 0; // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+#if ENABLE_TWCC_SUPPORT
     /* Add TWCC packet tracking */
     TwccPacketInfo_t packetInfo;
-    #endif /* ENABLE_TWCC_SUPPORT */
+#endif /* ENABLE_TWCC_SUPPORT */
 
     if( ( pSession == NULL ) ||
         ( pTransceiver == NULL ) ||
@@ -286,7 +285,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
                 pRollingBufferPacket->twccExtensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId, pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &pRollingBufferPacket->twccExtensionPayload;
 
-                #if ENABLE_TWCC_SUPPORT
+#if ENABLE_TWCC_SUPPORT
                 memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
                 packetInfo.packetSize = packetG711.packetDataLength;
                 packetInfo.localSentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
@@ -294,7 +293,7 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
 
                 RtcpTwccManager_AddPacketInfo( &pSession->pCtx->rtcpTwccManager,
                                                &packetInfo );
-                #endif /* ENABLE_TWCC_SUPPORT */
+#endif /* ENABLE_TWCC_SUPPORT */
 
                 pSession->rtpConfig.twccSequence++;
             }
@@ -358,24 +357,12 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
             bytesSent += pRollingBufferPacket->rtpPacket.payloadLength;
         }
 
-        #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             Metric_EndEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
         }
-        #endif
-    }
-
-    if( packetSent != 0 )
-    {
-        if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
-        {
-            pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
-            pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
-        }
-
-        pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
-        pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
+#endif
     }
 
     if( isLocked )
@@ -383,5 +370,13 @@ PeerConnectionResult_t PeerConnectionSrtp_WriteG711Frame( PeerConnectionSession_
         pthread_mutex_unlock( &( pSrtpSender->senderMutex ) );
     }
 
+    if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
+    {
+        pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
+        pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
+    }
+
+    pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
+    pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
     return ret;
 }

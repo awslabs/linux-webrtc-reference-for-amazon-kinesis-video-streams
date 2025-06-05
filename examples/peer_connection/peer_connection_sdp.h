@@ -25,8 +25,8 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "peer_connection_data_types.h"
 

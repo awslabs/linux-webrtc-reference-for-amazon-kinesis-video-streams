@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
+#include "message_queue.h"
+#include "logging.h"
+#include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <errno.h>
-#include "logging.h"
-#include "message_queue.h"
 
 void MessageQueue_Destroy( MessageQueueHandler_t * pMessageQueueHandler,
                            const char * pQueueName )

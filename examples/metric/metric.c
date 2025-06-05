@@ -16,7 +16,7 @@
 
 #include "logging.h"
 #if METRIC_PRINT_ENABLED
-#include "metric.h"
+    #include "metric.h"
 #endif
 
 #include <time.h>
@@ -153,7 +153,7 @@ void Metric_PrintMetrics( void )
 {
     int i;
     MetricEventRecord_t * pEventRecord;
-    //static char runTimeStatsBuffer[ 4096 ];
+    // static char runTimeStatsBuffer[ 4096 ];
 
     if( ( context.isInit == 1U ) &&
         ( pthread_mutex_lock( &( context.mutex ) ) == 0 ) )
@@ -166,12 +166,12 @@ void Metric_PrintMetrics( void )
             if( pEventRecord->state == METRIC_EVENT_STATE_RECORDED )
             {
                 LogInfo( ( "Duration of %s: %lu ms",
-                           ConvertEventToString( ( MetricEvent_t )i ),
+                           ConvertEventToString( ( MetricEvent_t ) i ),
                            CalculateEventDurationMs( pEventRecord->startTimeUs, pEventRecord->endTimeUs ) ) );
             }
         }
 
-        //LogInfo( ( "Remaining free heap size: %u", xPortGetFreeHeapSize() ) );
+        // LogInfo( ( "Remaining free heap size: %u", xPortGetFreeHeapSize() ) );
 
         // vTaskGetRunTimeStats( runTimeStatsBuffer );
         // LogInfo( ( " == Run Time Stat Start ==\n%s\n == Run Time Stat End ==", runTimeStatsBuffer ) );
@@ -189,9 +189,9 @@ void Metric_ResetEvent( void )
     {
         for( int i = 0; i < METRIC_EVENT_MAX; i++ )
         {
-            context.eventRecords[i].state = METRIC_EVENT_STATE_NONE;
-            context.eventRecords[i].endTimeUs = 0;
-            context.eventRecords[i].startTimeUs = 0;
+            context.eventRecords[ i ].state = METRIC_EVENT_STATE_NONE;
+            context.eventRecords[ i ].endTimeUs = 0;
+            context.eventRecords[ i ].startTimeUs = 0;
         }
         pthread_mutex_unlock( &( context.mutex ) );
     }

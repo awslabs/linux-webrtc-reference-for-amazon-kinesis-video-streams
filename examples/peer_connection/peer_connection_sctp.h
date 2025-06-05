@@ -25,18 +25,18 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include "sctp_utils.h"
 #include "peer_connection.h"
+#include "sctp_utils.h"
 
 #include "peer_connection_data_types.h"
 
 #ifndef DATACHANNEL_CUSTOM_CALLBACK_HOOK
-#define DATACHANNEL_CUSTOM_CALLBACK_HOOK  ( 1U )
+    #define DATACHANNEL_CUSTOM_CALLBACK_HOOK ( 1U )
 #endif
 
 #define DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE ( 512U )
 
-#define MASTER_DATA_CHANNEL_MESSAGE "This message is from the FreeRTOS-WebRTC-Application KVS Master"
+#define MASTER_DATA_CHANNEL_MESSAGE                 "This message is from the FreeRTOS-WebRTC-Application KVS Master"
 
 PeerConnectionDataChannel_t * PeerConnectionSCTP_AllocateDataChannel( void );
 
@@ -62,11 +62,11 @@ void PeerConnectionSCTP_ProcessSCTPData( PeerConnectionSession_t * pSession,
                                          uint8_t * receiveBuffer,
                                          int readBytes );
 
-#if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
-    OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
-                                                                                       uint32_t ulChannelId,
-                                                                                       const uint8_t * pucName,
-                                                                                       uint32_t ulNameLen );
+#if( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
+OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
+                                                                                   uint32_t ulChannelId,
+                                                                                   const uint8_t * pucName,
+                                                                                   uint32_t ulNameLen );
 #endif
 
 /* *INDENT-OFF* */

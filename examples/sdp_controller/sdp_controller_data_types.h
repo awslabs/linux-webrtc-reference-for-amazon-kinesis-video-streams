@@ -26,12 +26,12 @@ extern "C" {
 /* *INDENT-ON* */
 
 /* Standard includes. */
-#include <stdint.h>
 #include "transceiver_data_types.h"
+#include <stdint.h>
 
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT ( 2 )
-#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT ( 2 )
-#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT ( 255 )
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMING_COUNT     ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_SESSION_TIMEZONE_COUNT   ( 2 )
+#define SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT         ( 255 )
 #define SDP_CONTROLLER_MAX_SDP_MEDIA_DESCRIPTIONS_COUNT ( 5 )
 
 typedef enum SdpControllerResult

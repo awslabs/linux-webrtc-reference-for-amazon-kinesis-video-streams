@@ -19,7 +19,7 @@ if(GST_FOUND)
     file( GLOB
           WEBRTC_APPLICATION_GST_MASTER_MEDIA_SOURCE_FILES
           "examples/gst_media_source/*.c" )
-    
+
     set( WEBRTC_APPLICATION_GST_MASTER_MEDIA_INCLUDE_FILES
          "examples/gst_media_source" )
 

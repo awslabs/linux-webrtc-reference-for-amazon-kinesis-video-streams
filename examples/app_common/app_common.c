@@ -14,72 +14,72 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <time.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
+#include "app_common.h"
 #include "demo_config.h"
 #include "logging.h"
-#include "app_common.h"
-#include "signaling_controller.h"
 #include "sdp_controller.h"
+#include "signaling_controller.h"
 #include "string_utils.h"
 #if METRIC_PRINT_ENABLED
-#include "metric.h"
+    #include "metric.h"
 #endif
 #include "networking_utils.h"
 #include "peer_connection.h"
 
 #ifdef ENABLE_STREAMING_LOOPBACK
-#include "app_media_source.h"
+    #include "app_media_source.h"
 #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
 #if ENABLE_SCTP_DATA_CHANNEL
-#include "peer_connection_sctp.h"
+    #include "peer_connection_sctp.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
-#define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX "amazonaws.com"
-#define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX_CN "amazonaws.com.cn"
-#define AWS_DEFAULT_STUN_SERVER_URL "stun.kinesisvideo.%s.%s"
+#define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX          "amazonaws.com"
+#define AWS_DEFAULT_STUN_SERVER_URL_POSTFIX_CN       "amazonaws.com.cn"
+#define AWS_DEFAULT_STUN_SERVER_URL                  "stun.kinesisvideo.%s.%s"
 
-#define IS_USERNAME_FOUND_BIT ( 1 << 0 )
-#define IS_PASSWORD_FOUND_BIT ( 1 << 1 )
+#define IS_USERNAME_FOUND_BIT                        ( 1 << 0 )
+#define IS_PASSWORD_FOUND_BIT                        ( 1 << 1 )
 #define SET_REMOTE_INFO_USERNAME_FOUND( isFoundBit ) ( isFoundBit |= IS_USERNAME_FOUND_BIT )
 #define SET_REMOTE_INFO_PASSWORD_FOUND( isFoundBit ) ( isFoundBit |= IS_PASSWORD_FOUND_BIT )
-#define IS_REMOTE_INFO_ALL_FOUND( isFoundBit ) ( isFoundBit & IS_USERNAME_FOUND_BIT && isFoundBit & IS_PASSWORD_FOUND_BIT )
+#define IS_REMOTE_INFO_ALL_FOUND( isFoundBit )       ( isFoundBit & IS_USERNAME_FOUND_BIT && isFoundBit & IS_PASSWORD_FOUND_BIT )
 
-#define DEMO_JSON_CANDIDATE_MAX_LENGTH ( 512 )
+#define DEMO_JSON_CANDIDATE_MAX_LENGTH               ( 512 )
 
-#define DEMO_CANDIDATE_TYPE_HOST_STRING "host"
-#define DEMO_CANDIDATE_TYPE_SRFLX_STRING "srflx"
-#define DEMO_CANDIDATE_TYPE_PRFLX_STRING "prflx"
-#define DEMO_CANDIDATE_TYPE_RELAY_STRING "relay"
-#define DEMO_CANDIDATE_TYPE_UNKNOWN_STRING "unknown"
+#define DEMO_CANDIDATE_TYPE_HOST_STRING              "host"
+#define DEMO_CANDIDATE_TYPE_SRFLX_STRING             "srflx"
+#define DEMO_CANDIDATE_TYPE_PRFLX_STRING             "prflx"
+#define DEMO_CANDIDATE_TYPE_RELAY_STRING             "relay"
+#define DEMO_CANDIDATE_TYPE_UNKNOWN_STRING           "unknown"
 
-#define DEMO_ICE_CANDIDATE_JSON_TEMPLATE "{\"candidate\":\"%.*s\",\"sdpMid\":\"0\",\"sdpMLineIndex\":0}"
-#define DEMO_ICE_CANDIDATE_JSON_MAX_LENGTH ( 1024 )
-#define DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE "candidate:%lu 1 udp %u %d.%d.%d.%d %d typ %s raddr 0.0.0.0 rport 0 generation 0 network-cost 999"
-#define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X " \
+#define DEMO_ICE_CANDIDATE_JSON_TEMPLATE             "{\"candidate\":\"%.*s\",\"sdpMid\":\"0\",\"sdpMLineIndex\":0}"
+#define DEMO_ICE_CANDIDATE_JSON_MAX_LENGTH           ( 1024 )
+#define DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE        "candidate:%lu 1 udp %u %d.%d.%d.%d %d typ %s raddr 0.0.0.0 rport 0 generation 0 network-cost 999"
+#define DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE        "candidate:%lu 1 udp %u %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X " \
                                               "%d typ %s raddr ::/0 rport 0 generation 0 network-cost 999"
 
-#define ICE_SERVER_TYPE_STUN "stun:"
-#define ICE_SERVER_TYPE_STUN_LENGTH ( 5 )
-#define ICE_SERVER_TYPE_TURN "turn:"
-#define ICE_SERVER_TYPE_TURN_LENGTH ( 5 )
-#define ICE_SERVER_TYPE_TURNS "turns:"
-#define ICE_SERVER_TYPE_TURNS_LENGTH ( 6 )
+#define ICE_SERVER_TYPE_STUN                "stun:"
+#define ICE_SERVER_TYPE_STUN_LENGTH         ( 5 )
+#define ICE_SERVER_TYPE_TURN                "turn:"
+#define ICE_SERVER_TYPE_TURN_LENGTH         ( 5 )
+#define ICE_SERVER_TYPE_TURNS               "turns:"
+#define ICE_SERVER_TYPE_TURNS_LENGTH        ( 6 )
 
 #define SIGNALING_CONNECT_STATE_TIMEOUT_SEC ( 15 )
 
 /**
  * EMA (Exponential Moving Average) alpha value and 1-alpha value - over appx 20 samples
  */
-#define EMA_ALPHA_VALUE           ( ( double ) 0.05 )
-#define ONE_MINUS_EMA_ALPHA_VALUE ( ( double ) ( 1 - EMA_ALPHA_VALUE ) )
+#define EMA_ALPHA_VALUE                     ( ( double ) 0.05 )
+#define ONE_MINUS_EMA_ALPHA_VALUE           ( ( double ) ( 1 - EMA_ALPHA_VALUE ) )
 
 /**
  * Calculates the EMA (Exponential Moving Average) accumulator value
@@ -89,14 +89,14 @@
  *
  * @return the new Accumulator value
  */
-#define EMA_ACCUMULATOR_GET_NEXT( a, v ) ( double )( EMA_ALPHA_VALUE * ( v ) + ONE_MINUS_EMA_ALPHA_VALUE * ( a ) )
+#define EMA_ACCUMULATOR_GET_NEXT( a, v )    ( double ) ( EMA_ALPHA_VALUE * ( v ) + ONE_MINUS_EMA_ALPHA_VALUE * ( a ) )
 
 #ifndef MIN
-#define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
+    #define MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 #ifndef MAX
-#define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
+    #define MAX( a, b ) ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #endif
 
 static int32_t StartPeerConnectionSession( AppContext_t * pAppContext,
@@ -110,19 +110,19 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
                                  IceControllerIceServer_t * pOutputIceServers,
                                  size_t * pOutputIceServersCount );
 #if ENABLE_TWCC_SUPPORT
-    /* Sample callback for TWCC. The average packet loss is tracked using an exponential moving average (EMA).
-       - If packet loss stays at or below 5%, the bitrate increases by 5%.
-       - If packet loss exceeds 5%, the bitrate decreases by the same percentage as the loss.
-       The bitrate is adjusted once per second, ensuring it stays within predefined limits. */
-    static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
-                                                        TwccBandwidthInfo_t * pTwccBandwidthInfo );
+/* Sample callback for TWCC. The average packet loss is tracked using an exponential moving average (EMA).
+   - If packet loss stays at or below 5%, the bitrate increases by 5%.
+   - If packet loss exceeds 5%, the bitrate decreases by the same percentage as the loss.
+   The bitrate is adjusted once per second, ensuring it stays within predefined limits. */
+static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
+                                                    TwccBandwidthInfo_t * pTwccBandwidthInfo );
 #endif
 static int32_t InitializeAppSession( AppContext_t * pAppContext,
                                      AppSession_t * pAppSession );
 static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext,
-                                                                     const char * pRemoteClientId,
-                                                                     size_t remoteClientIdLength,
-                                                                     uint8_t allowCreate );
+                                                      const char * pRemoteClientId,
+                                                      size_t remoteClientIdLength,
+                                                      uint8_t allowCreate );
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame );
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
@@ -140,14 +140,13 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                                        void * pUserData );
 
 #if ENABLE_SCTP_DATA_CHANNEL
-    #if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
-            static void OnDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
-                                              uint8_t isBinary,
-                                              uint8_t * pMessage,
-                                              uint32_t pMessageLen );
+    #if( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
+static void OnDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
+                                  uint8_t isBinary,
+                                  uint8_t * pMessage,
+                                  uint32_t pMessageLen );
     #endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
-#endif /* ENABLE_SCTP_DATA_CHANNEL */
-                                          
+#endif     /* ENABLE_SCTP_DATA_CHANNEL */
 
 static int32_t StartPeerConnectionSession( AppContext_t * pAppContext,
                                            AppSession_t * pAppSession,
@@ -169,15 +168,15 @@ static int32_t StartPeerConnectionSession( AppContext_t * pAppContext,
     {
         memset( &pcConfig, 0, sizeof( PeerConnectionSessionConfiguration_t ) );
         pcConfig.iceServersCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
-        #if defined( AWS_CA_CERT_PATH )
-            pcConfig.pRootCaPath = AWS_CA_CERT_PATH;
-            pcConfig.rootCaPathLength = strlen( AWS_CA_CERT_PATH );
-        #endif /* #if defined( AWS_CA_CERT_PATH ) */
+#if defined( AWS_CA_CERT_PATH )
+        pcConfig.pRootCaPath = AWS_CA_CERT_PATH;
+        pcConfig.rootCaPathLength = strlen( AWS_CA_CERT_PATH );
+#endif /* #if defined( AWS_CA_CERT_PATH ) */
 
-        #if defined( AWS_CA_CERT_PEM )
-            pcConfig.rootCaPem = AWS_CA_CERT_PEM;
-            pcConfig.rootCaPemLength = sizeof( AWS_CA_CERT_PEM );
-        #endif /* #if defined( AWS_CA_CERT_PEM ) */
+#if defined( AWS_CA_CERT_PEM )
+        pcConfig.rootCaPem = AWS_CA_CERT_PEM;
+        pcConfig.rootCaPemLength = sizeof( AWS_CA_CERT_PEM );
+#endif /* #if defined( AWS_CA_CERT_PEM ) */
 
         pcConfig.canTrickleIce = 1U;
         pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
@@ -277,7 +276,7 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
 {
     int32_t ret = 0;
     StringUtilsResult_t retString;
-    const char * pCurr, * pTail, * pNext;
+    const char *pCurr, *pTail, *pNext;
     uint32_t port, portStringLength;
 
     /* Example Ice server URI:
@@ -399,7 +398,7 @@ static int32_t ParseIceServerUri( IceControllerIceServer_t * pIceServer,
             }
             else
             {
-                LogWarn( ( "Unknown transport string found, protocol: %.*s", ( int )( pTail - pCurr ), pCurr ) );
+                LogWarn( ( "Unknown transport string found, protocol: %.*s", ( int ) ( pTail - pCurr ), pCurr ) );
                 ret = -1;
             }
         }
@@ -580,101 +579,99 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
    - If packet loss stays at or below 5%, the bitrate increases by 5%.
    - If packet loss exceeds 5%, the bitrate decreases by the same percentage as the loss.
    The bitrate is adjusted once per second, ensuring it stays within predefined limits. */
-    static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
-                                                        TwccBandwidthInfo_t * pTwccBandwidthInfo )
+static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
+                                                    TwccBandwidthInfo_t * pTwccBandwidthInfo )
+{
+    PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+    PeerConnectionTwccMetaData_t * pTwccMetaData = NULL;
+    uint64_t videoBitrate = 0;
+    uint64_t audioBitrate = 0;
+    uint64_t currentTimeUs = 0;
+    uint64_t timeDifference = 0;
+    uint32_t lostPacketCount = 0;
+    uint8_t isLocked = 0;
+    double percentLost = 0.0;
+
+    if( ( pCustomContext == NULL ) ||
+        ( pTwccBandwidthInfo == NULL ) )
     {
-        PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-        PeerConnectionTwccMetaData_t * pTwccMetaData = NULL;
-        uint64_t videoBitrate = 0;
-        uint64_t audioBitrate = 0;
-        uint64_t currentTimeUs = 0;
-        uint64_t timeDifference = 0;
-        uint32_t lostPacketCount = 0;
-        uint8_t isLocked = 0;
-        double percentLost = 0.0;
-
-        if( ( pCustomContext == NULL ) ||
-            ( pTwccBandwidthInfo == NULL ) )
-        {
-            LogError( ( "Invalid input, pCustomContext: %p, pTwccBandwidthInfo: %p",
-                        pCustomContext, pTwccBandwidthInfo ) );
-            ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-        }
-
-        // Calculate packet loss
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            pTwccMetaData = ( PeerConnectionTwccMetaData_t * ) pCustomContext;
-
-            currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
-            lostPacketCount = pTwccBandwidthInfo->sentPackets - pTwccBandwidthInfo->receivedPackets;
-            percentLost = ( double ) ( ( pTwccBandwidthInfo->sentPackets > 0 ) ? ( ( double ) ( lostPacketCount * 100 ) / ( double )pTwccBandwidthInfo->sentPackets ) : 0.0 );
-            timeDifference = currentTimeUs - pTwccMetaData->lastAdjustmentTimeUs;
-
-            pTwccMetaData->averagePacketLoss = EMA_ACCUMULATOR_GET_NEXT( pTwccMetaData->averagePacketLoss,
-                                                                         ( ( double ) percentLost ) );
-
-            if( timeDifference < PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US )
-            {
-                // Too soon for another adjustment
-                ret = PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT;
-            }
-        }
-
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            if( pthread_mutex_lock( &( pTwccMetaData->twccBitrateMutex ) ) == 0 )
-            {
-                isLocked = 1;
-            }
-            else
-            {
-                LogError( ( "Failed to lock Twcc mutex." ) );
-                ret = PEER_CONNECTION_RESULT_FAIL_TAKE_TWCC_MUTEX;
-            }
-        }
-
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            videoBitrate = pTwccMetaData->currentVideoBitrate;
-            audioBitrate = pTwccMetaData->currentAudioBitrate;
-
-            if( pTwccMetaData->averagePacketLoss <= 5 )
-            {
-                // Increase encoder bitrates by 5 percent with cap at MAX_BITRATE
-                videoBitrate = ( uint64_t ) MIN( videoBitrate * 1.05,
-                                                 PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS );
-                audioBitrate = ( uint64_t ) MIN( audioBitrate * 1.05,
-                                                 PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS );
-            }
-            else
-            {
-                // Decrease encoder bitrate by average packet loss percent, with a cap at MIN_BITRATE
-                videoBitrate = ( uint64_t ) MAX( videoBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
-                                                 PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS );
-                audioBitrate = ( uint64_t ) MAX( audioBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
-                                                 PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS );
-            }
-
-            pTwccMetaData->updatedVideoBitrate = videoBitrate;
-            pTwccMetaData->updatedAudioBitrate = audioBitrate;
-        }
-
-        if( isLocked != 0 )
-        {
-            pthread_mutex_unlock( &( pTwccMetaData->twccBitrateMutex ) );
-
-        }
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            pTwccMetaData->lastAdjustmentTimeUs = currentTimeUs;
-
-            LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pTwccMetaData->averagePacketLoss, timeDifference  ) );
-            LogInfo( ( "Suggested video bitrate: %lu kbps, suggested audio bitrate: %lu bps, sent: %lu bytes, %lu packets,   received: %lu bytes, %lu packets, in %llu msec ",
-                       videoBitrate, audioBitrate, pTwccBandwidthInfo->sentBytes, pTwccBandwidthInfo->sentPackets, pTwccBandwidthInfo->receivedBytes, pTwccBandwidthInfo->receivedPackets, pTwccBandwidthInfo->duration / 10000ULL ) );
-        }
-
+        LogError( ( "Invalid input, pCustomContext: %p, pTwccBandwidthInfo: %p",
+                    pCustomContext, pTwccBandwidthInfo ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
+
+    // Calculate packet loss
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pTwccMetaData = ( PeerConnectionTwccMetaData_t * ) pCustomContext;
+
+        currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
+        lostPacketCount = pTwccBandwidthInfo->sentPackets - pTwccBandwidthInfo->receivedPackets;
+        percentLost = ( double ) ( ( pTwccBandwidthInfo->sentPackets > 0 ) ? ( ( double ) ( lostPacketCount * 100 ) / ( double ) pTwccBandwidthInfo->sentPackets ) : 0.0 );
+        timeDifference = currentTimeUs - pTwccMetaData->lastAdjustmentTimeUs;
+
+        pTwccMetaData->averagePacketLoss = EMA_ACCUMULATOR_GET_NEXT( pTwccMetaData->averagePacketLoss,
+                                                                     ( ( double ) percentLost ) );
+
+        if( timeDifference < PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US )
+        {
+            // Too soon for another adjustment
+            ret = PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        if( pthread_mutex_lock( &( pTwccMetaData->twccBitrateMutex ) ) == 0 )
+        {
+            isLocked = 1;
+        }
+        else
+        {
+            LogError( ( "Failed to lock Twcc mutex." ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_TAKE_TWCC_MUTEX;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        videoBitrate = pTwccMetaData->currentVideoBitrate;
+        audioBitrate = pTwccMetaData->currentAudioBitrate;
+
+        if( pTwccMetaData->averagePacketLoss <= 5 )
+        {
+            // Increase encoder bitrates by 5 percent with cap at MAX_BITRATE
+            videoBitrate = ( uint64_t ) MIN( videoBitrate * 1.05,
+                                             PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS );
+            audioBitrate = ( uint64_t ) MIN( audioBitrate * 1.05,
+                                             PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS );
+        }
+        else
+        {
+            // Decrease encoder bitrate by average packet loss percent, with a cap at MIN_BITRATE
+            videoBitrate = ( uint64_t ) MAX( videoBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
+                                             PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS );
+            audioBitrate = ( uint64_t ) MAX( audioBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
+                                             PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS );
+        }
+
+        pTwccMetaData->updatedVideoBitrate = videoBitrate;
+        pTwccMetaData->updatedAudioBitrate = audioBitrate;
+    }
+
+    if( isLocked != 0 )
+    {
+        pthread_mutex_unlock( &( pTwccMetaData->twccBitrateMutex ) );
+    }
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pTwccMetaData->lastAdjustmentTimeUs = currentTimeUs;
+
+        LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pTwccMetaData->averagePacketLoss, timeDifference ) );
+        LogInfo( ( "Suggested video bitrate: %lu kbps, suggested audio bitrate: %lu bps, sent: %lu bytes, %lu packets,   received: %lu bytes, %lu packets, in %llu msec ",
+                   videoBitrate, audioBitrate, pTwccBandwidthInfo->sentBytes, pTwccBandwidthInfo->sentPackets, pTwccBandwidthInfo->receivedBytes, pTwccBandwidthInfo->receivedPackets, pTwccBandwidthInfo->duration / 10000ULL ) );
+    }
+}
 #endif
 
 static int32_t InitializeAppSession( AppContext_t * pAppContext,
@@ -696,20 +693,20 @@ static int32_t InitializeAppSession( AppContext_t * pAppContext,
         ret = -1;
     }
 
-    #if ENABLE_TWCC_SUPPORT
-        if( ret == 0 )
+#if ENABLE_TWCC_SUPPORT
+    if( ret == 0 )
+    {
+        /* In case you want to set a different callback based on your business logic, you could replace SampleSenderBandwidthEstimationHandler() with your Handler. */
+        peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pAppSession->peerConnectionSession,
+                                                                                    SampleSenderBandwidthEstimationHandler,
+                                                                                    &pAppSession->peerConnectionSession.twccMetaData );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
-            /* In case you want to set a different callback based on your business logic, you could replace SampleSenderBandwidthEstimationHandler() with your Handler. */
-            peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pAppSession->peerConnectionSession,
-                                                                                        SampleSenderBandwidthEstimationHandler,
-                                                                                        &pAppSession->peerConnectionSession.twccMetaData );
-            if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-            {
-                LogError( ( "Fail to set Sender Bandwidth Estimation Callback, result: %d", peerConnectionResult ) );
-                ret = -1;
-            }
+            LogError( ( "Fail to set Sender Bandwidth Estimation Callback, result: %d", peerConnectionResult ) );
+            ret = -1;
         }
-    #endif
+    }
+#endif
 
     if( ret == 0 )
     {
@@ -720,9 +717,9 @@ static int32_t InitializeAppSession( AppContext_t * pAppContext,
 }
 
 static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext,
-                                                                     const char * pRemoteClientId,
-                                                                     size_t remoteClientIdLength,
-                                                                     uint8_t allowCreate )
+                                                      const char * pRemoteClientId,
+                                                      size_t remoteClientIdLength,
+                                                      uint8_t allowCreate )
 {
     AppSession_t * pAppSession = NULL;
     int i;
@@ -730,19 +727,19 @@ static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext
 
     for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
     {
-        if( ( pAppContext->appSessions[i].remoteClientIdLength == remoteClientIdLength ) &&
-            ( strncmp( pAppContext->appSessions[i].remoteClientId, pRemoteClientId, remoteClientIdLength ) == 0 ) )
+        if( ( pAppContext->appSessions[ i ].remoteClientIdLength == remoteClientIdLength ) &&
+            ( strncmp( pAppContext->appSessions[ i ].remoteClientId, pRemoteClientId, remoteClientIdLength ) == 0 ) )
         {
             /* Found existing session. */
-            pAppSession = &pAppContext->appSessions[i];
+            pAppSession = &pAppContext->appSessions[ i ];
             break;
         }
         else if( ( allowCreate != 0 ) &&
                  ( pAppSession == NULL ) &&
-                 ( pAppContext->appSessions[i].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
+                 ( pAppContext->appSessions[ i ].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
         {
             /* Found free session, keep looping to find existing one. */
-            pAppSession = &pAppContext->appSessions[i];
+            pAppSession = &pAppContext->appSessions[ i ];
         }
         else
         {
@@ -774,32 +771,32 @@ static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
-    #ifdef ENABLE_STREAMING_LOOPBACK
-        WebrtcFrame_t frame;
-        AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+#ifdef ENABLE_STREAMING_LOOPBACK
+    WebrtcFrame_t frame;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
 
-        if( pFrame != NULL )
+    if( pFrame != NULL )
+    {
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
+
+        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+        frame.pData = pFrame->pData;
+        frame.size = pFrame->dataLength;
+        frame.freeData = 0U;
+        frame.timestampUs = pFrame->presentationUs;
+        if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
         {
-            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
-
-            frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-            frame.pData = pFrame->pData;
-            frame.size = pFrame->dataLength;
-            frame.freeData = 0U;
-            frame.timestampUs = pFrame->presentationUs;
-            if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
-            {
-                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom, &frame );
-            }
+            ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom, &frame );
         }
+    }
 
-    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-        ( void ) pCustomContext;
-        if( pFrame != NULL )
-        {
-            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
-        }
-    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+#else  /* ifdef ENABLE_STREAMING_LOOPBACK */
+    ( void ) pCustomContext;
+    if( pFrame != NULL )
+    {
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
+    }
+#endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
     return PEER_CONNECTION_RESULT_OK;
 }
@@ -807,32 +804,32 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
-    #ifdef ENABLE_STREAMING_LOOPBACK
-        WebrtcFrame_t frame;
-        AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+#ifdef ENABLE_STREAMING_LOOPBACK
+    WebrtcFrame_t frame;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
 
-        if( pFrame != NULL )
+    if( pFrame != NULL )
+    {
+        LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
+
+        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+        frame.pData = pFrame->pData;
+        frame.size = pFrame->dataLength;
+        frame.freeData = 0U;
+        frame.timestampUs = pFrame->presentationUs;
+        if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
         {
-            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
-
-            frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-            frame.pData = pFrame->pData;
-            frame.size = pFrame->dataLength;
-            frame.freeData = 0U;
-            frame.timestampUs = pFrame->presentationUs;
-            if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
-            {
-                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom, &frame );
-            }
+            ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom, &frame );
         }
+    }
 
-    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-        ( void ) pCustomContext;
-        if( pFrame != NULL )
-        {
-            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
-        }
-    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+#else  /* ifdef ENABLE_STREAMING_LOOPBACK */
+    ( void ) pCustomContext;
+    if( pFrame != NULL )
+    {
+        LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
+    }
+#endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
     return PEER_CONNECTION_RESULT_OK;
 }
@@ -899,9 +896,9 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
     if( skipProcess == 0 )
     {
         pAppSession = GetCreatePeerConnectionSession( pAppContext,
-                                                     pSignalingMessage->pRemoteClientId,
-                                                     pSignalingMessage->remoteClientIdLength,
-                                                     1U );
+                                                      pSignalingMessage->pRemoteClientId,
+                                                      pSignalingMessage->remoteClientIdLength,
+                                                      1U );
         if( pAppSession == NULL )
         {
             LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -1024,9 +1021,9 @@ static void HandleRemoteCandidate( AppContext_t * pAppContext,
     AppSession_t * pAppSession = NULL;
 
     pAppSession = GetCreatePeerConnectionSession( pAppContext,
-                                                 pSignalingMessage->pRemoteClientId,
-                                                 pSignalingMessage->remoteClientIdLength,
-                                                 1U );
+                                                  pSignalingMessage->pRemoteClientId,
+                                                  pSignalingMessage->remoteClientIdLength,
+                                                  1U );
     if( pAppSession == NULL )
     {
         LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -1103,7 +1100,7 @@ static void HandleLocalCandidateReady( void * pCustomContext,
                                        PeerConnectionIceLocalCandidate_t * pIceLocalCandidate )
 {
     uint8_t skipProcess = 0;
-    AppSession_t * pAppSession = ( AppSession_t * )pCustomContext;
+    AppSession_t * pAppSession = ( AppSession_t * ) pCustomContext;
     SignalingControllerResult_t signalingControllerReturn;
     SignalingMessage_t signalingMessage;
     int written;
@@ -1128,7 +1125,7 @@ static void HandleLocalCandidateReady( void * pCustomContext,
             written = snprintf( candidateStringBuffer, DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_IPV4_TEMPLATE,
                                 pIceLocalCandidate->localCandidateIndex,
                                 pIceLocalCandidate->pLocalCandidate->priority,
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[0], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[1], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[2], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[3],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 0 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 1 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 2 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 3 ],
                                 pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.port,
                                 GetCandidateTypeString( pIceLocalCandidate->pLocalCandidate->candidateType ) );
         }
@@ -1137,10 +1134,10 @@ static void HandleLocalCandidateReady( void * pCustomContext,
             written = snprintf( candidateStringBuffer, DEMO_JSON_CANDIDATE_MAX_LENGTH, DEMO_ICE_CANDIDATE_JSON_IPV6_TEMPLATE,
                                 pIceLocalCandidate->localCandidateIndex,
                                 pIceLocalCandidate->pLocalCandidate->priority,
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[0], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[1], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[2], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[3],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[4], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[5], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[6], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[7],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[8], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[9], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[10], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[11],
-                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[12], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[13], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[14], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[15],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 0 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 1 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 2 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 3 ],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 4 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 5 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 6 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 7 ],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 8 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 9 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 10 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 11 ],
+                                pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 12 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 13 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 14 ], pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.address[ 15 ],
                                 pIceLocalCandidate->pLocalCandidate->endpoint.transportAddress.port,
                                 GetCandidateTypeString( pIceLocalCandidate->pLocalCandidate->candidateType ) );
         }
@@ -1209,9 +1206,9 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
     switch( pSignalingMessage->messageType )
     {
         case SIGNALING_TYPE_MESSAGE_SDP_OFFER:
-            #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
             Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
-            #endif
+#endif
             HandleSdpOffer( pAppContext,
                             pSignalingMessage );
             break;
@@ -1236,57 +1233,57 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
 
 #if ENABLE_SCTP_DATA_CHANNEL
 
-#if ( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
-        static void OnDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
-                                          uint8_t isBinary,
-                                          uint8_t * pMessage,
-                                          uint32_t pMessageLen )
-        {
-            char ucSendMessage[DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE];
-            PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
-            if( ( pMessage == NULL ) || ( pDataChannel == NULL ) )
-            {
-                LogError( ( "No message or pDataChannel received in OnDataChannelMessage" ) );
-                return;
-            }
+    #if( DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0 )
+static void OnDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
+                                  uint8_t isBinary,
+                                  uint8_t * pMessage,
+                                  uint32_t pMessageLen )
+{
+    char ucSendMessage[ DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE ];
+    PeerConnectionResult_t retStatus = PEER_CONNECTION_RESULT_OK;
+    if( ( pMessage == NULL ) || ( pDataChannel == NULL ) )
+    {
+        LogError( ( "No message or pDataChannel received in OnDataChannelMessage" ) );
+        return;
+    }
 
-            if( isBinary )
-            {
-                LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel Binary Message",
-                           pDataChannel->pPeerConnection->combinedName,
-                           pDataChannel->ucDataChannelName ) );
-            }
-            else {
-                LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel String Message: %.*s\n",
-                           pDataChannel->pPeerConnection->combinedName,
-                           pDataChannel->ucDataChannelName,
-                           ( int ) pMessageLen, pMessage ) );
+    if( isBinary )
+    {
+        LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel Binary Message",
+                   pDataChannel->pPeerConnection->combinedName,
+                   pDataChannel->ucDataChannelName ) );
+    }
+    else
+    {
+        LogWarn( ( "[VIEWER] [Peer: %s Channel Name: %s] >>> DataChannel String Message: %.*s\n",
+                   pDataChannel->pPeerConnection->combinedName,
+                   pDataChannel->ucDataChannelName,
+                   ( int ) pMessageLen, pMessage ) );
 
-                sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) ? ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
-                retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
-            }
+        sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) ? ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
+        retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
+    }
 
-            if( retStatus != PEER_CONNECTION_RESULT_OK )
-            {
-                LogWarn( ( "[KVS Master] OnDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
-            }
+    if( retStatus != PEER_CONNECTION_RESULT_OK )
+    {
+        LogWarn( ( "[KVS Master] OnDataChannelMessage(): operation returned status code: 0x%08x \n", ( unsigned int ) retStatus ) );
+    }
+}
 
-        }
+OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
+                                                                                   uint32_t ulChannelId,
+                                                                                   const uint8_t * pucName,
+                                                                                   uint32_t ulNameLen )
+{
+    ( void ) pPeerConnectionSession;
+    ( void ) ulChannelId;
+    ( void ) pucName;
+    ( void ) ulNameLen;
 
-        OnDataChannelMessageReceived_t PeerConnectionSCTP_SetChannelOnMessageCallbackHook( PeerConnectionSession_t * pPeerConnectionSession,
-                                                                                           uint32_t ulChannelId,
-                                                                                           const uint8_t * pucName,
-                                                                                           uint32_t ulNameLen )
-        {
-            ( void ) pPeerConnectionSession;
-            ( void ) ulChannelId;
-            ( void ) pucName;
-            ( void ) ulNameLen;
+    return OnDataChannelMessage;
+}
 
-            return OnDataChannelMessage;
-        }
-
-#endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
+    #endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
 
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
@@ -1297,7 +1294,7 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
     SSLCredentials_t sslCreds;
     int i;
 
-    if( ( pAppContext == NULL ) || 
+    if( ( pAppContext == NULL ) ||
         ( pMediaContext == NULL ) ||
         ( initTransceiverFunc == NULL ) )
     {
@@ -1314,9 +1311,9 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
 
         srtp_init();
 
-        #if ENABLE_SCTP_DATA_CHANNEL
-            Sctp_Init();
-        #endif /* ENABLE_SCTP_DATA_CHANNEL */
+#if ENABLE_SCTP_DATA_CHANNEL
+        Sctp_Init();
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
 
         pAppContext->initTransceiverFunc = initTransceiverFunc;
         pAppContext->pAppMediaSourcesContext = pMediaContext;
@@ -1325,13 +1322,13 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
     if( ret == 0 )
     {
         sslCreds.pCaCertPath = AWS_CA_CERT_PATH;
-        #if defined( AWS_IOT_THING_ROLE_ALIAS )
-            sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
-            sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
-        #else
-            sslCreds.pDeviceCertPath = NULL;
-            sslCreds.pDeviceKeyPath = NULL;
-        #endif
+#if defined( AWS_IOT_THING_ROLE_ALIAS )
+        sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
+        sslCreds.pDeviceKeyPath = AWS_IOT_THING_PRIVATE_KEY_PATH;
+#else
+        sslCreds.pDeviceCertPath = NULL;
+        sslCreds.pDeviceKeyPath = NULL;
+#endif
 
         signalingControllerReturn = SignalingController_Init( &pAppContext->signalingControllerContext,
                                                               &sslCreds );
@@ -1342,13 +1339,13 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
         }
     }
 
-    #if METRIC_PRINT_ENABLED
+#if METRIC_PRINT_ENABLED
     if( ret == 0 )
     {
         /* Initialize metrics. */
         Metric_Init();
     }
-    #endif
+#endif
 
     if( ret == 0 )
     {
@@ -1382,44 +1379,44 @@ int AppCommon_Start( AppContext_t * pAppContext )
     if( ret == 0 )
     {
         memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
-    
-        #if ( JOIN_STORAGE_SESSION != 0 )
-            connectInfo.enableStorageSession = 1U;
-        #endif
-    
+
+#if( JOIN_STORAGE_SESSION != 0 )
+        connectInfo.enableStorageSession = 1U;
+#endif
+
         connectInfo.awsConfig.pRegion = AWS_REGION;
         connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
         connectInfo.awsConfig.pService = "kinesisvideo";
         connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
-    
+
         connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
         connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
-    
+
         connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
         connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
-    
+
         connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
         connectInfo.pMessageReceivedCallbackData = pAppContext;
-    
-        #if defined( AWS_ACCESS_KEY_ID )
-            connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
-            connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
-            connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-            connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
-            #if defined( AWS_SESSION_TOKEN )
-                connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
-                connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
-            #endif /* #if defined( AWS_SESSION_TOKEN ) */
-        #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
-    
-        #if defined( AWS_IOT_THING_ROLE_ALIAS )
-            connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
-            connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
-            connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
-            connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
-            connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
-            connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
-        #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
+
+#if defined( AWS_ACCESS_KEY_ID )
+        connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
+        connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
+        connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+        connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
+    #if defined( AWS_SESSION_TOKEN )
+        connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
+        connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
+    #endif /* #if defined( AWS_SESSION_TOKEN ) */
+#endif     /* #if defined( AWS_ACCESS_KEY_ID ) */
+
+#if defined( AWS_IOT_THING_ROLE_ALIAS )
+        connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
+        connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
+        connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
+        connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
+        connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
+        connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
+#endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
 
         /* This should never return unless exception happens. */
         signalingControllerReturn = SignalingController_StartListening( &( pAppContext->signalingControllerContext ),
@@ -1431,10 +1428,10 @@ int AppCommon_Start( AppContext_t * pAppContext )
         }
     }
 
-    #if ENABLE_SCTP_DATA_CHANNEL
-        /* TODO_SCTP: Move to a common shutdown function? */
-        Sctp_DeInit();
-    #endif /* ENABLE_SCTP_DATA_CHANNEL */
+#if ENABLE_SCTP_DATA_CHANNEL
+    /* TODO_SCTP: Move to a common shutdown function? */
+    Sctp_DeInit();
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
 
     return ret;
 }

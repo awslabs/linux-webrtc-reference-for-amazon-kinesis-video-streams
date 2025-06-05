@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-#include <errno.h>
-#include <unistd.h>
-#include "logging.h"
+#include "ice_api.h"
 #include "ice_controller.h"
 #include "ice_controller_private.h"
-#include "ice_api.h"
+#include "logging.h"
 #include "stun_deserializer.h"
 #include "transport_mbedtls.h"
+#include <errno.h>
+#include <unistd.h>
 
 #define ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ( 50 )
-#define RX_BUFFER_SIZE ( 4096 )
+#define RX_BUFFER_SIZE                                      ( 4096 )
 
 static int32_t RecvPacketUdp( IceControllerSocketContext_t * pSocketContext,
                               uint8_t * pBuffer,
@@ -147,14 +147,14 @@ static IceCandidatePair_t * FindCandidatePairByRemoteIceEndpoint( IceControllerC
     {
         for( i = 0; i < count; i++ )
         {
-            if( ( memcmp( &pCtx->iceContext.pCandidatePairs[i].pLocalCandidate->endpoint.transportAddress,
+            if( ( memcmp( &pCtx->iceContext.pCandidatePairs[ i ].pLocalCandidate->endpoint.transportAddress,
                           &pSocketContext->pLocalCandidate->endpoint.transportAddress,
                           sizeof( IceTransportAddress_t ) ) == 0 ) &&
-                ( memcmp( &pCtx->iceContext.pCandidatePairs[i].pRemoteCandidate->endpoint.transportAddress,
+                ( memcmp( &pCtx->iceContext.pCandidatePairs[ i ].pRemoteCandidate->endpoint.transportAddress,
                           &pRemoteIceEndpoint->transportAddress,
                           sizeof( IceTransportAddress_t ) ) == 0 ) )
             {
-                pCandidatePair = &pCtx->iceContext.pCandidatePairs[i];
+                pCandidatePair = &pCtx->iceContext.pCandidatePairs[ i ];
                 break;
             }
         }
@@ -175,9 +175,9 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceCandidatePair_t * pOriginalCandidatePair = NULL;
-    #if LIBRARY_LOG_LEVEL >= LOG_INFO
-        char ipBuffer[ INET_ADDRSTRLEN ];
-    #endif
+#if LIBRARY_LOG_LEVEL >= LOG_INFO
+    char ipBuffer[ INET_ADDRSTRLEN ];
+#endif
 
     /* Find valid candidate pair pointer for current packet.
      * There are two scenarios:
@@ -484,7 +484,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
-            fds[i] = pCtx->socketsContexts[i].socketFd;
+            fds[ i ] = pCtx->socketsContexts[ i ].socketFd;
         }
         fdsCount = pCtx->socketsContextsCount;
         onRecvNonStunPacketFunc = pCtx->socketListenerContext.onRecvNonStunPacketFunc;
@@ -507,12 +507,12 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         for( i = 0; i < fdsCount; i++ )
         {
             /* fds might be removed for any reason. Handle that by checking if it's -1. */
-            if( fds[i] >= 0 )
+            if( fds[ i ] >= 0 )
             {
-                FD_SET( fds[i], &rfds );
-                if( fds[i] > maxFd )
+                FD_SET( fds[ i ], &rfds );
+                if( fds[ i ] > maxFd )
                 {
-                    maxFd = fds[i];
+                    maxFd = fds[ i ];
                 }
             }
         }
@@ -539,7 +539,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < fdsCount; i++ )
         {
-            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
+            if( ( fds[ i ] >= 0 ) && FD_ISSET( fds[ i ], &rfds ) )
             {
                 pSocketContext = &( pCtx->socketsContexts[ i ] );
 
@@ -636,7 +636,7 @@ void * IceControllerSocketListener_Task( void * pParameter )
         while( pCtx->socketListenerContext.executeSocketListener == 0 )
         {
             usleep( ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS * 1000 );
-            //vTaskDelay( pdMS_TO_TICKS( ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ) );
+            // vTaskDelay( pdMS_TO_TICKS( ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ) );
         }
 
         if( pCtx->socketListenerContext.executeSocketListener == 1 )

@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
 /*----------------------------------------------------------------------------*/
 
 typedef enum RingBufferResult

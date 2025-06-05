@@ -28,12 +28,12 @@ extern "C" {
 /* Standard includes. */
 #include <stdio.h>
 
-#define TRANSCEIVER_STREAM_ID_MAX_LENGTH ( 256 )
-#define TRANSCEIVER_TRACK_ID_MAX_LENGTH ( 256 )
-#define TRANSCEIVER_CODEC_STRING_MAX_LENGTH ( 3 ) /* The maximum value of codec is now 127, which has length 3 in string. */
+#define TRANSCEIVER_STREAM_ID_MAX_LENGTH            ( 256 )
+#define TRANSCEIVER_TRACK_ID_MAX_LENGTH             ( 256 )
+#define TRANSCEIVER_CODEC_STRING_MAX_LENGTH         ( 3 ) /* The maximum value of codec is now 127, which has length 3 in string. */
 
 #define TRANSCEIVER_IS_CODEC_ENABLED( bitmap, bit ) ( bitmap & ( 1 << bit ) )
-#define TRANSCEIVER_ENABLE_CODEC( bitmap, bit ) ( bitmap |= ( 1 << bit ) )
+#define TRANSCEIVER_ENABLE_CODEC( bitmap, bit )     ( bitmap |= ( 1 << bit ) )
 
 typedef enum TransceiverCallbackEvent
 {
@@ -56,9 +56,9 @@ typedef struct TransceiverCallbackContent
     };
 } TransceiverCallbackContent_t;
 
-typedef int32_t (* OnPcEventCallback_t)( void * pCustomContext,
-                                         TransceiverCallbackEvent_t event,
-                                         TransceiverCallbackContent_t * pEventMsg );
+typedef int32_t ( *OnPcEventCallback_t )( void * pCustomContext,
+                                          TransceiverCallbackEvent_t event,
+                                          TransceiverCallbackContent_t * pEventMsg );
 
 typedef enum TransceiverDefaultRtcCodec
 {
@@ -104,8 +104,8 @@ typedef enum TransceiverDirection
 typedef struct TransceiverRtcpStats
 {
     /* RTCP Sender Report Stats. */
-    uint64_t rtpPacketsTransmitted;    // Total number of bytes sent for this SSRC. Calculated as defined in [RFC3550] section 6.4.1.
-    uint64_t rtpBytesTransmitted;      // The total number of payload octets (i.e., not including header or padding )
+    uint64_t rtpPacketsTransmitted; // Total number of bytes sent for this SSRC. Calculated as defined in [RFC3550] section 6.4.1.
+    uint64_t rtpBytesTransmitted;   // The total number of payload octets (i.e., not including header or padding )
 } TransceiverRtcpStats_t;
 
 typedef struct TransceiverRtpSender

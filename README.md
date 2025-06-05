@@ -81,7 +81,7 @@ The GStreamer master demo provides a reference implementation for using GStreame
 
 GStreamer is an open-source multimedia framework that allows you to create a variety of media-handling components. The demo uses GStreamer pipelines to:
 - Capture video from a webcam or video test source
-- Capture audio from a microphone or audio test source  
+- Capture audio from a microphone or audio test source
 - Encode the media streams using WebRTC-compatible codecs (H.264 for video, Opus for audio)
 
 #### Requitements
@@ -136,7 +136,7 @@ ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
 
 ### Join Storage Session Support
 
-> [!WARNING]  
+> [!WARNING]
 > The "Join Storage Session" feature is currently in a beta state and may exhibit stability issues. Our team is actively working on improvements and fixes. Users may experience:
 > - Intermittent connection drops
 > - Missing media playback on cloud

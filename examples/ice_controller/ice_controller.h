@@ -25,8 +25,8 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include <stdio.h>
 #include "ice_controller_data_types.h"
+#include <stdio.h>
 
 IceControllerResult_t IceController_Init( IceControllerContext_t * pCtx,
                                           IceControllerInitConfig_t * pInitConfig );

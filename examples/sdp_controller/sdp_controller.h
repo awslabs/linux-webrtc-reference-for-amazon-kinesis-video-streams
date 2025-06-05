@@ -25,15 +25,15 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-#include <stdio.h>
-#include <stdint.h>
-#include "sdp_controller_data_types.h"
 #include "peer_connection_data_types.h"
+#include "sdp_controller_data_types.h"
+#include <stdint.h>
+#include <stdio.h>
 
 #define SDP_CONTROLLER_ORIGIN_DEFAULT_SESSION_NAME "-"
 
-#define SDP_CONTROLLER_MESSAGE_TEMPLATE_HEAD "{\"type\": \"%s\", \"sdp\": \""
-#define SDP_CONTROLLER_MESSAGE_TEMPLATE_TAIL "\"}"
+#define SDP_CONTROLLER_MESSAGE_TEMPLATE_HEAD       "{\"type\": \"%s\", \"sdp\": \""
+#define SDP_CONTROLLER_MESSAGE_TEMPLATE_TAIL       "\"}"
 
 SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferContent,
                                                          size_t sdpOfferContentLength,
@@ -54,7 +54,6 @@ SdpControllerResult_t SdpController_PopulateSessionDescription( SdpControllerSdp
                                                                 SdpControllerSdpDescription_t * pLocalSessionDescription,
                                                                 char ** ppBuffer,
                                                                 size_t * pBufferLength );
-
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

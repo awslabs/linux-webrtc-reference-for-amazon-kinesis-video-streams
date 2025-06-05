@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
+#include "peer_connection_jitter_buffer.h"
 #include "logging.h"
 #include "peer_connection.h"
-#include "peer_connection_jitter_buffer.h"
 #include "peer_connection_g711_helper.h"
 #include "peer_connection_h264_helper.h"
 #include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
+#include <stdlib.h>
 
 //#include "FreeRTOS.h"
 
-#define PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME ( 32 )
-#define PEER_CONNECTION_JITTER_BUFFER_SEQ_WRAPPER_THRESHOLD ( 10 )
+#define PEER_CONNECTION_JITTER_BUFFER_MAX_PACKETS_NUM_IN_A_FRAME      ( 32 )
+#define PEER_CONNECTION_JITTER_BUFFER_SEQ_WRAPPER_THRESHOLD           ( 10 )
 #define PEER_CONNECTION_JITTER_BUFFER_TIMESTAMP_WRAPPER_THRESHOLD_SEC ( 0.1 )
-#define PEER_CONNECTION_JITTER_BUFFER_WRAP( x, max ) ( ( x ) % max )
+#define PEER_CONNECTION_JITTER_BUFFER_WRAP( x, max )                  ( ( x ) % max )
 #define PEER_CONNECTION_JITTER_BUFFER_INCREASE_WITH_WRAP( x, y, max ) ( PEER_CONNECTION_JITTER_BUFFER_WRAP( ( x ) + ( y ), max ) )
 #define PEER_CONNECTION_JITTER_BUFFER_DECREASE_WITH_WRAP( x, y, max ) ( PEER_CONNECTION_JITTER_BUFFER_WRAP( ( x ) - ( y ), max ) )
 
@@ -46,10 +46,10 @@ static void DiscardPackets( PeerConnectionJitterBuffer_t * pJitterBuffer,
     if( pJitterBuffer != NULL )
     {
         /* Free from start sequence to end sequence number. */
-        for( i = startSeq; i != ( uint16_t )( endSeq + 1 ); i++ )
+        for( i = startSeq; i != ( uint16_t ) ( endSeq + 1 ); i++ )
         {
             index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
-            pPacket = &pJitterBuffer->rtpPackets[index];
+            pPacket = &pJitterBuffer->rtpPackets[ index ];
             DiscardPacket( pJitterBuffer, pPacket );
         }
 
@@ -92,7 +92,7 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
         earliestBufferTimestamp = pJitterBuffer->newestReceivedTimestamp - pJitterBuffer->tolerenceRtpTimeStamp;
         /* Note that newest sequence is probably less than oldest sequence due to wrapping. */
         prev = pJitterBuffer->oldestReceivedSequenceNumber;
-        for( i = pJitterBuffer->oldestReceivedSequenceNumber; i != ( uint16_t )( pJitterBuffer->newestReceivedSequenceNumber + 1 ); i++ )
+        for( i = pJitterBuffer->oldestReceivedSequenceNumber; i != ( uint16_t ) ( pJitterBuffer->newestReceivedSequenceNumber + 1 ); i++ )
         {
             index = PEER_CONNECTION_JITTER_BUFFER_WRAP( i, PEER_CONNECTION_JITTER_BUFFER_MAX_ENTRY_NUM );
             pPacket = &pJitterBuffer->rtpPackets[ index ];
@@ -147,10 +147,10 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
                     /* No get properties callback function or it returns failure. This packet is invalid, drop it. */
                     isFrameDataContinuous = 0;
                     LogInfo( ( "Fail to get property, dumping RTP payload, 0x%x 0x%x 0x%x 0x%x",
-                               pPacket->pPacketBuffer[0],
-                               pPacket->pPacketBuffer[1],
-                               pPacket->pPacketBuffer[2],
-                               pPacket->pPacketBuffer[3] ) );
+                               pPacket->pPacketBuffer[ 0 ],
+                               pPacket->pPacketBuffer[ 1 ],
+                               pPacket->pPacketBuffer[ 2 ],
+                               pPacket->pPacketBuffer[ 3 ] ) );
                     DiscardPackets( pJitterBuffer, ( uint16_t ) firstTimestampIndex, i, currentTimestamp );
                     firstTimestampIndex = -1;
                     poppingTimestamp = 0U;
@@ -185,8 +185,8 @@ static PeerConnectionResult_t ShouldAcceptPacket( PeerConnectionJitterBuffer_t *
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        earliestTolerenceRtpSeq = ( uint16_t )( ( pJitterBuffer->newestReceivedSequenceNumber - rtpSeqOffset ) & 0xFFFF );
-        lastestTolerenceRtpSeq = ( uint16_t )( ( pJitterBuffer->newestReceivedSequenceNumber + rtpSeqOffset ) & 0xFFFF );
+        earliestTolerenceRtpSeq = ( uint16_t ) ( ( pJitterBuffer->newestReceivedSequenceNumber - rtpSeqOffset ) & 0xFFFF );
+        lastestTolerenceRtpSeq = ( uint16_t ) ( ( pJitterBuffer->newestReceivedSequenceNumber + rtpSeqOffset ) & 0xFFFF );
 
         if( lastestTolerenceRtpSeq >= earliestTolerenceRtpSeq )
         {
@@ -270,7 +270,7 @@ static PeerConnectionResult_t UpdateJitterBufferAddPacket( PeerConnectionJitterB
             /* The RTP timestamp in packet is just larger than newest one. */
             pJitterBuffer->newestReceivedTimestamp = pPacket->rtpTimestamp;
         }
-        else if( ( ( uint64_t )( pJitterBuffer->newestReceivedTimestamp + ( PEER_CONNECTION_JITTER_BUFFER_TIMESTAMP_WRAPPER_THRESHOLD_SEC * pJitterBuffer->clockRate ) ) & 0xFFFFFFFF ) <= pPacket->rtpTimestamp )
+        else if( ( ( uint64_t ) ( pJitterBuffer->newestReceivedTimestamp + ( PEER_CONNECTION_JITTER_BUFFER_TIMESTAMP_WRAPPER_THRESHOLD_SEC * pJitterBuffer->clockRate ) ) & 0xFFFFFFFF ) <= pPacket->rtpTimestamp )
         {
             /* Overflow is happening, we update the newest timestamp only if it's in the range of threshold. */
             pJitterBuffer->newestReceivedTimestamp = pPacket->sequenceNumber;
@@ -300,7 +300,7 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
                                                           void * pOnFrameReadyCallbackContext,
                                                           OnJitterBufferFrameDropCallback_t onFrameDropCallbackFunc,
                                                           void * pOnFrameDropCallbackContext,
-                                                          uint32_t tolerenceBufferSec,  // buffer time in seconds
+                                                          uint32_t tolerenceBufferSec, // buffer time in seconds
                                                           uint32_t codec,
                                                           uint32_t clockRate )
 {
@@ -354,7 +354,6 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_VP8_BIT ) )
         {
-
         }
         else if( TRANSCEIVER_IS_CODEC_ENABLED( codec, TRANSCEIVER_RTC_CODEC_MULAW_BIT ) )
         {
@@ -379,11 +378,6 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
         }
     }
 
-    if( ret == PEER_CONNECTION_RESULT_OK )
-    {
-        pJitterBuffer->isInit = 1U;
-    }
-
     return ret;
 }
 
@@ -397,20 +391,9 @@ void PeerConnectionJitterBuffer_Free( PeerConnectionJitterBuffer_t * pJitterBuff
                     pJitterBuffer ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
-    else if( pJitterBuffer->isInit == 0U )
-    {
-        LogError( ( "Jitter buffer is not initialized yet." ) );
-        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
-    else
-    {
-        /* Empty else marker. */
-    }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        pJitterBuffer->isInit = 0U;
-
         ( void ) ParseFramesInJitterBuffer( pJitterBuffer, 1 );
     }
 
@@ -434,11 +417,6 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_AllocateBuffer( PeerConnection
         LogError( ( "Invalid input, pJitterBuffer: %p, ppOutPacket: %p", pJitterBuffer, ppOutPacket ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
-    else if( pJitterBuffer->isInit == 0U )
-    {
-        LogError( ( "Jitter buffer is not initialized yet or it has been freed." ) );
-        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
     else if( packetBufferSize == 0 )
     {
         LogError( ( "Invalid input, the input buffer length should be set correctly" ) );
@@ -451,14 +429,14 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_AllocateBuffer( PeerConnection
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        *ppOutPacket = &pJitterBuffer->rtpPackets[index];
+        *ppOutPacket = &pJitterBuffer->rtpPackets[ index ];
         if( ( *ppOutPacket )->pPacketBuffer != NULL )
         {
             /* Remove old information. */
             DiscardPacket( pJitterBuffer, *ppOutPacket );
         }
 
-        ( *ppOutPacket )->pPacketBuffer = ( uint8_t * )malloc( packetBufferSize );
+        ( *ppOutPacket )->pPacketBuffer = ( uint8_t * ) malloc( packetBufferSize );
         ( *ppOutPacket )->packetBufferLength = packetBufferSize;
     }
 
@@ -479,19 +457,10 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_GetPacket( PeerConnectionJitte
         LogError( ( "Invalid input, pJitterBuffer: %p, ppOutPacket: %p", pJitterBuffer, ppOutPacket ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
-    else if( pJitterBuffer->isInit == 0U )
-    {
-        LogError( ( "Jitter buffer is not initialized yet or it has been freed." ) );
-        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
-    else
-    {
-        /* Empty else marker. */
-    }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        pPacket = &pJitterBuffer->rtpPackets[index];
+        pPacket = &pJitterBuffer->rtpPackets[ index ];
 
         if( pPacket->sequenceNumber == rtpSeq )
         {
@@ -517,15 +486,6 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Push( PeerConnectionJitterBuff
     {
         LogError( ( "Invalid input, pJitterBuffer: %p, pPacket: %p", pJitterBuffer, pPacket ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
-    else if( pJitterBuffer->isInit == 0U )
-    {
-        LogError( ( "Jitter buffer is not initialized yet or it has been freed." ) );
-        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
-    else
-    {
-        /* Empty else marker. */
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -584,15 +544,6 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_FillFrame( PeerConnectionJitte
     {
         LogError( ( "Invalid input, pJitterBuffer: %p, pOutBuffer: %p, pOutBufferLength: %p, pRtpTimestamp: %p", pJitterBuffer, pOutBuffer, pOutBufferLength, pRtpTimestamp ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
-    else if( pJitterBuffer->isInit == 0U )
-    {
-        LogError( ( "Jitter buffer is not initialized yet or it has been freed." ) );
-        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
-    }
-    else
-    {
-        /* Empty else marker. */
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )

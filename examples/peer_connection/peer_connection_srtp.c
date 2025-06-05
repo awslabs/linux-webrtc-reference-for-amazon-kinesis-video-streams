@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
+#include "peer_connection_srtp.h"
 #include "logging.h"
 #include "peer_connection.h"
-#include "peer_connection_srtp.h"
-#include "peer_connection_rolling_buffer.h"
 #include "peer_connection_jitter_buffer.h"
+#include "peer_connection_rolling_buffer.h"
+#include <stdlib.h>
 #if METRIC_PRINT_ENABLED
-#include "metric.h"
+    #include "metric.h"
 #endif
 
 /* API includes. */
-#include "rtp_api.h"
-#include "rtcp_api.h"
+#include "ice_controller.h"
+#include "networking_utils.h"
 #include "peer_connection_codec_helper.h"
 #include "peer_connection_g711_helper.h"
 #include "peer_connection_h264_helper.h"
 #include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
-#include "ice_controller.h"
-#include "networking_utils.h"
+#include "rtcp_api.h"
+#include "rtp_api.h"
 
 /* At write frame, we reserve 2 bytes at the beginning of payload buffer for re-transmission if RTX is enabled. */
 /* The format of a retransmission packet is shown below:
@@ -48,10 +48,9 @@
  |                                                               |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-#define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES ( 2 )
-#define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH      ( 1200 )
+#define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES            ( 2 )
+#define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH              ( 1200 )
 #define PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND ( 2 )
-
 
 /*-----------------------------------------------------------*/
 
@@ -208,8 +207,8 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     srtp_policy_t receivePolicy, transmitPolicy;
-    void (* srtp_policy_setter)( srtp_crypto_policy_t * ) = NULL;
-    void (* srtcp_policy_setter)( srtp_crypto_policy_t * ) = NULL;
+    void ( *srtp_policy_setter )( srtp_crypto_policy_t * ) = NULL;
+    void ( *srtcp_policy_setter )( srtp_crypto_policy_t * ) = NULL;
     srtp_err_status_t errorStatus;
     PeerConnectionSrtpSender_t * pSrtpSender = NULL;
     PeerConnectionSrtpReceiver_t * pSrtpReceiver = NULL;
@@ -303,9 +302,9 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         /* Initialize Rolling buffers. */
         for( i = 0; i < pSession->transceiverCount; i++ )
         {
-            if( ( pSession->pTransceivers[i]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) &&
-                ( ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
-                  ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDONLY ) ) )
+            if( ( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) &&
+                ( ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
+                  ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDONLY ) ) )
             {
                 pSrtpSender = &pSession->videoSrtpSender;
                 if( ( pSession->rtpConfig.videoCodecRtxPayload != 0 ) &&
@@ -315,13 +314,13 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
                     maxSizePerPacket = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
                 }
                 ret = PeerConnectionRollingBuffer_Create( &pSession->videoSrtpSender.txRollingBuffer,
-                                                          pSession->pTransceivers[i]->rollingbufferBitRate, // bps
-                                                          pSession->pTransceivers[i]->rollingbufferDurationSec, // duration in seconds
+                                                          pSession->pTransceivers[ i ]->rollingbufferBitRate,     // bps
+                                                          pSession->pTransceivers[ i ]->rollingbufferDurationSec, // duration in seconds
                                                           maxSizePerPacket );
             }
-            else if( ( pSession->pTransceivers[i]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO ) &&
-                     ( ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
-                       ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDONLY ) ) )
+            else if( ( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO ) &&
+                     ( ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
+                       ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDONLY ) ) )
             {
                 pSrtpSender = &pSession->audioSrtpSender;
                 if( ( pSession->rtpConfig.audioCodecRtxPayload != 0 ) &&
@@ -331,15 +330,15 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
                     maxSizePerPacket = PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH;
                 }
                 ret = PeerConnectionRollingBuffer_Create( &pSession->audioSrtpSender.txRollingBuffer,
-                                                          pSession->pTransceivers[i]->rollingbufferBitRate, // bps
-                                                          pSession->pTransceivers[i]->rollingbufferDurationSec, // duration in seconds
+                                                          pSession->pTransceivers[ i ]->rollingbufferBitRate,     // bps
+                                                          pSession->pTransceivers[ i ]->rollingbufferDurationSec, // duration in seconds
                                                           maxSizePerPacket );
             }
             else
             {
                 LogInfo( ( "No send needed for this transceiver, kind: %d, direction: %d",
-                           pSession->pTransceivers[i]->trackKind,
-                           pSession->pTransceivers[i]->direction ) );
+                           pSession->pTransceivers[ i ]->trackKind,
+                           pSession->pTransceivers[ i ]->direction ) );
             }
 
             if( ret != PEER_CONNECTION_RESULT_OK )
@@ -348,15 +347,11 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
             }
 
             /* Mutex can only be created in executing scheduler. */
-            if( pSrtpSender->isSenderMutexInit == 0U )
+            if( pthread_mutex_init( &( pSrtpSender->senderMutex ), NULL ) != 0 )
             {
-                if( pthread_mutex_init( &( pSrtpSender->senderMutex ), NULL ) != 0 )
-                {
-                    LogError( ( "Fail to create mutex for SRTP sender." ) );
-                    ret = PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX;
-                    break;
-                }
-                pSrtpSender->isSenderMutexInit = 1U;
+                LogError( ( "Fail to create mutex for SRTP sender." ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX;
+                break;
             }
         }
     }
@@ -366,9 +361,9 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         /* Initialize Jitter buffers. */
         for( i = 0; i < pSession->transceiverCount; i++ )
         {
-            if( ( pSession->pTransceivers[i]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) &&
-                ( ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
-                  ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_RECVONLY ) ) )
+            if( ( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_VIDEO ) &&
+                ( ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
+                  ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_RECVONLY ) ) )
             {
                 LogInfo( ( "Setting video receiver." ) );
                 pSrtpReceiver = &pSession->videoSrtpReceiver;
@@ -377,13 +372,13 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
                                                          pSrtpReceiver,
                                                          OnJitterBufferFrameDrop,
                                                          pSrtpReceiver,
-                                                         PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND,   // buffer time in seconds
-                                                         pSession->pTransceivers[i]->codecBitMap,
+                                                         PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND, // buffer time in seconds
+                                                         pSession->pTransceivers[ i ]->codecBitMap,
                                                          PEER_CONNECTION_SRTP_VIDEO_CLOCKRATE );
             }
-            else if( ( pSession->pTransceivers[i]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO ) &&
-                     ( ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
-                       ( pSession->pTransceivers[i]->direction == TRANSCEIVER_TRACK_DIRECTION_RECVONLY ) ) )
+            else if( ( pSession->pTransceivers[ i ]->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO ) &&
+                     ( ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_SENDRECV ) ||
+                       ( pSession->pTransceivers[ i ]->direction == TRANSCEIVER_TRACK_DIRECTION_RECVONLY ) ) )
             {
                 LogInfo( ( "Setting audio receiver." ) );
                 pSrtpReceiver = &pSession->audioSrtpReceiver;
@@ -398,15 +393,15 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
                                                          pSrtpReceiver,
                                                          OnJitterBufferFrameDrop,
                                                          pSrtpReceiver,
-                                                         PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND,   // buffer time in seconds
-                                                         pSession->pTransceivers[i]->codecBitMap,
+                                                         PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND, // buffer time in seconds
+                                                         pSession->pTransceivers[ i ]->codecBitMap,
                                                          PEER_CONNECTION_SRTP_PCM_CLOCKRATE );
             }
             else
             {
                 LogInfo( ( "No recv needed for this transceiver, kind: %d, direction: %d",
-                           pSession->pTransceivers[i]->trackKind,
-                           pSession->pTransceivers[i]->direction ) );
+                           pSession->pTransceivers[ i ]->trackKind,
+                           pSession->pTransceivers[ i ]->direction ) );
             }
 
             if( ret != PEER_CONNECTION_RESULT_OK )
@@ -482,6 +477,7 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
         {
             PeerConnectionRollingBuffer_Free( &pSession->videoSrtpSender.txRollingBuffer );
             pthread_mutex_unlock( &( pSession->videoSrtpSender.senderMutex ) );
+            pthread_mutex_destroy( &( pSession->videoSrtpSender.senderMutex ) );
         }
 
         /* Clean up Audio SRTP Sender */
@@ -489,6 +485,7 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
         {
             PeerConnectionRollingBuffer_Free( &pSession->audioSrtpSender.txRollingBuffer );
             pthread_mutex_unlock( &( pSession->audioSrtpSender.senderMutex ) );
+            pthread_mutex_destroy( &( pSession->audioSrtpSender.senderMutex ) );
         }
     }
 
@@ -622,7 +619,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtpPacket( PeerConnectionSessio
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         memcpy( pJitterBufferPacket->pPacketBuffer, rtpPacket.pPayload, rtpPacket.payloadLength );
-        pJitterBufferPacket->receiveTick = time( NULL ); //xTaskGetTickCount();
+        pJitterBufferPacket->receiveTick = time( NULL ); // xTaskGetTickCount();
         pJitterBufferPacket->rtpTimestamp = rtpPacket.header.timestamp;
         pJitterBufferPacket->sequenceNumber = rtpPacket.header.sequenceNumber;
         // LogInfo( ( "Dumping RTP payload: %u, seq: %u, timestamp: %lu", rtpPacket.payloadLength, rtpPacket.header.sequenceNumber, rtpPacket.header.timestamp ) );

@@ -18,18 +18,18 @@
 #include "logging.h"
 
 /* Standard includes. */
-#include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* FreeRTOS includes. */
 //#include "FreeRTOS.h"
 
 /* LWIP includes */
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <errno.h>
+#include <netdb.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 /* UDP Sockets Wrapper include.*/
@@ -92,8 +92,8 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
 {
     int xFd = -1;
     int xRet = UDP_SOCKETS_ERRNO_NONE;
-    struct addrinfo xHints, * pxAddrList, * pxCur;
-    char xPortStr[6];
+    struct addrinfo xHints, *pxAddrList, *pxCur;
+    char xPortStr[ 6 ];
 
     memset( &xHints, 0, sizeof( xHints ) );
     xHints.ai_family = AF_UNSPEC;
@@ -167,7 +167,7 @@ int UDP_Sockets_Connect( Socket_t * pUdpSocket,
  */
 void UDP_Sockets_Disconnect( Socket_t udpSocket )
 {
-    ( void )shutdown( udpSocket->xFd, SHUT_RDWR );
+    ( void ) shutdown( udpSocket->xFd, SHUT_RDWR );
     free( udpSocket );
 }
 
