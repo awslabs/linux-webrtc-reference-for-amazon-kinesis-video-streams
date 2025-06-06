@@ -33,7 +33,7 @@
 #define ENABLE_TWCC_SUPPORT 1U
 #endif
 
-/* Uncomment to use fetching credentials by IoT Role-alias for Authentication. */
+/* Uncomment to use fetching credentials by IoT Role-alias for Authentication */
 // #define AWS_CREDENTIALS_ENDPOINT ""
 // #define AWS_IOT_THING_NAME ""
 // #define AWS_IOT_THING_ROLE_ALIAS ""

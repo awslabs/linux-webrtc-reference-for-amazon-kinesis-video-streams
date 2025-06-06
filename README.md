@@ -68,6 +68,29 @@ Gstreamer Master Example (Refer to the [Gstreamer Master Demo](#gstreamer-master
 [2024/03/28 06:43:36:0003] E: Unable to load SSL Client certs file from  -- client ssl isn't going to work
 ```
 
+## buildtestcontainer
+Development and testing can be done inside a container.
+This avoids issues with your local Linux installation.
+```bash
+podman build misc/buildtestcontainer -t buildtestcontainer:latest
+podman run -it -v $PWD/..:/work --replace --name buildtestcontainer buildtestcontainer:latest
+```
+
+E.g. run a build
+
+```bash
+cd /work/linux-webrtc-reference-for-amazon-kinesis-video-streams
+rm -rf build/ && cmake -S . -B build -DCMAKE_C_FLAGS='-DLIBRARY_LOG_LEVEL=LOG_VERBOSE' && make -C build -j $(nproc)
+```
+
+E.g. run a test
+
+```bash
+cd /work/linux-webrtc-reference-for-amazon-kinesis-video-streams/
+./build/WebRTCLinuxApplicationMaster
+```
+
+
 ## Feature Options
 1. [Gstreamer Master Demo](#gstreamer-master-demo)
 1. [Data Channel Support](#data-channel-support)
@@ -81,7 +104,7 @@ The GStreamer master demo provides a reference implementation for using GStreame
 
 GStreamer is an open-source multimedia framework that allows you to create a variety of media-handling components. The demo uses GStreamer pipelines to:
 - Capture video from a webcam or video test source
-- Capture audio from a microphone or audio test source  
+- Capture audio from a microphone or audio test source
 - Encode the media streams using WebRTC-compatible codecs (H.264 for video, Opus for audio)
 
 #### Requitements
@@ -136,7 +159,7 @@ ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
 
 ### Join Storage Session Support
 
-> [!WARNING]  
+> [!WARNING]
 > The "Join Storage Session" feature is currently in a beta state and may exhibit stability issues. Our team is actively working on improvements and fixes. Users may experience:
 > - Intermittent connection drops
 > - Missing media playback on cloud
