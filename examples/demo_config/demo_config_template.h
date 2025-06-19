@@ -51,7 +51,7 @@
 
 #define AWS_MAX_VIEWER_NUM ( 2 )
 
-/* Audio format setting - currently only opus codec is supported in Linux environments. */
+/* Audio codec setting. */
 #define AUDIO_OPUS         1
 
 /* Join Storage Session setting. */
@@ -59,7 +59,7 @@
 #define JOIN_STORAGE_SESSION 0
 #endif
 
-/* Video format setting - H264 is the default codec in Linux environments. */
+/* Video codec setting. */
 #define USE_VIDEO_CODEC_H264 1
 #define USE_VIDEO_CODEC_H265 0
 #if ( USE_VIDEO_CODEC_H264 + USE_VIDEO_CODEC_H265 ) != 1
