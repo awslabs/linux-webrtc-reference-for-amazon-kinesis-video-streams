@@ -74,6 +74,9 @@ Gstreamer Master Example (Refer to the [Gstreamer Master Demo](#gstreamer-master
 1. [TWCC Support](#twcc-support)
 1. [Join Storage Session](#join-storage-session-support)
 1. [Enabling Metrics Logging](#enabling-metrics-logging)
+1. [Codecs Options](#codecs-options)
+
+---
 
 ### Gstreamer Master Demo
 
@@ -97,6 +100,8 @@ On Fedora:
 sudo dnf install gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-bad-free-devel
 ```
 
+---
+
 ### Data Channel Support
 
 WebRTC Data Channel is a bidirectional peer-to-peer communication channel for arbitrary application data. It operates over SCTP (Stream Control Transmission Protocol) and provides both reliable and unreliable data delivery modes.
@@ -108,6 +113,8 @@ Data channel support is enabled by default in this application through the `BUIL
 ```
 cmake -S . -B build -DBUILD_USRSCTP_LIBRARY=OFF
 ```
+
+---
 
 ### TWCC support
 
@@ -134,12 +141,9 @@ ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
                                                            &pSession->twccMetaData );
 ```
 
-### Join Storage Session Support
+---
 
-> [!WARNING]  
-> The "Join Storage Session" feature is currently in a beta state and may exhibit stability issues. Our team is actively working on improvements and fixes. Users may experience:
-> - Intermittent connection drops
-> - Missing media playback on cloud
+### Join Storage Session Support
 
 Join Storage Session enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities.
 
@@ -170,6 +174,8 @@ Before using Join Storage Session, Set up Signaling Channel with Video Stream:
 
 For detailed setup instructions, refer to: https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/webrtc-ingestion.html
 
+---
+
 ### Enabling Metrics Logging
 METRIC_PRINT_ENABLED flag enables detailed metrics logging for WebRTC setup. It logs the following time for each connection:
    - Duration to describe Signaling Channel
@@ -184,7 +190,26 @@ METRIC_PRINT_ENABLED flag enables detailed metrics logging for WebRTC setup. It 
    - Duration to find Peer-To-Peer Connection
    - Duration to DTLS Handshaking Completion
    - Duration to sending First Frame
-**Note**: `METRIC_PRINT_ENABLED` flag can be used to enable metrics logging. It can be used like: `cmake -S . -B build -DMETRIC_PRINT_ENABLED=ON`. The flag is disabled by default.
+
+> **Note**: `METRIC_PRINT_ENABLED` flag can be used to enable metrics logging. It can be used like: `cmake -S . -B build -DMETRIC_PRINT_ENABLED=ON`. The flag is disabled by default.
+
+---
+
+### Codecs Options
+The application uses H.264 video and OPUS audio codec by default. Configure codecs in `examples/demo_config/demo_config.h`.
+
+> **Note: Only one audio codec and one video codec can be enabled at a time.**
+
+#### Video Codec
+Under `/* Video codec setting. */`.
+- H.264: Set `USE_VIDEO_CODEC_H264` to 1
+- H.265: Set `USE_VIDEO_CODEC_H265` to 1
+
+#### Audio Codec
+Under `/* Audio codec setting. */`, currently support OPUS only in Linux environment.
+- OPUS: Set `AUDIO_OPUS` to 1
+
+---
 
 # Security
 
