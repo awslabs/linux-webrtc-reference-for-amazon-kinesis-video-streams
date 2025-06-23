@@ -567,7 +567,7 @@ int32_t GstMediaSource_InitVideoTransceiver( GstMediaSourcesContext_t * pCtx,
                       &bitrate,
                       NULL );
         // Convert from kbps to bps
-        pVideoTransceiver->rollingbufferBitRate = bitrate * 1000;
+        pVideoTransceiver->rollingbufferBitRate = bitrate * 1024;
 
         strncpy( pVideoTransceiver->streamId,
                  DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
@@ -616,7 +616,8 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
                       "bitrate",
                       &bitrate,
                       NULL );
-        pAudioTransceiver->rollingbufferBitRate = bitrate;
+        // Convert from kbps to bps
+        pAudioTransceiver->rollingbufferBitRate = bitrate * 1024;
 
         strncpy( pAudioTransceiver->streamId,
                  DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
