@@ -39,8 +39,8 @@
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
 #define DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID "myAudioTrack"
 
-#define DEMO_TRANSCEIVER_VIDEO_DATA_QUEUE_NAME "/TxVideoMq"
-#define DEMO_TRANSCEIVER_AUDIO_DATA_QUEUE_NAME "/TxAudioMq"
+#define DEMO_TRANSCEIVER_VIDEO_TX_DATA_QUEUE_NAME "/TxVideoMq"
+#define DEMO_TRANSCEIVER_AUDIO_TX_DATA_QUEUE_NAME "/TxAudioMq"
 #define DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM ( 10 )
 
 #define NUMBER_OF_H264_FRAME_SAMPLE_FILES   1500
@@ -59,7 +59,7 @@ static void * AudioTx_Task( void * pParameter );
 static void * VideoTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pVideoContext = ( AppMediaSourceContext_t * )pParameter;
-    WebrtcFrame_t frame;
+    MediaFrame_t frame;
     #ifndef ENABLE_STREAMING_LOOPBACK
         char filePath[ MAX_PATH_LEN + 1 ];
         FILE * fp = NULL;
@@ -145,7 +145,7 @@ static void * VideoTx_Task( void * pParameter )
 static void * AudioTx_Task( void * pParameter )
 {
     AppMediaSourceContext_t * pAudioContext = ( AppMediaSourceContext_t * )pParameter;
-    WebrtcFrame_t frame;
+    MediaFrame_t frame;
     #ifndef ENABLE_STREAMING_LOOPBACK
         char filePath[ MAX_PATH_LEN + 1 ];
         FILE * fp = NULL;
@@ -332,8 +332,8 @@ static int32_t InitializeVideoSource( AppMediaSourceContext_t * pVideoSource )
     if( ret == 0 )
     {
         retMessageQueue = MessageQueue_Create( &pVideoSource->dataQueue,
-                                               DEMO_TRANSCEIVER_VIDEO_DATA_QUEUE_NAME,
-                                               sizeof( WebrtcFrame_t ),
+                                               DEMO_TRANSCEIVER_VIDEO_TX_DATA_QUEUE_NAME,
+                                               sizeof( MediaFrame_t ),
                                                DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
@@ -379,8 +379,8 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
     if( ret == 0 )
     {
         retMessageQueue = MessageQueue_Create( &pAudioSource->dataQueue,
-                                               DEMO_TRANSCEIVER_AUDIO_DATA_QUEUE_NAME,
-                                               sizeof( WebrtcFrame_t ),
+                                               DEMO_TRANSCEIVER_AUDIO_TX_DATA_QUEUE_NAME,
+                                               sizeof( MediaFrame_t ),
                                                DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
@@ -402,12 +402,6 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
                         NULL,
                         AudioTx_Task,
                         pAudioSource );
-
-        // if( xTaskCreate( AudioTx_Task, ( ( const char * )"AudioTask" ), 2048, pAudioSource, tskIDLE_PRIORITY + 1, NULL ) != pdPASS )
-        // {
-        //     LogError( ( "xTaskCreate(AudioTask) failed" ) );
-        //     ret = -1;
-        // }
     }
 
     return ret;
@@ -531,6 +525,36 @@ int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
         pAudioTranceiver->onPcEventCallbackFunc = HandlePcEventCallback;
         pAudioTranceiver->pOnPcEventCustomContext = &pCtx->audioContext;
     }
+
+    return ret;
+}
+
+int32_t AppMediaSource_RecvFrame( AppMediaSourcesContext_t * pCtx,
+                                  MediaFrame_t * pFrame )
+{
+    int32_t ret = 0;
+
+    if( ( pCtx == NULL ) || ( pFrame == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: %p, pFrame: %p", pCtx, pFrame ) );
+        ret = -1;
+    }
+
+    #ifdef ENABLE_STREAMING_LOOPBACK
+        if( ret == 0 )
+        {
+            if( pCtx->onMediaSinkHookFunc )
+            {
+                ( void ) pCtx->onMediaSinkHookFunc( pCtx->pOnMediaSinkHookCustom,
+                                                    pFrame );
+            }
+        }
+    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
+        if( ret == 0 )
+        {
+            LogDebug( ( "Drop received frame, track kind: %d", pFrame->trackKind ) );
+        }
+    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
     return ret;
 }
