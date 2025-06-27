@@ -30,11 +30,11 @@ typedef struct {
     TransceiverTrackKind_t trackKind;
     uint8_t flags;
     uint8_t freeData;  /* indicate user need to free pData after using it */
-} WebrtcFrame_t;
+} MediaFrame_t;
 
 typedef struct GstMediaSourcesContext GstMediaSourcesContext_t;
 typedef int32_t (* GstMediaSourceOnMediaSinkHook)( void * pCustom,
-                                                   WebrtcFrame_t * pFrame );
+                                                   MediaFrame_t * pFrame );
 
 typedef struct GstMediaSourceContext
 {
