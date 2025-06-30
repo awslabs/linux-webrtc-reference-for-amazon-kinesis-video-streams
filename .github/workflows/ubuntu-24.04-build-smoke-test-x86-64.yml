@@ -1,0 +1,76 @@
+name: Ubuntu 24.04 x86-64 - build smoke test
+
+on:
+  push:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache Podman image
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/podman-x86-64-image.tar
+          key:
+            ${{ runner.os }}-podman-${{ hashFiles('misc/buildtestcontainer/*')
+            }}
+
+      - name: Build and save container for x86-64
+        run: |
+          if [ ! -f ~/podman-x86-64-image.tar ]; then
+            podman build misc/buildtestcontainer -t container
+            podman save container:latest > ~/podman-x86-64-image.tar
+          else
+            podman load < ~/podman-x86-64-image.tar
+          fi
+
+  build:
+    needs: setup
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        log_level: [LOG_NONE, LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG, LOG_VERBOSE]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Generate (dummy) demo_config.h
+        run: |
+             cp examples/demo_config/demo_config_template.h examples/demo_config/demo_config.h
+             sed -i '/^#if defined( AWS_ACCESS_KEY_ID ) && defined( AWS_IOT_THING_ROLE_ALIAS )/i\
+             #define AWS_CREDENTIALS_ENDPOINT ""\
+             #define AWS_IOT_THING_NAME ""\
+             #define AWS_IOT_THING_ROLE_ALIAS ""\
+             #define AWS_IOT_THING_CERT_PATH "certificate.pem"\
+             #define AWS_IOT_THING_PRIVATE_KEY_PATH "private.key"\
+             ' examples/demo_config/demo_config.h
+
+      - name: Load cached Podman image
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/podman-x86-64-image.tar
+          key:
+            ${{ runner.os }}-podman-${{ hashFiles('misc/buildtestcontainer/*')
+            }}
+
+      - name: Load container image
+        run: podman load < ~/podman-x86-64-image.tar
+
+      - name: Run build in container
+        shell: bash
+        run: |
+          podman run -v $PWD/.:/linux-webrtc-reference-for-amazon-kinesis-video-streams --replace --name buildtestcontainer container:latest bash -c "\
+            cd linux-webrtc-reference-for-amazon-kinesis-video-streams && \
+            rm -rf build/ && \
+            cmake -B build \
+            -DLIBRARY_LOG_LEVEL=${{ matrix.log_level }} && \
+            make -C build -j$(nproc)"
