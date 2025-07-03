@@ -1,0 +1,3 @@
+{
+	"dockerFile": "${localWorkspaceFolder}/misc/buildtestcontainer/Containerfile"
+  }
