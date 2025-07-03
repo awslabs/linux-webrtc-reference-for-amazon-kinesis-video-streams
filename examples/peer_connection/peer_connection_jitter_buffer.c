@@ -137,9 +137,12 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
                         ( isFrameDataContinuous != 0U ) )
                     {
                         /* We now have an full frame ready between start index and end index. */
-                        ret = pJitterBuffer->onFrameReadyCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
-                                                                       popingPacketStartSeq,
-                                                                       prev );
+                        if( pJitterBuffer->onFrameReadyCallbackFunc )
+                        {
+                            ret = pJitterBuffer->onFrameReadyCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
+                                                                           popingPacketStartSeq,
+                                                                           prev );
+                        }
                         DiscardPackets( pJitterBuffer,
                                         popingPacketStartSeq,
                                         prev,
@@ -155,9 +158,12 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
                     else if( IsRtpPacketExpired( pJitterBuffer, pPacket ) )
                     {
                         /* data is expired, drop them */
-                        ret = pJitterBuffer->onFrameDropCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
-                                                                      firstPacketSeq,
-                                                                      prev );
+                        if( pJitterBuffer->onFrameDropCallbackFunc )
+                        {
+                            ret = pJitterBuffer->onFrameDropCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
+                                                                          firstPacketSeq,
+                                                                          prev );
+                        }
                         DiscardPackets( pJitterBuffer,
                                         firstPacketSeq,
                                         prev,
@@ -225,9 +231,12 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
                 pPacket = &pJitterBuffer->rtpPackets[ index ];
                 if( pPacket->isPushed == 0U )
                 {
-                    ret = pJitterBuffer->onFrameDropCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
-                                                                  firstPacketSeq,
-                                                                  prev );
+                    if( pJitterBuffer->onFrameDropCallbackFunc )
+                    {
+                        ret = pJitterBuffer->onFrameDropCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
+                                                                      firstPacketSeq,
+                                                                      prev );
+                    }
                     DiscardPackets( pJitterBuffer,
                                     firstPacketSeq,
                                     prev,
@@ -243,9 +252,12 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
                 prev = i;
             }
 
-            ret = pJitterBuffer->onFrameDropCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
-                                                          firstPacketSeq,
-                                                          prev );
+            if( pJitterBuffer->onFrameDropCallbackFunc )
+            {
+                ret = pJitterBuffer->onFrameDropCallbackFunc( pJitterBuffer->pOnFrameReadyCallbackContext,
+                                                              firstPacketSeq,
+                                                              prev );
+            }
             DiscardPackets( pJitterBuffer,
                             firstPacketSeq,
                             prev,

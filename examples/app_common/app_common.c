@@ -33,7 +33,10 @@
 #endif
 #include "networking_utils.h"
 #include "peer_connection.h"
-#include "app_media_source.h"
+
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
+    #include "app_media_source.h"
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
 #if ENABLE_SCTP_DATA_CHANNEL
 #include "peer_connection_sctp.h"
@@ -120,10 +123,14 @@ static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext
                                                                      const char * pRemoteClientId,
                                                                      size_t remoteClientIdLength,
                                                                      uint8_t allowCreate );
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame );
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame );
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 static void HandleSdpOffer( AppContext_t * pAppContext,
                             const SignalingMessage_t * pSignalingMessage );
 static void HandleRemoteCandidate( AppContext_t * pAppContext,
@@ -767,6 +774,7 @@ static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext
     return pAppSession;
 }
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
@@ -794,7 +802,9 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 
     return PEER_CONNECTION_RESULT_OK;
 }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
@@ -822,6 +832,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
 
     return PEER_CONNECTION_RESULT_OK;
 }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
 static void HandleSdpOffer( AppContext_t * pAppContext,
                             const SignalingMessage_t * pSignalingMessage )
@@ -911,6 +922,7 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
         }
     }
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_SetVideoOnFrame( &pAppSession->peerConnectionSession,
@@ -922,7 +934,9 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
             skipProcess = 1;
         }
     }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_SetAudioOnFrame( &pAppSession->peerConnectionSession,
@@ -934,6 +948,7 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
             skipProcess = 1;
         }
     }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
     if( skipProcess == 0 )
     {
