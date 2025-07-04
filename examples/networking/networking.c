@@ -1080,6 +1080,14 @@ static int LwsHttpCallback( struct lws * pWsi,
                 LogError( ( "lws_http_client_read failed!" ) );
                 ret = -1;
             }
+            else
+            {
+                LogDebug( ( "Complete reading, close the connection." ) );
+
+                lws_set_timeout( pWsi,
+                                 PENDING_TIMEOUT_USER_OK,
+                                 LWS_TO_KILL_ASYNC );
+            }
         }
         break;
 
@@ -1185,6 +1193,9 @@ static int LwsHttpCallback( struct lws * pWsi,
             LogDebug( ( "LWS_CALLBACK_WSI_DESTROY callback." ) );
 
             pHttpContext->connectionClosed = 1;
+
+            /* abort poll wait */
+            lws_cancel_service( pHttpContext->pLwsContext );
         }
         break;
 
