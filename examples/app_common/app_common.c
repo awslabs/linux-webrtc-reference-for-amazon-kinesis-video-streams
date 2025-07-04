@@ -784,7 +784,7 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 
     if( pFrame != NULL )
     {
-        LogDebug( ( "Received video frame with length: %u", pFrame->dataLength ) );
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
 
         memset( &frame, 0, sizeof( MediaFrame_t ) );
         frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
@@ -796,7 +796,7 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                 &frame );
         if( resultMedia != 0U )
         {
-            LogDebug( ( "Dropping Rx video data with result: %ld", resultMedia ) );
+            LogDebug( ( "Dropping Rx video data with result: %d", resultMedia ) );
         }
     }
 
@@ -814,7 +814,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
 
     if( pFrame != NULL )
     {
-        LogDebug( ( "Received video frame with length: %u", pFrame->dataLength ) );
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
 
         memset( &frame, 0, sizeof( MediaFrame_t ) );
         frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
@@ -826,7 +826,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                 &frame );
         if( resultMedia != 0U )
         {
-            LogDebug( ( "Dropping Rx video data with result: %ld", resultMedia ) );
+            LogDebug( ( "Dropping Rx video data with result: %d", resultMedia ) );
         }
     }
 
