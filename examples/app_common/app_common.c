@@ -120,9 +120,9 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
 static int32_t InitializeAppSession( AppContext_t * pAppContext,
                                      AppSession_t * pAppSession );
 static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext,
-                                                                     const char * pRemoteClientId,
-                                                                     size_t remoteClientIdLength,
-                                                                     uint8_t allowCreate );
+                                                      const char * pRemoteClientId,
+                                                      size_t remoteClientIdLength,
+                                                      uint8_t allowCreate );
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame );
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
@@ -147,7 +147,7 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                                               uint32_t pMessageLen );
     #endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
-                                          
+
 
 static int32_t StartPeerConnectionSession( AppContext_t * pAppContext,
                                            AppSession_t * pAppSession,
@@ -584,7 +584,8 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
                                                         TwccBandwidthInfo_t * pTwccBandwidthInfo )
     {
         PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
-        PeerConnectionTwccMetaData_t * pTwccMetaData = NULL;
+        AppContext_t * pAppContext = NULL;
+        AppSession_t * pAppSession = NULL;
         uint64_t videoBitrate = 0;
         uint64_t audioBitrate = 0;
         uint64_t currentTimeUs = 0;
@@ -592,6 +593,7 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
         uint32_t lostPacketCount = 0;
         uint8_t isLocked = 0;
         double percentLost = 0.0;
+        int i;
 
         if( ( pCustomContext == NULL ) ||
             ( pTwccBandwidthInfo == NULL ) )
@@ -604,15 +606,16 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
         // Calculate packet loss
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
-            pTwccMetaData = ( PeerConnectionTwccMetaData_t * ) pCustomContext;
+            pAppSession = ( AppSession_t * ) pCustomContext;
+            pAppContext = pAppSession->pAppContext;
 
             currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
             lostPacketCount = pTwccBandwidthInfo->sentPackets - pTwccBandwidthInfo->receivedPackets;
             percentLost = ( double ) ( ( pTwccBandwidthInfo->sentPackets > 0 ) ? ( ( double ) ( lostPacketCount * 100 ) / ( double )pTwccBandwidthInfo->sentPackets ) : 0.0 );
-            timeDifference = currentTimeUs - pTwccMetaData->lastAdjustmentTimeUs;
+            timeDifference = currentTimeUs - pAppSession->peerConnectionSession.twccMetaData.lastAdjustmentTimeUs;
 
-            pTwccMetaData->averagePacketLoss = EMA_ACCUMULATOR_GET_NEXT( pTwccMetaData->averagePacketLoss,
-                                                                         ( ( double ) percentLost ) );
+            pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss = EMA_ACCUMULATOR_GET_NEXT( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss,
+                                                                                                          ( ( double ) percentLost ) );
 
             if( timeDifference < PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US )
             {
@@ -623,7 +626,7 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
 
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
-            if( pthread_mutex_lock( &( pTwccMetaData->twccBitrateMutex ) ) == 0 )
+            if( pthread_mutex_lock( &( pAppSession->peerConnectionSession.twccMetaData.twccBitrateMutex ) ) == 0 )
             {
                 isLocked = 1;
             }
@@ -634,12 +637,30 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
             }
         }
 
+        if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( isLocked == 1 ) )
+        {
+            pthread_mutex_lock( &( pAppContext->bitrateModifiedMutex ) );
+        }
+
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
-            videoBitrate = pTwccMetaData->currentVideoBitrate;
-            audioBitrate = pTwccMetaData->currentAudioBitrate;
+            for( i = 0; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT; i++ )
+            {
+                if( pAppSession->transceivers[ i ].trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
+                {
+                    videoBitrate = pAppSession->transceivers[ i ].rollingbufferBitRate;
+                }
+                else if( pAppSession->transceivers[ i ].trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
+                {
+                    audioBitrate = pAppSession->transceivers[ i ].rollingbufferBitRate;
+                }
+                else
+                {
+                    // Do nothing, coverity happy.
+                }
+            }
 
-            if( pTwccMetaData->averagePacketLoss <= 5 )
+            if( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss <= 5 )
             {
                 // Increase encoder bitrates by 5 percent with cap at MAX_BITRATE
                 videoBitrate = ( uint64_t ) MIN( videoBitrate * 1.05,
@@ -650,26 +671,29 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
             else
             {
                 // Decrease encoder bitrate by average packet loss percent, with a cap at MIN_BITRATE
-                videoBitrate = ( uint64_t ) MAX( videoBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
+                videoBitrate = ( uint64_t ) MAX( videoBitrate * ( 1.0 - ( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss / 100.0 ) ),
                                                  PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS );
-                audioBitrate = ( uint64_t ) MAX( audioBitrate * ( 1.0 - ( pTwccMetaData->averagePacketLoss / 100.0 ) ),
+                audioBitrate = ( uint64_t ) MAX( audioBitrate * ( 1.0 - ( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss / 100.0 ) ),
                                                  PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS );
             }
 
-            pTwccMetaData->updatedVideoBitrate = videoBitrate;
-            pTwccMetaData->updatedAudioBitrate = audioBitrate;
+            pAppSession->peerConnectionSession.twccMetaData.modifiedVideoBitrateKbps = videoBitrate;
+            pAppSession->peerConnectionSession.twccMetaData.modifiedAudioBitrateKbps = audioBitrate;
+            pAppContext->isMediaBitrateModified = 1;
         }
 
         if( isLocked != 0 )
         {
-            pthread_mutex_unlock( &( pTwccMetaData->twccBitrateMutex ) );
+            pthread_mutex_unlock( &( pAppContext->bitrateModifiedMutex ) );
+
+            pthread_mutex_unlock( &( pAppSession->peerConnectionSession.twccMetaData.twccBitrateMutex ) );
 
         }
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
-            pTwccMetaData->lastAdjustmentTimeUs = currentTimeUs;
+            pAppSession->peerConnectionSession.twccMetaData.lastAdjustmentTimeUs = currentTimeUs;
 
-            LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pTwccMetaData->averagePacketLoss, timeDifference  ) );
+            LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss, timeDifference  ) );
             LogInfo( ( "Suggested video bitrate: %lu kbps, suggested audio bitrate: %lu bps, sent: %lu bytes, %lu packets,   received: %lu bytes, %lu packets, in %llu msec ",
                        videoBitrate, audioBitrate, pTwccBandwidthInfo->sentBytes, pTwccBandwidthInfo->sentPackets, pTwccBandwidthInfo->receivedBytes, pTwccBandwidthInfo->receivedPackets, pTwccBandwidthInfo->duration / 10000ULL ) );
         }
@@ -701,7 +725,7 @@ static int32_t InitializeAppSession( AppContext_t * pAppContext,
             /* In case you want to set a different callback based on your business logic, you could replace SampleSenderBandwidthEstimationHandler() with your Handler. */
             peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pAppSession->peerConnectionSession,
                                                                                         SampleSenderBandwidthEstimationHandler,
-                                                                                        &pAppSession->peerConnectionSession.twccMetaData );
+                                                                                        pAppSession );
             if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
             {
                 LogError( ( "Fail to set Sender Bandwidth Estimation Callback, result: %d", peerConnectionResult ) );
@@ -713,15 +737,16 @@ static int32_t InitializeAppSession( AppContext_t * pAppContext,
     if( ret == 0 )
     {
         pAppSession->pSignalingControllerContext = &( pAppContext->signalingControllerContext );
+        pAppSession->pAppContext = pAppContext;  /* Set the reverse pointer */
     }
 
     return ret;
 }
 
 static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext,
-                                                                     const char * pRemoteClientId,
-                                                                     size_t remoteClientIdLength,
-                                                                     uint8_t allowCreate )
+                                                      const char * pRemoteClientId,
+                                                      size_t remoteClientIdLength,
+                                                      uint8_t allowCreate )
 {
     AppSession_t * pAppSession = NULL;
     int i;
@@ -788,7 +813,8 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
             frame.timestampUs = pFrame->presentationUs;
             if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
             {
-                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom, &frame );
+                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
+                                                                                    &frame );
             }
         }
 
@@ -821,7 +847,8 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
             frame.timestampUs = pFrame->presentationUs;
             if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
             {
-                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom, &frame );
+                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
+                                                                                    &frame );
             }
         }
 
@@ -898,9 +925,9 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
     if( skipProcess == 0 )
     {
         pAppSession = GetCreatePeerConnectionSession( pAppContext,
-                                                     pSignalingMessage->pRemoteClientId,
-                                                     pSignalingMessage->remoteClientIdLength,
-                                                     1U );
+                                                      pSignalingMessage->pRemoteClientId,
+                                                      pSignalingMessage->remoteClientIdLength,
+                                                      1U );
         if( pAppSession == NULL )
         {
             LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -1023,9 +1050,9 @@ static void HandleRemoteCandidate( AppContext_t * pAppContext,
     AppSession_t * pAppSession = NULL;
 
     pAppSession = GetCreatePeerConnectionSession( pAppContext,
-                                                 pSignalingMessage->pRemoteClientId,
-                                                 pSignalingMessage->remoteClientIdLength,
-                                                 1U );
+                                                  pSignalingMessage->pRemoteClientId,
+                                                  pSignalingMessage->remoteClientIdLength,
+                                                  1U );
     if( pAppSession == NULL )
     {
         LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -1209,7 +1236,7 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
     {
         case SIGNALING_TYPE_MESSAGE_SDP_OFFER:
             #if METRIC_PRINT_ENABLED
-            Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
+                Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
             #endif
             HandleSdpOffer( pAppContext,
                             pSignalingMessage );
@@ -1289,14 +1316,16 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
 
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
-int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransceiverFunc, void * pMediaContext )
+int AppCommon_Init( AppContext_t * pAppContext,
+                    InitTransceiverFunc_t initTransceiverFunc,
+                    void * pMediaContext )
 {
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
     SSLCredentials_t sslCreds;
     int i;
 
-    if( ( pAppContext == NULL ) || 
+    if( ( pAppContext == NULL ) ||
         ( pMediaContext == NULL ) ||
         ( initTransceiverFunc == NULL ) )
     {
@@ -1342,12 +1371,19 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
         }
     }
 
-    #if METRIC_PRINT_ENABLED
-    if( ret == 0 )
+    if( pthread_mutex_init( &pAppContext->bitrateModifiedMutex,
+                            NULL ) != 0 )
     {
-        /* Initialize metrics. */
-        Metric_Init();
+        LogError( ( "Failed to create bitrateModifiedMutex mutex" ) );
+        ret = -1;
     }
+
+    #if METRIC_PRINT_ENABLED
+        if( ret == 0 )
+        {
+            /* Initialize metrics. */
+            Metric_Init();
+        }
     #endif
 
     if( ret == 0 )
@@ -1386,21 +1422,21 @@ int AppCommon_Start( AppContext_t * pAppContext )
         #if ( JOIN_STORAGE_SESSION != 0 )
             connectInfo.enableStorageSession = 1U;
         #endif
-    
+
         connectInfo.awsConfig.pRegion = AWS_REGION;
         connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
         connectInfo.awsConfig.pService = "kinesisvideo";
         connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
-    
+
         connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
         connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
-    
+
         connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
         connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
-    
+
         connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
         connectInfo.pMessageReceivedCallbackData = pAppContext;
-    
+
         #if defined( AWS_ACCESS_KEY_ID )
             connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
             connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
@@ -1411,7 +1447,7 @@ int AppCommon_Start( AppContext_t * pAppContext )
                 connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
             #endif /* #if defined( AWS_SESSION_TOKEN ) */
         #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
-    
+
         #if defined( AWS_IOT_THING_ROLE_ALIAS )
             connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
             connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );

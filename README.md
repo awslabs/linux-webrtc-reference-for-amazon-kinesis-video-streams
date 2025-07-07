@@ -123,6 +123,13 @@ On Fedora:
 sudo dnf install gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-bad-free-devel
 ```
 
+#### GStreamer Testing Mode:
+
+To enable GStreamer testing mode for example on EC2 machines (uses `audiotestsrc` instead of `autoaudiosrc` for audio input):
+```
+cmake -S . -B build -DGSTREAMER_TESTING=ON
+make -C build
+```
 ---
 
 ### Data Channel Support
@@ -157,11 +164,11 @@ TWCC is enabled by default in this application (via `ENABLE_TWCC_SUPPORT`) value
 
 If not using the samples directly, following thing need to be done to set up Twcc:
 
-1. Set the callback that will have the business logic to modify the bitrate based on packet loss information. The callback can be set using `PeerConnection_SetSenderBandwidthEstimationCallback()` inside `PeerConnection_Init()`:
+1. Set the callback that will have the business logic to modify the bitrate based on packet loss information. The callback can be set using `PeerConnection_SetSenderBandwidthEstimationCallback()` inside `InitializeAppSession()`:
 ```c
-ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
-                                                           SampleSenderBandwidthEstimationHandler,
-                                                           &pSession->twccMetaData );
+ret = PeerConnection_SetSenderBandwidthEstimationCallback(  &pAppSession->peerConnectionSession,
+                                                            SampleSenderBandwidthEstimationHandler,
+                                                            pAppSession );
 ```
 
 ---

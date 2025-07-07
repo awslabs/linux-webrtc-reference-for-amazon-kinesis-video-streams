@@ -30,7 +30,9 @@
 struct AppMediaSourcesContext;
 typedef struct AppMediaSourcesContext AppMediaSourcesContext_t;
 
-typedef int32_t ( * InitTransceiverFunc_t )( void * pCtx, TransceiverTrackKind_t trackKind, Transceiver_t * pTranceiver );
+typedef int32_t ( * InitTransceiverFunc_t )( void * pCtx,
+                                             TransceiverTrackKind_t trackKind,
+                                             Transceiver_t * pTranceiver );
 
 typedef struct AppSession
 {
@@ -47,6 +49,9 @@ typedef struct AppSession
 
     /* Initialized signaling controller. */
     SignalingControllerContext_t * pSignalingControllerContext;
+
+    /* Reverse pointer to AppContext */
+    struct AppContext * pAppContext;
 } AppSession_t;
 
 typedef struct AppContext
@@ -67,10 +72,17 @@ typedef struct AppContext
     InitTransceiverFunc_t initTransceiverFunc;
     AppMediaSourcesContext_t * pAppMediaSourcesContext;
 
+    #if ENABLE_TWCC_SUPPORT
+        pthread_mutex_t bitrateModifiedMutex;
+        uint8_t isMediaBitrateModified;
+    #endif /* ENABLE_TWCC_SUPPORT */
+
     IceControllerNatTraversalConfig_t natTraversalConfig;
 } AppContext_t;
 
-int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransceiverFunc, void * pMediaContext );
+int AppCommon_Init( AppContext_t * pAppContext,
+                    InitTransceiverFunc_t initTransceiverFunc,
+                    void * pMediaContext );
 int AppCommon_Start( AppContext_t * pAppContext );
 
 #endif /* APP_COMMON_H */
