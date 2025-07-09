@@ -134,6 +134,7 @@ typedef struct NetworkingHttpContext
 {
     struct lws_context * pLwsContext;
     struct lws_protocols protocols[ 2 ];
+    SSLCredentials_t sslCreds;
 
     /* Current time in ISO8601 format. */
     char iso8601Time[ ISO8601_TIME_LENGTH ];

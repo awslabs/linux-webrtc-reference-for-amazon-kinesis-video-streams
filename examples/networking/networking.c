@@ -1080,20 +1080,17 @@ static int LwsHttpCallback( struct lws * pWsi,
                 LogError( ( "lws_http_client_read failed!" ) );
                 ret = -1;
             }
-            else
-            {
-                LogDebug( ( "Complete reading, close the connection." ) );
-
-                lws_set_timeout( pWsi,
-                                 PENDING_TIMEOUT_USER_OK,
-                                 LWS_TO_KILL_ASYNC );
-            }
         }
         break;
 
         case LWS_CALLBACK_COMPLETED_CLIENT_HTTP:
         {
-            LogDebug( ( "LWS_CALLBACK_COMPLETED_CLIENT_HTTP callback." ) );
+            pLwsProtocol = lws_get_protocol( pWsi );
+            pHttpContext = ( NetworkingHttpContext_t * ) pLwsProtocol->user;
+
+            LogDebug( ( "LWS_CALLBACK_COMPLETED_CLIENT_HTTP callback. Closing the connection." ) );
+
+            pHttpContext->connectionClosed = 1U;
         }
         break;
 
@@ -1478,16 +1475,53 @@ static NetworkingResult_t ConfigureLwsLogging( uint32_t logLevel )
 
 /*----------------------------------------------------------------------------*/
 
-NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
-                                        const SSLCredentials_t * pCreds )
+static NetworkingResult_t CreateHttpLwsContext( NetworkingHttpContext_t * pHttpCtx )
 {
     NetworkingResult_t ret = NETWORKING_RESULT_OK;
     struct lws_context_creation_info creationInfo;
-    const lws_retry_bo_t retryPolicy =
+    const lws_retry_bo_t httpRetryPolicy =
     {
         .secs_since_valid_ping = 10,
         .secs_since_valid_hangup = 7200,
     };
+
+    memset( &( creationInfo ), 0, sizeof( struct lws_context_creation_info ) );
+    creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+    creationInfo.port = CONTEXT_PORT_NO_LISTEN;
+    creationInfo.protocols = &( pHttpCtx->protocols[ 0 ] );
+    creationInfo.timeout_secs = 10;
+    creationInfo.gid = -1;
+    creationInfo.uid = -1;
+    creationInfo.client_ssl_ca_filepath = pHttpCtx->sslCreds.pCaCertPath;
+    creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
+    creationInfo.ka_time = 1;
+    creationInfo.ka_probes = 1;
+    creationInfo.ka_interval = 1;
+    creationInfo.retry_and_idle_policy = &( httpRetryPolicy );
+    creationInfo.fd_limit_per_thread = 3;
+    creationInfo.alpn = "http/1.1";
+
+    if( ( pHttpCtx->sslCreds.pDeviceCertPath != NULL ) && ( pHttpCtx->sslCreds.pDeviceKeyPath != NULL ) )
+    {
+        creationInfo.client_ssl_cert_filepath = pHttpCtx->sslCreds.pDeviceCertPath;
+        creationInfo.client_ssl_private_key_filepath = pHttpCtx->sslCreds.pDeviceKeyPath;
+    }
+
+    pHttpCtx->pLwsContext = lws_create_context( &( creationInfo ) );
+
+    if( pHttpCtx->pLwsContext == NULL )
+    {
+        LogError( ( "lws_create_context failed!" ) );
+        ret = NETWORKING_RESULT_FAIL;
+    }
+
+    return ret;
+}
+
+NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
+                                        const SSLCredentials_t * pCreds )
+{
+    NetworkingResult_t ret = NETWORKING_RESULT_OK;
 
     if( ( pHttpCtx == NULL ) || ( pCreds == NULL ) )
     {
@@ -1503,38 +1537,13 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
         pHttpCtx->protocols[ 0 ].user = pHttpCtx;
         pHttpCtx->protocols[ 1 ].callback = NULL; /* End marker. */
 
-        memset( &( creationInfo ), 0, sizeof( struct lws_context_creation_info ) );
-        creationInfo.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-        creationInfo.port = CONTEXT_PORT_NO_LISTEN;
-        creationInfo.protocols = &( pHttpCtx->protocols[ 0 ] );
-        creationInfo.timeout_secs = 10;
-        creationInfo.gid = -1;
-        creationInfo.uid = -1;
-        creationInfo.client_ssl_ca_filepath = pCreds->pCaCertPath;
-        creationInfo.client_ssl_cipher_list = "HIGH:!PSK:!RSP:!eNULL:!aNULL:!RC4:!MD5:!DES:!3DES:!aDH:!kDH:!DSS";
-        creationInfo.ka_time = 1;
-        creationInfo.ka_probes = 1;
-        creationInfo.ka_interval = 1;
-        creationInfo.retry_and_idle_policy = &( retryPolicy );
-        creationInfo.fd_limit_per_thread = 3;
-        creationInfo.alpn = "http/1.1";
+        memset( &( pHttpCtx->sslCreds ), 0, sizeof( SSLCredentials_t ) );
+        pHttpCtx->sslCreds.pCaCertPath = pCreds->pCaCertPath;
+        pHttpCtx->sslCreds.pDeviceCertPath = pCreds->pDeviceCertPath;
+        pHttpCtx->sslCreds.pDeviceKeyPath = pCreds->pDeviceKeyPath;
 
-        if( ( pCreds->pDeviceCertPath != NULL ) && ( pCreds->pDeviceKeyPath != NULL ) )
-        {
-            creationInfo.client_ssl_cert_filepath = pCreds->pDeviceCertPath;
-            creationInfo.client_ssl_private_key_filepath = pCreds->pDeviceKeyPath;
-        }
-
-         /* Configure libwebsockets logging based on application log level */
-         ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
-
-        pHttpCtx->pLwsContext = lws_create_context( &( creationInfo ) );
-
-        if( pHttpCtx->pLwsContext == NULL )
-        {
-            LogError( ( "lws_create_context failed!" ) );
-            ret = NETWORKING_RESULT_FAIL;
-        }
+        /* Configure libwebsockets logging based on application log level */
+        ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
     }
 
     return ret;
@@ -1603,6 +1612,11 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         ( pResponse == NULL ) )
     {
         ret = NETWORKING_RESULT_BAD_PARAM;
+    }
+
+    if( ret == NETWORKING_RESULT_OK )
+    {
+        ret = CreateHttpLwsContext( pHttpCtx );
     }
 
     /* Fill up required headers. */
@@ -1749,6 +1763,8 @@ NetworkingResult_t Networking_HttpSend( NetworkingHttpContext_t * pHttpCtx,
         {
             ( void ) lws_service( pHttpCtx->pLwsContext, 0 );
         }
+
+        lws_context_destroy( pHttpCtx->pLwsContext );
 
         if( pHttpCtx->httpStatusCode != 200 )
         {
