@@ -358,7 +358,8 @@ static int32_t InitPipeline( GstMediaSourcesContext_t * pCtx )
                                                          &pError );
         g_free( pPipeline_desc );
 
-        if( pCtx->videoContext.pPipeline == NULL )
+        if( ( pCtx->videoContext.pPipeline == NULL ) ||
+            ( pError != NULL ) )
         {
             LogError( ( "Failed to create pPipeline: %s", pError->message ) );
             g_error_free( pError );
