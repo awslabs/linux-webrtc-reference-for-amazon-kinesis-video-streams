@@ -121,10 +121,10 @@ endif()
 
 file(
   GLOB
-  WEBRTC_APPLICATION_MASTER_MEDIA_SOURCE_FILES
+  WEBRTC_APPLICATION_MEDIA_SOURCE_FILES
   "examples/app_media_source/*.c" )
 
-set( WEBRTC_APPLICATION_MASTER_MEDIA_INCLUDE_FILES
+set( WEBRTC_APPLICATION_MEDIA_INCLUDE_FILES
      "examples/app_media_source" )
 
 file(
@@ -186,7 +186,10 @@ if(BUILD_USRSCTP_LIBRARY)
 endif()
 
 ### Master Application
-include( MasterExample.cmake )
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/MasterExample.cmake )
 
 ### GStreamer Master Application
-include( GstMasterExample.cmake )
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/GstMasterExample.cmake )
+
+### Master Application
+include( ${CMAKE_ROOT_DIRECTORY}/CMake/ViewerExample.cmake )
