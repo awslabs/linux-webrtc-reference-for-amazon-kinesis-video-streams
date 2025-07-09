@@ -467,6 +467,10 @@ typedef struct PeerConnectionSession
     uint64_t inactiveConnectionTimeoutMs;
 
     #if ENABLE_TWCC_SUPPORT
+        /* Callback for bandwidth estimation updates */
+        OnBandwidthEstimationCallback_t onBandwidthEstimationCallback;
+        void * pOnBandwidthEstimationCallbackContext;
+        
         PeerConnectionTwccMetaData_t twccMetaData;
     #endif
 
@@ -518,10 +522,6 @@ typedef struct PeerConnectionContext
     #if ENABLE_TWCC_SUPPORT
         RtcpTwccManager_t rtcpTwccManager;
         TwccPacketInfo_t twccPacketInfo[ PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY ];
-
-        /* Callback for bandwidth estimation updates */
-        OnBandwidthEstimationCallback_t onBandwidthEstimationCallback;
-        void * pOnBandwidthEstimationCallbackContext;
     #endif
 } PeerConnectionContext_t;
 

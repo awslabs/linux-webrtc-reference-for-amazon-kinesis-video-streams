@@ -719,20 +719,20 @@ static int32_t InitializeAppSession( AppContext_t * pAppContext,
         ret = -1;
     }
 
-    #if ENABLE_TWCC_SUPPORT
-        if( ret == 0 )
-        {
-            /* In case you want to set a different callback based on your business logic, you could replace SampleSenderBandwidthEstimationHandler() with your Handler. */
-            peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pAppSession->peerConnectionSession,
-                                                                                        SampleSenderBandwidthEstimationHandler,
-                                                                                        pAppSession );
-            if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-            {
-                LogError( ( "Fail to set Sender Bandwidth Estimation Callback, result: %d", peerConnectionResult ) );
-                ret = -1;
-            }
-        }
-    #endif
+    // #if ENABLE_TWCC_SUPPORT
+    //     if( ret == 0 )
+    //     {
+    //         /* In case you want to set a different callback based on your business logic, you could replace SampleSenderBandwidthEstimationHandler() with your Handler. */
+    //         peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pAppSession->peerConnectionSession,
+    //                                                                                     SampleSenderBandwidthEstimationHandler,
+    //                                                                                     pAppSession );
+    //         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+    //         {
+    //             LogError( ( "Fail to set Sender Bandwidth Estimation Callback, result: %d", peerConnectionResult ) );
+    //             ret = -1;
+    //         }
+    //     }
+    // #endif
 
     if( ret == 0 )
     {
@@ -1040,6 +1040,21 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
             LogError( ( "Send signaling message fail, result: %d", signalingControllerReturn ) );
         }
     }
+
+    #if ENABLE_TWCC_SUPPORT
+        if( skipProcess == 0 )
+        {
+            /* In case you want to set a different callback based on your business logic, you could replace SampleSenderBandwidthEstimationHandler() with your Handler. */
+            peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pAppSession->peerConnectionSession,
+                                                                                        SampleSenderBandwidthEstimationHandler,
+                                                                                        pAppSession );
+            if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+            {
+                LogError( ( "Fail to set Sender Bandwidth Estimation Callback, result: %d", peerConnectionResult ) );
+                skipProcess = 1;
+            }
+        }
+    #endif
 }
 
 static void HandleRemoteCandidate( AppContext_t * pAppContext,
