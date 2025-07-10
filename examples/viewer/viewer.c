@@ -165,7 +165,13 @@ int main( void )
     if( ret == 0 )
     {
         /* Launch application with current thread serving as Signaling Controller. */
-        ret = AppCommon_Start( &appContext );
+        ret = AppCommon_StartSignalingController( &appContext );
+    }
+
+    if( ret == 0 )
+    {
+        /* Launch application with current thread serving as Signaling Controller. */
+        AppCommon_WaitSignalingControllerStop( &appContext );
     }
 
     return 0;

@@ -147,7 +147,79 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                                               uint32_t pMessageLen );
     #endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
-                                          
+
+static void * SignalingController_Task( void * pParameter )
+{
+    int ret = 0;
+    AppContext_t * pAppContext = ( AppContext_t * ) pParameter;
+    SignalingControllerResult_t signalingControllerReturn;
+    SignalingControllerConnectInfo_t connectInfo;
+
+    if( pAppContext == NULL )
+    {
+        LogError( ( "Invalid parameter, pAppContext: %p", pAppContext ) );
+        ret = -1;
+    }
+
+    if( ret == 0 )
+    {
+        memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
+    
+        #if ( JOIN_STORAGE_SESSION != 0 )
+            connectInfo.enableStorageSession = 1U;
+        #endif
+    
+        connectInfo.awsConfig.pRegion = AWS_REGION;
+        connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
+        connectInfo.awsConfig.pService = "kinesisvideo";
+        connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
+    
+        connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
+        connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
+    
+        connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
+        connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
+    
+        connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
+        connectInfo.pMessageReceivedCallbackData = pAppContext;
+    
+        #if defined( AWS_ACCESS_KEY_ID )
+            connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
+            connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
+            connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+            connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
+            #if defined( AWS_SESSION_TOKEN )
+                connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
+                connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
+            #endif /* #if defined( AWS_SESSION_TOKEN ) */
+        #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
+    
+        #if defined( AWS_IOT_THING_ROLE_ALIAS )
+            connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
+            connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
+            connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
+            connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
+            connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
+            connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
+        #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
+
+        /* This should never return unless exception happens. */
+        signalingControllerReturn = SignalingController_StartListening( &( pAppContext->signalingControllerContext ),
+                                                                        &connectInfo );
+        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to keep processing signaling controller." ) );
+            ret = -1;
+        }
+    }
+
+    #if ENABLE_SCTP_DATA_CHANNEL
+        /* TODO_SCTP: Move to a common shutdown function? */
+        Sctp_DeInit();
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
+
+    return NULL;
+}
 
 static int32_t StartPeerConnectionSession( AppContext_t * pAppContext,
                                            AppSession_t * pAppSession,
@@ -1367,11 +1439,9 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
     return ret;
 }
 
-int AppCommon_Start( AppContext_t * pAppContext )
+int AppCommon_StartSignalingController( AppContext_t * pAppContext  )
 {
     int ret = 0;
-    SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerConnectInfo_t connectInfo;
 
     if( pAppContext == NULL )
     {
@@ -1381,60 +1451,27 @@ int AppCommon_Start( AppContext_t * pAppContext )
 
     if( ret == 0 )
     {
-        memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
-    
-        #if ( JOIN_STORAGE_SESSION != 0 )
-            connectInfo.enableStorageSession = 1U;
-        #endif
-    
-        connectInfo.awsConfig.pRegion = AWS_REGION;
-        connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
-        connectInfo.awsConfig.pService = "kinesisvideo";
-        connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
-    
-        connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
-        connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
-    
-        connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
-        connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
-    
-        connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
-        connectInfo.pMessageReceivedCallbackData = pAppContext;
-    
-        #if defined( AWS_ACCESS_KEY_ID )
-            connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
-            connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
-            connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-            connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
-            #if defined( AWS_SESSION_TOKEN )
-                connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
-                connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
-            #endif /* #if defined( AWS_SESSION_TOKEN ) */
-        #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
-    
-        #if defined( AWS_IOT_THING_ROLE_ALIAS )
-            connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
-            connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
-            connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
-            connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
-            connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
-            connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
-        #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
-
-        /* This should never return unless exception happens. */
-        signalingControllerReturn = SignalingController_StartListening( &( pAppContext->signalingControllerContext ),
-                                                                        &connectInfo );
-        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
-        {
-            LogError( ( "Fail to keep processing signaling controller." ) );
-            ret = -1;
-        }
+        pthread_create( &pAppContext->signalingControllerTid,
+                        NULL,
+                        SignalingController_Task,
+                        pAppContext );
     }
 
-    #if ENABLE_SCTP_DATA_CHANNEL
-        /* TODO_SCTP: Move to a common shutdown function? */
-        Sctp_DeInit();
-    #endif /* ENABLE_SCTP_DATA_CHANNEL */
-
     return ret;
+}
+
+void AppCommon_WaitSignalingControllerStop( AppContext_t * pAppContext )
+{
+    uint8_t skipProcess = 0U;
+
+    if( pAppContext == NULL )
+    {
+        LogError( ( "Invalid parameter, pAppContext: %p", pAppContext ) );
+        skipProcess = 1;
+    }
+
+    if( skipProcess == 0 )
+    {
+        pthread_join( pAppContext->signalingControllerTid, NULL );
+    }
 }

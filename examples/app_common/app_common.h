@@ -18,6 +18,7 @@
 #define APP_COMMON_H
 
 #include <stdio.h>
+#include <pthread.h>
 #include "sdp_controller.h"
 #include "signaling_controller.h"
 #include "peer_connection.h"
@@ -53,6 +54,7 @@ typedef struct AppContext
 {
     /* Signaling controller. */
     SignalingControllerContext_t signalingControllerContext;
+    pthread_t signalingControllerTid;
 
     /* SDP buffers. */
     char sdpConstructedBuffer[ PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH ];
@@ -71,6 +73,7 @@ typedef struct AppContext
 } AppContext_t;
 
 int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransceiverFunc, void * pMediaContext );
-int AppCommon_Start( AppContext_t * pAppContext );
+int AppCommon_StartSignalingController( AppContext_t * pAppContext  );
+void AppCommon_WaitSignalingControllerStop( AppContext_t * pAppContext );
 
 #endif /* APP_COMMON_H */
