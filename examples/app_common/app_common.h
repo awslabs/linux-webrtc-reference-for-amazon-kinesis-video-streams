@@ -55,6 +55,9 @@ typedef struct AppContext
     /* Signaling controller. */
     SignalingControllerContext_t signalingControllerContext;
     pthread_t signalingControllerTid;
+    char signalingControllerClientId[ SIGNALING_CONTROLLER_REMOTE_CLIENT_ID_MAX_LENGTH ];
+    size_t signalingControllerClientIdLength;
+    SignalingRole_t signalingControllerRole;
 
     /* SDP buffers. */
     char sdpConstructedBuffer[ PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH ];
@@ -73,7 +76,7 @@ typedef struct AppContext
 } AppContext_t;
 
 int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransceiverFunc, void * pMediaContext );
-int AppCommon_StartSignalingController( AppContext_t * pAppContext  );
+int AppCommon_StartSignalingController( AppContext_t * pAppContext );
 void AppCommon_WaitSignalingControllerStop( AppContext_t * pAppContext );
 
 #endif /* APP_COMMON_H */

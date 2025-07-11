@@ -183,6 +183,10 @@ static void * SignalingController_Task( void * pParameter )
         connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
         connectInfo.pMessageReceivedCallbackData = pAppContext;
     
+        connectInfo.role = pAppContext->signalingControllerRole;
+        connectInfo.pClientId = pAppContext->signalingControllerClientId;
+        connectInfo.clientIdLength = pAppContext->signalingControllerClientIdLength;
+    
         #if defined( AWS_ACCESS_KEY_ID )
             connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
             connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
@@ -1439,7 +1443,7 @@ int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransc
     return ret;
 }
 
-int AppCommon_StartSignalingController( AppContext_t * pAppContext  )
+int AppCommon_StartSignalingController( AppContext_t * pAppContext )
 {
     int ret = 0;
 

@@ -37,6 +37,16 @@
 #define SIGNALING_CONTROLLER_ICE_SERVER_PASSWORD_BUFFER_LENGTH      ( 256 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_CONFIG_COUNT            ( 5 )
 #define SIGNALING_CONTROLLER_ICE_CONFIG_REFRESH_GRACE_PERIOD_SEC    ( 30 )
+#define SIGNALING_CONTROLLER_REMOTE_CLIENT_ID_MAX_LENGTH            ( 256 )
+
+#define SIGNALING_CONTROLLER_MASTER_CLIENT_ID                       "ProducerMaster"
+#define SIGNALING_CONTROLLER_MASTER_CLIENT_ID_LENGTH                ( 14 )
+
+/* Viewer client ID is used to connect with WSS server. Remember to follow the rule in
+ * https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/ConnectAsViewer.html
+ * to NOT have prefix "AWS_" */
+#define SIGNALING_CONTROLLER_VIEWER_CLIENT_ID_PREFIX                "ConsumerViewer_"
+#define SIGNALING_CONTROLLER_VIEWER_CLIENT_ID_PREFIX_LENGTH         ( 15 )
 
 /*----------------------------------------------------------------------------*/
 
@@ -81,9 +91,12 @@ typedef struct SignalingControllerConnectInfo
     size_t userAgentNameLength;
     SignalingMessageReceivedCallback_t messageReceivedCallback;
     void * pMessageReceivedCallbackData;
+    SignalingRole_t role;
 
     /* Configurations. */
     uint8_t enableStorageSession;
+    char *pClientId;
+    size_t clientIdLength;
 } SignalingControllerConnectInfo_t;
 
 typedef struct IceServerUri
@@ -129,6 +142,10 @@ typedef struct SignalingControllerContext
 
     const char * pUserAgentName;
     size_t userAgentNameLength;
+
+    const char * pClientId;
+    size_t clientIdLength;
+    SignalingRole_t role;
 
     AwsConfig_t awsConfig;
 

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include "demo_config.h"
 #include "app_common.h"
 #include "app_media_source.h"
@@ -154,12 +155,33 @@ static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
 int main( void )
 {
     int ret = 0;
+    int clientIdLength = 0;
+    uint32_t randomClientIdPostfix = 0;
 
     ret = AppCommon_Init( &appContext, InitTransceiver, &appMediaSourceContext );
 
     if( ret == 0 )
     {
         ret = InitializeAppMediaSource( &appContext, &appMediaSourceContext );
+    }
+
+    if( ret == 0 )
+    {
+        /* Configure signaling controller with client ID and role type. */
+        randomClientIdPostfix = rand() & 0xFFFFFFFFU;
+        clientIdLength = snprintf( &( appContext.signalingControllerClientId[ 0 ] ),
+                                   sizeof( appContext.signalingControllerClientId ),
+                                   "%s%u",
+                                   SIGNALING_CONTROLLER_VIEWER_CLIENT_ID_PREFIX,
+                                   randomClientIdPostfix );
+        appContext.signalingControllerClientIdLength = clientIdLength;
+        appContext.signalingControllerRole = SIGNALING_ROLE_VIEWER;
+
+        if( clientIdLength < 0 )
+        {
+            LogError( ( "snprintf return failure, errno: %d", errno ) );
+            ret = -1;
+        }
     }
 
     if( ret == 0 )

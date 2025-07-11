@@ -435,7 +435,7 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
     {
         endpointRequestInfo.protocols |= SIGNALING_PROTOCOL_WEBRTC;
     }
-    endpointRequestInfo.role = SIGNALING_ROLE_MASTER;
+    endpointRequestInfo.role = pCtx->role;
 
     signalingResult = Signaling_ConstructGetSignalingChannelEndpointRequest( &( awsRegion ),
                                                                              &( endpointRequestInfo ),
@@ -618,8 +618,8 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
 
     getIceServerConfigRequestInfo.channelArn.pChannelArn = &( pCtx->signalingChannelArn[ 0 ] );
     getIceServerConfigRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
-    getIceServerConfigRequestInfo.pClientId = "ProducerMaster";
-    getIceServerConfigRequestInfo.clientIdLength = strlen( "ProducerMaster" );
+    getIceServerConfigRequestInfo.pClientId = pCtx->pClientId;
+    getIceServerConfigRequestInfo.clientIdLength = pCtx->clientIdLength;
 
     signalingResult = Signaling_ConstructGetIceServerConfigRequest( &( signalingChannelHttpEndpoint ),
                                                                     &( getIceServerConfigRequestInfo ),
@@ -776,7 +776,9 @@ static SignalingControllerResult_t ConnectToWssEndpoint( SignalingControllerCont
     memset( &( wssEndpointRequestInfo ), 0, sizeof( ConnectWssEndpointRequestInfo_t ) );
     wssEndpointRequestInfo.channelArn.pChannelArn = pCtx->signalingChannelArn;
     wssEndpointRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
-    wssEndpointRequestInfo.role = SIGNALING_ROLE_MASTER;
+    wssEndpointRequestInfo.role = pCtx->role;
+    wssEndpointRequestInfo.pClientId = pCtx->pClientId;
+    wssEndpointRequestInfo.clientIdLength = pCtx->clientIdLength;
 
     signalingResult = Signaling_ConstructConnectWssEndpointRequest( &( wssEndpoint ),
                                                                     &( wssEndpointRequestInfo ),
@@ -834,6 +836,10 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
 
     pCtx->messageReceivedCallback = pConnectInfo->messageReceivedCallback;
     pCtx->pMessageReceivedCallbackData = pConnectInfo->pMessageReceivedCallbackData;
+
+    pCtx->pClientId = pConnectInfo->pClientId;
+    pCtx->clientIdLength = pConnectInfo->clientIdLength;
+    pCtx->role = pConnectInfo->role;
 
     if( AreCredentialsExpired( pCtx, pConnectInfo ) != 0U )
     {
@@ -1049,6 +1055,19 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
     if( ( pCtx == NULL ) || ( pConnectInfo == NULL ) )
     {
         ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
+    }
+    else if( ( pConnectInfo->role == SIGNALING_ROLE_VIEWER ) &&
+             ( pConnectInfo->enableStorageSession != 0U ) )
+    {
+        /* Viewer doesn't support Join Storage Session.
+         * Refer to https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/getting-started-ingestion.html
+         * for more detail. */
+        LogError( ( "Viewer doesn't support Join Storage Session." ) );
+        ret = -1;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
