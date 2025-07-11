@@ -472,10 +472,11 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                                  const AwsConfig_t * pAwsConfig )
 {
     int ret = 0, snprintfRetVal;
-    const char * pPath, * pQueryStart, * pUrlEnd, * pEqualSign, * pChannelArnValue;
+    const char * pPath = NULL, * pQueryStart = NULL, * pUrlEnd = NULL;
+    const char * pEqualSign = NULL, * pAmpersand = NULL, * pChannelArnValue = NULL, * pClientId = NULL;
     char * pSignature;
     size_t pathLength, queryLength, remainingLength, writtenLength, signatureLength;
-    size_t channelArnValueLength, encodedLength, canonicalQueryStringLength, canonicalHeadersLength;
+    size_t channelArnValueLength, encodedLength, canonicalQueryStringLength, canonicalHeadersLength, clientIdlength;
     SigV4HttpParameters_t sigv4HttpParams;
     SigV4Parameters_t sigv4Params;
     SigV4Credentials_t sigv4Credentials;
@@ -542,11 +543,28 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
         if( ret == 0 )
         {
             pEqualSign = strchr( pQueryStart, '=' );
+            pAmpersand = strchr( pQueryStart, '&' );
 
             if( pEqualSign != NULL )
             {
-                pChannelArnValue = pEqualSign + 1;
-                channelArnValueLength = pQueryStart + queryLength - pChannelArnValue;
+                /* There are two possibilities in URL:
+                 * 1. Master: X-Amz-ChannelARN=${ARN} follow by nothing.
+                 * 2. Viewer: X-Amz-ChannelARN=${ARN}&X-Amz-ClientId=${ID} */
+                if( pAmpersand == NULL )
+                {
+                    /* Master case */
+                    pChannelArnValue = pEqualSign + 1;
+                    channelArnValueLength = pQueryStart + queryLength - pChannelArnValue;
+                    clientIdlength = 0;
+                }
+                else
+                {
+                    /* Viewer case */
+                    pChannelArnValue = pEqualSign + 1;
+                    channelArnValueLength = pAmpersand - pChannelArnValue;
+                    pClientId = ( pAmpersand + 1 );
+                    clientIdlength = pQueryStart + queryLength - pClientId;
+                }
             }
             else
             {
@@ -589,6 +607,28 @@ static int SignWebsocketRequest( NetworkingWebsocketContext_t * pWebsocketCtx,
                 LogError( ( "Failed to write X-Amz-ChannelARN value!" ) );
                 ret = -1;
             }
+        }
+    }
+
+    /* Write X-Amz-ClientId for viewer when exist. */
+    if( ( ret == 0 ) &&
+        ( pClientId != NULL ) )
+    {
+        /* pClientId contains "X-Amz-ClientId=" */
+        snprintfRetVal = snprintf( &( pWebsocketCtx->sigV4Metadata[ writtenLength ] ),
+                                   remainingLength,
+                                   "&%.*s",
+                                   ( int ) clientIdlength,
+                                   pClientId );
+        if( ( snprintfRetVal < 0 ) || ( snprintfRetVal == remainingLength ) )
+        {
+            LogError( ( "Failed to write X-Amz-ClientId key!" ) );
+            ret = -1;
+        }
+        else
+        {
+            writtenLength += snprintfRetVal;
+            remainingLength -= snprintfRetVal;
         }
     }
 
@@ -1232,7 +1272,9 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 
             pWebsocketContext->connectionEstablished = 0;
             pWebsocketContext->connectionClosed = 1;
-            LogError( ( "LWS_CALLBACK_CLIENT_CONNECTION_ERROR callback!" ) );
+            LogError( ( "LWS_CALLBACK_CLIENT_CONNECTION_ERROR callback! Error info: %.*s",
+                        ( int ) dataLength,
+                        ( const char * ) (pData == NULL? "NA":pData) ) );
         }
         break;
 
