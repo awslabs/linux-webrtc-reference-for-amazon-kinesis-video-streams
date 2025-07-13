@@ -53,6 +53,11 @@ if(GST_FOUND)
                                 ${WEBRTC_APPLICATION_GST_MASTER_INCLUDE_DIRS}
                                 ${WEBRTC_APPLICATION_GST_MASTER_MEDIA_INCLUDE_FILES})
 
+    ## Add definition for application to differentiate the type of demo
+    target_compile_definitions( WebRTCLinuxApplicationGstMaster
+                                PUBLIC
+                                WEBRTC_APPLICATION_DEMO_GSTMASTER )
+
     ## Set signaling include directories
     target_compile_definitions( WebRTCLinuxApplicationGstMaster
                                 PUBLIC
