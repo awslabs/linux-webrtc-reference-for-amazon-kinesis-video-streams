@@ -105,10 +105,12 @@ static int32_t InitTransceiver( void * pMediaCtx,
     {
         int32_t ret = 0;
         AppContext_t * pAppContext = NULL;
-        uint8_t isLocked = 0;
+        uint8_t isBitrateModifiedLocked = 0;
+        uint8_t isTwccLocked = 0;
         uint8_t shouldModify = 0;
         uint32_t tempBitrate;
         uint32_t minBitrate = UINT32_MAX;
+        uint8_t isVideoEncoder = 0;
 
         if( ( pCustomContext == NULL ) ||
             ( pEncoder == NULL ) )
@@ -122,9 +124,16 @@ static int32_t InitTransceiver( void * pMediaCtx,
         {
             pAppContext = ( AppContext_t * ) pCustomContext;
 
+            /* Determine encoder type by checking element name */
+            const gchar * elementName = gst_element_get_name( pEncoder );
+            if( g_str_has_prefix( elementName, "videoEncoder" ) )
+            {
+                isVideoEncoder = 1;
+            }
+
             if( pthread_mutex_lock( &( pAppContext->bitrateModifiedMutex ) ) == 0 )
             {
-                isLocked = 1;
+                isBitrateModifiedLocked = 1;
             }
             else
             {
@@ -134,7 +143,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
 
         }
 
-        if( ( ret == 0 ) && ( isLocked == 1 ) )
+        if( ( ret == 0 ) && ( isBitrateModifiedLocked == 1 ) )
         {
             shouldModify = pAppContext->isMediaBitrateModified;
             if( shouldModify == 1 )
@@ -143,10 +152,9 @@ static int32_t InitTransceiver( void * pMediaCtx,
             }
         }
 
-        if( isLocked != 0 )
+        if( isBitrateModifiedLocked != 0 )
         {
             pthread_mutex_unlock( &( pAppContext->bitrateModifiedMutex ) );
-            isLocked = 0;
 
         }
 
@@ -161,7 +169,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
 
                     if( pthread_mutex_lock( &( pAppContext->appSessions[i].peerConnectionSession.twccMetaData.twccBitrateMutex ) ) == 0 )
                     {
-                        isLocked = 1;
+                        isTwccLocked = 1;
                     }
                     else
                     {
@@ -169,12 +177,19 @@ static int32_t InitTransceiver( void * pMediaCtx,
                         ret = -1;
                     }
 
-                    sessionBitrate = pAppContext->appSessions[i].peerConnectionSession.twccMetaData.modifiedVideoBitrateKbps;
+                    if( isVideoEncoder )
+                    {
+                        sessionBitrate = pAppContext->appSessions[i].peerConnectionSession.twccMetaData.modifiedVideoBitrateKbps;
+                    }
+                    else
+                    {
+                        sessionBitrate = pAppContext->appSessions[i].peerConnectionSession.twccMetaData.modifiedAudioBitrateKbps;
+                    }
 
-                    if( isLocked != 0 )
+                    if( isTwccLocked != 0 )
                     {
                         pthread_mutex_unlock( &( pAppContext->appSessions[i].peerConnectionSession.twccMetaData.twccBitrateMutex ) );
-                        isLocked = 0;
+                        isTwccLocked = 0;
                     }
 
                     if( ( sessionBitrate > 0 ) && ( sessionBitrate < minBitrate ) )
@@ -192,14 +207,16 @@ static int32_t InitTransceiver( void * pMediaCtx,
                               &tempBitrate,
                               NULL );
 
-                LogInfo( ( "Current encoder bitrate: %u kbps", tempBitrate ) );
+                LogInfo( ( "Current %s encoder bitrate: %u kbps", 
+                       isVideoEncoder ? "video" : "audio", tempBitrate ) );
 
                 g_object_set( G_OBJECT( pEncoder ),
                               "bitrate",
                               minBitrate,
                               NULL );
 
-                LogInfo( ( "Modified encoder bitrate to %u kbps", minBitrate ) );
+                LogInfo( ( "Modified %s encoder bitrate to %u kbps", 
+                       isVideoEncoder ? "video" : "audio", minBitrate ) );
             }
         }
 

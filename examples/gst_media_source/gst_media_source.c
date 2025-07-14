@@ -63,6 +63,15 @@ static int32_t OnNewVideoSample( GstElement * sink,
 
     if( ret == 0 )
     {
+        #if ENABLE_TWCC_SUPPORT
+            if( pVideoContext->pSourcesContext->onBitrateModifier )
+            {
+                pVideoContext->pSourcesContext->onBitrateModifier(
+                    pVideoContext->pSourcesContext->pBitrateModifierCustomContext,
+                    pVideoContext->pEncoder );
+            }
+        #endif /* ENABLE_TWCC_SUPPORT */
+
         pSample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
         if( NULL == pSample )
         {
@@ -86,16 +95,6 @@ static int32_t OnNewVideoSample( GstElement * sink,
 
             if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
             {
-
-                #if ENABLE_TWCC_SUPPORT
-                    if( pVideoContext->pSourcesContext->onBitrateModifier )
-                    {
-                        pVideoContext->pSourcesContext->onBitrateModifier(
-                            pVideoContext->pSourcesContext->pBitrateModifierCustomContext,
-                            pVideoContext->pEncoder );
-                    }
-                #endif /* ENABLE_TWCC_SUPPORT */
-
                 LogVerbose( ( "Sending video frame: size=%u, ts=%lu",
                               frame.size, frame.timestampUs ) );
                 ( void )pVideoContext->pSourcesContext->onMediaSinkHookFunc(
@@ -173,6 +172,15 @@ static int32_t OnNewAudioSample( GstElement * sink,
 
     if( ret == 0 )
     {
+        #if ENABLE_TWCC_SUPPORT
+            if( pAudioContext->pSourcesContext->onBitrateModifier )
+            {
+                pAudioContext->pSourcesContext->onBitrateModifier(
+                    pAudioContext->pSourcesContext->pBitrateModifierCustomContext,
+                    pAudioContext->pEncoder );
+            }
+        #endif /* ENABLE_TWCC_SUPPORT */
+
         pSample = gst_app_sink_pull_sample( GST_APP_SINK( sink ) );
         if( pSample == NULL )
         {
@@ -196,15 +204,6 @@ static int32_t OnNewAudioSample( GstElement * sink,
 
             if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
             {
-                #if ENABLE_TWCC_SUPPORT
-                    if( pAudioContext->pSourcesContext->onBitrateModifier )
-                    {
-                        pAudioContext->pSourcesContext->onBitrateModifier(
-                            pAudioContext->pSourcesContext->pBitrateModifierCustomContext,
-                            pAudioContext->pEncoder );
-                    }
-                #endif /* ENABLE_TWCC_SUPPORT */
-
                 LogVerbose( ( "Sending audio frame: size=%u, ts=%lu",
                               frame.size, frame.timestampUs ) );
                 ( void )pAudioContext->pSourcesContext->onMediaSinkHookFunc(

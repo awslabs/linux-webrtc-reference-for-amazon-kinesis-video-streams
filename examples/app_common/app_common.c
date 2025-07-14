@@ -591,7 +591,8 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
         uint64_t currentTimeUs = 0;
         uint64_t timeDifference = 0;
         uint32_t lostPacketCount = 0;
-        uint8_t isLocked = 0;
+        uint8_t isBitrateModifiedLocked = 0;
+        uint8_t isTwccLocked = 0;
         double percentLost = 0.0;
         int i;
 
@@ -628,7 +629,7 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
         {
             if( pthread_mutex_lock( &( pAppSession->peerConnectionSession.twccMetaData.twccBitrateMutex ) ) == 0 )
             {
-                isLocked = 1;
+                isTwccLocked = 1;
             }
             else
             {
@@ -637,9 +638,17 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
             }
         }
 
-        if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( isLocked == 1 ) )
+        if( ( ret == PEER_CONNECTION_RESULT_OK ) && ( isTwccLocked == 1 ) )
         {
-            pthread_mutex_lock( &( pAppContext->bitrateModifiedMutex ) );
+            if( pthread_mutex_lock( &( pAppContext->bitrateModifiedMutex ) ) == 0 )
+            {
+                isBitrateModifiedLocked = 1;
+            }
+            else
+            {
+                LogError( ( "Failed to lock Bitrate Modifier mutex." ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_TAKE_BITRATE_MOD_MUTEX;
+            }
         }
 
         if( ret == PEER_CONNECTION_RESULT_OK )
@@ -682,13 +691,16 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
             pAppContext->isMediaBitrateModified = 1;
         }
 
-        if( isLocked != 0 )
+        if( isBitrateModifiedLocked )
         {
             pthread_mutex_unlock( &( pAppContext->bitrateModifiedMutex ) );
-
-            pthread_mutex_unlock( &( pAppSession->peerConnectionSession.twccMetaData.twccBitrateMutex ) );
-
         }
+
+        if( isTwccLocked )
+        {
+            pthread_mutex_unlock( &( pAppSession->peerConnectionSession.twccMetaData.twccBitrateMutex ) );
+        }
+        
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             pAppSession->peerConnectionSession.twccMetaData.lastAdjustmentTimeUs = currentTimeUs;
