@@ -657,11 +657,11 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
             {
                 if( pAppSession->transceivers[ i ].trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
                 {
-                    videoBitrate = pAppSession->transceivers[ i ].rollingbufferBitRate;
+                    videoBitrate = ( pAppSession->transceivers[ i ].rollingbufferBitRate ) / 1000; // Convert to kbps
                 }
                 else if( pAppSession->transceivers[ i ].trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
                 {
-                    audioBitrate = pAppSession->transceivers[ i ].rollingbufferBitRate;
+                    audioBitrate = ( pAppSession->transceivers[ i ].rollingbufferBitRate ) / 1000; // Convert to kbps
                 }
                 else
                 {
@@ -730,21 +730,6 @@ static int32_t InitializeAppSession( AppContext_t * pAppContext,
         LogWarn( ( "PeerConnection_Init fail, result: %d", peerConnectionResult ) );
         ret = -1;
     }
-
-    // #if ENABLE_TWCC_SUPPORT
-    //     if( ret == 0 )
-    //     {
-    //         /* In case you want to set a different callback based on your business logic, you could replace SampleSenderBandwidthEstimationHandler() with your Handler. */
-    //         peerConnectionResult = PeerConnection_SetSenderBandwidthEstimationCallback( &pAppSession->peerConnectionSession,
-    //                                                                                     SampleSenderBandwidthEstimationHandler,
-    //                                                                                     pAppSession );
-    //         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
-    //         {
-    //             LogError( ( "Fail to set Sender Bandwidth Estimation Callback, result: %d", peerConnectionResult ) );
-    //             ret = -1;
-    //         }
-    //     }
-    // #endif
 
     if( ret == 0 )
     {
@@ -1398,12 +1383,14 @@ int AppCommon_Init( AppContext_t * pAppContext,
         }
     }
 
-    if( pthread_mutex_init( &pAppContext->bitrateModifiedMutex,
-                            NULL ) != 0 )
-    {
-        LogError( ( "Failed to create bitrateModifiedMutex mutex" ) );
-        ret = -1;
-    }
+    #if ENABLE_TWCC_SUPPORT
+        if( pthread_mutex_init( &pAppContext->bitrateModifiedMutex,
+                                NULL ) != 0 )
+        {
+            LogError( ( "Failed to create bitrateModifiedMutex mutex" ) );
+            ret = -1;
+        }
+    #endif /* ENABLE_TWCC_SUPPORT */
 
     #if METRIC_PRINT_ENABLED
         if( ret == 0 )
