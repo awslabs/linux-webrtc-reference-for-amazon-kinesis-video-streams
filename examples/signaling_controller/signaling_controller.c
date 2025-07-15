@@ -200,6 +200,18 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
 
 /*----------------------------------------------------------------------------*/
 
+static void OnConnectionStateChange( SignalingControllerContext_t * pCtx,
+                                     SignalingControllerConnectionState_t newState )
+{
+    if( ( pCtx->connectionStateCallback != NULL ) && ( pCtx->connectionState != newState ) )
+    {
+        pCtx->connectionState = newState;
+        pCtx->connectionStateCallback( newState, pCtx->pConnectionStateCallbacCustomContext );
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+
 static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControllerContext_t * pCtx,
                                                               const AwsIotCredentials_t * pAwsIotCredentials )
 {
@@ -932,7 +944,12 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
+        OnConnectionStateChange( pCtx, SIGNALING_CONTROLLER_STATE_CONNECTED );
         LogSignalingInfo( pCtx );
+    }
+    else
+    {
+        OnConnectionStateChange( pCtx, SIGNALING_CONTROLLER_STATE_DISCONNECTED );
     }
 
     return ret;
@@ -1041,6 +1058,11 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
         }
     }
 
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        OnConnectionStateChange( pCtx, SIGNALING_CONTROLLER_STATE_INITED );
+    }
+
     return ret;
 }
 
@@ -1100,6 +1122,11 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
                             LogWarn( ( "Fail to fetch temporary credentials, reconnecting." ) );
                             break;
                         }
+                    }
+                    else if( networkingResult != NETWORKING_RESULT_OK )
+                    {
+                        /* Connection is closed for any reason. */
+                        OnConnectionStateChange( pCtx, SIGNALING_CONTROLLER_STATE_DISCONNECTED );
                     }
 
                 }
@@ -1489,6 +1516,29 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         *pEventSdpMessageLength = outputLength;
+    }
+
+    return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+SignalingControllerResult_t SignalingController_SetConnectionStateCallback( SignalingControllerContext_t * pCtx,
+                                                                            SignalingControllerConnectionStateCallback_t callback,
+                                                                            void * pCustomContext )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input: pCtx is NULL" ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        pCtx->connectionStateCallback = callback;
+        pCtx->pConnectionStateCallbacCustomContext = pCustomContext;
     }
 
     return ret;

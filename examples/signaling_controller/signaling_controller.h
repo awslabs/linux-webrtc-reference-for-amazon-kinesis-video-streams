@@ -57,6 +57,17 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_FAIL,
 } SignalingControllerResult_t;
 
+typedef enum SignalingControllerConnectionState
+{
+    SIGNALING_CONTROLLER_STATE_NONE = 0,
+    SIGNALING_CONTROLLER_STATE_INITED,
+    SIGNALING_CONTROLLER_STATE_DISCONNECTED,
+    SIGNALING_CONTROLLER_STATE_CONNECTED,
+} SignalingControllerConnectionState_t;
+
+typedef void ( * SignalingControllerConnectionStateCallback_t )( SignalingControllerConnectionState_t state,
+                                                                 void * pUserData );
+
 typedef struct SignalingMessage
 {
     const char * pRemoteClientId;
@@ -118,6 +129,7 @@ typedef struct IceServerConfig
 
 typedef struct SignalingControllerContext
 {
+    SignalingControllerConnectionState_t connectionState;
     char accessKeyId[ ACCESS_KEY_MAX_LEN + 1 ];
     size_t accessKeyIdLength;
     char secretAccessKey[ SECRET_ACCESS_KEY_MAX_LEN + 1 ];
@@ -164,6 +176,8 @@ typedef struct SignalingControllerContext
 
     SignalingMessageReceivedCallback_t messageReceivedCallback;
     void * pMessageReceivedCallbackData;
+    SignalingControllerConnectionStateCallback_t connectionStateCallback;
+    void * pConnectionStateCallbacCustomContext;
 
     NetworkingHttpContext_t httpContext;
     NetworkingWebsocketContext_t websocketContext;
@@ -201,6 +215,10 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
                                                                             size_t sdpMessageLength,
                                                                             char * pEventSdpMessage,
                                                                             size_t * pEventSdpMessageLength );
+
+SignalingControllerResult_t SignalingController_SetConnectionStateCallback( SignalingControllerContext_t * pCtx,
+                                                                            SignalingControllerConnectionStateCallback_t callback,
+                                                                            void * pCustomContext );
 
 /*----------------------------------------------------------------------------*/
 
