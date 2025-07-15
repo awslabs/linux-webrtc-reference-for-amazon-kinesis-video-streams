@@ -657,11 +657,11 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
             {
                 if( pAppSession->transceivers[ i ].trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
                 {
-                    videoBitrate = ( pAppSession->transceivers[ i ].rollingbufferBitRate ) / 1000; // Convert to kbps
+                    videoBitrate = ( pAppSession->transceivers[ i ].rollingbufferBitRate ) / 1024; // Convert to kbps
                 }
                 else if( pAppSession->transceivers[ i ].trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
                 {
-                    audioBitrate = ( pAppSession->transceivers[ i ].rollingbufferBitRate ) / 1000; // Convert to kbps
+                    audioBitrate = ( pAppSession->transceivers[ i ].rollingbufferBitRate );
                 }
                 else
                 {
