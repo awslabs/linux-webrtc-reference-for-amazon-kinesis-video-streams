@@ -586,8 +586,8 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
         PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
         AppContext_t * pAppContext = NULL;
         AppSession_t * pAppSession = NULL;
-        uint64_t videoBitrate = 0;
-        uint64_t audioBitrate = 0;
+        uint64_t videoBitrateKbps = 0;
+        uint64_t audioBitrateBps = 0;
         uint64_t currentTimeUs = 0;
         uint64_t timeDifference = 0;
         uint32_t lostPacketCount = 0;
@@ -657,11 +657,11 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
             {
                 if( pAppSession->transceivers[ i ].trackKind == TRANSCEIVER_TRACK_KIND_VIDEO )
                 {
-                    videoBitrate = ( pAppSession->transceivers[ i ].rollingbufferBitRate ) / 1024; // Convert to kbps
+                    videoBitrateKbps = ( pAppSession->transceivers[ i ].rollingbufferBitRate ) / 1024; // Convert to kbps
                 }
                 else if( pAppSession->transceivers[ i ].trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
                 {
-                    audioBitrate = ( pAppSession->transceivers[ i ].rollingbufferBitRate );
+                    audioBitrateBps = ( pAppSession->transceivers[ i ].rollingbufferBitRate );
                 }
                 else
                 {
@@ -672,22 +672,22 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
             if( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss <= 5 )
             {
                 // Increase encoder bitrates by 5 percent with cap at MAX_BITRATE
-                videoBitrate = ( uint64_t ) MIN( videoBitrate * 1.05,
+                videoBitrateKbps = ( uint64_t ) MIN( videoBitrateKbps * 1.05,
                                                  PEER_CONNECTION_MAX_VIDEO_BITRATE_KBPS );
-                audioBitrate = ( uint64_t ) MIN( audioBitrate * 1.05,
+                audioBitrateBps = ( uint64_t ) MIN( audioBitrateBps * 1.05,
                                                  PEER_CONNECTION_MAX_AUDIO_BITRATE_BPS );
             }
             else
             {
                 // Decrease encoder bitrate by average packet loss percent, with a cap at MIN_BITRATE
-                videoBitrate = ( uint64_t ) MAX( videoBitrate * ( 1.0 - ( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss / 100.0 ) ),
+                videoBitrateKbps = ( uint64_t ) MAX( videoBitrateKbps * ( 1.0 - ( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss / 100.0 ) ),
                                                  PEER_CONNECTION_MIN_VIDEO_BITRATE_KBPS );
-                audioBitrate = ( uint64_t ) MAX( audioBitrate * ( 1.0 - ( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss / 100.0 ) ),
+                audioBitrateBps = ( uint64_t ) MAX( audioBitrateBps * ( 1.0 - ( pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss / 100.0 ) ),
                                                  PEER_CONNECTION_MIN_AUDIO_BITRATE_BPS );
             }
 
-            pAppSession->peerConnectionSession.twccMetaData.modifiedVideoBitrateKbps = videoBitrate;
-            pAppSession->peerConnectionSession.twccMetaData.modifiedAudioBitrateKbps = audioBitrate;
+            pAppSession->peerConnectionSession.twccMetaData.modifiedVideoBitrateKbps = videoBitrateKbps;
+            pAppSession->peerConnectionSession.twccMetaData.modifiedAudioBitrateBps = audioBitrateBps;
             pAppContext->isMediaBitrateModified = 1;
         }
 
@@ -707,7 +707,7 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
 
             LogInfo( ( "Adjusted made : average packet loss = %.2f%%, timeDifference = %lu us", pAppSession->peerConnectionSession.twccMetaData.averagePacketLoss, timeDifference  ) );
             LogInfo( ( "Suggested video bitrate: %lu kbps, suggested audio bitrate: %lu bps, sent: %lu bytes, %lu packets,   received: %lu bytes, %lu packets, in %llu msec ",
-                       videoBitrate, audioBitrate, pTwccBandwidthInfo->sentBytes, pTwccBandwidthInfo->sentPackets, pTwccBandwidthInfo->receivedBytes, pTwccBandwidthInfo->receivedPackets, pTwccBandwidthInfo->duration / 10000ULL ) );
+                       videoBitrateKbps, audioBitrateBps, pTwccBandwidthInfo->sentBytes, pTwccBandwidthInfo->sentPackets, pTwccBandwidthInfo->receivedBytes, pTwccBandwidthInfo->receivedPackets, pTwccBandwidthInfo->duration / 10000ULL ) );
         }
 
     }

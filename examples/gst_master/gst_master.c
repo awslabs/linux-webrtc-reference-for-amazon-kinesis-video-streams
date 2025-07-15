@@ -176,7 +176,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
                         LogError( ( "Failed to lock Twcc mutex for session %d.", i ) );
                         ret = -1;
                     }
-                    
+
                     /* Assuming encoder is either video or audio encoder. */
                     if( isVideoEncoder )
                     {
@@ -184,7 +184,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
                     }
                     else
                     {
-                        sessionBitrate = pAppContext->appSessions[i].peerConnectionSession.twccMetaData.modifiedAudioBitrateKbps;
+                        sessionBitrate = pAppContext->appSessions[i].peerConnectionSession.twccMetaData.modifiedAudioBitrateBps;
                     }
 
                     if( isTwccLocked != 0 )

@@ -361,7 +361,7 @@ typedef struct PeerConnectionSrtpReceiver
     {
         /* Mutex to protect updated Bitrate's because we might read the updated bitrate in between of updating the bitrate. */
         pthread_mutex_t twccBitrateMutex;
-        uint32_t modifiedAudioBitrateKbps;
+        uint32_t modifiedAudioBitrateBps;
         uint32_t modifiedVideoBitrateKbps;
         uint64_t lastAdjustmentTimeUs;
         double averagePacketLoss;
