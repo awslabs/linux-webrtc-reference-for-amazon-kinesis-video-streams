@@ -53,6 +53,7 @@ typedef struct AppSession
 typedef struct AppContext
 {
     /* Signaling controller. */
+    int signalingConnectionBarrier;
     SignalingControllerContext_t signalingControllerContext;
     pthread_t signalingControllerTid;
     char signalingControllerClientId[ SIGNALING_CONTROLLER_REMOTE_CLIENT_ID_MAX_LENGTH ];
@@ -78,5 +79,8 @@ typedef struct AppContext
 int AppCommon_Init( AppContext_t * pAppContext, InitTransceiverFunc_t initTransceiverFunc, void * pMediaContext );
 int AppCommon_StartSignalingController( AppContext_t * pAppContext );
 void AppCommon_WaitSignalingControllerStop( AppContext_t * pAppContext );
+AppSession_t * AppCommon_GetPeerConnectionSession( AppContext_t * pAppContext,
+                                                   const char * pRemoteClientId,
+                                                   size_t remoteClientIdLength );
 
 #endif /* APP_COMMON_H */

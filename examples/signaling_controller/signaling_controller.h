@@ -201,10 +201,11 @@ SignalingControllerResult_t SignalingController_QueryIceServerConfigs( Signaling
 
 SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( SignalingControllerContext_t * pCtx );
 
-SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMessage( const char * pSignalingMessage,
-                                                                                     size_t signalingMessageLength,
-                                                                                     const char ** ppSdpMessage,
-                                                                                     size_t * pSdpMessageLength );
+SignalingControllerResult_t SignalingController_ExtractSdpMessageFromSignalingMessage( const char * pSignalingMessage,
+                                                                                       size_t signalingMessageLength,
+                                                                                       uint8_t isSdpOffer,
+                                                                                       const char ** ppSdpMessage,
+                                                                                       size_t * pSdpMessageLength );
 
 SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( const char * pSdpMessage,
                                                                               size_t sdpMessageLength,

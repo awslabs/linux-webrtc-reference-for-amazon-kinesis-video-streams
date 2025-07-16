@@ -1287,16 +1287,17 @@ SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( Signali
 
 /*----------------------------------------------------------------------------*/
 
-SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMessage( const char * pSignalingMessage,
-                                                                                     size_t signalingMessageLength,
-                                                                                     const char ** ppSdpMessage,
-                                                                                     size_t * pSdpMessageLength )
+SignalingControllerResult_t SignalingController_ExtractSdpMessageFromSignalingMessage( const char * pSignalingMessage,
+                                                                                       size_t signalingMessageLength,
+                                                                                       uint8_t isSdpOffer,
+                                                                                       const char ** ppSdpMessage,
+                                                                                       size_t * pSdpMessageLength )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     JSONStatus_t jsonResult;
     size_t start = 0, next = 0;
     JSONPair_t pair = { 0 };
-    uint8_t sdpOfferFound = 0;
+    uint8_t sdpFound = 0;
 
     if( ( pSignalingMessage == NULL ) ||
         ( signalingMessageLength == 0 ) ||
@@ -1327,22 +1328,38 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
 
         while( jsonResult == JSONSuccess )
         {
-            if( ( strncmp( pair.key, "type", pair.keyLength ) == 0 ) &&
-                ( strncmp( pair.value, "offer", pair.valueLength ) != 0 ) )
+            if( strncmp( pair.key, "type", pair.keyLength ) == 0 )
             {
-                LogError( ( "Message type \"%.*s\" is not SDP offer!",
-                            ( int ) pair.valueLength,
-                            pair.value ) );
+                if( ( isSdpOffer != 0U ) &&
+                    ( strncmp( pair.value, "offer", pair.valueLength ) != 0 ) )
+                {
+                    LogError( ( "Message type \"%.*s\" is not SDP offer!",
+                                ( int ) pair.valueLength,
+                                pair.value ) );
 
-                ret = SIGNALING_CONTROLLER_RESULT_FAIL;
+                    ret = SIGNALING_CONTROLLER_RESULT_FAIL;
+                    break;
+                }
+                else if( ( isSdpOffer == 0U ) &&
+                         ( strncmp( pair.value, "answer", pair.valueLength ) != 0 ) )
+                {
+                    LogError( ( "Message type \"%.*s\" is not SDP answer!",
+                                ( int ) pair.valueLength,
+                                pair.value ) );
 
-                break;
+                    ret = SIGNALING_CONTROLLER_RESULT_FAIL;
+                    break;
+                }
+                else
+                {
+                    /* Empty else marker. */
+                }
             }
             else if( strncmp( pair.key, "sdp", pair.keyLength ) == 0 )
             {
                 *ppSdpMessage = pair.value;
                 *pSdpMessageLength = pair.valueLength;
-                sdpOfferFound = 1;
+                sdpFound = 1;
 
                 break;
             }
@@ -1355,9 +1372,10 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
         }
     }
 
-    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( sdpOfferFound == 0 ) )
+    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( sdpFound == 0 ) )
     {
-        LogError( ( "SDP offer not found in signaling message(%lu): %.*s",
+        LogError( ( "SDP message (type : %s) not found in signaling message(%lu): %.*s",
+                    isSdpOffer == 0? "Answer" : "Offer",
                     signalingMessageLength,
                     ( int ) signalingMessageLength,
                     pSignalingMessage ) );
