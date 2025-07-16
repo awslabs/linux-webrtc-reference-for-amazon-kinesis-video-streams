@@ -124,6 +124,7 @@ typedef enum PeerConnectionResult
     PEER_CONNECTION_RESULT_FAIL_RTCP_TWCC_INIT,
     PEER_CONNECTION_RESULT_FAIL_CREATE_TWCC_MUTEX,
     PEER_CONNECTION_RESULT_FAIL_TAKE_TWCC_MUTEX,
+    PEER_CONNECTION_RESULT_FAIL_TAKE_BITRATE_MOD_MUTEX,
     PEER_CONNECTION_RESULT_FAIL_TIMER_INIT,
     PEER_CONNECTION_RESULT_FAIL_TIMER_RESET,
     PEER_CONNECTION_RESULT_FAIL_RTCP_PARSE_TWCC,
@@ -360,11 +361,9 @@ typedef struct PeerConnectionSrtpReceiver
     {
         /* Mutex to protect updated Bitrate's because we might read the updated bitrate in between of updating the bitrate. */
         pthread_mutex_t twccBitrateMutex;
+        uint32_t modifiedAudioBitrateBps;
+        uint32_t modifiedVideoBitrateKbps;
         uint64_t lastAdjustmentTimeUs;
-        uint64_t currentVideoBitrate;
-        uint64_t currentAudioBitrate;
-        uint64_t updatedVideoBitrate;
-        uint64_t updatedAudioBitrate;
         double averagePacketLoss;
     } PeerConnectionTwccMetaData_t;
 #endif
@@ -469,6 +468,10 @@ typedef struct PeerConnectionSession
     uint64_t inactiveConnectionTimeoutMs;
 
     #if ENABLE_TWCC_SUPPORT
+        /* Callback for bandwidth estimation updates */
+        OnBandwidthEstimationCallback_t onBandwidthEstimationCallback;
+        void * pOnBandwidthEstimationCallbackContext;
+        
         PeerConnectionTwccMetaData_t twccMetaData;
     #endif
 
@@ -520,10 +523,6 @@ typedef struct PeerConnectionContext
     #if ENABLE_TWCC_SUPPORT
         RtcpTwccManager_t rtcpTwccManager;
         TwccPacketInfo_t twccPacketInfo[ PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY ];
-
-        /* Callback for bandwidth estimation updates */
-        OnBandwidthEstimationCallback_t onBandwidthEstimationCallback;
-        void * pOnBandwidthEstimationCallbackContext;
     #endif
 } PeerConnectionContext_t;
 

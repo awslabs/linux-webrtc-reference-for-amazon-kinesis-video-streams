@@ -72,6 +72,12 @@ if(GST_FOUND)
         target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE METRIC_PRINT_ENABLED=0 )
     endif()
 
+    if( GSTREAMER_TESTING )
+        target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE GSTREAMER_TESTING=1 )
+    else()
+        target_compile_definitions( WebRTCLinuxApplicationGstMaster PRIVATE GSTREAMER_TESTING=0 )
+    endif()
+
     target_link_libraries( WebRTCLinuxApplicationGstMaster
                            sigv4
                            signaling

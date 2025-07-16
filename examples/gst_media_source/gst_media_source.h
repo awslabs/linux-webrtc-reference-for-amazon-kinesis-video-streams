@@ -35,6 +35,11 @@ typedef struct {
 typedef struct GstMediaSourcesContext GstMediaSourcesContext_t;
 typedef int32_t (* GstMediaSourceOnMediaSinkHook)( void * pCustom,
                                                    WebrtcFrame_t * pFrame );
+#if ENABLE_TWCC_SUPPORT
+    typedef int32_t (* GstMediaBitrateModifier_t)( void * pCustomContext,
+                                                   GstElement * pEncoder );
+#endif
+
 
 typedef struct GstMediaSourceContext
 {
@@ -55,6 +60,11 @@ typedef struct GstMediaSourcesContext {
     pthread_mutex_t mediaMutex;
     GstMediaSourceOnMediaSinkHook onMediaSinkHookFunc;
     void * pOnMediaSinkHookCustom;
+
+    #if ENABLE_TWCC_SUPPORT
+        GstMediaBitrateModifier_t onBitrateModifier;
+        void * pBitrateModifierCustomContext;
+    #endif /* ENABLE_TWCC_SUPPORT */
 } GstMediaSourcesContext_t;
 
 /**
@@ -79,7 +89,7 @@ int32_t GstMediaSource_InitAudioTransceiver( GstMediaSourcesContext_t * pCtx,
 /**
  * @brief Cleanup media source context
  */
-int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx);
+int32_t GstMediaSource_Cleanup( GstMediaSourcesContext_t * pCtx );
 
 
 #endif /* GST_MEDIA_SOURCE_H */

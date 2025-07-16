@@ -29,6 +29,9 @@ option(ENABLE_UNDEFINED_SANITIZER "Enable undefined sanitizer" OFF)
 option(ENABLE_MEMORY_SANITIZER "Enable memory sanitizer" OFF)
 option(ENABLE_THREAD_SANITIZER "Enable thread sanitizer" OFF)
 
+# Option to enable GStreamer testing mode
+option(GSTREAMER_TESTING "Enable GStreamer testing mode (use audiotestsrc instead of autoaudiosrc)" OFF)
+
 # Option to enable metric logging
 option(METRIC_PRINT_ENABLED "Enable Metric print logging" OFF)
 
