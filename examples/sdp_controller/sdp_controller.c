@@ -286,7 +286,7 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
         {
             /* Found setup, store it as extra info. */
             if( ( pAttribute->attributeValueLength == SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH ) &&
-                ( strncmp( SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH ) == 0 ) )
+                ( strncmp( SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE, pAttribute->pAttributeValue, SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH ) == 0 ) )
             {
                 pSdpDescription->quickAccess.dtlsRole = SDP_CONTROLLER_DTLS_ROLE_ACTIVE;
             }

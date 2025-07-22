@@ -221,7 +221,12 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
         /* Update nominated socket context. */
         if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
         {
-            pOriginalCandidatePair = pCtx->pNominatedSocketContext->pCandidatePair;
+            /* While running as viewer, the other master side might start DTLS handshaking
+             * earlier than ICE_CANDIDATE STUN binding request. */
+            if( pCtx->pNominatedSocketContext != NULL )
+            {
+                pOriginalCandidatePair = pCtx->pNominatedSocketContext->pCandidatePair;
+            }
             pCtx->pNominatedSocketContext = pSocketContext;
             pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
             pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
@@ -233,8 +238,8 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
             pthread_mutex_unlock( &( pCtx->socketMutex ) );
 
             LogInfo( ( "Nominated pair is changed from local/remote candidate ID: 0x%04x / 0x%04x to local/remote candidate ID: 0x%04x / 0x%04x",
-                       pOriginalCandidatePair->pLocalCandidate->candidateId,
-                       pOriginalCandidatePair->pRemoteCandidate->candidateId,
+                       pOriginalCandidatePair == NULL? 0:pOriginalCandidatePair->pLocalCandidate->candidateId,
+                       pOriginalCandidatePair == NULL? 0:pOriginalCandidatePair->pRemoteCandidate->candidateId,
                        pCandidatePair->pLocalCandidate->candidateId,
                        pCandidatePair->pRemoteCandidate->candidateId ) );
         }
