@@ -287,30 +287,20 @@ int main( void )
 
     if( ret == 0 )
     {
-        for( ;; )
+        #if METRIC_PRINT_ENABLED
+            Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
+        #endif
+
+        /* keep looping to establish viewer connection. */
+        ret = SendSdpOffer( &appContext );
+
+        while( appContext.appSessions[0].peerConnectionSession.state >= PEER_CONNECTION_SESSION_STATE_START )
         {
-            #if METRIC_PRINT_ENABLED
-                Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
-            #endif
-
-            /* keep looping to establish viewer connection. */
-            ret = SendSdpOffer( &appContext );
-
-            while( appContext.appSessions[0].peerConnectionSession.state >= PEER_CONNECTION_SESSION_STATE_START )
-            {
-                /* The session is still alive, keep processing. */
-                sleep( 10 );
-            }
-
-            LogInfo( ( "Ended viewer, repeating in 10 seconds" ) );
+            /* The session is still alive, keep processing. */
             sleep( 10 );
         }
-    }
 
-    if( ret == 0 )
-    {
-        /* Launch application with current thread serving as Signaling Controller. */
-        AppCommon_WaitSignalingControllerStop( &appContext );
+        LogInfo( ( "Ending viewer" ) );
     }
 
     return 0;
