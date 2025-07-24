@@ -1768,6 +1768,7 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     uint64_t signalStartUpBarrier = 1;
     ssize_t retWrite;
     int32_t retDtls = 0;
+    IceControllerStartConfig_t iceStartConfig;
 
     if( ( pSession == NULL ) ||
         ( pBufferSessionDescription == NULL ) )
@@ -1882,18 +1883,21 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
                 pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength );
         pSession->remoteCertFingerprint[ pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength ] = '\0';
         pSession->remoteCertFingerprintLength = pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength;
+        memset( &iceStartConfig, 0, sizeof( iceStartConfig ) );
+        iceStartConfig.isControlling = pSession->dtlsSession.isServer != 0U? 1U:0U;
+        iceStartConfig.pLocalUserName = &( peerConnectionContext.localUserName[ 0 ] );
+        iceStartConfig.localUserNameLength = PEER_CONNECTION_USER_NAME_LENGTH;
+        iceStartConfig.pLocalPassword = &( peerConnectionContext.localPassword[ 0 ] );
+        iceStartConfig.localPasswordLength = PEER_CONNECTION_PASSWORD_LENGTH;
+        iceStartConfig.pRemoteUserName = &( pSession->remoteUserName[ 0 ] );
+        iceStartConfig.remoteUserNameLength = pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength;
+        iceStartConfig.pRemotePassword = &( pSession->remotePassword[ 0 ] );
+        iceStartConfig.remotePasswordLength = pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength;
+        iceStartConfig.pCombinedName = &( pSession->combinedName[ 0 ] );
+        iceStartConfig.combinedNameLength = strlen( pSession->combinedName );
 
         iceControllerResult = IceController_Start( &pSession->iceControllerContext,
-                                                   peerConnectionContext.localUserName,
-                                                   PEER_CONNECTION_USER_NAME_LENGTH,
-                                                   peerConnectionContext.localPassword,
-                                                   PEER_CONNECTION_PASSWORD_LENGTH,
-                                                   pSession->remoteUserName,
-                                                   pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
-                                                   pSession->remotePassword,
-                                                   pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength,
-                                                   pSession->combinedName,
-                                                   strlen( pSession->combinedName ) );
+                                                   &iceStartConfig );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogWarn( ( "IceController_Start fail, result: %d.", iceControllerResult ) );
