@@ -430,7 +430,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                                                          &remoteIceEndpoint,
                                                          pCandidatePair );
                 if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) &&
-                    ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
+                    ( pCtx->pNominatedSocketContext == NULL ) )
                 {
                     UpdateNominatedSocketContext( pCtx,
                                                   pSocketContext,

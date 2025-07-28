@@ -991,17 +991,6 @@ static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
 
-            /* Update socket context. */
-            if( pthread_mutex_lock( &( pCtx->socketMutex ) ) == 0 )
-            {
-                pCtx->pNominatedSocketContext = pSocketContext;
-                pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
-                pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
-
-                /* We have finished accessing the shared resource.  Release the mutex. */
-                pthread_mutex_unlock( &( pCtx->socketMutex ) );
-            }
-
             ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
         }
     }
