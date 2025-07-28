@@ -23,6 +23,12 @@
 #include "metric.h"
 #endif
 
+#if ENABLE_SCTP_DATA_CHANNEL
+    #include "peer_connection_sctp.h"
+
+    #define WEBRTC_APPLICATION_VIEWER_DATA_CHANNEL_NAME ( "TEST_DATA_CHANNEL" )
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
+
 AppContext_t appContext;
 AppMediaSourcesContext_t appMediaSourceContext;
 
@@ -176,6 +182,33 @@ static int SendSdpOffer( AppContext_t * pAppContext )
         ret = -1;
     }
 
+#if ENABLE_SCTP_DATA_CHANNEL
+    /* Add data channel support to SDP offer */
+    if( ret == 0 )
+    {
+        peerConnectionResult = PeerConnection_AddDataChannel( &pAppSession->peerConnectionSession );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to add data channel, result = %d.", peerConnectionResult ) );
+            ret = -2;
+        }
+    }
+
+    if( ret == 0 )
+    {
+        PeerConnectionDataChannel_t * pChannel = NULL;
+        peerConnectionResult = PeerConnectionSCTP_CreateDataChannel( &pAppSession->peerConnectionSession,
+                                                                     WEBRTC_APPLICATION_VIEWER_DATA_CHANNEL_NAME,
+                                                                     NULL,
+                                                                     &pChannel );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to create data channel, result = %d.", peerConnectionResult ) );
+            ret = -3;
+        }
+    }
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
+
     /* Set local description. */
     if( ret == 0 )
     {
@@ -185,15 +218,16 @@ static int SendSdpOffer( AppContext_t * pAppContext )
         bufferSessionDescription.type = SDP_CONTROLLER_MESSAGE_TYPE_OFFER;
         peerConnectionResult = PeerConnection_SetLocalDescription( &pAppSession->peerConnectionSession,
                                                                    &bufferSessionDescription );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to set local description, result: %d", peerConnectionResult ) );
+            ret = -4;
+        }
     }
 
     /* Create offer. */
     if( ret == 0 )
     {
-        memset( &bufferSessionDescription, 0, sizeof( bufferSessionDescription ) );
-        bufferSessionDescription.pSdpBuffer = pAppContext->sdpBuffer;
-        bufferSessionDescription.sdpBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
-        bufferSessionDescription.type = SDP_CONTROLLER_MESSAGE_TYPE_OFFER;
         pAppContext->sdpConstructedBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
         peerConnectionResult = PeerConnection_CreateOffer( &pAppSession->peerConnectionSession,
                                                            &bufferSessionDescription,
@@ -202,7 +236,7 @@ static int SendSdpOffer( AppContext_t * pAppContext )
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogError( ( "Fail to create offer, result: %d", peerConnectionResult ) );
-            ret = -2;
+            ret = -5;
         }
     }
 
@@ -221,7 +255,7 @@ static int SendSdpOffer( AppContext_t * pAppContext )
                         pAppContext->sdpConstructedBufferLength,
                         ( int ) pAppContext->sdpConstructedBufferLength,
                         pAppContext->sdpConstructedBuffer ) );
-            ret = -3;
+            ret = -6;
         }
     }
 
@@ -239,7 +273,7 @@ static int SendSdpOffer( AppContext_t * pAppContext )
                                                                      &signalingMessageSdpOffer );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
-            ret = -4;
+            ret = -7;
             LogError( ( "Send signaling message fail, result: %d", signalingControllerReturn ) );
         }
     }
