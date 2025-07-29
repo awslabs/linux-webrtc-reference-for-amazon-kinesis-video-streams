@@ -2550,8 +2550,8 @@ PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConn
             ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
         }
 
-        pSession->pCtx->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
-        pSession->pCtx->pOnBandwidthEstimationCallbackContext = pUserContext;
+        pSession->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
+        pSession->pOnBandwidthEstimationCallbackContext = pUserContext;
 
         return ret;
     }
