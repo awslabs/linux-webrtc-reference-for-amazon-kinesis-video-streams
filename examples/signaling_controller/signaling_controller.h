@@ -37,6 +37,16 @@
 #define SIGNALING_CONTROLLER_ICE_SERVER_PASSWORD_BUFFER_LENGTH      ( 256 )
 #define SIGNALING_CONTROLLER_ICE_SERVER_MAX_CONFIG_COUNT            ( 5 )
 #define SIGNALING_CONTROLLER_ICE_CONFIG_REFRESH_GRACE_PERIOD_SEC    ( 30 )
+#define SIGNALING_CONTROLLER_REMOTE_CLIENT_ID_MAX_LENGTH            ( 256 )
+
+#define SIGNALING_CONTROLLER_MASTER_CLIENT_ID                       "ProducerMaster"
+#define SIGNALING_CONTROLLER_MASTER_CLIENT_ID_LENGTH                ( 14 )
+
+/* Viewer client ID is used to connect with WSS server. Remember to follow the rule in
+ * https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/ConnectAsViewer.html
+ * to NOT have prefix "AWS_" */
+#define SIGNALING_CONTROLLER_VIEWER_CLIENT_ID_PREFIX                "ConsumerViewer_"
+#define SIGNALING_CONTROLLER_VIEWER_CLIENT_ID_PREFIX_LENGTH         ( 15 )
 
 /*----------------------------------------------------------------------------*/
 
@@ -46,6 +56,17 @@ typedef enum SignalingControllerResult
     SIGNALING_CONTROLLER_RESULT_BAD_PARAM,
     SIGNALING_CONTROLLER_RESULT_FAIL,
 } SignalingControllerResult_t;
+
+typedef enum SignalingControllerConnectionState
+{
+    SIGNALING_CONTROLLER_STATE_NONE = 0,
+    SIGNALING_CONTROLLER_STATE_INITED,
+    SIGNALING_CONTROLLER_STATE_DISCONNECTED,
+    SIGNALING_CONTROLLER_STATE_CONNECTED,
+} SignalingControllerConnectionState_t;
+
+typedef void ( * SignalingControllerConnectionStateCallback_t )( SignalingControllerConnectionState_t state,
+                                                                 void * pUserData );
 
 typedef struct SignalingMessage
 {
@@ -81,9 +102,12 @@ typedef struct SignalingControllerConnectInfo
     size_t userAgentNameLength;
     SignalingMessageReceivedCallback_t messageReceivedCallback;
     void * pMessageReceivedCallbackData;
+    SignalingRole_t role;
 
     /* Configurations. */
     uint8_t enableStorageSession;
+    char *pClientId;
+    size_t clientIdLength;
 } SignalingControllerConnectInfo_t;
 
 typedef struct IceServerUri
@@ -105,6 +129,7 @@ typedef struct IceServerConfig
 
 typedef struct SignalingControllerContext
 {
+    SignalingControllerConnectionState_t connectionState;
     char accessKeyId[ ACCESS_KEY_MAX_LEN + 1 ];
     size_t accessKeyIdLength;
     char secretAccessKey[ SECRET_ACCESS_KEY_MAX_LEN + 1 ];
@@ -130,6 +155,10 @@ typedef struct SignalingControllerContext
     const char * pUserAgentName;
     size_t userAgentNameLength;
 
+    const char * pClientId;
+    size_t clientIdLength;
+    SignalingRole_t role;
+
     AwsConfig_t awsConfig;
 
     char httpUrlBuffer[ SIGNALING_CONTROLLER_HTTP_URL_BUFFER_LENGTH ];
@@ -147,6 +176,8 @@ typedef struct SignalingControllerContext
 
     SignalingMessageReceivedCallback_t messageReceivedCallback;
     void * pMessageReceivedCallbackData;
+    SignalingControllerConnectionStateCallback_t connectionStateCallback;
+    void * pConnectionStateCallbacCustomContext;
 
     NetworkingHttpContext_t httpContext;
     NetworkingWebsocketContext_t websocketContext;
@@ -170,10 +201,11 @@ SignalingControllerResult_t SignalingController_QueryIceServerConfigs( Signaling
 
 SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( SignalingControllerContext_t * pCtx );
 
-SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMessage( const char * pSignalingMessage,
-                                                                                     size_t signalingMessageLength,
-                                                                                     const char ** ppSdpMessage,
-                                                                                     size_t * pSdpMessageLength );
+SignalingControllerResult_t SignalingController_ExtractSdpMessageFromSignalingMessage( const char * pSignalingMessage,
+                                                                                       size_t signalingMessageLength,
+                                                                                       uint8_t isSdpOffer,
+                                                                                       const char ** ppSdpMessage,
+                                                                                       size_t * pSdpMessageLength );
 
 SignalingControllerResult_t SignalingController_DeserializeSdpContentNewline( const char * pSdpMessage,
                                                                               size_t sdpMessageLength,
@@ -184,6 +216,10 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
                                                                             size_t sdpMessageLength,
                                                                             char * pEventSdpMessage,
                                                                             size_t * pEventSdpMessageLength );
+
+SignalingControllerResult_t SignalingController_SetConnectionStateCallback( SignalingControllerContext_t * pCtx,
+                                                                            SignalingControllerConnectionStateCallback_t callback,
+                                                                            void * pCustomContext );
 
 /*----------------------------------------------------------------------------*/
 
