@@ -984,6 +984,7 @@ static void LogSignalingInfo( SignalingControllerContext_t * pCtx )
             LogInfo( ( "        URI: %s", &( pCtx->iceServerConfigs[ i ].iceServerUris[ j ].uri[ 0 ] ) ) );
         }
     }
+    fflush( stdout );
 }
 
 /*----------------------------------------------------------------------------*/

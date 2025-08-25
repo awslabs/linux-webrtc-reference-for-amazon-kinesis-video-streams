@@ -68,6 +68,29 @@ Gstreamer Master Example (Refer to the [Gstreamer Master Demo](#gstreamer-master
 [2024/03/28 06:43:36:0003] E: Unable to load SSL Client certs file from  -- client ssl isn't going to work
 ```
 
+## buildtestcontainer
+Development and testing can be done inside a container.
+This avoids issues with your local Linux installation.
+```bash
+podman build misc/buildtestcontainer -t buildtestcontainer:latest
+podman run -it -v $PWD/..:/work --replace --name buildtestcontainer buildtestcontainer:latest
+```
+
+E.g. run a build
+
+```bash
+cd /work/linux-webrtc-reference-for-amazon-kinesis-video-streams
+rm -rf build/ && cmake -S . -B build -DCMAKE_C_FLAGS='-DLIBRARY_LOG_LEVEL=LOG_VERBOSE' && make -C build -j $(nproc)
+```
+
+E.g. run a test
+
+```bash
+cd /work/linux-webrtc-reference-for-amazon-kinesis-video-streams/
+./build/WebRTCLinuxApplicationMaster
+```
+
+
 ## Feature Options
 1. [Gstreamer Master Demo](#gstreamer-master-demo)
 1. [Data Channel Support](#data-channel-support)
@@ -84,7 +107,7 @@ The GStreamer master demo provides a reference implementation for using GStreame
 
 GStreamer is an open-source multimedia framework that allows you to create a variety of media-handling components. The demo uses GStreamer pipelines to:
 - Capture video from a webcam or video test source
-- Capture audio from a microphone or audio test source  
+- Capture audio from a microphone or audio test source
 - Encode the media streams using WebRTC-compatible codecs (H.264 for video, Opus for audio)
 
 #### Requitements
@@ -100,6 +123,27 @@ On Fedora:
 sudo dnf install gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-bad-free-devel
 ```
 
+#### GStreamer Testing Mode:
+
+To enable GStreamer testing mode for example on EC2 machines (uses `audiotestsrc` instead of `autoaudiosrc` for audio input):
+```
+cmake -S . -B build -DGSTREAMER_TESTING=ON
+make -C build
+```
+
+#### Trouble Shooting On GStreamer
+
+Try install `gstreamer1.0-plugins-bad`, `gstreamer1.0-plugins-ugly`, and `gstreamer1.0-tools` when facing GStreamer pipeline initialization issue.
+
+On Ubuntu/Debian:
+```
+sudo apt-get install gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-tools
+```
+
+On Fedora:
+```
+sudo dnf install gstreamer1-plugins-bad-free  gstreamer1-plugins-ugly gstreamer1
+```
 ---
 
 ### Data Channel Support
@@ -134,11 +178,11 @@ TWCC is enabled by default in this application (via `ENABLE_TWCC_SUPPORT`) value
 
 If not using the samples directly, following thing need to be done to set up Twcc:
 
-1. Set the callback that will have the business logic to modify the bitrate based on packet loss information. The callback can be set using `PeerConnection_SetSenderBandwidthEstimationCallback()` inside `PeerConnection_Init()`:
+1. Set the callback that will have the business logic to modify the bitrate based on packet loss information. The callback can be set using `PeerConnection_SetSenderBandwidthEstimationCallback()` inside `InitializeAppSession()`:
 ```c
-ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
-                                                           SampleSenderBandwidthEstimationHandler,
-                                                           &pSession->twccMetaData );
+ret = PeerConnection_SetSenderBandwidthEstimationCallback(  &pAppSession->peerConnectionSession,
+                                                            SampleSenderBandwidthEstimationHandler,
+                                                            pAppSession );
 ```
 
 ---
