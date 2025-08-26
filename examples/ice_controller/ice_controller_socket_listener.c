@@ -258,8 +258,8 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
                 if( onIceEventCallbackFunc )
                 {
                     retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext,
-                                                                            ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
-                                                                            NULL );
+                                                                           ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
+                                                                           NULL );
                     if( retPeerToPeerConnectionFound != 0 )
                     {
                         LogError( ( "Fail to handle peer to peer connection found event, ret: %d", retPeerToPeerConnectionFound ) );

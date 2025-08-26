@@ -1583,7 +1583,7 @@ int AppCommon_Init( AppContext_t * pAppContext,
                                                                                     pAppContext );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to initialize signaling controller." ) );
+            LogError( ( "Fail to set signaling connection state callback." ) );
             ret = -1;
         }
     }

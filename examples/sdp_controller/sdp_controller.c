@@ -169,7 +169,7 @@
 
 static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                    SdpAttribute_t * pAttribute );
-static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t * pSdpDescription,
+static SdpControllerResult_t ParseMediaAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                    const char * pAttributeBuffer,
                                                    size_t attributeBufferLength );
 static SdpControllerResult_t ParseSessionAttributes( SdpControllerSdpDescription_t * pSdpDescription,
@@ -359,7 +359,7 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
     return ret;
 }
 
-static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t * pSdpDescription,
+static SdpControllerResult_t ParseMediaAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                    const char * pAttributeBuffer,
                                                    size_t attributeBufferLength )
 {
@@ -2395,10 +2395,10 @@ SdpControllerResult_t SdpController_DeserializeSdpMessage( const char * pSdpCont
         {
             if( type == SDP_TYPE_ATTRIBUTE )
             {
-                ret = parseMediaAttributes( pSdpDescription, pValue, valueLength );
+                ret = ParseMediaAttributes( pSdpDescription, pValue, valueLength );
                 if( ret != SDP_CONTROLLER_RESULT_OK )
                 {
-                    LogError( ( "parseMediaAttributes fail, result %d", ret ) );
+                    LogError( ( "ParseMediaAttributes fail, result %d", ret ) );
                     break;
                 }
             }

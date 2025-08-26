@@ -1085,7 +1085,7 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
          * Refer to https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/getting-started-ingestion.html
          * for more detail. */
         LogError( ( "Viewer doesn't support Join Storage Session." ) );
-        ret = -1;
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
     }
     else
     {
