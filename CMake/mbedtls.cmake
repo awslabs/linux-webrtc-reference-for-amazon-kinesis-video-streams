@@ -1,6 +1,6 @@
 # mbedtls.cmake
 set(MBEDTLS_SOURCE_DIR "${CMAKE_ROOT_DIRECTORY}/libraries/crypto/mbedtls")
-set(MBEDTLS_CONFIG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/configs/mbedtls")
+set(MBEDTLS_CONFIG_DIR "${CMAKE_ROOT_DIRECTORY}/configs/mbedtls")
 set(MBEDTLS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/libraries/crypto/mbedtls")
 set(MBEDTLS_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/libraries/crypto/mbedtls/include")
 

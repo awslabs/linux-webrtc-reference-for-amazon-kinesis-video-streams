@@ -31,4 +31,4 @@ set(LWS_HAVE_mbedtls_ssl_get_alpn_protocol 1 CACHE INTERNAL "Skip stderr \"mbedt
 # set(LWS_TLS_LOG_PLAINTEXT_RX ON CACHE INTERNAL "Dump rx")
 # Include libwebsockets, then the library is named websockets
 message(STATUS "adding libwebsockets subdirectory")
-add_subdirectory(${CMAKE_LIBWEBSOCKETS_DIRECTORY})
+add_subdirectory(${CMAKE_LIBWEBSOCKETS_DIRECTORY} ${CMAKE_CURRENT_BINARY_DIR}/libwebsockets)

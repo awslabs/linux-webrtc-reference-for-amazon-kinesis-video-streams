@@ -1,5 +1,5 @@
 # Set the source directory explicitly
-set(LIBUSRSCTP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/libraries/protocols/usrsctp)
+set(LIBUSRSCTP_SOURCE_DIR ${CMAKE_ROOT_DIRECTORY}/libraries/protocols/usrsctp)
 set(LIBUSRSCTP_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/libraries/protocols/usrsctp)
 
 # Define the exact library location we want to use
