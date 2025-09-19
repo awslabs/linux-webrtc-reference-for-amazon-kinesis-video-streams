@@ -16,8 +16,8 @@ To compile and run the Coverity target successfully, you must have the following
 2. GCC compiler
     - You can see the download and installation instructions [here](https://gcc.gnu.org/install/).
 3. Download the repo including the submodules using the following commands:
-    - `git clone --recurse-submodules https://github.com/awslabs/amazon-kinesis-video-streams-sdp`
-    - `cd ./amazon-kinesis-video-streams-sdp`
+    - `git clone --recurse-submodules https://github.com/awslabs/linux-webrtc-reference-for-amazon-kinesis-video-streams`
+    - `cd ./linux-webrtc-reference-for-amazon-kinesis-video-streams`
 
 ### To build and run coverity:
 Go to the root directory of the library and run the following commands:
