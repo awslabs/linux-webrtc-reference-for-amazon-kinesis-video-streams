@@ -1,5 +1,5 @@
-# Static code analysis for SDP Library
-This directory is made for the purpose of statically analyzing the SDP Library using
+# Static code analysis for Linux WebRTC Application
+This directory is made for the purpose of statically analyzing the Linux WebRTC Application using
 [Black Duck Coverity](https://www.blackduck.com/static-analysis-tools-sast/coverity.html) static analysis tool.
 This configuration focuses on detecting code defects such as memory leaks, null pointer dereferences,
 buffer overflows, and other code quality issues.
