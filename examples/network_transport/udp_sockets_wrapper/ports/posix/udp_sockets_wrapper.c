@@ -56,7 +56,7 @@ int UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
 
     if( xRet == UDP_SOCKETS_ERRNO_NONE )
     {
-        *pUdpSocket = malloc( sizeof( *pUdpSocket ) );
+        *pUdpSocket = malloc( sizeof( struct xSOCKET ) );
         if( *pUdpSocket == NULL )
         {
             LogError( ( "Failed to allow new socket context." ) );

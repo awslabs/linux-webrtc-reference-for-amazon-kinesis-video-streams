@@ -104,7 +104,7 @@ int32_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
 
     if( xRet == TCP_SOCKETS_ERRNO_NONE )
     {
-        *pTcpSocket = malloc( sizeof( *pTcpSocket ) );
+        *pTcpSocket = malloc( sizeof( struct xSOCKET ) );
         if( *pTcpSocket == NULL )
         {
             LogError( ( "Failed to allow new socket context." ) );
