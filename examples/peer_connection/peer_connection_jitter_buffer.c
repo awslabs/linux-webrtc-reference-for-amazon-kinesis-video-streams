@@ -130,7 +130,6 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
 
                     firstTimestampIndex = i;
                     popingPacketStartIndex = -1;
-                    popingPacketEndIndex = -1;
                     isFrameDataContinuous = 1;
                     poppingTimestamp = currentTimestamp;
                 }
