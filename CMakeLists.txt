@@ -194,5 +194,5 @@ include( ${CMAKE_ROOT_DIRECTORY}/CMake/MasterExample.cmake )
 ### GStreamer Master Application
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/GstMasterExample.cmake )
 
-### Master Application
+### Viewer Application
 include( ${CMAKE_ROOT_DIRECTORY}/CMake/ViewerExample.cmake )
