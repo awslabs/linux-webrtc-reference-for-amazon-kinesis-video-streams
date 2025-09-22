@@ -325,7 +325,6 @@ int main( void )
             Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
         #endif
 
-        /* keep looping to establish viewer connection. */
         ret = SendSdpOffer( &appContext );
 
         while( appContext.appSessions[0].peerConnectionSession.state >= PEER_CONNECTION_SESSION_STATE_START )
