@@ -1162,6 +1162,7 @@ static void HandleSdpAnswer( AppContext_t * pAppContext,
         }
     }
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_SetVideoOnFrame( &pAppSession->peerConnectionSession,
@@ -1173,7 +1174,9 @@ static void HandleSdpAnswer( AppContext_t * pAppContext,
             skipProcess = 1;
         }
     }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_SetAudioOnFrame( &pAppSession->peerConnectionSession,
@@ -1185,6 +1188,7 @@ static void HandleSdpAnswer( AppContext_t * pAppContext,
             skipProcess = 1;
         }
     }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 }
 
 static void HandleRemoteCandidate( AppContext_t * pAppContext,
