@@ -27,7 +27,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
                                 TransceiverTrackKind_t trackKind,
                                 Transceiver_t * pTranceiver );
 static int32_t OnMediaSinkHook( void * pCustom,
-                                WebrtcFrame_t * pFrame );
+                                MediaFrame_t * pFrame );
 static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
                                          GstMediaSourcesContext_t * pGstMediaSourceContext );
 
@@ -227,7 +227,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
 
 
 static int32_t OnMediaSinkHook( void * pCustom,
-                                WebrtcFrame_t * pFrame )
+                                MediaFrame_t * pFrame )
 {
     int32_t ret = 0;
     AppContext_t * pAppContext = ( AppContext_t * ) pCustom;
