@@ -34,9 +34,9 @@
 #include "networking_utils.h"
 #include "peer_connection.h"
 
-#ifdef ENABLE_STREAMING_LOOPBACK
-#include "app_media_source.h"
-#endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
+    #include "app_media_source.h"
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
 #if ENABLE_SCTP_DATA_CHANNEL
 #include "peer_connection_sctp.h"
@@ -123,10 +123,14 @@ static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext
                                                       const char * pRemoteClientId,
                                                       size_t remoteClientIdLength,
                                                       uint8_t allowCreate );
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame );
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame );
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 static void HandleSdpOffer( AppContext_t * pAppContext,
                             const SignalingMessage_t * pSignalingMessage );
 static void HandleRemoteCandidate( AppContext_t * pAppContext,
@@ -792,73 +796,65 @@ static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext
     return pAppSession;
 }
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
-    #ifdef ENABLE_STREAMING_LOOPBACK
-        WebrtcFrame_t frame;
-        AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+    int32_t resultMedia = 0;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+    MediaFrame_t frame;
 
-        if( pFrame != NULL )
+    if( pFrame != NULL )
+    {
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
+
+        memset( &frame, 0, sizeof( MediaFrame_t ) );
+        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+        frame.pData = pFrame->pData;
+        frame.size = pFrame->dataLength;
+        frame.freeData = 0U;
+        frame.timestampUs = pFrame->presentationUs;
+        resultMedia = AppMediaSource_RecvFrame( pAppContext->pAppMediaSourcesContext,
+                                                &frame );
+        if( resultMedia != 0U )
         {
-            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
-
-            frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-            frame.pData = pFrame->pData;
-            frame.size = pFrame->dataLength;
-            frame.freeData = 0U;
-            frame.timestampUs = pFrame->presentationUs;
-            if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
-            {
-                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
-                                                                                    &frame );
-            }
+            LogDebug( ( "Dropping Rx video data with result: %d", resultMedia ) );
         }
-
-    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-        ( void ) pCustomContext;
-        if( pFrame != NULL )
-        {
-            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
-        }
-    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+    }
 
     return PEER_CONNECTION_RESULT_OK;
 }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
-    #ifdef ENABLE_STREAMING_LOOPBACK
-        WebrtcFrame_t frame;
-        AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+    int32_t resultMedia = 0;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+    MediaFrame_t frame;
 
-        if( pFrame != NULL )
+    if( pFrame != NULL )
+    {
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
+
+        memset( &frame, 0, sizeof( MediaFrame_t ) );
+        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+        frame.pData = pFrame->pData;
+        frame.size = pFrame->dataLength;
+        frame.freeData = 0U;
+        frame.timestampUs = pFrame->presentationUs;
+        resultMedia = AppMediaSource_RecvFrame( pAppContext->pAppMediaSourcesContext,
+                                                &frame );
+        if( resultMedia != 0U )
         {
-            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
-
-            frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-            frame.pData = pFrame->pData;
-            frame.size = pFrame->dataLength;
-            frame.freeData = 0U;
-            frame.timestampUs = pFrame->presentationUs;
-            if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
-            {
-                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
-                                                                                    &frame );
-            }
+            LogDebug( ( "Dropping Rx video data with result: %d", resultMedia ) );
         }
-
-    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-        ( void ) pCustomContext;
-        if( pFrame != NULL )
-        {
-            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
-        }
-    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+    }
 
     return PEER_CONNECTION_RESULT_OK;
 }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
 static void HandleSdpOffer( AppContext_t * pAppContext,
                             const SignalingMessage_t * pSignalingMessage )
@@ -948,6 +944,7 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
         }
     }
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_SetVideoOnFrame( &pAppSession->peerConnectionSession,
@@ -959,7 +956,9 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
             skipProcess = 1;
         }
     }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_SetAudioOnFrame( &pAppSession->peerConnectionSession,
@@ -971,6 +970,7 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
             skipProcess = 1;
         }
     }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
     if( skipProcess == 0 )
     {
