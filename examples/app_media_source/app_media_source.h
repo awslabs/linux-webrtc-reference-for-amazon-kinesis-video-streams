@@ -35,11 +35,11 @@ typedef struct {
     uint64_t timestampUs;
     TransceiverTrackKind_t trackKind;
     uint8_t freeData;  /* indicate user need to free pData after using it */
-} WebrtcFrame_t;
+} MediaFrame_t;
 
 typedef struct AppMediaSourcesContext AppMediaSourcesContext_t;
 typedef int32_t (* AppMediaSourceOnMediaSinkHook)( void * pCustom,
-                                                   WebrtcFrame_t * pFrame );
+                                                   MediaFrame_t * pFrame );
 
 typedef struct AppMediaSourceContext
 {
@@ -70,6 +70,8 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pVideoTranceiver );
 int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTranceiver );
+int32_t AppMediaSource_RecvFrame( AppMediaSourcesContext_t * pCtx,
+                                  MediaFrame_t * pFrame );
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus

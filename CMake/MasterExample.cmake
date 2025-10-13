@@ -40,6 +40,11 @@ message(STATUS "including libwebsockets directories: ${LIBWEBSOCKETS_INCLUDE_DIR
 target_include_directories( WebRTCLinuxApplicationMaster PRIVATE
                             ${LIBWEBSOCKETS_INCLUDE_DIRS} )
 
+## Add definition for application to differentiate the type of demo
+target_compile_definitions( WebRTCLinuxApplicationMaster
+                            PUBLIC
+                            WEBRTC_APPLICATION_DEMO_MASTER )
+
 ## Set signaling include directories
 target_compile_definitions( WebRTCLinuxApplicationMaster
                             PUBLIC

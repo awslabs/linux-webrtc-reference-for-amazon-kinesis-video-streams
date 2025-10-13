@@ -38,7 +38,7 @@ static int32_t OnNewVideoSample( GstElement * sink,
     int32_t ret = 0;
 
     GstMediaSourceContext_t * pVideoContext = ( GstMediaSourceContext_t * )user_data;
-    WebrtcFrame_t frame;
+    MediaFrame_t frame;
     GstBuffer * pBuffer;
     GstMapInfo map;
     GstSample * pSample;
@@ -150,7 +150,7 @@ static int32_t OnNewAudioSample( GstElement * sink,
     int32_t ret = 0;
 
     GstMediaSourceContext_t * pAudioContext = ( GstMediaSourceContext_t * )user_data;
-    WebrtcFrame_t frame;
+    MediaFrame_t frame;
     GstBuffer * pBuffer;
     GstMapInfo map;
     GstSample * pSample;
