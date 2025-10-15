@@ -716,12 +716,6 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                     pCustomContext, pEventMsg ) );
         ret = -1;
     }
-    else if( ( event == ICE_CONTROLLER_CB_EVENT_NONE ) || ( event >= ICE_CONTROLLER_CB_EVENT_MAX ) )
-    {
-        LogError( ( "Unknown event: %d",
-                    event ) );
-        ret = -2;
-    }
     else
     {
         switch( event )
@@ -774,6 +768,7 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 break;
             default:
                 LogError( ( "Unknown event: %d", event ) );
+                ret = -2;
                 break;
         }
     }
@@ -2531,9 +2526,11 @@ PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConn
     {
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
-
-    pSession->onPictureLossIndicationCallback = onPictureLossIndicationCallback;
-    pSession->pPictureLossIndicationUserContext = pUserContext;
+    else
+    {
+        pSession->onPictureLossIndicationCallback = onPictureLossIndicationCallback;
+        pSession->pPictureLossIndicationUserContext = pUserContext;
+    }
 
     return ret;
 }
@@ -2549,9 +2546,11 @@ PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConn
         {
             ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
         }
-
-        pSession->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
-        pSession->pOnBandwidthEstimationCallbackContext = pUserContext;
+        else
+        {
+            pSession->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
+            pSession->pOnBandwidthEstimationCallbackContext = pUserContext;
+        }
 
         return ret;
     }

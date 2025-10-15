@@ -63,8 +63,8 @@ static void * VideoTx_Task( void * pParameter )
     #ifndef ENABLE_STREAMING_LOOPBACK
         char filePath[ MAX_PATH_LEN + 1 ];
         FILE * fp = NULL;
-        size_t frameLength;
-        size_t allocatedBufferLength = 0;
+        ssize_t frameLength;
+        ssize_t allocatedBufferLength = 0;
     #endif /* ifndef ENABLE_STREAMING_LOOPBACK */
 
     if( pVideoContext == NULL )
@@ -73,7 +73,7 @@ static void * VideoTx_Task( void * pParameter )
     }
     else
     {
-        frame.timestampUs = 0;
+        memset( &frame, 0, sizeof( MediaFrame_t ) );
         ( void ) frame;
 
         while( 1 )
@@ -81,38 +81,57 @@ static void * VideoTx_Task( void * pParameter )
             #ifndef ENABLE_STREAMING_LOOPBACK
                 if( pVideoContext->numReadyPeer != 0 )
                 {
-                    #if USE_VIDEO_CODEC_H265
-                    {
-                        pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
-                        snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", pVideoContext->fileIndex );
-                    }
-                    #else
-                    {
-                        pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
-                        snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", pVideoContext->fileIndex );
-                    }
-                    #endif
+                    do {
+                        /* Open file */
+                        #if USE_VIDEO_CODEC_H265
+                        {
+                            pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H265_FRAME_SAMPLE_FILES + 1;
+                            ( void ) snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h265SampleFrames/frame-%04d.h265", pVideoContext->fileIndex );
+                        }
+                        #else
+                        {
+                            pVideoContext->fileIndex = pVideoContext->fileIndex % NUMBER_OF_H264_FRAME_SAMPLE_FILES + 1;
+                            ( void ) snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/h264SampleFrames/frame-%04d.h264", pVideoContext->fileIndex );
+                        }
+                        #endif
 
-                    fp = fopen( filePath, "rb" );
+                        fp = fopen( filePath, "rb" );
+                        if( fp == NULL )
+                        {
+                            LogError( ( "Failed to open %s. Error: %s", filePath, strerror( errno ) ) );
+                            break;
+                        }
 
-                    if( fp == NULL )
-                    {
-                        LogError( ( "Failed to open %s. Error: %s", filePath, strerror( errno ) ) );
-                    }
-                    else
-                    {
+                        /* Get file size */
                         fseek( fp, 0, SEEK_END );
                         frameLength = ftell( fp );
 
-                        if( frameLength > allocatedBufferLength )
+                        if( frameLength < 0 )
                         {
-                            if( allocatedBufferLength != 0 )
+                            LogError( ( "ftell failed on file %s", filePath ) );
+                            break;
+                        }
+
+                        /* Check buffer size */
+                        if( frame.pData == NULL ||
+                            frameLength > allocatedBufferLength )
+                        {
+                            if( frame.pData != NULL )
                             {
                                 free( frame.pData );
                             }
                             frame.pData = ( uint8_t * ) malloc( frameLength );
                             allocatedBufferLength = frameLength;
+
+                            if( frame.pData == NULL )
+                            {
+                                LogError( ( "malloc failed!" ) );
+                                allocatedBufferLength = 0;
+                                break;
+                            }
                         }
+
+                        /* Read */
                         frame.size = frameLength;
                         frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
                         frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
@@ -130,7 +149,11 @@ static void * VideoTx_Task( void * pParameter )
                         {
                             LogError( ( "VideoTx_Task: fread failed!" ) );
                         }
+                    } while( 0 );
 
+                    /* Close file */
+                    if( fp != NULL )
+                    {
                         fclose( fp );
                     }
                 }
@@ -149,8 +172,8 @@ static void * AudioTx_Task( void * pParameter )
     #ifndef ENABLE_STREAMING_LOOPBACK
         char filePath[ MAX_PATH_LEN + 1 ];
         FILE * fp = NULL;
-        size_t frameLength;
-        size_t allocatedBufferLength = 0;
+        ssize_t frameLength;
+        ssize_t allocatedBufferLength = 0;
     #endif /* ifndef ENABLE_STREAMING_LOOPBACK */
 
     if( pAudioContext == NULL )
@@ -159,7 +182,7 @@ static void * AudioTx_Task( void * pParameter )
     }
     else
     {
-        frame.timestampUs = 0;
+        memset( &frame, 0, sizeof( MediaFrame_t ) );
         ( void ) frame;
 
         while( 1 )
@@ -167,32 +190,51 @@ static void * AudioTx_Task( void * pParameter )
             #ifndef ENABLE_STREAMING_LOOPBACK
                 if( pAudioContext->numReadyPeer != 0 )
                 {
-                    pAudioContext->fileIndex = pAudioContext->fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
-                    snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", pAudioContext->fileIndex );
+                    do {
+                        /* Open file */
+                        pAudioContext->fileIndex = pAudioContext->fileIndex % NUMBER_OF_OPUS_FRAME_SAMPLE_FILES + 1;
+                        ( void ) snprintf( filePath, MAX_PATH_LEN, "./examples/app_media_source/samples/opusSampleFrames/sample-%03d.opus", pAudioContext->fileIndex );
 
-                    fp = fopen( filePath, "rb" );
+                        fp = fopen( filePath, "rb" );
+                        if( fp == NULL )
+                        {
+                            LogError( ( "Failed to open %s. Error: %s", filePath, strerror( errno ) ) );
+                            break;
+                        }
 
-                    if( fp == NULL )
-                    {
-                        LogError( ( "Failed to open %s.", filePath ) );
-                    }
-                    else
-                    {
+                        /* Get file size */
                         fseek( fp, 0, SEEK_END );
                         frameLength = ftell( fp );
 
-                        if( frameLength > allocatedBufferLength )
+                        if( frameLength < 0 )
                         {
-                            if( allocatedBufferLength != 0 )
+                            LogError( ( "ftell failed on file %s", filePath ) );
+                            break;
+                        }
+
+                        /* Check buffer size */
+                        if( frame.pData == NULL ||
+                            frameLength > allocatedBufferLength )
+                        {
+                            if( frame.pData != NULL )
                             {
                                 free( frame.pData );
                             }
                             frame.pData = ( uint8_t * ) malloc( frameLength );
                             allocatedBufferLength = frameLength;
+
+                            if( frame.pData == NULL )
+                            {
+                                LogError( ( "malloc failed!" ) );
+                                allocatedBufferLength = 0;
+                                break;
+                            }
                         }
+
+                        /* Read */
                         frame.size = frameLength;
-                        frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
-                        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+                        frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
+                        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
 
                         fseek( fp, 0, SEEK_SET );
                         if( fread( frame.pData, frameLength, 1, fp ) == 1 )
@@ -205,9 +247,13 @@ static void * AudioTx_Task( void * pParameter )
                         }
                         else
                         {
-                            LogError( ( "AudioTx_Task: fread failed!" ) );
+                            LogError( ( "VideoTx_Task: fread failed!" ) );
                         }
+                    } while( 0 );
 
+                    /* Close file */
+                    if( fp != NULL )
+                    {
                         fclose( fp );
                     }
                 }

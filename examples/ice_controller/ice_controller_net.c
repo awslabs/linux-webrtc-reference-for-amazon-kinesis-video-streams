@@ -619,7 +619,7 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
     uint32_t i;
-    IceControllerSocketContext_t * pSocketContext;
+    IceControllerSocketContext_t * pSocketContext = NULL;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
         char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
@@ -651,6 +651,19 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
             ( pLocalIceEndpoint->transportAddress.family == pCtx->iceServers[ i ].iceEndpoint.transportAddress.family ) )
         {
             ret = CreateSocketContext( pCtx, pLocalIceEndpoint->transportAddress.family, pLocalIceEndpoint, NULL, ICE_SOCKET_PROTOCOL_UDP, &pSocketContext );
+            if( ( ret != ICE_CONTROLLER_RESULT_OK ) ||
+                ( pSocketContext == NULL ) )
+            {
+                LogError( ( "Fail to create socket context for srflx candidate." ) );
+                continue;
+            }
+        }
+        else
+        {
+            LogWarn( ( "STUN server's IP family is not supported: %.*s",
+                       ( int ) pCtx->iceServers[ i ].urlLength,
+                       pCtx->iceServers[ i ].url ) );
+            continue;
         }
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -842,25 +855,37 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
     size_t sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceEndpoint_t * pDestEndpoint = NULL;
 
-    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    if( ( pCtx == NULL ) ||
+        ( pSocketContext == NULL ) ||
+        ( pCandidatePair == NULL ) ||
+        ( pTransactionIdBuffer == NULL ) )
     {
-        iceResult = Ice_CreateResponseForRequest( &pCtx->iceContext,
-                                                  pCandidatePair,
-                                                  pTransactionIdBuffer,
-                                                  sentStunBuffer,
-                                                  &sentStunBufferLength );
-        pthread_mutex_unlock( &( pCtx->iceMutex ) );
-
-        if( iceResult != ICE_RESULT_OK )
-        {
-            LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
-            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
-        }
+        LogWarn( ( "Invalid input to send binding response, pCtx: %p, pSocketContext: %p, pCandidatePair: %p, pTransactionIdBuffer: %p", pCtx, pSocketContext, pCandidatePair, pTransactionIdBuffer ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
-    else
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        LogError( ( "Failed to create binding response: mutex lock acquisition." ) );
-        ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+        {
+            iceResult = Ice_CreateResponseForRequest( &pCtx->iceContext,
+                                                      pCandidatePair,
+                                                      pTransactionIdBuffer,
+                                                      sentStunBuffer,
+                                                      &sentStunBufferLength );
+            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+            if( iceResult != ICE_RESULT_OK )
+            {
+                LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
+            }
+        }
+        else
+        {
+            LogError( ( "Failed to create binding response: mutex lock acquisition." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+        }
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -905,25 +930,38 @@ static IceControllerResult_t SendNominationRequest( IceControllerContext_t * pCt
     IceEndpoint_t * pDestEndpoint = NULL;
     uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
 
-    if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+    if( ( pCtx == NULL ) ||
+        ( pSocketContext == NULL ) ||
+        ( pCandidatePair == NULL ) ||
+        ( pTransactionIdBuffer == NULL ) )
     {
-        iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
-                                               pCandidatePair,
-                                               currentTimeSeconds,
-                                               sentStunBuffer,
-                                               &sentStunBufferLength );
-        pthread_mutex_unlock( &( pCtx->iceMutex ) );
-
-        if( iceResult != ICE_RESULT_OK )
-        {
-            LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
-            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
-        }
+        LogError( ( "Invalid input, pCtx: %p, pSocketContext: %p, pCandidatePair: %p, pTransactionIdBuffer: %p",
+                    pCtx, pSocketContext, pCandidatePair, pTransactionIdBuffer ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
-    else
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        LogError( ( "Failed to create binding response: mutex lock acquisition." ) );
-        ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+        if( pthread_mutex_lock( &( pCtx->iceMutex ) ) == 0 )
+        {
+            iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
+                                                   pCandidatePair,
+                                                   currentTimeSeconds,
+                                                   sentStunBuffer,
+                                                   &sentStunBufferLength );
+            pthread_mutex_unlock( &( pCtx->iceMutex ) );
+
+            if( iceResult != ICE_RESULT_OK )
+            {
+                LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
+                ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
+            }
+        }
+        else
+        {
+            LogError( ( "Failed to create binding response: mutex lock acquisition." ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+        }
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
