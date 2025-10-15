@@ -34,9 +34,9 @@
 #include "networking_utils.h"
 #include "peer_connection.h"
 
-#ifdef ENABLE_STREAMING_LOOPBACK
-#include "app_media_source.h"
-#endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
+    #include "app_media_source.h"
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
 #if ENABLE_SCTP_DATA_CHANNEL
 #include "peer_connection_sctp.h"
@@ -119,16 +119,18 @@ static int32_t GetIceServerList( AppContext_t * pAppContext,
 #endif
 static int32_t InitializeAppSession( AppContext_t * pAppContext,
                                      AppSession_t * pAppSession );
-static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext,
-                                                      const char * pRemoteClientId,
-                                                      size_t remoteClientIdLength,
-                                                      uint8_t allowCreate );
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame );
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame );
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 static void HandleSdpOffer( AppContext_t * pAppContext,
                             const SignalingMessage_t * pSignalingMessage );
+static void HandleSdpAnswer( AppContext_t * pAppContext,
+                             const SignalingMessage_t * pSignalingMessage );
 static void HandleRemoteCandidate( AppContext_t * pAppContext,
                                    const SignalingMessage_t * pSignalingMessage );
 static void HandleIceServerReconnect( AppContext_t * pAppContext,
@@ -148,6 +150,82 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
     #endif /* (DATACHANNEL_CUSTOM_CALLBACK_HOOK != 0) */
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
+static void * SignalingController_Task( void * pParameter )
+{
+    int ret = 0;
+    AppContext_t * pAppContext = ( AppContext_t * ) pParameter;
+    SignalingControllerResult_t signalingControllerReturn;
+    SignalingControllerConnectInfo_t connectInfo;
+
+    if( pAppContext == NULL )
+    {
+        LogError( ( "Invalid parameter, pAppContext: %p", pAppContext ) );
+        ret = -1;
+    }
+
+    if( ret == 0 )
+    {
+        memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
+    
+        #if ( JOIN_STORAGE_SESSION != 0 )
+            connectInfo.enableStorageSession = 1U;
+        #endif
+    
+        connectInfo.awsConfig.pRegion = AWS_REGION;
+        connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
+        connectInfo.awsConfig.pService = "kinesisvideo";
+        connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
+    
+        connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
+        connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
+    
+        connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
+        connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
+    
+        connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
+        connectInfo.pMessageReceivedCallbackData = pAppContext;
+    
+        connectInfo.role = pAppContext->signalingControllerRole;
+        connectInfo.pClientId = pAppContext->signalingControllerClientId;
+        connectInfo.clientIdLength = pAppContext->signalingControllerClientIdLength;
+    
+        #if defined( AWS_ACCESS_KEY_ID )
+            connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
+            connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
+            connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
+            connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
+            #if defined( AWS_SESSION_TOKEN )
+                connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
+                connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
+            #endif /* #if defined( AWS_SESSION_TOKEN ) */
+        #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
+    
+        #if defined( AWS_IOT_THING_ROLE_ALIAS )
+            connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
+            connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
+            connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
+            connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
+            connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
+            connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
+        #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
+
+        /* This should never return unless exception happens. */
+        signalingControllerReturn = SignalingController_StartListening( &( pAppContext->signalingControllerContext ),
+                                                                        &connectInfo );
+        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to keep processing signaling controller." ) );
+            ret = -1;
+        }
+    }
+
+    #if ENABLE_SCTP_DATA_CHANNEL
+        /* TODO_SCTP: Move to a common shutdown function? */
+        Sctp_DeInit();
+    #endif /* ENABLE_SCTP_DATA_CHANNEL */
+
+    return NULL;
+}
 
 static int32_t StartPeerConnectionSession( AppContext_t * pAppContext,
                                            AppSession_t * pAppSession,
@@ -740,125 +818,65 @@ static int32_t InitializeAppSession( AppContext_t * pAppContext,
     return ret;
 }
 
-static AppSession_t * GetCreatePeerConnectionSession( AppContext_t * pAppContext,
-                                                      const char * pRemoteClientId,
-                                                      size_t remoteClientIdLength,
-                                                      uint8_t allowCreate )
-{
-    AppSession_t * pAppSession = NULL;
-    int i;
-    int32_t initResult;
-
-    for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
-    {
-        if( ( pAppContext->appSessions[i].remoteClientIdLength == remoteClientIdLength ) &&
-            ( strncmp( pAppContext->appSessions[i].remoteClientId, pRemoteClientId, remoteClientIdLength ) == 0 ) )
-        {
-            /* Found existing session. */
-            pAppSession = &pAppContext->appSessions[i];
-            break;
-        }
-        else if( ( allowCreate != 0 ) &&
-                 ( pAppSession == NULL ) &&
-                 ( pAppContext->appSessions[i].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
-        {
-            /* Found free session, keep looping to find existing one. */
-            pAppSession = &pAppContext->appSessions[i];
-        }
-        else
-        {
-            /* Do nothing. */
-        }
-    }
-
-    if( ( pAppSession != NULL ) && ( pAppSession->peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
-    {
-        /* Initialize Peer Connection. */
-        LogDebug( ( "Start peer connection on idx: %d for client ID(%lu): %.*s",
-                    i,
-                    remoteClientIdLength,
-                    ( int ) remoteClientIdLength,
-                    pRemoteClientId ) );
-        initResult = StartPeerConnectionSession( pAppContext,
-                                                 pAppSession,
-                                                 pRemoteClientId,
-                                                 remoteClientIdLength );
-        if( initResult != 0 )
-        {
-            pAppSession = NULL;
-        }
-    }
-
-    return pAppSession;
-}
-
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
-    #ifdef ENABLE_STREAMING_LOOPBACK
-        WebrtcFrame_t frame;
-        AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+    int32_t resultMedia = 0;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+    MediaFrame_t frame;
 
-        if( pFrame != NULL )
+    if( pFrame != NULL )
+    {
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
+
+        memset( &frame, 0, sizeof( MediaFrame_t ) );
+        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+        frame.pData = pFrame->pData;
+        frame.size = pFrame->dataLength;
+        frame.freeData = 0U;
+        frame.timestampUs = pFrame->presentationUs;
+        resultMedia = AppMediaSource_RecvFrame( pAppContext->pAppMediaSourcesContext,
+                                                &frame );
+        if( resultMedia != 0U )
         {
-            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
-
-            frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-            frame.pData = pFrame->pData;
-            frame.size = pFrame->dataLength;
-            frame.freeData = 0U;
-            frame.timestampUs = pFrame->presentationUs;
-            if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
-            {
-                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
-                                                                                    &frame );
-            }
+            LogDebug( ( "Dropping Rx video data with result: %d", resultMedia ) );
         }
-
-    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-        ( void ) pCustomContext;
-        if( pFrame != NULL )
-        {
-            LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
-        }
-    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+    }
 
     return PEER_CONNECTION_RESULT_OK;
 }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
-    #ifdef ENABLE_STREAMING_LOOPBACK
-        WebrtcFrame_t frame;
-        AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+    int32_t resultMedia = 0;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
+    MediaFrame_t frame;
 
-        if( pFrame != NULL )
+    if( pFrame != NULL )
+    {
+        LogDebug( ( "Received video frame with length: %lu", pFrame->dataLength ) );
+
+        memset( &frame, 0, sizeof( MediaFrame_t ) );
+        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
+        frame.pData = pFrame->pData;
+        frame.size = pFrame->dataLength;
+        frame.freeData = 0U;
+        frame.timestampUs = pFrame->presentationUs;
+        resultMedia = AppMediaSource_RecvFrame( pAppContext->pAppMediaSourcesContext,
+                                                &frame );
+        if( resultMedia != 0U )
         {
-            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
-
-            frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-            frame.pData = pFrame->pData;
-            frame.size = pFrame->dataLength;
-            frame.freeData = 0U;
-            frame.timestampUs = pFrame->presentationUs;
-            if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
-            {
-                ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
-                                                                                    &frame );
-            }
+            LogDebug( ( "Dropping Rx video data with result: %d", resultMedia ) );
         }
-
-    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-        ( void ) pCustomContext;
-        if( pFrame != NULL )
-        {
-            LogDebug( ( "Received audio frame with length: %lu", pFrame->dataLength ) );
-        }
-    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+    }
 
     return PEER_CONNECTION_RESULT_OK;
 }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
 static void HandleSdpOffer( AppContext_t * pAppContext,
                             const SignalingMessage_t * pSignalingMessage )
@@ -884,10 +902,11 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
     if( skipProcess == 0 )
     {
         /* Get the SDP content in pSdpOfferMessage. */
-        signalingControllerReturn = SignalingController_ExtractSdpOfferFromSignalingMessage( pSignalingMessage->pMessage,
-                                                                                             pSignalingMessage->messageLength,
-                                                                                             &pSdpOfferMessage,
-                                                                                             &sdpOfferMessageLength );
+        signalingControllerReturn = SignalingController_ExtractSdpMessageFromSignalingMessage( pSignalingMessage->pMessage,
+                                                                                               pSignalingMessage->messageLength,
+                                                                                               1U,
+                                                                                               &pSdpOfferMessage,
+                                                                                               &sdpOfferMessageLength );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to parse SDP offer content, result: %d, event message(%lu): %.*s.",
@@ -921,10 +940,9 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
 
     if( skipProcess == 0 )
     {
-        pAppSession = GetCreatePeerConnectionSession( pAppContext,
-                                                      pSignalingMessage->pRemoteClientId,
-                                                      pSignalingMessage->remoteClientIdLength,
-                                                      1U );
+        pAppSession = AppCommon_GetPeerConnectionSession( pAppContext,
+                                                          pSignalingMessage->pRemoteClientId,
+                                                          pSignalingMessage->remoteClientIdLength );
         if( pAppSession == NULL )
         {
             LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -948,6 +966,7 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
         }
     }
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_SetVideoOnFrame( &pAppSession->peerConnectionSession,
@@ -959,7 +978,9 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
             skipProcess = 1;
         }
     }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
     if( skipProcess == 0 )
     {
         peerConnectionResult = PeerConnection_SetAudioOnFrame( &pAppSession->peerConnectionSession,
@@ -971,6 +992,7 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
             skipProcess = 1;
         }
     }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
 
     if( skipProcess == 0 )
     {
@@ -1010,7 +1032,7 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
                                                                                     &sdpAnswerMessageLength );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
-            LogError( ( "Fail to deserialize SDP offer newline, result: %d, constructed buffer(%lu): %.*s",
+            LogError( ( "Fail to serialize SDP answer newline, result: %d, constructed buffer(%lu): %.*s",
                         signalingControllerReturn,
                         pAppContext->sdpConstructedBufferLength,
                         ( int ) pAppContext->sdpConstructedBufferLength,
@@ -1054,6 +1076,121 @@ static void HandleSdpOffer( AppContext_t * pAppContext,
     #endif
 }
 
+static void HandleSdpAnswer( AppContext_t * pAppContext,
+                             const SignalingMessage_t * pSignalingMessage )
+{
+    uint8_t skipProcess = 0;
+    SignalingControllerResult_t signalingControllerReturn;
+    const char * pSdpAnswerMessage = NULL;
+    size_t sdpAnswerMessageLength = 0;
+    PeerConnectionResult_t peerConnectionResult;
+    PeerConnectionBufferSessionDescription_t bufferSessionDescription;
+    size_t formalSdpMessageLength = 0;
+    AppSession_t * pAppSession = NULL;
+
+    if( ( pAppContext == NULL ) ||
+        ( pSignalingMessage == NULL ) )
+    {
+        LogError( ( "Invalid input, pAppContext: %p, pEvent: %p", pAppContext, pSignalingMessage ) );
+        skipProcess = 1;
+    }
+
+    if( skipProcess == 0 )
+    {
+        /* Get the SDP content in SDP answer. */
+        signalingControllerReturn = SignalingController_ExtractSdpMessageFromSignalingMessage( pSignalingMessage->pMessage,
+                                                                                               pSignalingMessage->messageLength,
+                                                                                               0U,
+                                                                                               &pSdpAnswerMessage,
+                                                                                               &sdpAnswerMessageLength );
+        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to parse SDP offer content, result: %d, event message(%lu): %.*s.",
+                        signalingControllerReturn,
+                        pSignalingMessage->messageLength,
+                        ( int ) pSignalingMessage->messageLength,
+                        pSignalingMessage->pMessage ) );
+            skipProcess = 1;
+        }
+    }
+
+    if( skipProcess == 0 )
+    {
+        /* Translate the newline into SDP formal format. The end pattern from signaling event message is "\\n" or "\\r\\n",
+         * so we replace that with "\n" by calling this function. Note that this doesn't support inplace replacement. */
+        formalSdpMessageLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
+        signalingControllerReturn = SignalingController_DeserializeSdpContentNewline( pSdpAnswerMessage,
+                                                                                      sdpAnswerMessageLength,
+                                                                                      pAppContext->sdpBuffer,
+                                                                                      &formalSdpMessageLength );
+        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to deserialize SDP offer newline, result: %d, event message(%lu): %.*s.",
+                        signalingControllerReturn,
+                        pSignalingMessage->messageLength,
+                        ( int ) pSignalingMessage->messageLength,
+                        pSignalingMessage->pMessage ) );
+            skipProcess = 1;
+        }
+    }
+
+    if( skipProcess == 0 )
+    {
+        pAppSession = AppCommon_GetPeerConnectionSession( pAppContext,
+                                                          pSignalingMessage->pRemoteClientId,
+                                                          pSignalingMessage->remoteClientIdLength );
+        if( pAppSession == NULL )
+        {
+            LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
+                       pSignalingMessage->remoteClientIdLength,
+                       ( int ) pSignalingMessage->remoteClientIdLength,
+                       pSignalingMessage->pRemoteClientId ) );
+            skipProcess = 1;
+        }
+    }
+
+    if( skipProcess == 0 )
+    {
+        bufferSessionDescription.pSdpBuffer = pAppContext->sdpBuffer;
+        bufferSessionDescription.sdpBufferLength = formalSdpMessageLength;
+        bufferSessionDescription.type = SDP_CONTROLLER_MESSAGE_TYPE_ANSWER;
+        peerConnectionResult = PeerConnection_SetRemoteDescription( &pAppSession->peerConnectionSession,
+                                                                    &bufferSessionDescription );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogWarn( ( "PeerConnection_SetRemoteDescription fail, result: %d, dropping ICE candidate.", peerConnectionResult ) );
+        }
+    }
+
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
+    if( skipProcess == 0 )
+    {
+        peerConnectionResult = PeerConnection_SetVideoOnFrame( &pAppSession->peerConnectionSession,
+                                                               HandleRxVideoFrame,
+                                                               pAppContext );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogWarn( ( "PeerConnection_SetVideoOnFrame fail, result: %d.", peerConnectionResult ) );
+            skipProcess = 1;
+        }
+    }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
+
+#if defined( WEBRTC_APPLICATION_DEMO_MASTER )
+    if( skipProcess == 0 )
+    {
+        peerConnectionResult = PeerConnection_SetAudioOnFrame( &pAppSession->peerConnectionSession,
+                                                               HandleRxAudioFrame,
+                                                               pAppContext );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogWarn( ( "PeerConnection_SetAudioOnFrame fail, result: %d.", peerConnectionResult ) );
+            skipProcess = 1;
+        }
+    }
+#endif /* defined( WEBRTC_APPLICATION_DEMO_MASTER ) */
+}
+
 static void HandleRemoteCandidate( AppContext_t * pAppContext,
                                    const SignalingMessage_t * pSignalingMessage )
 {
@@ -1061,10 +1198,9 @@ static void HandleRemoteCandidate( AppContext_t * pAppContext,
     PeerConnectionResult_t peerConnectionResult;
     AppSession_t * pAppSession = NULL;
 
-    pAppSession = GetCreatePeerConnectionSession( pAppContext,
-                                                  pSignalingMessage->pRemoteClientId,
-                                                  pSignalingMessage->remoteClientIdLength,
-                                                  1U );
+    pAppSession = AppCommon_GetPeerConnectionSession( pAppContext,
+                                                      pSignalingMessage->pRemoteClientId,
+                                                      pSignalingMessage->remoteClientIdLength );
     if( pAppSession == NULL )
     {
         LogWarn( ( "No available peer connection session for remote client ID(%lu): %.*s",
@@ -1232,6 +1368,42 @@ static void HandleLocalCandidateReady( void * pCustomContext,
     }
 }
 
+static void OnSignalingConnectionStateChange( SignalingControllerConnectionState_t state,
+                                              void * pUserData )
+{
+    AppContext_t * pAppContext = ( AppContext_t * ) pUserData;
+    static uint8_t isFirst = 1U;
+    uint8_t skipProcess = 0U;
+    ssize_t retWrite;
+    uint64_t signalingConnectionBarrier = 1;
+
+    if( pAppContext == NULL )
+    {
+        LogError( ( "Unexpected callback with NULL context." ) );
+        skipProcess = 1U;
+    }
+
+    if( skipProcess == 0U )
+    {
+        if( ( isFirst != 0U ) &&
+            ( state == SIGNALING_CONTROLLER_STATE_CONNECTED ) )
+        {
+            retWrite = write( pAppContext->signalingConnectionBarrier,
+                              &signalingConnectionBarrier,
+                              sizeof( signalingConnectionBarrier ) );
+            if( retWrite != sizeof( uint64_t ) )
+            {
+                LogError( ( "Fail to signal connection barrier, errno(%d): %s.", errno, strerror( errno ) ) );
+            }
+            else
+            {
+                isFirst = 0U;
+                LogInfo( ( "Unblock signaling connection barrier." ) );
+            }
+        }
+    }
+}
+
 static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                                        void * pUserData )
 {
@@ -1254,6 +1426,8 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
                             pSignalingMessage );
             break;
         case SIGNALING_TYPE_MESSAGE_SDP_ANSWER:
+            HandleSdpAnswer( pAppContext,
+                             pSignalingMessage );
             break;
         case SIGNALING_TYPE_MESSAGE_ICE_CANDIDATE:
             HandleRemoteCandidate( pAppContext,
@@ -1365,6 +1539,17 @@ int AppCommon_Init( AppContext_t * pAppContext,
 
     if( ret == 0 )
     {
+        pAppContext->signalingConnectionBarrier = eventfd( 0,
+                                                           0 );
+        if( pAppContext->signalingConnectionBarrier < 0 )
+        {
+            LogError( ( "Failed to create signaling connection barrier, errno: %d", errno ) );
+            ret = -1;
+        }
+    }
+
+    if( ret == 0 )
+    {
         sslCreds.pCaCertPath = AWS_CA_CERT_PATH;
         #if defined( AWS_IOT_THING_ROLE_ALIAS )
             sslCreds.pDeviceCertPath = AWS_IOT_THING_CERT_PATH;
@@ -1383,14 +1568,29 @@ int AppCommon_Init( AppContext_t * pAppContext,
         }
     }
 
-    #if ENABLE_TWCC_SUPPORT
+#if ENABLE_TWCC_SUPPORT
+    if( ret == 0 )
+    {
         if( pthread_mutex_init( &pAppContext->bitrateModifiedMutex,
                                 NULL ) != 0 )
         {
             LogError( ( "Failed to create bitrateModifiedMutex mutex" ) );
             ret = -1;
         }
-    #endif /* ENABLE_TWCC_SUPPORT */
+    }
+#endif /* ENABLE_TWCC_SUPPORT */
+
+    if( ret == 0 )
+    {
+        signalingControllerReturn = SignalingController_SetConnectionStateCallback( &pAppContext->signalingControllerContext,
+                                                                                    OnSignalingConnectionStateChange,
+                                                                                    pAppContext );
+        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to set signaling connection state callback." ) );
+            ret = -1;
+        }
+    }
 
     #if METRIC_PRINT_ENABLED
         if( ret == 0 )
@@ -1417,11 +1617,11 @@ int AppCommon_Init( AppContext_t * pAppContext,
     return ret;
 }
 
-int AppCommon_Start( AppContext_t * pAppContext )
+int AppCommon_StartSignalingController( AppContext_t * pAppContext )
 {
     int ret = 0;
-    SignalingControllerResult_t signalingControllerReturn;
-    SignalingControllerConnectInfo_t connectInfo;
+    uint64_t barrierResult = 0;
+    ssize_t retRead;
 
     if( pAppContext == NULL )
     {
@@ -1431,60 +1631,90 @@ int AppCommon_Start( AppContext_t * pAppContext )
 
     if( ret == 0 )
     {
-        memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
-    
-        #if ( JOIN_STORAGE_SESSION != 0 )
-            connectInfo.enableStorageSession = 1U;
-        #endif
+        pthread_create( &pAppContext->signalingControllerTid,
+                        NULL,
+                        SignalingController_Task,
+                        pAppContext );
+    }
 
-        connectInfo.awsConfig.pRegion = AWS_REGION;
-        connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
-        connectInfo.awsConfig.pService = "kinesisvideo";
-        connectInfo.awsConfig.serviceLen = strlen( "kinesisvideo" );
-
-        connectInfo.channelName.pChannelName = AWS_KVS_CHANNEL_NAME;
-        connectInfo.channelName.channelNameLength = strlen( AWS_KVS_CHANNEL_NAME );
-
-        connectInfo.pUserAgentName = AWS_KVS_AGENT_NAME;
-        connectInfo.userAgentNameLength = strlen( AWS_KVS_AGENT_NAME );
-
-        connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
-        connectInfo.pMessageReceivedCallbackData = pAppContext;
-
-        #if defined( AWS_ACCESS_KEY_ID )
-            connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
-            connectInfo.awsCreds.accessKeyIdLen = strlen( AWS_ACCESS_KEY_ID );
-            connectInfo.awsCreds.pSecretAccessKey = AWS_SECRET_ACCESS_KEY;
-            connectInfo.awsCreds.secretAccessKeyLen = strlen( AWS_SECRET_ACCESS_KEY );
-            #if defined( AWS_SESSION_TOKEN )
-                connectInfo.awsCreds.pSessionToken = AWS_SESSION_TOKEN;
-                connectInfo.awsCreds.sessionTokenLength = strlen( AWS_SESSION_TOKEN );
-            #endif /* #if defined( AWS_SESSION_TOKEN ) */
-        #endif /* #if defined( AWS_ACCESS_KEY_ID ) */
-
-        #if defined( AWS_IOT_THING_ROLE_ALIAS )
-            connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
-            connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
-            connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
-            connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
-            connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
-            connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
-        #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
-
-        /* This should never return unless exception happens. */
-        signalingControllerReturn = SignalingController_StartListening( &( pAppContext->signalingControllerContext ),
-                                                                        &connectInfo );
-        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+    if( ret == 0 )
+    {
+        LogDebug( ( "Waiting signaling connection barrier." ) );
+        retRead = read( pAppContext->signalingConnectionBarrier,
+                        &barrierResult,
+                        sizeof( barrierResult ) );
+        if( retRead != sizeof( uint64_t ) )
         {
-            LogError( ( "Fail to keep processing signaling controller." ) );
-            ret = -1;
+            LogError( ( "Unexpected return value from start up barrier, retRead: %ld", retRead ) );
+            ret = -2;
         }
     }
 
-    #if ENABLE_SCTP_DATA_CHANNEL
-        /* TODO_SCTP: Move to a common shutdown function? */
-        Sctp_DeInit();
-    #endif /* ENABLE_SCTP_DATA_CHANNEL */
-
     return ret;
+}
+
+void AppCommon_WaitSignalingControllerStop( AppContext_t * pAppContext )
+{
+    uint8_t skipProcess = 0U;
+
+    if( pAppContext == NULL )
+    {
+        LogError( ( "Invalid parameter, pAppContext: %p", pAppContext ) );
+        skipProcess = 1;
+    }
+
+    if( skipProcess == 0 )
+    {
+        pthread_join( pAppContext->signalingControllerTid, NULL );
+    }
+}
+
+AppSession_t * AppCommon_GetPeerConnectionSession( AppContext_t * pAppContext,
+                                                   const char * pRemoteClientId,
+                                                   size_t remoteClientIdLength )
+{
+    AppSession_t * pAppSession = NULL;
+    int i;
+    int32_t initResult;
+
+    for( i = 0; i < AWS_MAX_VIEWER_NUM; i++ )
+    {
+        if( ( pAppContext->appSessions[i].remoteClientIdLength == remoteClientIdLength ) &&
+            ( strncmp( pAppContext->appSessions[i].remoteClientId, pRemoteClientId, remoteClientIdLength ) == 0 ) )
+        {
+            /* Found existing session. */
+            pAppSession = &pAppContext->appSessions[i];
+            break;
+        }
+        else if( ( pAppSession == NULL ) &&
+                 ( pAppContext->appSessions[i].peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
+        {
+            /* Found free session, keep looping to find existing one. */
+            pAppSession = &pAppContext->appSessions[i];
+        }
+        else
+        {
+            /* Do nothing. */
+        }
+    }
+
+    if( ( pAppSession != NULL ) && ( pAppSession->peerConnectionSession.state == PEER_CONNECTION_SESSION_STATE_INITED ) )
+    {
+        /* Initialize Peer Connection. */
+        LogDebug( ( "Start peer connection on idx: %d for client ID(%lu): %.*s",
+                    i,
+                    remoteClientIdLength,
+                    ( int ) remoteClientIdLength,
+                    pRemoteClientId ) );
+        initResult = StartPeerConnectionSession( pAppContext,
+                                                 pAppSession,
+                                                 pRemoteClientId,
+                                                 remoteClientIdLength );
+        if( initResult != 0 )
+        {
+            pAppSession = NULL;
+        }
+    }
+
+    return pAppSession;
 }

@@ -27,7 +27,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
                                 TransceiverTrackKind_t trackKind,
                                 Transceiver_t * pTranceiver );
 static int32_t OnMediaSinkHook( void * pCustom,
-                                WebrtcFrame_t * pFrame );
+                                MediaFrame_t * pFrame );
 static int32_t InitializeGstMediaSource( AppContext_t * pAppContext,
                                          GstMediaSourcesContext_t * pGstMediaSourceContext );
 
@@ -227,7 +227,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
 
 
 static int32_t OnMediaSinkHook( void * pCustom,
-                                WebrtcFrame_t * pFrame )
+                                MediaFrame_t * pFrame )
 {
     int32_t ret = 0;
     AppContext_t * pAppContext = ( AppContext_t * ) pCustom;
@@ -347,8 +347,23 @@ int main( void )
 
     if( ret == 0 )
     {
+        /* Configure signaling controller with client ID and role type. */
+        memcpy( &( appContext.signalingControllerClientId[ 0 ] ), SIGNALING_CONTROLLER_MASTER_CLIENT_ID, SIGNALING_CONTROLLER_MASTER_CLIENT_ID_LENGTH );
+        appContext.signalingControllerClientId[ SIGNALING_CONTROLLER_MASTER_CLIENT_ID_LENGTH ] = '\0';
+        appContext.signalingControllerClientIdLength = SIGNALING_CONTROLLER_MASTER_CLIENT_ID_LENGTH;
+        appContext.signalingControllerRole = SIGNALING_ROLE_MASTER;
+    }
+
+    if( ret == 0 )
+    {
         /* Launch application with current thread serving as Signaling Controller. */
-        ret = AppCommon_Start( &appContext );
+        ret = AppCommon_StartSignalingController( &appContext );
+    }
+
+    if( ret == 0 )
+    {
+        /* Launch application with current thread serving as Signaling Controller. */
+        AppCommon_WaitSignalingControllerStop( &appContext );
     }
 
     if( ret == 0 )

@@ -17,6 +17,7 @@
 #include "logging.h"
 
 /* Standard includes. */
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 
@@ -108,14 +109,15 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
  * @brief Setup DTLS by initializing contexts and setting configurations.
  *
  * @param[in] pDtlsNetworkContext Network context.
- * @param[in] pHostName Remote host name, used for server name indication.
  * @param[in] pNetworkCredentials DTLS setup parameters.
+ * @param[in] isServer The role of DTLS is server or not.
  *
  * @return #DTLS_SUCCESS, #DTLS_TRANSPORT_INSUFFICIENT_MEMORY,
  * #DTLS_TRANSPORT_INVALID_CREDENTIALS, or #DTLS_TRANSPORT_INTERNAL_ERROR.
  */
 static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pDtlsNetworkContext,
-                                        DtlsNetworkCredentials_t * pNetworkCredentials );
+                                        DtlsNetworkCredentials_t * pNetworkCredentials,
+                                        uint8_t isServer );
 
 /**
  * @brief Initialize mbedTLS.
@@ -372,7 +374,8 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
 /*-----------------------------------------------------------*/
 
 static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pNetworkContext,
-                                        DtlsNetworkCredentials_t * pNetworkCredentials )
+                                        DtlsNetworkCredentials_t * pNetworkCredentials,
+                                        uint8_t isServer )
 {
     DtlsTransportParams_t * pDtlsTransportParams = NULL;
     DtlsTransportStatus_t returnStatus = DTLS_SUCCESS;
@@ -388,7 +391,7 @@ static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pNetworkContext,
     DtlsSslContextInit( &( pDtlsTransportParams->dtlsSslContext ) );
 
     mbedtlsError = mbedtls_ssl_config_defaults( &( pDtlsTransportParams->dtlsSslContext.config ),
-                                                MBEDTLS_SSL_IS_CLIENT,
+                                                isServer? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT,
                                                 MBEDTLS_SSL_TRANSPORT_DATAGRAM,
                                                 MBEDTLS_SSL_PRESET_DEFAULT );
 
@@ -863,7 +866,7 @@ int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
             switch( negotiatedSRTPProfile )
             {
                 case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80:
-                    #endif /* #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 ) */
+        #endif /* #if ( MBEDTLS_VERSION_NUMBER > 0x02100600 ) */
                     pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_80;
                     break;
 
@@ -871,7 +874,7 @@ int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
                         case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
                     #else /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
                         case MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_32:
-                            #endif /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
+                    #endif /* #if ( MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100 ) */
                             pDtlsKeyingMaterial->srtpProfile = KVS_SRTP_PROFILE_AES128_CM_HMAC_SHA1_32;
                             break;
                         default:
@@ -1245,7 +1248,8 @@ DtlsTransportStatus_t DTLS_Init( DtlsNetworkContext_t * pNetworkContext,
     if( returnStatus == DTLS_SUCCESS )
     {
         returnStatus = dtlsSetup( pNetworkContext,
-                                  pNetworkCredentials );
+                                  pNetworkCredentials,
+                                  isServer );
     }
 
     if( returnStatus == DTLS_SUCCESS )
