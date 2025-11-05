@@ -110,7 +110,7 @@ GStreamer is an open-source multimedia framework that allows you to create a var
 - Capture audio from a microphone or audio test source
 - Encode the media streams using WebRTC-compatible codecs (H.264 for video, Opus for audio)
 
-#### Requitements
+#### Requirements
 Install the following packages to auto build GStreamer application: libgstreamer1.0-dev, libgstreamer-plugins-base1.0-dev, libgstreamer-plugins-bad1.0-dev
 
 On Ubuntu/Debian:
@@ -252,6 +252,34 @@ Under `/* Video codec setting. */`.
 #### Audio Codec
 Under `/* Audio codec setting. */`, currently support OPUS only in Linux environment.
 - OPUS: Set `AUDIO_OPUS` to 1
+
+---
+
+## Troubleshooting
+
+### Message Queue Full Errors
+If you encounter warnings like:
+```
+[WARN] The message queue in peer connection session is full, dropping request
+[WARN] PeerConnection_AddRemoteCandidate fail, result: 23, dropping ICE candidate
+```
+
+Follow these steps:
+
+1. Increase the system message queue limit:
+```bash
+# Check current limit
+cat /proc/sys/fs/mqueue/msg_max
+
+# Increase limit temporarily
+sudo sysctl fs.mqueue.msg_max=30
+```
+
+2. Increase the application queue size by modifying `PEER_CONNECTION_MAX_QUEUE_MSG_NUM` in `examples/peer_connection/peer_connection.c`:
+```diff
+-#define PEER_CONNECTION_MAX_QUEUE_MSG_NUM ( 10 )
++#define PEER_CONNECTION_MAX_QUEUE_MSG_NUM ( 50 )
+```
 
 ---
 
