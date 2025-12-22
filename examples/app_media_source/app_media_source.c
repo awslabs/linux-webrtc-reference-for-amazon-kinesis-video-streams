@@ -233,8 +233,8 @@ static void * AudioTx_Task( void * pParameter )
 
                         /* Read */
                         frame.size = frameLength;
-                        frame.timestampUs += SAMPLE_VIDEO_FRAME_DURATION_IN_US;
-                        frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
+                        frame.timestampUs += SAMPLE_AUDIO_FRAME_DURATION_IN_US;
+                        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
 
                         fseek( fp, 0, SEEK_SET );
                         if( fread( frame.pData, frameLength, 1, fp ) == 1 )
@@ -247,7 +247,7 @@ static void * AudioTx_Task( void * pParameter )
                         }
                         else
                         {
-                            LogError( ( "VideoTx_Task: fread failed!" ) );
+                            LogError( ( "AudioTx_Task: fread failed!" ) );
                         }
                     } while( 0 );
 
