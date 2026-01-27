@@ -117,8 +117,14 @@ static int LwsWebsocketCallback( struct lws * pWsi,
 #elif NETWORKING_USE_MBEDTLS /* if NETWORKING_USE_OPENSSL */
     static int32_t Sha256Init( void * hashContext )
     {
+        int32_t ret;
+
         mbedtls_sha256_init( ( mbedtls_sha256_context * ) hashContext );
-        mbedtls_sha256_starts( hashContext, 0 );
+        ret = mbedtls_sha256_starts( hashContext, 0 );
+        if( ret != 0 )
+        {
+            return -1;
+        }
 
         return 0;
     }
@@ -129,7 +135,13 @@ static int LwsWebsocketCallback( struct lws * pWsi,
                                  const uint8_t * pInput,
                                  size_t inputLen )
     {
-        mbedtls_sha256_update( hashContext, pInput, inputLen );
+        int32_t ret;
+
+        ret = mbedtls_sha256_update( hashContext, pInput, inputLen );
+        if( ret != 0 )
+        {
+            return -1;
+        }
 
         return 0;
     }
@@ -149,7 +161,11 @@ static int LwsWebsocketCallback( struct lws * pWsi,
         }
         else
         {
-            mbedtls_sha256_finish( hashContext, pOutput );
+            ret = mbedtls_sha256_finish( hashContext, pOutput );
+            if( ret != 0 )
+            {
+                ret = -1;
+            }
         }
 
         return ret;
@@ -1588,7 +1604,7 @@ NetworkingResult_t Networking_HttpInit( NetworkingHttpContext_t * pHttpCtx,
         pHttpCtx->sslCreds.pDeviceKeyPath = pCreds->pDeviceKeyPath;
 
         /* Configure libwebsockets logging based on application log level. */
-        ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+        ret = ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
     }
 
     return ret;
@@ -1882,7 +1898,11 @@ NetworkingResult_t Networking_WebsocketConnect( NetworkingWebsocketContext_t * p
             }
 
             /* Configure libwebsockets logging based on application log level. */
-            ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+            ret = ConfigureLwsLogging( LIBRARY_LOG_LEVEL );
+            if( ret != NETWORKING_RESULT_OK )
+            {
+                break;
+            }
 
             pWebsocketCtx->pLwsContext = lws_create_context( &creationInfo );
             if( pWebsocketCtx->pLwsContext == NULL )
